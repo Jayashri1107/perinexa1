@@ -209,7 +209,7 @@ From the other Perinexa copy. After a review of pharmacy software (`docs/PHARMAC
 features and gave decisions the same day (among them: the pharmacist sees a patient's allergies; a substitute only
 with the doctor's yes, written down, never for the doctors' list; sales by doctor for the pharmacist and the super
 admin only, totals; no bills sent on WhatsApp; a reason for every repeat sale). Build note with four stages and the
-questions still open: `docs/PHARMACY_BUILD_NOTE.md` (read against perinexa1's own pharmacy first). Still to build:
-purchases to Tally (PH3), Stage B (PH6, PH5, PH7, PH10), Stage C (PH11, PH15, PH24, PH17, PH16, PH26), Stage D (PH13,
+questions still open: `docs/PHARMACY_BUILD_NOTE.md` (read against perinexa1's own pharmacy first). Stage B built 11 Nov 2026. Still to build:
+purchases to Tally (PH3), Stage C (PH11, PH15, PH24, PH17, PH16, PH26), Stage D (PH13,
 PH12, PH14, PH8).
 

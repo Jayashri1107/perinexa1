@@ -326,6 +326,16 @@ export const AUDIT_ACTIONS = [
   // The lab's four features of 10 Nov 2026 (docs/LAB_BUILD_NOTE.md): the call about a critical result, nobody
   // reached, the doctor's acknowledgement, and a big change confirmed before the report
   'PHARMACY_SUPPLIER_CREDIT_NOTE', // PH3: the supplier's credit note for a return entered
+  'PHARMACY_BATCH_HELD', // PH5: a batch put on hold (recalled, quality doubt)
+  'PHARMACY_BATCH_RELEASED',
+  'PHARMACY_BATCH_RECIPIENTS_VIEWED',
+  'MEDICINE_MARKS_CHANGED', // PH7: high-alert and look-alike marks proposed or changed
+  'MEDICINE_MARKS_CONFIRMED',
+  'NO_SUBSTITUTE_CHANGED', // PH10: the doctors' never-substitute list
+  'PHARMACY_SUPPLIER_PAID', // PH11: a payment to a supplier entered
+  'PHARMACY_SUPPLIER_PAYMENT_CANCELLED',
+  'PHARMACY_DAY_CLOSED', // PH15: the counter's day closed with the cash counted
+  'PHARMACY_DOCTOR_SALES_VIEWED', // PH24: sales by doctor opened (the pharmacist, or the super admin)
   'LAB_CRITICAL_CALL_NOTED',
   'LAB_CRITICAL_NOT_REACHED',
   'LAB_CRITICAL_ACKNOWLEDGED',
@@ -642,6 +652,16 @@ export const AUDIT_CATEGORIES = {
     'PHARMACY_SUPPLIER_RETURNED',
     'PHARMACY_SUPPLIER_RETURN_CANCELLED',
     'PHARMACY_SUPPLIER_CREDIT_NOTE',
+    'PHARMACY_BATCH_HELD',
+    'PHARMACY_BATCH_RELEASED',
+    'PHARMACY_BATCH_RECIPIENTS_VIEWED',
+    'MEDICINE_MARKS_CHANGED',
+    'MEDICINE_MARKS_CONFIRMED',
+    'NO_SUBSTITUTE_CHANGED',
+    'PHARMACY_SUPPLIER_PAID',
+    'PHARMACY_SUPPLIER_PAYMENT_CANCELLED',
+    'PHARMACY_DAY_CLOSED',
+    'PHARMACY_DOCTOR_SALES_VIEWED',
     'PHARMACY_DEBIT_NOTE_PRINTED',
     'PHARMACY_EINVOICE_DOWNLOADED',
     'TALLY_SETTINGS_CHANGED',

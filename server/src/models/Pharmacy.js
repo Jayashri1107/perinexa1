@@ -33,6 +33,23 @@ const medicineSchema = new mongoose.Schema(
     packSize: { type: Number, min: 1, max: 1000, default: 1 },
     packName: text(20),
     looseSale: { type: Boolean, default: true },
+    // PH17: the supplier it is usually ordered from (else the supplier of its newest batch)
+    preferredSupplierId: { type: ObjectId, ref: 'Supplier', default: null },
+    // PH7: "High alert" and "looks or sounds like" – in force only once a doctor and the pharmacist have both confirmed
+    // this version (routes/medicineMarks.js). null: no marks.
+    marks: {
+      type: new mongoose.Schema(
+        {
+          highAlert: { type: Boolean, default: false },
+          lookAlike: { type: [new mongoose.Schema({ medicineId: ObjectId, name: String }, { _id: false })], default: [] },
+          version: { type: Number, default: 1 },
+          confirmations: { type: [new mongoose.Schema({ ...stamp, role: String, version: Number }, { _id: false })], default: [] },
+          updatedByName: String,
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
     // The barcodes printed on its packs (typed or scanned), without spaces and in capitals. Found by exact match.
     barcodes: { type: [String], default: [] },
     active: { type: Boolean, default: true },
@@ -54,6 +71,19 @@ const supplierSchema = new mongoose.Schema(
     drugLicence: text(80),
     phone: text(30),
     address: text(300),
+    creditDays: { type: Number, min: 0, max: 365, default: 0 }, // PH11: a bill is due this many days after its date
+    // PH16: this supplier's bill file – which heading holds each field, and their item names matched to our medicines
+    // (picked by the pharmacist once, then remembered). It only fills the purchase form.
+    billFile: {
+      type: new mongoose.Schema(
+        {
+          columns: { type: Map, of: String, default: undefined },
+          items: [new mongoose.Schema({ key: String, name: String, medicineId: { type: ObjectId, ref: 'Medicine' } }, { _id: false })],
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
     active: { type: Boolean, default: true },
   },
   { timestamps: true },
@@ -230,6 +260,10 @@ const batchSchema = new mongoose.Schema(
     // batches bought by the unit.
     packMrpPaise: { type: Number, default: null },
     unitsPerPack: { type: Number, default: null },
+    // PH5: on hold (recalled, a quality doubt …) – it cannot be sold or issued until released; returned units come back
+    // onto the hold. Every batch with the same number of the same medicine is held together.
+    hold: { type: new mongoose.Schema({ reason: { type: String, enum: ['recalled', 'quality', 'other'] }, note: String, ...stamp }, { _id: false }), default: null },
+    released: { type: [new mongoose.Schema({ heldReason: String, reason: String, ...stamp }, { _id: false })], default: [] },
     qtyIn: { type: Number, required: true, min: 0 },
     qtyLeft: { type: Number, required: true, min: 0 },
     purchaseId: { type: ObjectId, ref: 'Purchase', default: null },
@@ -261,6 +295,8 @@ const moveSchema = new mongoose.Schema({
   supplierName: text(150),
   reason: text(200),
   witness: text(150), // stock counts, and returns to a supplier (and their cancelling) of Schedule X and narcotic medicines
+  // PH15: what kind of write-off (the value lost to expiry); '' on older write-offs (their reason is read)
+  writeoffKind: { type: String, enum: ['', 'expired', 'damaged', 'lost', 'other'], default: '' },
   ...stamp,
 });
 moveSchema.plugin(tenantScoped);
@@ -291,6 +327,14 @@ const invoiceLineSchema = new mongoose.Schema({
   returnedQty: { type: Number, default: 0 },
   // How to take it, as the pharmacist writes it on the bill (6 Nov 2026), e.g. 1-0-1 after food; '' = not written
   dose: { type: String, default: '', maxlength: 60 },
+  // PH6 (docs/PHARMACY_BUILD_NOTE.md): the prescription line it was sold from (an item of the visit's prescription), and
+  // why it was sold again when that line had already been given in full. Not on older lines.
+  rxItemId: { type: ObjectId, default: null },
+  repeatReason: { type: String, default: '' },
+  // PH15: the batch's cost per unit at the sale (profit by medicine); null on older lines (the batch is looked up)
+  costPaise: { type: Number, default: null },
+  // PH10: given in place of the brand the doctor wrote, with which doctor agreed (null: not a substitute)
+  substitution: { type: new mongoose.Schema({ prescribed: String, agreedById: { type: ObjectId, default: null }, agreedByName: String, at: Date }, { _id: false }), default: null },
 });
 const returnLineSchema = new mongoose.Schema(
   { lineId: ObjectId, qty: Number, amountPaise: Number, taxablePaise: Number, gstPaise: Number, cgstPaise: Number, sgstPaise: Number },
@@ -308,7 +352,8 @@ const invoiceSchema = new mongoose.Schema(
       type: new mongoose.Schema({ name: String, gstin: String, address: String, place: String, pin: String, state: String, stateCode: String }, { _id: false }),
       default: null,
     },
-    doctor: { type: new mongoose.Schema({ name: String, reg: String }, { _id: false }), default: null },
+    // userId: the prescription's doctor (PH24, kept from 11 Nov 2026); an outside doctor has a typed name only
+    doctor: { type: new mongoose.Schema({ name: String, reg: String, userId: { type: ObjectId, default: null } }, { _id: false }), default: null },
     visitId: { type: ObjectId, ref: 'Visit', default: null }, // the Perinexa prescription it was sold from
     rxSeen: { type: Boolean, default: false }, // an outside prescription was seen
     admissionId: { type: ObjectId, ref: 'Admission', default: null },
@@ -346,4 +391,69 @@ invoiceSchema.plugin(tenantScoped);
 invoiceSchema.index({ tenantId: 1, number: 1 }, { unique: true });
 invoiceSchema.index({ tenantId: 1, 'created.at': -1 });
 invoiceSchema.index({ tenantId: 1, patientId: 1, 'created.at': -1 });
+// PH6: what was sold from a prescription
+invoiceSchema.index({ tenantId: 1, visitId: 1 }, { partialFilterExpression: { visitId: { $type: 'objectId' } } });
 export const PharmacyInvoice = mongoose.model('PharmacyInvoice', invoiceSchema);
+
+// ---------- PH11: a payment to a supplier (SP-000001) ----------
+// Entered by the pharmacist; the hospital admin sees it. Cancelled with a reason, never deleted.
+export const SUPPLIER_PAYMENT_MODES = ['cash', 'cheque', 'bank', 'upi'];
+const supplierPaymentSchema = new mongoose.Schema(
+  {
+    number: { type: String, required: true },
+    supplierId: { type: ObjectId, ref: 'Supplier', required: true },
+    on: { type: Date, required: true },
+    amountPaise: { type: Number, required: true, min: 1 },
+    mode: { type: String, enum: SUPPLIER_PAYMENT_MODES, required: true },
+    reference: text(80), // the cheque or transaction number
+    purchaseIds: { type: [ObjectId], default: [] }, // the bills it settles, when named
+    note: text(200),
+    created: { type: stampSchema, required: true },
+    cancelled: { type: reasonStamp, default: null },
+  },
+  { timestamps: true },
+);
+supplierPaymentSchema.plugin(tenantScoped);
+supplierPaymentSchema.index({ tenantId: 1, number: 1 }, { unique: true });
+supplierPaymentSchema.index({ tenantId: 1, supplierId: 1, on: -1 });
+export const SupplierPayment = mongoose.model('SupplierPayment', supplierPaymentSchema);
+
+// ---------- PH15: the day's closing at the counter ----------
+// What the walk-ins paid by each mode, the refunds, and what went on the patients' hospital bills; the cash counted
+// and the difference. Carries the name of who closed it – no table of takings per pharmacist. One per day.
+const dayCloseSchema = new mongoose.Schema(
+  {
+    on: { type: Date, required: true }, // the hospital day (midnight UTC)
+    byMode: { type: mongoose.Schema.Types.Mixed, default: {} }, // { cash: paise, upi: paise … } paid less refunded
+    refundsPaise: { type: Number, default: 0 },
+    onBillsPaise: { type: Number, default: 0 },
+    invoices: { type: Number, default: 0 },
+    expectedCashPaise: { type: Number, required: true },
+    countedCashPaise: { type: Number, required: true },
+    differencePaise: { type: Number, required: true },
+    note: text(300),
+    created: { type: stampSchema, required: true },
+  },
+  { timestamps: true },
+);
+dayCloseSchema.plugin(tenantScoped);
+dayCloseSchema.index({ tenantId: 1, on: 1 }, { unique: true });
+export const PharmacyDayClose = mongoose.model('PharmacyDayClose', dayCloseSchema);
+
+// ---------- PH10: the doctors' "never substitute" list ----------
+// Medicines the doctors do not allow another brand of (a narrow-range drug, a brand-specific formulation …). Matched by
+// its name words (stockMatch.js nameKey) against the prescribed text and the medicine's generic name. Only doctors add
+// or stop an entry; the pharmacist reads it. Never deleted. Perinexa ships it empty.
+const noSubstituteSchema = new mongoose.Schema(
+  {
+    text: { type: String, required: true, trim: true, maxlength: 120 },
+    key: { type: String, required: true },
+    active: { type: Boolean, default: true },
+    added: { type: stampSchema, required: true },
+    stopped: { type: reasonStamp, default: null },
+  },
+  { timestamps: true },
+);
+noSubstituteSchema.plugin(tenantScoped);
+noSubstituteSchema.index({ tenantId: 1, key: 1 });
+export const NoSubstitute = mongoose.model('NoSubstitute', noSubstituteSchema);

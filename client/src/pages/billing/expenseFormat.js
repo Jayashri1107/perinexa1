@@ -163,3 +163,23 @@ export const filterExpenses = (list = [], f = null) =>
 
 /** The total of the expenses not cancelled. */
 export const expensesTotal = (list = []) => list.filter((e) => !e.cancelled).reduce((s, e) => s + e.amountPaise, 0);
+
+/**
+ * The printed expenses sheet (owner, 11 Nov 2026), like the hospital's old "Daily Expenses Sheet": the expenses not
+ * cancelled, grouped by how they were paid (cash first), each group with its own total, in date and time order.
+ * Returns { groups: [{ mode, label, expenses, totalPaise }], totalPaise }.
+ */
+export function expenseSheet(list = []) {
+  const order = Object.keys(EXPENSE_MODE_LABELS);
+  const rank = (m) => (order.includes(m) ? order.indexOf(m) : order.length);
+  const kept = list.filter((e) => !e.cancelled).sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+  const groups = [];
+  for (const e of kept) {
+    let g = groups.find((x) => x.mode === e.mode);
+    if (!g) groups.push((g = { mode: e.mode, label: EXPENSE_MODE_LABELS[e.mode] ?? e.mode, expenses: [], totalPaise: 0 }));
+    g.expenses.push(e);
+    g.totalPaise += e.amountPaise;
+  }
+  groups.sort((a, b) => rank(a.mode) - rank(b.mode));
+  return { groups, totalPaise: groups.reduce((s, g) => s + g.totalPaise, 0) };
+}

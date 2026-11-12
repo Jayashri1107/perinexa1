@@ -39,6 +39,10 @@ const tenantSchema = new mongoose.Schema(
       // The pharmacy's city or town and PIN code: needed in the e-invoice file of a sale to a business (4 Oct 2026).
       place: { type: String, trim: true, maxlength: 50, default: '' },
       pin: { type: String, trim: true, maxlength: 6, default: '' },
+      // PH17: reorder by use – the days of use looked at, the days an order takes to come, the days it should cover
+      reorderLookBackDays: { type: Number, min: 7, max: 180, default: 30 },
+      reorderLeadDays: { type: Number, min: 0, max: 60, default: 3 },
+      reorderCoverDays: { type: Number, min: 1, max: 120, default: 15 },
     },
     // Billing settings (Billing → Settings, the hospital admin): the hospital's own UPI ID and the name it is
     // registered under, for the UPI payment link of a bill (4 Oct 2026). Empty = no UPI links. Not a secret, but it

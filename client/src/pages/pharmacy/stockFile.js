@@ -268,11 +268,112 @@ export function stockLines(rows) {
   return { lines, columns: c, missing };
 }
 
-/** A chosen file → { lines, columns, missing }. */
-export async function readStockFile(file) {
+/** A chosen file's rows (CSV or XLSX, read in this browser). */
+export async function readSheetRows(file) {
   const name = file.name.toLowerCase();
   if (name.endsWith('.xls')) throw new Error('This is the old Excel format (.xls). Open it in Excel and save it as .xlsx, then choose it again.');
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const rows = name.endsWith('.csv') ? readCsv(new TextDecoder().decode(bytes)) : await readXlsx(bytes);
-  return stockLines(rows);
+  return name.endsWith('.csv') ? readCsv(new TextDecoder().decode(bytes)) : await readXlsx(bytes);
+}
+
+/** A chosen file → { lines, columns, missing }. */
+export async function readStockFile(file) {
+  return stockLines(await readSheetRows(file));
+}
+
+// ---------- PH16: a supplier's bill file (docs/PHARMACY_BUILD_NOTE.md) ----------
+// Quantities, rate and MRP per pack as on the bill. The file only fills the purchase form.
+const BILL_HEADINGS = {
+  name: HEADINGS.name,
+  batch: HEADINGS.batch,
+  expiry: HEADINGS.expiry,
+  qty: ['qty', 'quantity', 'qnty', 'billqty', 'billedqty', 'packs', 'noofpacks'],
+  freeQty: ['free', 'freeqty', 'fqty', 'freeqnty', 'schqty', 'schemeqty', 'bonus', 'bonusqty'],
+  rate: ['rate', 'purchaserate', 'prate', 'purrate', 'ptr', 'netrate', 'billrate'],
+  mrp: HEADINGS.mrp,
+  disc: ['disc', 'disc%', 'discount', 'discount%', 'dis', 'dis%', 'cd', 'cd%', 'tradedisc', 'tradedisc%'],
+  gstRate: HEADINGS.gstRate,
+  packSize: HEADINGS.packSize,
+  hsn: HEADINGS.hsn,
+};
+export const BILL_FIELDS = Object.keys(BILL_HEADINGS);
+export const BILL_NEEDED = ['name', 'batch', 'expiry', 'qty', 'rate'];
+export const BILL_LABELS = { name: 'Item name', batch: 'Batch', expiry: 'Expiry', qty: 'Quantity (packs)', freeQty: 'Free quantity', rate: 'Rate (per pack)', mrp: 'MRP (per pack)', disc: 'Discount %', gstRate: 'GST %', packSize: 'Pack size', hsn: 'HSN' };
+
+/**
+ * The heading row of a bill file and the column of each field: { index, headings, columns }. The supplier's saved
+ * headings (field → heading text) come first; else the usual names. null when no row of the top 20 names an item,
+ * a batch, an expiry and a quantity.
+ */
+export function billHeadings(rows, saved = {}) {
+  const savedKeys = Object.entries(saved ?? {}).filter(([f, h]) => BILL_FIELDS.includes(f) && key(h));
+  for (let i = 0; i < Math.min(rows.length, 20); i += 1) {
+    const row = (rows[i] ?? []).map((h) => String(h ?? '').trim());
+    const keys = row.map(key);
+    const columns = {};
+    for (const [f, h] of savedKeys) {
+      const at = keys.indexOf(key(h));
+      if (at >= 0) columns[f] = at;
+    }
+    keys.forEach((k, at) => {
+      if (!k || Object.values(columns).includes(at)) return;
+      for (const [f, names] of Object.entries(BILL_HEADINGS)) if (!(f in columns) && names.includes(k)) columns[f] = at;
+    });
+    if (['name', 'batch', 'expiry', 'qty'].every((f) => f in columns)) return { index: i, headings: row, columns };
+  }
+  return null;
+}
+
+/** The bill's item lines under the heading row: { row, name, batch, expiry ('YYYY-MM' or the text), qty, … }. */
+export function billLines(rows, index, columns) {
+  const at = (row, f) => (f in columns && columns[f] != null && columns[f] !== '' ? row[columns[f]] : null);
+  const text = (row, f) => {
+    const v = at(row, f);
+    return v == null || v === '' ? '' : String(v).trim();
+  };
+  const lines = [];
+  let lastName = '';
+  for (let i = index + 1; i < rows.length; i += 1) {
+    const row = rows[i];
+    if (!row || row.every((x) => x === '' || x == null)) continue;
+    const own = text(row, 'name');
+    const batch = text(row, 'batch');
+    if (!batch) continue; // a total, a tax line or a page heading
+    const name = own || lastName;
+    lastName = name;
+    if (!name) continue;
+    lines.push({
+      row: i + 1,
+      name,
+      batch,
+      expiry: readExpiry(at(row, 'expiry')) ?? '',
+      qty: readNumber(at(row, 'qty')),
+      freeQty: readNumber(at(row, 'freeQty')),
+      rate: readNumber(at(row, 'rate')),
+      mrp: readNumber(at(row, 'mrp')),
+      disc: readNumber(at(row, 'disc')),
+      gstRate: percent(readNumber(at(row, 'gstRate'))),
+      packSize: packSizeOf(at(row, 'packSize')),
+      hsn: text(row, 'hsn'),
+    });
+  }
+  return lines;
+}
+
+/** A bill-file line as a purchase-form line (text fields, as typed); the pharmacist checks each before saving. */
+export function formLineFromBill(x, medicine) {
+  const str = (v) => (typeof v === 'number' && Number.isFinite(v) ? String(v) : '');
+  const conv = x.packSize ?? (medicine.packSize > 1 ? medicine.packSize : 1);
+  return {
+    medicine,
+    batch: x.batch,
+    expiry: /^\d{4}-\d{2}$/.test(x.expiry) ? x.expiry : '',
+    conv: String(conv),
+    qty: str(x.qty),
+    freeQty: str(x.freeQty),
+    rate: str(x.rate),
+    mrp: str(x.mrp),
+    disc: str(x.disc),
+    gst: [0, 5, 12, 18].includes(x.gstRate) ? String(x.gstRate) : String(medicine.gstRate ?? 5),
+  };
 }

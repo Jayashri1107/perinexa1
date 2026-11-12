@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { ListChecks, X } from 'lucide-react';
+import { ListChecks, Printer, X } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { rupees } from './billingFormat.js';
+import { ExpensePrintPreview } from './ExpensePrint.jsx';
 import { CancelExpenseDialog, ExpenseEntryForm, ExpenseHeadsDialog, ExpensesList } from './ExpenseEntry.jsx';
 import { expensesTotal, filterExpenses, hospitalNow, isFiltering } from './expenseFormat.js';
 
@@ -12,6 +13,7 @@ import { expensesTotal, filterExpenses, hospitalNow, isFiltering } from './expen
 // hospital admin, laid out like the hospital's old "Daily Expenses" screen – the expenses of a period on the left
 // (From, To), a new expense on the right. Every expense is also taken off the day on Billing → Daily summary. What is
 // typed or chosen in the new expense filters the list as you go (3 Nov 2026), so a repeat entry is seen before saving.
+// Print (11 Nov 2026): one expense ticked prints its voucher, several (or none ticked: all shown) the expenses sheet.
 
 export function DailyExpensesPage() {
   const { activeMembership } = useAuth();
@@ -21,6 +23,8 @@ export function DailyExpensesPage() {
   const [formKey, setFormKey] = useState(0);
   const [cancelling, setCancelling] = useState(null);
   const [managing, setManaging] = useState(false);
+  const [ticked, setTicked] = useState([]);
+  const [printing, setPrinting] = useState(null); // the expenses being printed
   // A date changed in the form shows that day; the period applies as soon as it is chosen
   const rangeOk = range.from && range.to && range.from <= range.to;
   const list = useFetch(rangeOk || filter?.date ? '/billing/expenses' : null, filter?.date ? { from: filter.date, to: filter.date } : range);
@@ -29,6 +33,10 @@ export function DailyExpensesPage() {
   const all = list.data?.expenses ?? [];
   const expenses = filterExpenses(all, filter);
   const filtering = isFiltering(filter);
+  const printable = expenses.filter((e) => !e.cancelled);
+  const tickedShown = printable.filter((e) => ticked.includes(e.id));
+  const toPrint = tickedShown.length ? tickedShown : printable;
+  const printLabel = tickedShown.length === 1 ? 'Print voucher' : tickedShown.length ? `Print sheet of ${tickedShown.length}` : 'Print sheet of all';
 
   return (
     <>
@@ -71,7 +79,15 @@ export function DailyExpensesPage() {
             <p className="muted">Loading…</p>
           ) : (
             <>
-              <ExpensesList expenses={expenses} onCancel={setCancelling} showDate caption="Expenses of the period" empty={filtering ? 'No expense in this period matches the form.' : 'No expenses entered in this period.'} />
+              {printable.length > 0 && (
+                <div className="exp-print-bar">
+                  <span className="muted">Tick one expense to print its voucher, or several for the expenses sheet.</span>
+                  <button type="button" className="btn btn-secondary" onClick={() => setPrinting(toPrint)}>
+                    <Printer aria-hidden="true" /> {printLabel}
+                  </button>
+                </div>
+              )}
+              <ExpensesList expenses={expenses} onCancel={setCancelling} selected={ticked} onSelect={setTicked} showDate caption="Expenses of the period" empty={filtering ? 'No expense in this period matches the form.' : 'No expenses entered in this period.'} />
               {expenses.length > 0 && (
                 <p className="exp-total">
                   {filtering ? 'Total of these' : 'Total for the period'}: <strong>{rupees(expensesTotal(expenses))}</strong>
@@ -98,6 +114,7 @@ export function DailyExpensesPage() {
           }}
         />
       )}
+      {printing && <ExpensePrintPreview expenses={printing} onClose={() => setPrinting(null)} />}
       {managing && <ExpenseHeadsDialog heads={heads.data?.heads ?? []} onClose={() => setManaging(false)} onChanged={() => heads.reload()} />}
     </>
   );

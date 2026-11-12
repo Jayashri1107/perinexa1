@@ -196,10 +196,16 @@ async function openBill(e) {
 /**
  * The expenses as a table. showDate: a period (the Daily Expenses page); onCancel: the cancel button (screen only).
  * A cancelled expense stays listed, struck through, and counts nothing.
+ * selected, onSelect(ids): a tick box on each expense not cancelled, to print it (the Daily Expenses page, 11 Nov 2026).
  */
-export function ExpensesList({ expenses, onCancel, showDate = false, caption = 'Expenses paid from the counter', empty = 'No expenses entered for this day.' }) {
+export function ExpensesList({ expenses, onCancel, selected, onSelect, showDate = false, caption = 'Expenses paid from the counter', empty = 'No expenses entered for this day.' }) {
   const [error, setError] = useState(null);
-  const cols = 6 + (showDate ? 1 : 0) + (onCancel ? 1 : 0);
+  const selecting = Boolean(onSelect);
+  const cols = 6 + (showDate ? 1 : 0) + (onCancel ? 1 : 0) + (selecting ? 1 : 0);
+  const choosable = expenses.filter((e) => !e.cancelled).map((e) => e.id);
+  const picked = new Set(selected ?? []);
+  const allPicked = choosable.length > 0 && choosable.every((id) => picked.has(id));
+  const toggle = (id) => onSelect(picked.has(id) ? [...picked].filter((x) => x !== id) : [...picked, id]);
   const open = async (e) => {
     setError(null);
     try {
@@ -215,6 +221,11 @@ export function ExpensesList({ expenses, onCancel, showDate = false, caption = '
         <caption>{caption}</caption>
         <thead>
           <tr>
+            {selecting && (
+              <th scope="col" className="exp-pick">
+                <input type="checkbox" aria-label="Tick all to print" title="Tick all to print" checked={allPicked} disabled={!choosable.length} onChange={() => onSelect(allPicked ? [] : choosable)} />
+              </th>
+            )}
             {showDate && <th scope="col">Date</th>}
             <th scope="col">Time</th>
             <th scope="col">Person name</th>
@@ -233,7 +244,12 @@ export function ExpensesList({ expenses, onCancel, showDate = false, caption = '
         </thead>
         <tbody>
           {expenses.map((e) => (
-            <tr key={e.id} className={e.cancelled ? 'dc-cancelled' : undefined}>
+            <tr key={e.id} className={e.cancelled ? 'dc-cancelled' : picked.has(e.id) ? 'exp-picked' : undefined}>
+              {selecting && (
+                <td className="exp-pick">
+                  {!e.cancelled && <input type="checkbox" aria-label={`Tick to print: ${e.paidTo}, ${rupees(e.amountPaise)}`} checked={picked.has(e.id)} onChange={() => toggle(e.id)} />}
+                </td>
+              )}
               {showDate && <td>{formatDate(e.date)}</td>}
               <td>{e.time || (e.at ? new Date(e.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '')}</td>
               <td>{e.paidTo}</td>
@@ -277,7 +293,7 @@ export function ExpensesList({ expenses, onCancel, showDate = false, caption = '
           )}
           {expensesTotal(expenses) > 0 && (
             <tr className="bill-report-total">
-              <th scope="row" colSpan={showDate ? 5 : 4}>
+              <th scope="row" colSpan={(showDate ? 5 : 4) + (selecting ? 1 : 0)}>
                 Total expenses
               </th>
               <td className="num">{rupees(expensesTotal(expenses))}</td>

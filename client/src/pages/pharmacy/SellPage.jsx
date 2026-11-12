@@ -1,11 +1,14 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { BedDouble, CalendarClock, CalendarDays, CircleCheck, CircleX, ClipboardList, Minus, PackageX, Plus, Receipt, Stethoscope, Trash2, UserPlus, UserRound } from 'lucide-react';
+import { BedDouble, TriangleAlert, CalendarClock, CalendarDays, CircleCheck, CircleX, ClipboardList, Minus, PackageX, Plus, Receipt, Stethoscope, Trash2, UserPlus, UserRound } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { cleanGstin, gstinProblem, gstinState } from './gstin.js';
-import { CONTROLLED, FREQUENCY_WORDS, einvoiceHsnOk, expiryLabel, inPacks, looseProblem, medicineLabel, prescribedLines, priceOf, scannedForList } from './pharmacyFormat.js';
+import { CONTROLLED, FREQUENCY_WORDS, allergyClash, einvoiceHsnOk, expiryLabel, givenLine, inPacks, looseProblem, medicineLabel, prescribedLines, priceOf, scannedForList } from './pharmacyFormat.js';
+import { allergyStatus } from '../patients/patientFormat.js';
+import { HighAlertPill } from './MedicineMarks.jsx';
+import { OtherBrandsDialog } from './Substitutes.jsx';
 import { BatchGrid, PaymentWindow } from './CounterParts.jsx';
 import { BarcodeBox, MedicineFinder, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { FindElsewhere, TypePill, billsPlace, useClickOrDouble } from './RegisterPage.jsx';
@@ -221,8 +224,28 @@ function BatchPicker({ line, onChange, onPrice = null }) {
   );
 }
 
-function Prescriptions({ patientId, onUse, chosenVisit, useFirst = null }) {
+/** PH7: her allergy line on the counter – the allergy, "None known", or "Not recorded – ask". */
+function AllergyLine({ text }) {
+  if (text == null) return null;
+  const status = allergyStatus(text);
+  if (status === 'recorded') {
+    return (
+      <p className="ph-allergy is-recorded">
+        <TriangleAlert aria-hidden="true" /> <strong>Allergies:</strong> {text}
+      </p>
+    );
+  }
+  return <p className="ph-allergy">{status === 'none' ? 'Allergies: none known.' : 'Allergies: not recorded – ask her.'}</p>;
+}
+
+function Prescriptions({ patientId, onUse, chosenVisit, useFirst = null, onAllergies = null }) {
   const res = useFetch(`/pharmacy/patients/${patientId}/prescriptions`);
+  // PH7: her allergy line goes up to the counter (warnings on the bill's lines)
+  const allergyText = res.data?.patient?.allergies?.text;
+  const allergyKnown = Boolean(res.data);
+  useEffect(() => {
+    if (allergyKnown && onAllergies) onAllergies(allergyText ?? '');
+  }, [allergyKnown, allergyText, onAllergies]);
   // "Bill the prescription" on the register: that prescription goes on the bill by itself, once
   const used = useRef(false);
   const first = useFirst && res.data && !res.data.patient?.duplicateOf && !res.data.patient?.closed ? res.data.prescriptions.find((rx) => rx.visitId === useFirst) : null;
@@ -279,6 +302,8 @@ function Prescriptions({ patientId, onUse, chosenVisit, useFirst = null }) {
                     {it.dose} {FREQUENCY_WORDS[it.frequency] || it.frequencyText}
                     {it.durationValue ? `, ${it.durationValue} ${it.durationUnit}` : ''}
                   </span>
+                  {/* PH6: what was already given from this line */}
+                  {givenLine(it) && <span className={`ph-rx-given${it.givenInFull ? ' is-full' : ''}`}>{givenLine(it)}</span>}
                   {it.matches.length ? (
                     <span className="ph-rx-match">
                       <CircleCheck aria-hidden="true" /> In stock: {it.matches.map((m) => `${m.name} (${m.inStock})`).join(', ')}
@@ -291,6 +316,7 @@ function Prescriptions({ patientId, onUse, chosenVisit, useFirst = null }) {
                 </li>
               ))}
             </ul>
+            {rx.soldUnlinked?.length > 0 && <p className="hint">Sold from this prescription before: {rx.soldUnlinked.map((x) => `${x.number} on ${x.date}`).join(', ')}.</p>}
             <button type="button" className={`btn btn-sm ph-rx-use ${chosen ? 'btn-secondary is-chosen' : 'btn-secondary'}`} onClick={() => onUse(rx)}>
               {chosen ? <CircleCheck aria-hidden="true" /> : <ClipboardList aria-hidden="true" />} {chosen ? 'On the bill' : 'Use this prescription'}
             </button>
@@ -373,6 +399,10 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const [patient, setPatient] = useState(start.patient ?? null);
   const [customer, setCustomer] = useState({ name: start.customer?.name ?? '', phone: start.customer?.phone ?? '' });
   const [visitId, setVisitId] = useState(null);
+  // PH7: her allergy line (owner's decision 2: the pharmacist sees her allergies and nothing else of her record)
+  const [allergies, setAllergies] = useState(null);
+  // PH10: the prescription line whose other brands are being looked at
+  const [otherBrands, setOtherBrands] = useState(null);
   const [doctor, setDoctor] = useState({ name: '', reg: '' });
   const [rxSeen, setRxSeen] = useState(false);
   const [lines, setLines] = useState([]); // { key, medicine, qty, batchId }
@@ -456,8 +486,10 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
     setDiscount(text === '' || !Number.isFinite(n) || !gross ? '' : String(Math.round(((n * 100) / gross) * 100 * 10000) / 10000));
   };
   const qtyOk = lines.length > 0 && lines.every((l) => /^\d+$/.test(l.qty) && Number(l.qty) > 0 && !looseProblem(l.medicine, Number(l.qty)));
+  // PH6: a prescription line given in full is sold again only with a reason
+  const repeatsOk = lines.every((l) => !l.givenInFull || (l.repeatReason ?? '').trim().length >= 3);
   const whoOk = who === 'walkin' ? customer.name.trim().length >= 2 : Boolean(patient);
-  const ready = qtyOk && whoOk && (!isBusiness || buyerOk) && (pct === 0 || discountReason.trim().length >= 3) && pct >= 0 && pct <= 100;
+  const ready = qtyOk && repeatsOk && whoOk && (!isBusiness || buyerOk) && (pct === 0 || discountReason.trim().length >= 3) && pct >= 0 && pct <= 100;
 
   // Save: the Payment window opens with the bill's figures; its Save makes the invoice (a walk-in with how they paid)
   const bodyOf = () => {
@@ -468,7 +500,14 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
       ...(visitId ? { visitId } : {}),
       ...(!visitId && (doctor.name.trim() || doctor.reg.trim()) ? { doctor: { name: doctor.name.trim(), reg: doctor.reg.trim() } } : {}),
       rxSeen: !visitId && rxSeen,
-      lines: lines.map((l) => ({ medicineId: l.medicine.id, qty: Number(l.qty), ...(l.batchId ? { batchId: l.batchId } : {}), ...(l.dose?.trim() ? { dose: l.dose.trim() } : {}) })),
+      lines: lines.map((l) => ({
+        medicineId: l.medicine.id,
+        qty: Number(l.qty),
+        ...(l.batchId ? { batchId: l.batchId } : {}),
+        ...(l.dose?.trim() ? { dose: l.dose.trim() } : {}),
+        // PH6: the prescription line it is sold from (only with her Perinexa prescription), and why again
+        ...(visitId && l.rxItemId ? { rxItemId: l.rxItemId, ...(l.givenInFull ? { repeatReason: (l.repeatReason ?? '').trim() } : {}), ...(l.substitution ? { substitution: l.substitution } : {}) } : {}),
+      })),
       discountPercent: pct,
       discountReason: discountReason.trim(),
     };
@@ -598,9 +637,11 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                   <h2 id="ph-rx" className="ph-section-label">
                     Prescription
                   </h2>
-                  <Prescriptions patientId={patient.id} onUse={useRx} chosenVisit={visitId} useFirst={start.patient?.id === patient.id ? (start.visitId ?? null) : null} />
+                  <AllergyLine text={allergies} />
+                  <Prescriptions patientId={patient.id} onUse={useRx} chosenVisit={visitId} useFirst={start.patient?.id === patient.id ? (start.visitId ?? null) : null} onAllergies={setAllergies} />
                 </div>
               )}
+              {who === 'walkin' && <p className="hint ph-allergy-ask">No record – ask about allergies before giving.</p>}
               {(patient || who === 'walkin') && !visitId && (needsRx || who === 'walkin') && (
                 <div className="ph-rx-seen">
                   <h2 className="ph-section-label">Outside prescription</h2>
@@ -737,7 +778,14 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                         <Fragment key={l.key}>
                           <tr>
                             <td data-label="Item name" className="ph-grid-name">
-                              <strong>{l.medicine.name}</strong> <ScheduleMark schedule={l.medicine.schedule} />
+                              <strong>{l.medicine.name}</strong> <ScheduleMark schedule={l.medicine.schedule} /> <HighAlertPill medicine={l.medicine} />
+                              {/* PH10: given in place of the brand the doctor wrote, with the doctor who agreed */}
+                              {l.substitution && <span className="ph-line-note">In place of {l.prescribedName}, agreed by {l.substitution.agreedByName}</span>}
+                              {visitId && l.rxItemId && !l.substitution && (
+                                <button type="button" className="btn btn-link btn-sm" onClick={() => setOtherBrands(l)}>
+                                  Other brands
+                                </button>
+                              )}
                             </td>
                             <td data-label="Batch no" className="tabular">
                               {/* Chosen from the batch list: its number, as on the earlier bill; else (a prescription's line) a choice */}
@@ -786,6 +834,36 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                               )}
                             </td>
                           </tr>
+                          {/* PH7: her allergy, a look-alike – shown, never asked about (owner, 10 Nov 2026) */}
+                          {(patient && allergyClash(l.medicine, allergies)) || l.medicine.lookAlike?.length ? (
+                            <tr>
+                              <td colSpan={9} className="ph-warn-row">
+                                {patient && allergyClash(l.medicine, allergies) && (
+                                  <span className="ph-warn">
+                                    <TriangleAlert aria-hidden="true" /> Allergy: her record says “{allergies}” – {l.medicine.name} may be a {allergyClash(l.medicine, allergies)}. Check with her and the doctor before giving.
+                                  </span>
+                                )}
+                                {l.medicine.lookAlike?.length > 0 && (
+                                  <span className="ph-warn">
+                                    <TriangleAlert aria-hidden="true" /> Looks or sounds like {l.medicine.lookAlike.map((x) => x.name).join(', ')} – check the pack.
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ) : null}
+                          {/* PH6: already given in full – sold again only with a reason */}
+                          {l.givenInFull && (
+                            <tr>
+                              <td colSpan={9} className="ph-repeat-row">
+                                <label className="ph-repeat">
+                                  <span className={(l.repeatReason ?? '').trim().length >= 3 ? 'hint' : 'field-error'}>
+                                    {l.medicine.name} was already given in full ({l.sold.map((x) => `${x.qty} on ${x.date}, ${x.number}`).join('; ')}). Why is it sold again?
+                                  </span>
+                                  <input maxLength={200} value={l.repeatReason ?? ''} onChange={(e) => setLine(l.key, { repeatReason: e.target.value })} aria-label={`Why ${l.medicine.name} is sold again`} />
+                                </label>
+                              </td>
+                            </tr>
+                          )}
                           {l.prescribed && l.medicine.inStock < Number(l.qty) && (
                             <tr>
                               <td colSpan={9} className="field-error ph-prescribed-short">
@@ -852,7 +930,17 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
             </div>
           </section>
         </div>
-        {paying && (
+        {otherBrands && (
+        <OtherBrandsDialog
+          line={otherBrands}
+          onClose={() => setOtherBrands(null)}
+          onPick={(m, agreed) => {
+            setLine(otherBrands.key, { medicine: m, batchId: null, batchNo: null, mrpPaise: null, packMrpPaise: null, unitsPerPack: null, expiry: null, substitution: agreed, prescribedName: otherBrands.medicine.name });
+            setOtherBrands(null);
+          }}
+        />
+      )}
+      {paying && (
           <PaymentWindow
             body={paying}
             who={who === 'walkin' ? { uhid: '', name: customer.name.trim() } : { uhid: patient?.mrn ?? '', name: patient?.fullName ?? '' }}

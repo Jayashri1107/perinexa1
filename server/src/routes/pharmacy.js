@@ -5,9 +5,9 @@ import { z } from 'zod';
 import { addDays, daysBetween, hospitalDayStart, isoDay, timeIn, toHospitalDate, utcDay } from '../careplans/dates.js';
 import { Admission } from '../models/Admission.js';
 import { Arrival } from '../models/Arrival.js';
-import { hasRole } from '../models/Membership.js';
+import { Membership, hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
-import { Medicine, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierReturn } from '../models/Pharmacy.js';
+import { Medicine, NoSubstitute, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierPayment, SupplierReturn, SUPPLIER_PAYMENT_MODES, PharmacyDayClose } from '../models/Pharmacy.js';
 import { Tenant } from '../models/Tenant.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
@@ -26,22 +26,24 @@ import {
   FORMS,
   GST_RATES,
   MAX_BARCODES,
+  MAX_PAISE,
   OLD_GST_RATES,
   MAX_QTY,
   MIN_REASON,
   PHARMACY_EINVOICE_ROLES,
   PHARMACY_EXPORT_ROLES,
+  PHARMACY_DOCTOR_SALES_ROLES,
   PHARMACY_ROLES,
   SCHEDULES,
   SCHEDULE_LABELS,
   SUPPLIER_RETURN_REASON_LABELS,
   cleanBarcode,
 } from '../pharmacy/pharmacyRules.js';
-import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, invoiceTotals, invoiceViews, isExpired, returnItems, stockOf, writeOff } from '../pharmacy/pharmacyService.js';
+import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, invoiceTotals, invoiceViews, isExpired, returnItems, stockOf, writeOff, usableMatch, HOLD_REASONS, padded } from '../pharmacy/pharmacyService.js';
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { isClosed } from '../patients/deathRules.js';
 import { NOT_CANCELLED, returnTotals } from '../pharmacy/supplierReturnsService.js';
-import { checkOpening, openingSchema, saveOpening } from '../pharmacy/openingStock.js';
+import { checkOpening, nameKey, openingSchema, saveOpening } from '../pharmacy/openingStock.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
@@ -49,6 +51,12 @@ import { pharmacyOrdersRouter } from './pharmacyOrders.js';
 import { pharmacyRegisterRouter } from './pharmacyRegister.js';
 import { pharmacySupplierReturnsRouter } from './pharmacySupplierReturns.js';
 import { capitalizeName } from '../utils/personName.js';
+import { givenFromPrescriptions, givenWords } from '../pharmacy/rxGiven.js';
+import { neverSubstitute, sameMedicine } from '../pharmacy/substitutes.js';
+import { supplierAccount } from '../pharmacy/supplierAccount.js';
+import { nextNumber } from '../models/Counter.js';
+import { daysOutOfStock, expiryLoss, h1Use, nonMoving, prescriptionsFilled, profitByMedicine } from '../pharmacy/figures.js';
+import { doctorOf, salesByDoctor } from '../pharmacy/salesByDoctor.js';
 
 // Pharmacy and medicine stock (docs/PHARMACY_PLAN.md, approved 3 Oct 2026), for the pharmacist (and the hospital admin
 // for the reports and the medicine list):
@@ -96,6 +104,10 @@ const settingsSchema = z
     // City or town (the bill's jurisdiction line, the e-invoice file) and PIN code (the e-invoice file)
     place: z.string().trim().max(50),
     pin: z.string().trim().regex(/^([1-9]\d{5})?$/, 'A PIN code has 6 digits.'),
+    // PH17: reorder by use
+    reorderLookBackDays: z.number().int().min(7).max(180),
+    reorderLeadDays: z.number().int().min(0).max(60),
+    reorderCoverDays: z.number().int().min(1).max(120),
   })
   .partial()
   .strict();
@@ -135,6 +147,7 @@ const medicineFields = {
   packSize: z.number().int().min(1, 'A pack holds at least 1.').max(1000),
   packName: z.string().trim().max(20),
   looseSale: z.boolean(),
+  preferredSupplierId: objectId.nullable(), // PH17
   // The barcodes on its packs (typed, or scanned: a scanner types the digits). Kept without spaces, in capitals.
   barcodes: z
     .array(z.string().max(60).transform(cleanBarcode).pipe(z.string().regex(BARCODE_PATTERN, 'A barcode has 4 to 32 digits or letters.')))
@@ -155,6 +168,7 @@ const medicineSchema = z
     packSize: medicineFields.packSize.default(1),
     packName: medicineFields.packName.default(''),
     looseSale: medicineFields.looseSale.default(true),
+    preferredSupplierId: medicineFields.preferredSupplierId.default(null),
     barcodes: medicineFields.barcodes.optional(),
     active: medicineFields.active.optional(),
   })
@@ -190,7 +204,7 @@ pharmacyRouter.get('/medicines', async (req, res) => {
   const next = new Map();
   if (q.search) {
     const t = today(req);
-    for (const b of await StockBatch.find({ tenantId: req.tenantId, medicineId: { $in: meds.map((m) => m._id) }, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(t) } }, { medicineId: 1, mrpPaise: 1, expiry: 1 }).sort({ expiry: 1 }).lean()) {
+    for (const b of await StockBatch.find({ tenantId: req.tenantId, medicineId: { $in: meds.map((m) => m._id) }, ...usableMatch(t) }, { medicineId: 1, mrpPaise: 1, expiry: 1 }).sort({ expiry: 1 }).lean()) {
       if (!next.has(String(b.medicineId))) next.set(String(b.medicineId), b.mrpPaise);
     }
   }
@@ -238,6 +252,7 @@ const supplierFields = {
   drugLicence: z.string().trim().max(80),
   phone: z.string().trim().max(30),
   address: z.string().trim().max(300),
+  creditDays: z.number().int().min(0).max(365), // PH11
   active: z.boolean(),
 };
 const supplierSchema = z
@@ -247,6 +262,7 @@ const supplierSchema = z
     drugLicence: supplierFields.drugLicence.default(''),
     phone: supplierFields.phone.default(''),
     address: supplierFields.address.default(''),
+    creditDays: supplierFields.creditDays.default(0),
     active: supplierFields.active.optional(),
   })
   .strict();
@@ -272,6 +288,128 @@ pharmacyRouter.patch('/suppliers/:id', async (req, res) => {
   await s.save();
   await audit(req, 'PHARMACY_SUPPLIER_CHANGED', { details: { supplierId: String(s._id), fields: Object.keys(body) } });
   res.json({ supplier: supplierView(s) });
+});
+
+// ---------- PH16: the supplier's bill from a file (docs/PHARMACY_BUILD_NOTE.md) ----------
+// The file is read in the browser and only fills the purchase form; saving goes through POST /purchases with all its
+// checks. Here: the supplier's saved column headings, matching its item names to our medicines (remembered matches
+// first, then the same name), and remembering what the pharmacist picked.
+const BILL_FILE_FIELDS = ['name', 'batch', 'expiry', 'qty', 'freeQty', 'rate', 'mrp', 'disc', 'gstRate', 'packSize', 'hsn'];
+const billFileSupplier = async (req) => {
+  const s = await Supplier.findOne({ tenantId: req.tenantId, _id: idParam(req) });
+  if (!s) throw new HttpError(404, 'Supplier not found.', 'NOT_FOUND');
+  return s;
+};
+pharmacyRouter.get('/suppliers/:id/bill-file', async (req, res) => {
+  desk(req);
+  const s = await billFileSupplier(req);
+  res.json({ columns: Object.fromEntries(s.billFile?.columns ?? []), fields: BILL_FILE_FIELDS });
+});
+pharmacyRouter.post('/suppliers/:id/bill-file/match', async (req, res) => {
+  desk(req);
+  const s = await billFileSupplier(req);
+  const { names } = parse(z.object({ names: z.array(z.string().trim().min(1).max(200)).max(500) }).strict(), req.body);
+  const remembered = new Map((s.billFile?.items ?? []).map((x) => [x.key, String(x.medicineId)]));
+  const meds = await Medicine.find({ tenantId: req.tenantId, active: true }).lean();
+  const byId = new Map(meds.map((m) => [String(m._id), m]));
+  const byName = new Map(meds.map((m) => [nameKey(m.name), m]));
+  const matches = names.map((name) => {
+    const k = nameKey(name);
+    const kept = remembered.has(k) ? byId.get(remembered.get(k)) : null; // a stopped medicine is not matched
+    const m = kept ?? byName.get(k) ?? null;
+    return { name, medicine: m ? medicineView(m) : null, how: kept ? 'remembered' : m ? 'same_name' : null };
+  });
+  res.json({ matches });
+});
+pharmacyRouter.put('/suppliers/:id/bill-file', async (req, res) => {
+  desk(req);
+  const s = await billFileSupplier(req);
+  const body = parse(
+    z
+      .object({
+        columns: z.partialRecord(z.enum(BILL_FILE_FIELDS), z.string().trim().max(80)).optional(),
+        items: z.array(z.object({ name: z.string().trim().min(1).max(200), medicineId: objectId }).strict()).max(500).default([]),
+      })
+      .strict(),
+    req.body,
+  );
+  const ids = [...new Set(body.items.map((x) => x.medicineId))];
+  const found = await Medicine.countDocuments({ tenantId: req.tenantId, _id: { $in: ids } });
+  if (found !== ids.length) throw new HttpError(400, 'A medicine was not found.', 'VALIDATION');
+  const items = new Map((s.billFile?.items ?? []).map((x) => [x.key, x]));
+  for (const x of body.items) items.set(nameKey(x.name), { key: nameKey(x.name), name: x.name, medicineId: x.medicineId });
+  const columns = body.columns ? Object.fromEntries(Object.entries(body.columns).filter(([, v]) => v)) : Object.fromEntries(s.billFile?.columns ?? []);
+  s.billFile = { columns, items: [...items.values()].slice(-5000) };
+  await s.save();
+  await audit(req, 'PHARMACY_SUPPLIER_CHANGED', { details: { supplierId: String(s._id), fields: ['billFile'], items: body.items.length } });
+  res.json({ columns, remembered: s.billFile.items.length });
+});
+
+// ---------- PH11: what each supplier is owed (docs/PHARMACY_BUILD_NOTE.md) ----------
+// The pharmacist enters payments; the pharmacist and the hospital admin see the account. Amounts and ids in the audit
+// log. Payments are not sent to Tally yet (that comes with purchases to Tally – the accountant keeps entering them
+// there until then).
+
+async function accountOf(req, supplier) {
+  const [purchases, returns, payments] = await Promise.all([
+    Purchase.find({ tenantId: req.tenantId, supplierId: supplier._id }, { number: 1, invoiceNo: 1, invoiceDate: 1, totalPaise: 1, grn: 1, status: 1 }).lean(),
+    SupplierReturn.find({ tenantId: req.tenantId, supplierId: supplier._id }, { number: 1, lines: 1, status: 1, created: 1, createdAt: 1 }).lean(),
+    SupplierPayment.find({ tenantId: req.tenantId, supplierId: supplier._id }).sort({ on: -1, _id: -1 }).lean(),
+  ]);
+  return supplierAccount({ supplier, purchases, returns, payments, today: today(req) });
+}
+
+pharmacyRouter.get('/suppliers/:id/account', async (req, res) => {
+  reports(req);
+  const s = await Supplier.findOne({ tenantId: req.tenantId, _id: idParam(req) }).lean();
+  if (!s) throw new HttpError(404, 'Supplier not found.', 'NOT_FOUND');
+  res.json({ supplier: supplierView(s), ...(await accountOf(req, s)), canPay: hasRole(req.membership, 'pharmacist'), modes: SUPPLIER_PAYMENT_MODES });
+});
+
+pharmacyRouter.post('/suppliers/:id/payments', async (req, res) => {
+  desk(req);
+  const body = parse(
+    z.object({ on: requiredDateOnly('Date'), amountPaise: z.number().int().min(1, 'Write the amount paid.').max(MAX_PAISE), mode: z.enum(SUPPLIER_PAYMENT_MODES, 'Choose how it was paid.'), reference: z.string().trim().max(80).default(''), purchaseIds: z.array(objectId).max(50).default([]), note: z.string().trim().max(200).default('') }).strict(),
+    req.body,
+  );
+  const s = await Supplier.findOne({ tenantId: req.tenantId, _id: idParam(req) }).lean();
+  if (!s) throw new HttpError(404, 'Supplier not found.', 'NOT_FOUND');
+  if (body.mode !== 'cash' && body.reference.length < 2) throw Object.assign(new HttpError(400, 'Write the cheque or transaction number.', 'VALIDATION'), { fields: { reference: 'Write the cheque or transaction number.' } });
+  if (body.on > utcDay(today(req))) throw Object.assign(new HttpError(400, 'The date is in the future.', 'VALIDATION'), { fields: { on: 'The date is in the future.' } });
+  if (body.purchaseIds.length && (await Purchase.countDocuments({ tenantId: req.tenantId, supplierId: s._id, _id: { $in: body.purchaseIds }, status: { $ne: 'cancelled' } })) !== new Set(body.purchaseIds.map(String)).size) {
+    throw new HttpError(400, 'A bill chosen is not this supplier’s.', 'VALIDATION');
+  }
+  const number = padded('SP', await nextNumber(req.tenantId, 'pharmacy-supplier-payment'));
+  const p = await SupplierPayment.create({ tenantId: req.tenantId, number, supplierId: s._id, ...body, created: { by: req.user._id, byName: req.user.name, at: req.now } });
+  await audit(req, 'PHARMACY_SUPPLIER_PAID', { details: { paymentId: String(p._id), number, supplierId: String(s._id), amountPaise: body.amountPaise, mode: body.mode, bills: body.purchaseIds.length } });
+  res.status(201).json({ payment: { id: String(p._id), number }, ...(await accountOf(req, s)) });
+});
+
+pharmacyRouter.post('/supplier-payments/:id/cancel', async (req, res) => {
+  desk(req);
+  const { reason: why } = parse(z.object({ reason: reason('Cancelling a payment') }).strict(), req.body);
+  const p = await SupplierPayment.findOne({ tenantId: req.tenantId, _id: idParam(req) });
+  if (!p) throw new HttpError(404, 'Payment not found.', 'NOT_FOUND');
+  if (p.cancelled) throw new HttpError(409, 'This payment was already cancelled.', 'CONFLICT');
+  p.cancelled = { by: req.user._id, byName: req.user.name, at: req.now, reason: why };
+  await p.save();
+  await audit(req, 'PHARMACY_SUPPLIER_PAYMENT_CANCELLED', { details: { paymentId: String(p._id), number: p.number, supplierId: String(p.supplierId), amountPaise: p.amountPaise } });
+  const s = await Supplier.findOne({ tenantId: req.tenantId, _id: p.supplierId }).lean();
+  res.json(await accountOf(req, s));
+});
+
+// Owed and overdue, every supplier (Reports → Purchases)
+pharmacyRouter.get('/reports/supplier-dues', async (req, res) => {
+  reports(req);
+  const suppliers = await Supplier.find({ tenantId: req.tenantId }).sort({ name: 1 }).lean();
+  const rows = [];
+  for (const s of suppliers) {
+    const a = await accountOf(req, s);
+    if (!a.bills.length && !a.payments.length) continue;
+    rows.push({ id: String(s._id), name: s.name, creditDays: s.creditDays ?? 0, ...a.totals, taxMissing: a.taxMissing });
+  }
+  rows.sort((x, y) => y.overduePaise - x.overduePaise || y.owedPaise - x.owedPaise);
+  res.json({ suppliers: rows, owedPaise: rows.reduce((t, r) => t + r.owedPaise, 0), overduePaise: rows.reduce((t, r) => t + r.overduePaise, 0) });
 });
 
 // ---------- Purchases ----------
@@ -441,12 +579,13 @@ pharmacyRouter.get('/stock', async (req, res) => {
   }
   const rows = meds.map((m) => {
     const bs = byMed.get(String(m._id)) ?? [];
-    const usable = bs.filter((b) => !isExpired(b, t));
+    const usable = bs.filter((b) => !isExpired(b, t) && !b.hold); // PH5: held stock is shown apart
     const qtyUsable = usable.reduce((s, b) => s + b.qtyLeft, 0);
     const nearest = usable.map((b) => b.expiry).sort((a, b) => a - b)[0] ?? null;
     return {
       ...medicineView(m),
       qty: qtyUsable,
+      heldQty: bs.filter((b) => b.hold && !isExpired(b, t)).reduce((s, b) => s + b.qtyLeft, 0),
       expiredQty: bs.filter((b) => isExpired(b, t)).reduce((s, b) => s + b.qtyLeft, 0),
       costValuePaise: bs.reduce((s, b) => s + b.qtyLeft * b.costPaise, 0),
       mrpValuePaise: bs.reduce((s, b) => s + grossOf(b, b.qtyLeft), 0), // PH2: from the pack's MRP where known
@@ -518,6 +657,79 @@ pharmacyRouter.get('/stock/:id', async (req, res) => {
   });
 });
 
+// ---------- PH5: a batch on hold, and who received it (docs/PHARMACY_BUILD_NOTE.md) ----------
+// A recall names a manufacturer's batch number; the same number can be in several stock batches (two purchases), so
+// the hold works on { medicine, batch number } – all of them at once. Held stock cannot be sold or issued (usableMatch);
+// it can still be returned to the supplier, written off or counted. No notice goes to her doctor (owner, 10 Nov 2026).
+
+const holdTarget = z.object({ medicineId: objectId, batch: z.string().trim().min(1).max(40) });
+const sameBatch = (req, b) => ({ tenantId: req.tenantId, medicineId: b.medicineId, batch: new RegExp(`^${escapeRegex(b.batch)}$`, 'i') });
+
+pharmacyRouter.post('/batches/hold', async (req, res) => {
+  desk(req);
+  const body = parse(holdTarget.extend({ reason: z.enum(Object.keys(HOLD_REASONS), 'Choose why it is held.'), note: z.string().trim().max(200).default('') }).strict(), req.body);
+  if (body.reason === 'other' && body.note.length < 3) throw new HttpError(400, 'Write why the batch is held.', 'VALIDATION');
+  const list = await StockBatch.find(sameBatch(req, body), { _id: 1, hold: 1 }).lean();
+  if (!list.length) throw new HttpError(404, 'No batch with this number for this medicine.', 'NOT_FOUND');
+  if (list.every((b) => b.hold)) throw new HttpError(409, 'This batch is already on hold.', 'ALREADY_HELD');
+  await StockBatch.updateMany({ ...sameBatch(req, body), hold: null }, { $set: { hold: { reason: body.reason, note: body.note, by: req.user._id, byName: req.user.name, at: req.now } } });
+  await audit(req, 'PHARMACY_BATCH_HELD', { details: { medicineId: body.medicineId, batch: body.batch, reason: body.reason, batches: list.length } });
+  res.json({ held: list.length });
+});
+
+pharmacyRouter.post('/batches/release', async (req, res) => {
+  desk(req);
+  const body = parse(holdTarget.extend({ reason: reason('Releasing a batch') }).strict(), req.body);
+  const list = await StockBatch.find({ ...sameBatch(req, body), hold: { $ne: null } }).lean();
+  if (!list.length) throw new HttpError(409, 'This batch is not on hold.', 'NOT_HELD');
+  for (const b of list) {
+    await StockBatch.updateOne({ tenantId: req.tenantId, _id: b._id }, { $set: { hold: null }, $push: { released: { heldReason: b.hold.reason, reason: body.reason, by: req.user._id, byName: req.user.name, at: req.now } } });
+  }
+  await audit(req, 'PHARMACY_BATCH_RELEASED', { details: { medicineId: body.medicineId, batch: body.batch, batches: list.length } });
+  res.json({ released: list.length });
+});
+
+// Who received this batch: every sale and issue from it, net of returns – date, invoice, the patient (what the
+// pharmacist already sees: name, number, phone; a closed record says so) or the walk-in's name – and what is still in
+// stock. Read from the stock moves: nothing new is stored.
+pharmacyRouter.get('/batches/recipients', async (req, res) => {
+  desk(req);
+  const q = parse(holdTarget.strict(), req.query);
+  const m = await Medicine.findOne({ tenantId: req.tenantId, _id: q.medicineId }, { name: 1, manufacturer: 1, unit: 1 }).lean();
+  if (!m) throw new HttpError(404, 'Medicine not found.', 'NOT_FOUND');
+  const batches = await StockBatch.find(sameBatch(req, q)).lean();
+  const moves = batches.length ? await StockMove.find({ tenantId: req.tenantId, batchId: { $in: batches.map((b) => b._id) }, kind: { $in: ['sale', 'issue', 'return'] } }).sort({ at: 1, _id: 1 }).lean() : [];
+  const byInvoice = new Map();
+  for (const mv of moves) {
+    const k = mv.ref?.number ?? String(mv._id);
+    if (!byInvoice.has(k)) byInvoice.set(k, { number: mv.ref?.number ?? '', kind: mv.kind === 'issue' ? 'issue' : 'sale', at: mv.at, patientId: mv.patientId ? String(mv.patientId) : null, customer: mv.customer ?? '', qty: 0 });
+    const r = byInvoice.get(k);
+    if (mv.kind === 'issue') r.kind = 'issue';
+    r.qty += -mv.qty; // a sale or issue is −, a return +
+  }
+  const rows = [...byInvoice.values()].filter((r) => r.qty > 0);
+  const pids = [...new Set(rows.map((r) => r.patientId).filter(Boolean))];
+  const patients = new Map((pids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1, phone: 1, 'death.on': 1 }).lean() : []).map((p) => [String(p._id), p]));
+  await audit(req, 'PHARMACY_BATCH_RECIPIENTS_VIEWED', { details: { medicineId: q.medicineId, batch: q.batch, results: rows.length } });
+  res.json({
+    medicine: { id: String(m._id), name: m.name, manufacturer: m.manufacturer ?? '', unit: m.unit },
+    batch: q.batch,
+    hold: batches.find((b) => b.hold)?.hold ? (({ reason: r, note, byName, at }) => ({ reason: r, note: note ?? '', byName: byName ?? '', at }))(batches.find((b) => b.hold).hold) : null,
+    inStock: batches.reduce((s, b) => s + b.qtyLeft, 0),
+    recipients: rows.map((r) => {
+      const p = r.patientId ? patients.get(r.patientId) : null;
+      return {
+        date: isoDay(toHospitalDate(r.at)),
+        number: r.number,
+        kind: r.kind,
+        qty: r.qty,
+        patient: p ? (isClosed(p) ? { fullName: p.fullName, mrn: p.mrn, phone: '', closed: true } : { fullName: p.fullName, mrn: p.mrn, phone: p.phone ?? '', closed: false }) : null,
+        customer: p ? '' : r.customer,
+      };
+    }),
+  });
+});
+
 async function loadBatch(req) {
   const b = await StockBatch.findOne({ tenantId: req.tenantId, _id: idParam(req) }).lean();
   if (!b) throw new HttpError(404, 'Batch not found.', 'NOT_FOUND');
@@ -527,10 +739,14 @@ async function loadBatch(req) {
 
 pharmacyRouter.post('/batches/:id/writeoff', async (req, res) => {
   desk(req);
-  const body = parse(z.object({ qty, reason: reason('Writing off stock') }).strict(), req.body);
+  // PH7: a controlled medicine's write-off needs a witness who signs in, as its count does
+  // PH15: what kind of loss it was (the value lost to expiry is counted from it)
+  const body = parse(z.object({ qty, reason: reason('Writing off stock'), witness: pharmacyWitnessField, kind: z.enum(['expired', 'damaged', 'lost', 'other']).default('other') }).strict(), req.body);
   const { b, m } = await loadBatch(req);
-  const after = await writeOff(req, b, body.qty, body.reason);
-  await audit(req, 'PHARMACY_STOCK_WRITTEN_OFF', { details: { medicineId: String(m._id), batchId: String(b._id), qty: body.qty, reason: body.reason } });
+  if (CONTROLLED.includes(m.schedule) && !body.witness) throw Object.assign(new HttpError(400, `${m.name} is a controlled medicine: a second person who checked the write-off signs in for it.`, 'VALIDATION'), { fields: { 'witness.email': 'A second person (pharmacist, doctor, RMO or nurse) types their email and password.' } });
+  body.witness = await pharmacyWitnessName(req, body.witness || null, 'pharmacy_writeoff');
+  const after = await writeOff(req, b, body.qty, body.reason, body.witness, body.kind);
+  await audit(req, 'PHARMACY_STOCK_WRITTEN_OFF', { details: { medicineId: String(m._id), batchId: String(b._id), qty: body.qty, reason: body.reason, ...(body.witness ? { witness: body.witness } : {}) } });
   res.json({ batch: batchView(after, today(req)) });
 });
 
@@ -545,10 +761,52 @@ pharmacyRouter.post('/batches/:id/count', async (req, res) => {
   res.json({ batch: batchView(after, today(req)) });
 });
 
+// PH10: other brands of the same medicine in stock (strict matcher: generic, strength, form) – alphabetical, then
+// earliest expiry; none for a medicine without a generic name. blocked: the doctors do not allow another brand of it.
+pharmacyRouter.get('/medicines/:id/substitutes', async (req, res) => {
+  desk(req);
+  const m = await Medicine.findOne({ tenantId: req.tenantId, _id: idParam(req) }).lean();
+  if (!m) throw new HttpError(404, 'Medicine not found.', 'NOT_FOUND');
+  const never = new Set((await NoSubstitute.find({ tenantId: req.tenantId, active: true }, { key: 1 }).lean()).map((x) => x.key));
+  const blocked = neverSubstitute(never, { drug: m.name }, [m]);
+  const all = blocked || !String(m.generic ?? '').trim() ? [] : await Medicine.find({ tenantId: req.tenantId, active: true, _id: { $ne: m._id }, generic: { $ne: '' } }).lean();
+  const same = all.filter((x) => sameMedicine(m, x));
+  const t = today(req);
+  const batches = same.length ? await StockBatch.find({ tenantId: req.tenantId, medicineId: { $in: same.map((x) => x._id) }, ...usableMatch(t) }, { medicineId: 1, qtyLeft: 1, expiry: 1 }).lean() : [];
+  const stock = new Map();
+  for (const b of batches) {
+    const k = String(b.medicineId);
+    const s = stock.get(k) ?? { qty: 0, expiry: b.expiry };
+    s.qty += b.qtyLeft;
+    if (b.expiry < s.expiry) s.expiry = b.expiry;
+    stock.set(k, s);
+  }
+  const list = same.filter((x) => stock.has(String(x._id))).sort((a, b) => a.name.localeCompare(b.name) || stock.get(String(a._id)).expiry - stock.get(String(b._id)).expiry);
+  res.json({ blocked, substitutes: list.map((x) => ({ ...medicineView(x, stock.get(String(x._id)).qty), nearestExpiry: isoDay(stock.get(String(x._id)).expiry) })) });
+});
+
+// PH10: the hospital's doctors, for "which doctor agreed" to another brand
+pharmacyRouter.get('/doctors', async (req, res) => {
+  desk(req);
+  const members = await Membership.find({ tenantId: req.tenantId, isActive: true, roles: 'doctor' }, { userId: 1 }).lean();
+  const users = await User.find({ _id: { $in: members.map((x) => x.userId) } }, { name: 1 }).sort({ name: 1 }).lean();
+  res.json({ doctors: users.map((u) => ({ id: String(u._id), name: u.name })) });
+});
+
+// PH17: the last price paid for a medicine (purchase entry and the order screen): per pack as on the bill, with its date
+// and supplier. null when it was never bought.
+pharmacyRouter.get('/medicines/:id/last-price', async (req, res) => {
+  const p = await Purchase.findOne({ tenantId: req.tenantId, status: 'active', 'lines.medicineId': idParam(req) }, { invoiceDate: 1, supplierId: 1, lines: 1 }).sort({ invoiceDate: -1, createdAt: -1 }).lean();
+  if (!p) return res.json({ last: null });
+  const l = p.lines.find((x) => String(x.medicineId) === String(idParam(req)));
+  const s = await Supplier.findOne({ tenantId: req.tenantId, _id: p.supplierId }, { name: 1 }).lean();
+  res.json({ last: { ratePaise: l.pack?.ratePaise ?? l.ratePaise, conv: l.pack?.conv ?? 1, unitRatePaise: l.ratePaise, date: isoDay(p.invoiceDate), supplier: s?.name ?? '' } });
+});
+
 // The batches a medicine can be sold from (not expired, with stock), earliest expiry first.
 pharmacyRouter.get('/medicines/:id/batches', async (req, res) => {
   const t = today(req);
-  const list = await StockBatch.find({ tenantId: req.tenantId, medicineId: idParam(req), qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(t) } }).sort({ expiry: 1 }).lean();
+  const list = await StockBatch.find({ tenantId: req.tenantId, medicineId: idParam(req), ...usableMatch(t) }).sort({ expiry: 1 }).lean();
   // As the store's earlier software showed them at the counter (7 Nov 2026): where each batch was bought – the supplier,
   // its bill number and date – and the pack it came in (units per pack and the pack's MRP). Opening stock has none.
   const purchases = new Map(
@@ -565,10 +823,23 @@ pharmacyRouter.get('/medicines/:id/batches', async (req, res) => {
 
 // ---------- What to sell or issue ----------
 
+/**
+ * PH7: her allergy line for the pharmacist – { status: 'recorded' | 'none' | 'not_asked', text } (the website's
+ * patientFormat.js allergyStatus). A baby's record has no allergy field: 'not_asked'.
+ */
+export function allergyFor(patient) {
+  const text = String(patient?.medical?.allergies ?? '').trim();
+  if (!text) return { status: 'not_asked', text: '' };
+  if (/^(none|nil|no)( known)?( (drug )?allerg(y|ies))?\.?$|^nkda$|^nka$/i.test(text)) return { status: 'none', text };
+  return { status: 'recorded', text };
+}
+
 // A patient's recent prescriptions – the medicines only, matched to the stock list by name (pharmacist).
 pharmacyRouter.get('/patients/:id/prescriptions', async (req, res) => {
   desk(req);
-  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: idParam(req) }, { fullName: 1, mrn: 1, phone: 1, duplicateOf: 1, 'death.on': 1 }).lean();
+  // PH7 (owner's decision 2, 10 Nov 2026): the pharmacist sees her allergies – medical.allergies and nothing else of
+  // her record (patientAccess is not widened; this narrow projection is the one path)
+  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: idParam(req) }, { fullName: 1, mrn: 1, phone: 1, duplicateOf: 1, 'death.on': 1, careType: 1, 'medical.allergies': 1 }).lean();
   if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
   // Also the prescriptions written on a record that was marked as a duplicate of hers (her earlier record): she is
   // sold to on this record, and the paper in her hand may be from the other one. Nothing is moved.
@@ -590,7 +861,11 @@ pharmacyRouter.get('/patients/:id/prescriptions', async (req, res) => {
       .slice(0, 3)
       .map((x) => ({ id: String(x.m._id), name: x.m.name, generic: x.m.generic ?? '', strength: x.m.strength ?? '', schedule: x.m.schedule ?? '', unit: x.m.unit, gstRate: x.m.gstRate, inStock: stock.get(String(x.m._id)) ?? 0 }));
   };
-  await audit(req, 'PHARMACY_PRESCRIPTIONS_VIEWED', { details: { patientId: String(patient._id), mrn: patient.mrn, prescriptions: visits.length } });
+  // PH6: what was already sold from these prescriptions (net of returns) – by prescription line where the sale says
+  // which line, else (older sales) listed with the prescription only
+  const given = await givenFromPrescriptions(req.tenantId, visits.map((v) => v._id));
+  const allergies = allergyFor(patient);
+  await audit(req, 'PHARMACY_PRESCRIPTIONS_VIEWED', { details: { patientId: String(patient._id), mrn: patient.mrn, prescriptions: visits.length, ...(allergies.status === 'recorded' ? { allergiesShown: true } : {}) } });
   res.json({
     // duplicateOf: this record is marked as a duplicate – it takes no sale ({ id, mrn } of the main record to open)
     // closed: the record is closed (no counter sale – never why)
@@ -601,6 +876,7 @@ pharmacyRouter.get('/patients/:id/prescriptions', async (req, res) => {
       phone: patient.phone ?? '',
       duplicateOf: isDuplicate(patient) ? { id: String(patient.duplicateOf.patient), mrn: patient.duplicateOf.mrn } : null,
       closed: isClosed(patient),
+      allergies,
     },
     prescriptions: visits.map((v) => {
       const by = v.prescription?.by ? doctors.get(String(v.prescription.by)) : null;
@@ -610,7 +886,9 @@ pharmacyRouter.get('/patients/:id/prescriptions', async (req, res) => {
         // Written on her earlier record (its patient number), not on this one
         fromRecord: earlier.get(String(v.patientId)) ?? null,
         doctor: by ? { name: by.name, reg: by.professional?.registrationNumber ?? '' } : null,
+        soldUnlinked: given.unlinked.get(String(v._id)) ?? [],
         items: v.prescription.items.map((it) => ({
+          ...givenWords(given.byItem.get(String(it._id)) ?? [], suggestedQty(it)),
           id: String(it._id),
           drug: it.drug,
           form: it.form,
@@ -668,7 +946,24 @@ const invoiceFields = z
     doctor: z.object({ name: z.string().trim().max(150).transform(capitalizeName).default(''), reg: z.string().trim().max(60).default('') }).strict().optional(),
     visitId: objectId.optional(),
     rxSeen: z.boolean().default(false),
-    lines: z.array(z.object({ medicineId: objectId, qty, batchId: objectId.optional(), dose: z.string().trim().max(60, 'Write the dose in at most 60 letters').default('') }).strict()).min(1, 'Add at least one medicine.').max(60),
+    lines: z
+      .array(
+        z
+          .object({
+            medicineId: objectId,
+            qty,
+            batchId: objectId.optional(),
+            dose: z.string().trim().max(60, 'Write the dose in at most 60 letters').default(''),
+            // PH6: the prescription line it is sold from, and why it is sold again when already given in full
+            rxItemId: objectId.optional(),
+            repeatReason: z.string().trim().max(200).default(''),
+            // PH10: another brand than the doctor wrote – which doctor agreed (one of the hospital's, or a typed name)
+            substitution: z.object({ agreedById: objectId.optional(), agreedByName: z.string().trim().max(150).default('') }).strict().optional(),
+          })
+          .strict(),
+      )
+      .min(1, 'Add at least one medicine.')
+      .max(60),
     discountPercent: z.number().min(0).max(100).default(0),
     discountReason: z.string().trim().max(200).default(''),
     payment: z.object({ mode: z.enum(COUNTER_MODES), reference: z.string().trim().max(80).default('') }).strict().optional(),
@@ -717,7 +1012,17 @@ pharmacyRouter.post('/invoices', async (req, res) => {
   const inv = await createInvoice(req, body);
   const t = invoiceTotals(inv);
   await audit(req, body.kind === 'issue' ? 'PHARMACY_ISSUED' : 'PHARMACY_SOLD', {
-    details: { invoiceId: String(inv._id), number: inv.number, ...(inv.patientId ? { patientId: String(inv.patientId) } : { walkIn: true }), ...(inv.buyer ? { business: true } : {}), lines: inv.lines.length, amountPaise: t.netPaise, controlled: inv.lines.some((l) => CONTROLLED.includes(l.schedule)) },
+    details: {
+      invoiceId: String(inv._id),
+      number: inv.number,
+      ...(inv.patientId ? { patientId: String(inv.patientId) } : { walkIn: true }),
+      ...(inv.buyer ? { business: true } : {}),
+      lines: inv.lines.length,
+      amountPaise: t.netPaise,
+      controlled: inv.lines.some((l) => CONTROLLED.includes(l.schedule)),
+      // PH6: prescription lines sold again after they were given in full (the reasons stay on the invoice)
+      ...(inv.lines.some((l) => l.repeatReason) ? { repeats: new Set(inv.lines.filter((l) => l.repeatReason).map((l) => String(l.rxItemId))).size } : {}),
+    },
   });
   res.status(201).json({ invoice: await oneView(req, inv) });
 });
@@ -978,6 +1283,85 @@ const period = (q) => {
   return [hospitalDayStart(q.from), hospitalDayStart(addDays(q.to, 1))];
 };
 
+// ---------- PH24: sales by doctor (docs/PHARMACY_BUILD_NOTE.md, owner's decision 5) ----------
+// The pharmacist only – NOT reports(req), which lets the hospital admin in. Not in the export, not in Analytics.
+pharmacyRouter.get('/reports/by-doctor', async (req, res) => {
+  if (!hasRole(req.membership, ...PHARMACY_DOCTOR_SALES_ROLES)) throw forbidden('Sales by doctor are for the pharmacist only.');
+  const q = parse(periodSchema, req.query);
+  const [from, to] = period(q);
+  const invoices = await PharmacyInvoice.find({ tenantId: req.tenantId, 'created.at': { $gte: from, $lt: to } }, { doctor: 1, lines: 1, returns: 1, payments: 1, patientId: 1 }).lean();
+  const rows = salesByDoctor(invoices);
+  await audit(req, 'PHARMACY_DOCTOR_SALES_VIEWED', { details: { from: isoDay(q.from), to: isoDay(q.to), doctors: rows.length } });
+  res.json({ from: isoDay(q.from), to: isoDay(q.to), doctors: rows.map(({ key, ...r }) => r), withoutDoctor: invoices.filter((i) => !doctorOf(i)).length });
+});
+
+// ---------- PH15: the missing reports and the day's closing (docs/PHARMACY_BUILD_NOTE.md) ----------
+
+// The figures of a period: profit by medicine, slow and non-moving stock (now), the value lost to expiry, days out of
+// stock, prescriptions filled in-house (counts), and H1 use by month. The pharmacist and the hospital admin.
+pharmacyRouter.get('/reports/figures', async (req, res) => {
+  reports(req);
+  const q = parse(periodSchema, req.query);
+  const [from, to] = period(q);
+  const [profit, slow, expiry, out, rx, h1] = await Promise.all([
+    profitByMedicine(req.tenantId, from, to),
+    nonMoving(req.tenantId, req.now),
+    expiryLoss(req.tenantId, from, to),
+    daysOutOfStock(req.tenantId, from, new Date(Math.min(to, req.now))), // up to now within the current day
+    prescriptionsFilled(req.tenantId, from, to),
+    h1Use(req.tenantId, from, to),
+  ]);
+  res.json({ from: isoDay(q.from), to: isoDay(q.to), profit, nonMoving: slow, expiryLoss: expiry, outOfStock: out, prescriptions: rx, h1 });
+});
+
+/** The counter's takings of one hospital day: walk-in payments less refunds by mode, and what went on hospital bills. */
+async function takingsOf(req, day) {
+  const from = hospitalDayStart(day);
+  const to = hospitalDayStart(addDays(day, 1));
+  const invoices = await PharmacyInvoice.find({ tenantId: req.tenantId, $or: [{ 'created.at': { $gte: from, $lt: to } }, { 'payments.at': { $gte: from, $lt: to } }] }).lean();
+  const byMode = {};
+  let refundsPaise = 0;
+  let onBillsPaise = 0;
+  let count = 0;
+  for (const inv of invoices) {
+    const made = inv.created?.at >= from && inv.created?.at < to;
+    if (made) count += 1;
+    if (made && inv.patientId) onBillsPaise += invoiceTotals(inv).totalPaise;
+    for (const p of inv.payments ?? []) {
+      if (!(p.at >= from && p.at < to)) continue;
+      const v = p.kind === 'refund' ? -p.amountPaise : p.amountPaise;
+      byMode[p.mode] = (byMode[p.mode] ?? 0) + v;
+      if (p.kind === 'refund') refundsPaise += p.amountPaise;
+    }
+  }
+  return { byMode, refundsPaise, onBillsPaise, invoices: count, expectedCashPaise: byMode.cash ?? 0 };
+}
+
+pharmacyRouter.get('/reports/day', async (req, res) => {
+  reports(req);
+  const q = parse(z.object({ date: requiredDateOnly('Date') }).strict(), req.query);
+  const closed = await PharmacyDayClose.findOne({ tenantId: req.tenantId, on: q.date }).lean();
+  res.json({
+    date: isoDay(q.date),
+    ...(await takingsOf(req, q.date)),
+    closed: closed ? { expectedCashPaise: closed.expectedCashPaise, countedCashPaise: closed.countedCashPaise, differencePaise: closed.differencePaise, note: closed.note ?? '', byName: closed.created.byName, at: closed.created.at } : null,
+    canClose: hasRole(req.membership, 'pharmacist') && !closed,
+  });
+});
+
+pharmacyRouter.post('/day-close', async (req, res) => {
+  desk(req);
+  const body = parse(z.object({ date: requiredDateOnly('Date'), countedCashPaise: z.number().int().min(0).max(MAX_PAISE), note: z.string().trim().max(300).default('') }).strict(), req.body);
+  if (body.date > utcDay(today(req))) throw new HttpError(400, 'That day has not come yet.', 'VALIDATION');
+  if (await PharmacyDayClose.exists({ tenantId: req.tenantId, on: body.date })) throw new HttpError(409, 'This day is already closed.', 'ALREADY_CLOSED');
+  const t = await takingsOf(req, body.date);
+  const differencePaise = body.countedCashPaise - t.expectedCashPaise;
+  if (differencePaise !== 0 && body.note.length < 3) throw Object.assign(new HttpError(400, 'The cash counted is not what the counter took: write why.', 'VALIDATION'), { fields: { note: 'Write why the cash differs.' } });
+  await PharmacyDayClose.create({ tenantId: req.tenantId, on: body.date, ...t, countedCashPaise: body.countedCashPaise, differencePaise, note: body.note, created: { by: req.user._id, byName: req.user.name, at: req.now } });
+  await audit(req, 'PHARMACY_DAY_CLOSED', { details: { date: isoDay(body.date), expectedCashPaise: t.expectedCashPaise, countedCashPaise: body.countedCashPaise, differencePaise } });
+  res.status(201).json({ closed: true, differencePaise });
+});
+
 // Alerts: medicines at or below their reorder level; batches expiring within 90 days, and expired ones.
 pharmacyRouter.get('/reports/alerts', async (req, res) => {
   reports(req);
@@ -985,7 +1369,7 @@ pharmacyRouter.get('/reports/alerts', async (req, res) => {
   const meds = await Medicine.find({ tenantId: req.tenantId, active: true }).sort({ name: 1 }).lean();
   const batches = await StockBatch.find({ tenantId: req.tenantId, qtyLeft: { $gt: 0 } }).sort({ expiry: 1 }).lean();
   const usable = new Map();
-  for (const b of batches) if (!isExpired(b, t)) usable.set(String(b.medicineId), (usable.get(String(b.medicineId)) ?? 0) + b.qtyLeft);
+  for (const b of batches) if (!isExpired(b, t) && !b.hold) usable.set(String(b.medicineId), (usable.get(String(b.medicineId)) ?? 0) + b.qtyLeft);
   const names = new Map(meds.map((m) => [String(m._id), m]));
   const soon = batches.filter((b) => daysLeft(b.expiry, t) <= EXPIRY_REPORT_DAYS && names.has(String(b.medicineId)));
   res.json({
@@ -1150,7 +1534,7 @@ const rs = (p) => (p / 100).toFixed(2);
 
 pharmacyRouter.get('/export', async (req, res) => {
   if (!hasRole(req.membership, ...PHARMACY_EXPORT_ROLES)) throw forbidden('The export is for the hospital admin.');
-  const q = parse(z.object({ from: requiredDateOnly('From'), to: requiredDateOnly('To'), what: z.enum(['sales', 'purchases', 'supplier_returns']) }).strict(), req.query);
+  const q = parse(z.object({ from: requiredDateOnly('From'), to: requiredDateOnly('To'), what: z.enum(['sales', 'purchases', 'supplier_returns', 'supplier_payments']) }).strict(), req.query);
   const [from, to] = period(q);
   let rows;
   if (q.what === 'sales') {
@@ -1162,6 +1546,12 @@ pharmacyRouter.get('/export', async (req, res) => {
         rows.push([v.number, isoDay(toHospitalDate(new Date(v.date))), v.kind === 'issue' ? 'Issue (inpatient)' : 'Sale', v.patient?.mrn ?? '', v.patient?.fullName ?? v.customer?.name ?? '', v.doctor?.name ?? '', l.name, l.hsn, l.batch, l.expiry, l.qty, l.returnedQty, rs(l.mrpPaise), rs(l.amountPaise), rs(l.taxablePaise), l.gstRate, rs(l.cgstPaise), rs(l.sgstPaise), v.buyer?.name ?? '', v.buyer?.gstin ?? '']);
       }
     }
+  } else if (q.what === 'supplier_payments') {
+    // PH11: payments to suppliers (cancelled ones listed, marked)
+    const list = await SupplierPayment.find({ tenantId: req.tenantId, on: { $gte: q.from, $lte: q.to } }).sort({ on: 1, number: 1 }).lean();
+    const names = new Map((await Supplier.find({ tenantId: req.tenantId, _id: { $in: list.map((p) => p.supplierId) } }, { name: 1, gstin: 1 }).lean()).map((x) => [String(x._id), x]));
+    rows = [['Payment', 'Date', 'Supplier', 'Supplier GSTIN', 'Mode', 'Reference', 'Amount', 'Status']];
+    for (const p of list) rows.push([p.number, isoDay(p.on), names.get(String(p.supplierId))?.name ?? '', names.get(String(p.supplierId))?.gstin ?? '', p.mode, p.reference ?? '', rs(p.amountPaise), p.cancelled ? 'Cancelled' : 'Paid']);
   } else if (q.what === 'supplier_returns') {
     const list = await SupplierReturn.find({ tenantId: req.tenantId, 'created.at': { $gte: from, $lt: to } }).sort({ 'created.at': 1 }).lean();
     const names = new Map((await Supplier.find({ tenantId: req.tenantId, _id: { $in: list.map((r) => r.supplierId) } }, { name: 1, gstin: 1 }).lean()).map((x) => [String(x._id), x]));

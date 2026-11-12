@@ -10,6 +10,7 @@ import { HttpError } from '../utils/httpError.js';
 import { objectId, parse } from '../utils/validate.js';
 import { CONTROLLED, MAX_PAISE, MAX_QTY, MIN_REASON, PHARMACY_DESK_ROLES, PHARMACY_REPORT_ROLES, SCHEDULE_LABELS } from './pharmacyRules.js';
 import { daysLeft, isExpired } from './pharmacyService.js';
+import { marksInForce } from '../routes/medicineMarks.js';
 
 export const forbidden = (message) => new HttpError(403, message, 'FORBIDDEN');
 export const notFound = (what) => new HttpError(404, `${what} not found.`, 'NOT_FOUND');
@@ -49,6 +50,9 @@ export async function settingsOf(tenantId) {
     pin: p.pin ?? '',
     address: p.address || t?.letterhead?.address || '',
     phone: p.phone || t?.letterhead?.phone || '',
+    reorderLookBackDays: p.reorderLookBackDays ?? 30,
+    reorderLeadDays: p.reorderLeadDays ?? 3,
+    reorderCoverDays: p.reorderCoverDays ?? 15,
   };
 }
 
@@ -66,9 +70,12 @@ export const medicineView = (m, stock = null) => ({
   controlled: CONTROLLED.includes(m.schedule),
   reorderLevel: m.reorderLevel ?? 0,
   manufacturer: m.manufacturer ?? '',
+  // PH7: the high-alert and look-alike marks – only while a doctor and the pharmacist have both confirmed them
+  ...(marksInForce(m.marks) ? { highAlert: Boolean(m.marks.highAlert), lookAlike: (m.marks.lookAlike ?? []).map((x) => ({ id: String(x.medicineId), name: x.name })) } : { highAlert: false, lookAlike: [] }),
   packSize: m.packSize ?? 1,
   packName: m.packName ?? '',
   looseSale: m.looseSale !== false,
+  preferredSupplierId: m.preferredSupplierId ? String(m.preferredSupplierId) : null, // PH17
   barcodes: m.barcodes ?? [],
   active: m.active,
   ...(stock != null ? { inStock: stock, low: m.active && stock <= (m.reorderLevel ?? 0) } : {}),
@@ -86,7 +93,9 @@ export const batchView = (b, t) => ({
   qtyIn: b.qtyIn,
   // PH2: the pack's MRP and size, when the batch was bought by the pack
   ...(b.packMrpPaise && b.unitsPerPack > 1 ? { packMrpPaise: b.packMrpPaise, unitsPerPack: b.unitsPerPack } : {}),
+  // PH5: on hold – it cannot be sold or issued
+  hold: b.hold ? { reason: b.hold.reason, note: b.hold.note ?? '', byName: b.hold.byName ?? '', at: b.hold.at ?? null } : null,
 });
 
 /** A supplier as the website gets it. */
-export const supplierView = (s) => ({ id: String(s._id), name: s.name, gstin: s.gstin ?? '', drugLicence: s.drugLicence ?? '', phone: s.phone ?? '', address: s.address ?? '', active: s.active });
+export const supplierView = (s) => ({ id: String(s._id), name: s.name, gstin: s.gstin ?? '', drugLicence: s.drugLicence ?? '', phone: s.phone ?? '', address: s.address ?? '', creditDays: s.creditDays ?? 0, active: s.active });

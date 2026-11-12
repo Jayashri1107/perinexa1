@@ -1,6 +1,6 @@
 // Daily expenses: the form's checks and what is sent (fake sample data).
 import { describe, expect, it } from 'vitest';
-import { BANKS, OTHER_BANK, blankExpense, expenseFor, expensePayload, expenseProblems, expensesTotal, hospitalNow, paidHow, expenseFilter, filterExpenses, isFiltering } from './expenseFormat.js';
+import { BANKS, OTHER_BANK, blankExpense, expenseFor, expensePayload, expenseProblems, expensesTotal, hospitalNow, paidHow, expenseFilter, filterExpenses, isFiltering, expenseSheet } from './expenseFormat.js';
 
 const NOW = new Date('2026-10-28T03:53:00Z'); // 09:23 in the hospital
 const filled = (more = {}) => ({ ...blankExpense(NOW), headId: 'h1', paidTo: 'Sample Driver', amount: '1,500', ...more });
@@ -83,5 +83,25 @@ describe('the list of expenses', () => {
 
   it('totals only what was not cancelled', () => {
     expect(expensesTotal([{ amountPaise: 150000 }, { amountPaise: 2000, cancelled: { reason: 'twice' } }, { amountPaise: 500 }])).toBe(150500);
+  });
+});
+
+describe('the printed expenses sheet', () => {
+  const e = (id, mode, amountPaise, more = {}) => ({ id, date: '2026-11-11', time: '10:00', mode, amountPaise, cancelled: null, ...more });
+  it('groups by how it was paid, cash first, with a total for each and for all', () => {
+    const sheet = expenseSheet([e('1', 'upi', 22000), e('2', 'cash', 450000, { time: '10:12' }), e('3', 'cash', 150000, { time: '08:30' })]);
+    expect(sheet.groups.map((g) => [g.label, g.expenses.map((x) => x.id), g.totalPaise])).toEqual([
+      ['Cash', ['3', '2'], 600000],
+      ['UPI / wallet', ['1'], 22000],
+    ]);
+    expect(sheet.totalPaise).toBe(622000);
+  });
+  it('leaves out a cancelled expense', () => {
+    const sheet = expenseSheet([e('1', 'cash', 10000), e('2', 'cash', 99900, { cancelled: { reason: 'entered twice' } })]);
+    expect(sheet.totalPaise).toBe(10000);
+    expect(sheet.groups[0].expenses).toHaveLength(1);
+  });
+  it('an empty list prints no groups', () => {
+    expect(expenseSheet([])).toEqual({ groups: [], totalPaise: 0 });
   });
 });

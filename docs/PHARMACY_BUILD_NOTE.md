@@ -6,7 +6,8 @@
 > `pharmacyRegister.js`, `pharmacySupplierReturns.js`, `docs/PHARMACY_PLAN.md`, `docs/TALLY_PLAN.md`). Read
 > "what exists" again against this code before building. The ideas list in this repository is
 > `docs/IDEAS_FOR_LATER.md`. **Stage A (PH4, PH2, PH3, PH1) built on 11 Nov 2026, branch `pharm-stage-a` – see
-> `docs/PROGRESS.md` and the note under Stage A below.** Stages B, C and D are not built.
+> `docs/PROGRESS.md` and the note under Stage A below.** **Stage B (PH6, PH5, PH7, PH10) built on 11 Nov 2026, branch
+> `pharm-stage-b` – see the note under Stage B.** Stages C and D are not built.
 
 Written 10 Nov 2026 for the developer, at the owner's request. After a comparison with pharmacy (medical store)
 programs and hospital pharmacy modules (`docs/PHARMACY_APPS_REVIEW.md`), the owner chose **these 18 features and only
@@ -201,6 +202,17 @@ rows that are right** – nothing is saved before that.
 
 ## 4. Stage B – safety at the counter
 
+> **Built in perinexa1 (11 Nov 2026).** PH6 – `rxItemId` and `repeatReason` on sale lines, `pharmacy/rxGiven.js`,
+> `409 ALREADY_SOLD`. PH5 – `StockBatch.hold` / `released`, one usable-stock filter (`usableMatch` in
+> `pharmacyService.js`), `POST /batches/hold`, `/batches/release`, `GET /batches/recipients`. PH7 – `allergyFor` on the
+> prescriptions answer (allergy text only), `Medicine.marks` with two-person confirmation (`routes/medicineMarks.js`,
+> website Formulary → Medicine marks), a witness on `POST /batches/:id/writeoff` for X and narcotic medicines. PH10 –
+> `pharmacy/substitutes.js` (sure only when a brand was written and another brand of the same generic is chosen –
+> unclear cases are left as before rather than blocked), `NoSubstitute` model (doctors), `substitution` on the sale
+> line, `GET /medicines/:id/substitutes`, `GET /doctors`, `409 SUBSTITUTE_NEEDS_DOCTOR` / `NO_SUBSTITUTE`. Not built:
+> the printed pick list's marks; the formulary's own `highAlert` is still separate. Tests:
+> `server/tests/pharmacy-stage-b.test.js`.
+
 ### PH6 – "already sold" on a prescription
 
 **What the user sees**: under each prescription line at the counter – "Given: 10 on 3 Nov (PH-000412). Still to
@@ -311,6 +323,19 @@ nothing is offered: "The doctors do not allow another brand for this medicine."
   is refused even when the request is forged; Paracetamol is never offered for Paracetamol + caffeine.
 
 ## 5. Stage C – money and figures
+
+> **Built in perinexa1 (11 Nov 2026), except PH26.** PH11 – `pharmacy/supplierAccount.js`, `SupplierPayment`
+> (SP-numbers, cancelled never deleted), `GET /suppliers/:id/account`, `POST /suppliers/:id/payments`,
+> `GET /reports/supplier-dues`; payments are not sent to Tally yet. PH15 – `pharmacy/figures.js` (profit by medicine,
+> slow stock, expiry loss, days out of stock, prescriptions filled, H1 use), `StockMove.writeoffKind`, invoice line
+> `costPaise`, `PharmacyDayClose` and `POST /day-close`. PH24 – `pharmacy/salesByDoctor.js`, invoice `doctor.userId`,
+> `GET /reports/by-doctor` (pharmacist only), `GET /api/platform/analytics/pharmacy-by-doctor` (numbers only, a doctor
+> from 5 invoices). PH17 – `pharmacy/reorderByUse.js`, `GET /orders/suggest?mode=use`, `Tenant.pharmacy.reorder*Days`
+> (30 / 3 / 15), `Medicine.preferredSupplierId`, `GET /medicines/:id/last-price` (shown on the purchase line).
+> PH16 – `Supplier.billFile` (column headings and item matches, per supplier), `GET/PUT /suppliers/:id/bill-file`,
+> `POST /suppliers/:id/bill-file/match`, website `BillFile.jsx` and `stockFile.js billHeadings / billLines`; CSV and
+> .xlsx only, no photo or PDF. **PH26 is not built**: its own condition (a back-test showing it beats PH17) needs months
+> of a hospital's real sales, which do not exist yet. Tests: `server/tests/pharmacy-stage-c.test.js`.
 
 ### PH11 – what each supplier is owed
 

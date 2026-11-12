@@ -11,6 +11,9 @@ import { dayLabel } from '../appointments/appointmentFormat.js';
 import { gstinProblem } from './gstin.js';
 import { MOVE_LABELS, expiryLabel } from './pharmacyFormat.js';
 import { PharmacyHeader, PharmacyLetterhead, money, useSend } from './pharmacyUi.jsx';
+import { SupplierDues } from './SupplierAccount.jsx';
+import { DayClosing, FiguresReport } from './PharmacyFigures.jsx';
+import { SalesByDoctorReport } from './SalesByDoctor.jsx';
 
 // Pharmacy → Reports (laid out for easy reading, owner 26 Oct 2026): a period with quick choices, the period's numbers
 // as cards, then one report at a time – stock alerts (low stock, expiring and expired batches), sales and GST by rate,
@@ -83,6 +86,8 @@ const VIEWS = [
   ['sales', 'Sales & GST'],
   ['purchases', 'Purchases'],
   ['registers', 'Registers'],
+  ['figures', 'Profit and stock'], // PH15
+  ['day', 'Day closing'], // PH15
 ];
 
 /**
@@ -461,7 +466,9 @@ export function ReportsPage() {
   const { activeMembership } = useAuth();
   const admin = activeMembership.roles.includes('admin');
   const [params, setParams] = useSearchParams();
-  const views = admin ? [...VIEWS, ['export', 'Export']] : VIEWS;
+  // PH24: sales by doctor for the pharmacist only (never the hospital admin – owner's decision 5)
+  const pharmacist = activeMembership.roles.includes('pharmacist');
+  const views = [...VIEWS, ...(pharmacist ? [['by-doctor', 'Sales by doctor']] : []), ...(admin ? [['export', 'Export']] : [])];
   const view = views.some(([k]) => k === params.get('view')) ? params.get('view') : 'alerts';
   const now = new Date();
   const [from, setFrom] = useState(isoOf(new Date(now.getFullYear(), now.getMonth(), 1)));
@@ -547,6 +554,10 @@ export function ReportsPage() {
         {view === 'alerts' && (alerts.error ? <Alert type="error">{alerts.error}</Alert> : a && <StockAlerts a={a} />)}
         {view === 'sales' && (sales.error ? <Alert type="error">{sales.error}</Alert> : s && <SalesReport s={s} />)}
         {view === 'purchases' && (purchases.error ? <Alert type="error">{purchases.error}</Alert> : p && <PurchasesReport p={p} />)}
+        {view === 'purchases' && <SupplierDues />}
+        {view === 'figures' && <FiguresReport from={from} to={to} />}
+        {view === 'day' && <DayClosing />}
+        {view === 'by-doctor' && pharmacist && <SalesByDoctorReport from={from} to={to} />}
 
         {view === 'registers' && (
           <section className="card bill-section" aria-labelledby="rep-reg">
@@ -591,6 +602,9 @@ export function ReportsPage() {
               <button type="button" className="btn btn-secondary" onClick={() => download('supplier_returns')}>
                 <Download aria-hidden="true" /> Returns to suppliers
               </button>
+              <button type="button" className="btn btn-secondary" onClick={() => download('supplier_payments')}>
+                <Download aria-hidden="true" /> Payments to suppliers
+              </button>
             </div>
           </section>
         )}
@@ -613,6 +627,13 @@ export function ReportsPage() {
     </>
   );
 }
+
+// PH17: reorder by use – [key, label, lowest, highest]
+const REORDER_FIELDS = [
+  ['reorderLookBackDays', 'Days of use looked at', 7, 180],
+  ['reorderLeadDays', 'Days an order takes to come', 0, 60],
+  ['reorderCoverDays', 'Days an order should cover', 1, 120],
+];
 
 export function PharmacySettingsPage() {
   const res = useFetch('/pharmacy/settings');
@@ -670,8 +691,31 @@ export function PharmacySettingsPage() {
                 </Field>
               ))}
             </div>
+            <h3>Order suggestions by use</h3>
+            <div className="form-grid">
+              {REORDER_FIELDS.map(([k, label]) => (
+                <Field key={k} label={label} id={`phs-${k}`} error={s.fields[k]}>
+                  <input id={`phs-${k}`} inputMode="numeric" value={v[k] ?? ''} onChange={f(k)} disabled={!canEdit} />
+                </Field>
+              ))}
+            </div>
             {canEdit && (
-              <button type="button" className="btn btn-primary" disabled={!form || pinWrong || s.busy} onClick={() => s.send('/pharmacy/settings', Object.fromEntries(fields.map(([k]) => [k, (v[k] ?? '').trim()])), 'PUT')}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!form || pinWrong || s.busy}
+                onClick={() =>
+                  s.send(
+                    '/pharmacy/settings',
+                    {
+                      ...Object.fromEntries(fields.map(([k]) => [k, (v[k] ?? '').trim()])),
+                      // PH17: reorder by use
+                      ...Object.fromEntries(REORDER_FIELDS.map(([k, , lo, hi]) => [k, Math.min(hi, Math.max(lo, Number.parseInt(v[k], 10) || lo))])),
+                    },
+                    'PUT',
+                  )
+                }
+              >
                 <Save aria-hidden="true" /> Save
               </button>
             )}

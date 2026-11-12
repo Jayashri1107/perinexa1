@@ -142,15 +142,17 @@ export function OrderFormPage() {
     if (v.lines.some((l) => l.medicine.id === medicine.id)) return;
     set({ lines: [...v.lines, { medicine, qty: String(qty), note }] });
   };
-  const suggest = async () => {
+  // PH17: mode 'use' – by the last weeks' use; 'level' – by the reorder level
+  const suggest = async (mode = 'level') => {
     setSuggesting(true);
     setSuggested(null);
     s.setError(null);
     try {
-      const res = await api('/pharmacy/orders/suggest');
+      const res = await api('/pharmacy/orders/suggest', { query: { mode } });
       const out = linesFromSuggestions(res.suggestions, v.lines);
       set({ lines: [...v.lines, ...out.add.map((x) => ({ medicine: x.medicine, qty: String(x.qty), note: x.note }))] });
-      setSuggested(`${suggestionSummary(out, res.suggestions.length)}${out.add.length ? ` Each quantity brings the medicine to ${res.times} times its reorder level: change it as you need.` : ''}`);
+      const how = mode === 'use' ? ' Each quantity covers the supplier’s days and the days to cover (Pharmacy settings) at the use of the last weeks: change it as you need.' : ` Each quantity brings the medicine to ${res.times} times its reorder level: change it as you need.`;
+      setSuggested(`${suggestionSummary(out, res.suggestions.length)}${out.add.length ? how : ''}`);
     } catch (err) {
       s.setError(err.message);
     } finally {
@@ -195,11 +197,16 @@ export function OrderFormPage() {
         <section className="card bill-section">
           <div className="row-between">
             <h2>Medicines to order</h2>
-            <button type="button" className="btn btn-secondary" disabled={suggesting} onClick={suggest}>
-              <ListPlus aria-hidden="true" /> {suggesting ? 'Looking at the stock…' : 'Suggest from low stock'}
-            </button>
+            <span className="row">
+              <button type="button" className="btn btn-secondary" disabled={suggesting} onClick={() => suggest('level')}>
+                <ListPlus aria-hidden="true" /> {suggesting ? 'Looking at the stock…' : 'Suggest from low stock'}
+              </button>
+              <button type="button" className="btn btn-secondary" disabled={suggesting} onClick={() => suggest('use')}>
+                <ListPlus aria-hidden="true" /> Suggest by use
+              </button>
+            </span>
           </div>
-          <p className="hint ph-under-heading">“Suggest from low stock” adds every medicine at or below its reorder level. Take off the ones this supplier does not sell.</p>
+          <p className="hint ph-under-heading">“Suggest from low stock” adds every medicine at or below its reorder level; “Suggest by use” also what will not last until the next delivery at the last weeks’ use. Take off the ones this supplier does not sell.</p>
           {suggested && (
             <Alert type="info" onClose={() => setSuggested(null)}>
               {suggested}

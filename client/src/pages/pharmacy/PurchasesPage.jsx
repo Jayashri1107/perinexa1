@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CircleAlert, CircleCheck, CircleSlash, PackagePlus, Plus, Save, Trash2, X } from 'lucide-react';
+import { CircleAlert, CircleCheck, CircleSlash, FileUp, PackagePlus, Plus, Save, Trash2, X } from 'lucide-react';
 import { Link, NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { SearchInput, usePagedRows } from '../../components/DataTable.jsx';
@@ -11,6 +11,8 @@ import { grnLineFigures, grnTotals } from './grnFormat.js';
 import { gstinProblem, gstinState } from './gstin.js';
 import { FORM_LABELS, SCHEDULE_LABELS, cleanBarcode, expiryLabel, isBarcode, medicineLabel, medicinesToCheck, orderLook, receiveLines, receivedFlash, scannedForPurchase, packWords } from './pharmacyFormat.js';
 import { FindMedicine, Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
+import { SupplierAccountCard } from './SupplierAccount.jsx';
+import { BillFileDialog } from './BillFile.jsx';
 
 // Pharmacy → Purchases (supplier invoices: stock in, batch by batch – also received against a purchase order),
 // → Medicines (the stock list, with the barcodes on their packs) and → Suppliers, each supplier with its own page:
@@ -263,6 +265,8 @@ export function SupplierPage() {
             </dl>
           </section>
         )}
+        {/* PH11: what this supplier is owed, and the payments */}
+        {x && <SupplierAccountCard supplierId={x.id} />}
         <h2 className="td-group-title">Bills from this supplier</h2>
         <PurchaseCards res={bills} desk={desk} empty="No bills from this supplier yet. Press Add bill when a delivery comes." />
       </div>
@@ -346,6 +350,8 @@ function GrnTabs({ desk }) {
  */
 function GrnLineDialog({ line, isNew, onClose, onDone }) {
   const [l, setL] = useState(line);
+  // PH17: the last price paid for this medicine (per pack as on that bill)
+  const lastPrice = useFetch(`/pharmacy/medicines/${line.medicine.id}/last-price`).data?.last ?? null;
   const [tried, setTried] = useState(false);
   const f = (k) => (e) => setL({ ...l, [k]: e.target.value });
   const x = parseLine(l);
@@ -394,7 +400,17 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
           <Field label="Disc amount" id="gl-discamt">
             {shown('gl-discamt', money(fig.discPaise))}
           </Field>
-          <Field label="Rate ₹ (per pack)" id="gl-rate" error={err('rate')}>
+          <Field
+            label="Rate ₹ (per pack)"
+            id="gl-rate"
+            error={err('rate')}
+            keepHint
+            hint={
+              lastPrice
+                ? `Last paid ${money(lastPrice.ratePaise)} a pack of ${lastPrice.conv} on ${lastPrice.date}${lastPrice.supplier ? ` (${lastPrice.supplier})` : ''}${x.rate && lastPrice.conv === x.conv && x.rate > lastPrice.ratePaise ? ' – today’s rate is higher' : ''}.`
+                : undefined
+            }
+          >
             <input id="gl-rate" inputMode="decimal" value={l.rate} onChange={f('rate')} />
           </Field>
           <Field label="MRP ₹ (per pack)" id="gl-mrp" error={err('mrp')}>
@@ -488,6 +504,8 @@ export function NewPurchasePage() {
   const setX = (field) => (e) => setExtra({ ...extra, [field]: e.target.value });
   const [enteredAt] = useState(() => new Date());
   const [editing, setEditing] = useState(null); // the pop-up: { line, isNew }
+  const [billFile, setBillFile] = useState(false); // PH16: the supplier's bill from a file
+  const [fromFile, setFromFile] = useState(null); // what the file filled in
 
   // The lines start as what the order still expects (none without an order) until the pharmacist changes them
   const orderLines = useMemo(() => (order ? receiveLines(order).map((x, i) => ({ ...blankLine(x.medicine, `${x.medicine.id}-order-${i}`), qty: String(x.qty) })) : []), [order]);
@@ -657,6 +675,17 @@ export function NewPurchasePage() {
           <section className="card bill-section ph-grn-items" aria-labelledby="pu-lines">
             <h2 id="pu-lines">Items</h2>
             <FindMedicine label="Item name" onPick={(m) => setEditing({ line: emptyLine(m), isNew: true })} onScan={scan} />
+            <p className="row">
+              <button type="button" className="btn btn-secondary" disabled={!supplier} onClick={() => setBillFile(true)}>
+                <FileUp aria-hidden="true" /> Bill from a file
+              </button>
+              <span className="hint">{supplier ? 'The supplier’s CSV or Excel bill fills the items; open each line to check it.' : 'Choose the supplier first to fill the items from its bill file.'}</span>
+            </p>
+            {fromFile && (
+              <Alert type="info" onClose={() => setFromFile(null)}>
+                {fromFile}
+              </Alert>
+            )}
             {lines.length > 0 ? (
               <div className="ph-grn-scroll">
                 <table className="bill-lines ph-grn-lines">
@@ -830,6 +859,17 @@ export function NewPurchasePage() {
           </div>
         </section>
       </div>
+      {billFile && supplier && (
+        <BillFileDialog
+          supplier={supplier}
+          onClose={() => setBillFile(false)}
+          onFill={(filled, left) => {
+            setLines((ls) => [...ls, ...filled.map((l) => ({ ...l, key: `${l.medicine.id}-${(lineSeq += 1)}` }))]);
+            setBillFile(false);
+            setFromFile(`${filled.length} line${filled.length === 1 ? '' : 's'} filled from the file${left ? `; ${left} left out` : ''}. Open each line to check its batch, expiry and prices before saving.`);
+          }}
+        />
+      )}
       {editing && (
         <GrnLineDialog
           line={editing.line}
@@ -941,6 +981,7 @@ export function BarcodesField({ barcodes, onChange, typed, setTyped, error }) {
 
 function MedicineDialog({ medicine, lists, onClose, onDone }) {
   const [m, setM] = useState(medicine ? { ...medicine, barcodes: medicine.barcodes ?? [] } : { ...emptyMedicine });
+  const supplierList = useFetch('/pharmacy/suppliers').data?.suppliers ?? []; // PH17: the preferred supplier
   const [typedBarcode, setTypedBarcode] = useState('');
   const s = useSend(onDone);
   const f = (k) => (e) => setM({ ...m, [k]: e.target.value });
@@ -964,6 +1005,7 @@ function MedicineDialog({ medicine, lists, onClose, onDone }) {
     packSize: Math.max(1, Math.min(1000, Number.parseInt(m.packSize, 10) || 1)),
     packName: (m.packName ?? '').trim(),
     looseSale: m.looseSale !== false,
+    preferredSupplierId: m.preferredSupplierId || null,
     barcodes,
   };
   return (
@@ -1024,6 +1066,18 @@ function MedicineDialog({ medicine, lists, onClose, onDone }) {
         </Field>
         <Field label={`${m.unit || 'Unit'}s in a pack`} id="med-packsize" error={s.fields.packSize} hint="Purchases and the counter count in packs from this.">
           <input id="med-packsize" inputMode="numeric" value={m.packSize ?? 1} onChange={f('packSize')} />
+        </Field>
+        <Field label="Usually ordered from" id="med-supplier" hint="Order suggestions use this supplier (else the one it was last bought from).">
+          <select id="med-supplier" value={m.preferredSupplierId ?? ''} onChange={f('preferredSupplierId')}>
+            <option value="">The supplier it was last bought from</option>
+            {supplierList
+              .filter((x) => x.active || x.id === m.preferredSupplierId)
+              .map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+          </select>
         </Field>
       </div>
       {Number(m.packSize) > 1 && (
@@ -1180,10 +1234,10 @@ function MedicineActive({ m, onDone }) {
 // ---------- Suppliers ----------
 
 function SupplierDialog({ supplier, onClose, onDone }) {
-  const [x, setX] = useState(supplier ? { ...supplier } : { name: '', gstin: '', drugLicence: '', phone: '', address: '' });
+  const [x, setX] = useState(supplier ? { ...supplier, creditDays: String(supplier.creditDays ?? 0) } : { name: '', gstin: '', drugLicence: '', phone: '', address: '', creditDays: '0' });
   const s = useSend(onDone);
   const f = (k) => (e) => setX({ ...x, [k]: e.target.value });
-  const body = { name: x.name.trim(), gstin: x.gstin.trim(), drugLicence: x.drugLicence.trim(), phone: x.phone.trim(), address: x.address.trim() };
+  const body = { name: x.name.trim(), gstin: x.gstin.trim(), drugLicence: x.drugLicence.trim(), phone: x.phone.trim(), address: x.address.trim(), creditDays: Math.max(0, Math.min(365, Number.parseInt(x.creditDays, 10) || 0)) };
   return (
     <Modal id="ph-sup" title={supplier ? `Change ${supplier.name}` : 'Add a supplier'} onClose={onClose}>
       <Alert type="error">{s.error}</Alert>
@@ -1199,6 +1253,9 @@ function SupplierDialog({ supplier, onClose, onDone }) {
         </Field>
         <Field label="Phone" id="sup-phone">
           <input id="sup-phone" value={x.phone} maxLength={30} onChange={f('phone')} />
+        </Field>
+        <Field label="Credit days" id="sup-credit" hint="A bill is due this many days after its date (PH11).">
+          <input id="sup-credit" inputMode="numeric" value={x.creditDays} onChange={f('creditDays')} />
         </Field>
       </div>
       <Field label="Address" id="sup-address">
