@@ -91,3 +91,20 @@ describe("the lab's admitted patients", () => {
     for (const who of ['drA', 'rmo']) expect((await (await as(who)).get('/api/lab/inpatients')).status, who).toBe(403);
   });
 });
+
+describe('Lab → New: what is already due on her bill today', () => {
+  it("a new patient's registration fee is listed for the lab and can be paid with the tests; not for a doctor", async () => {
+    const { PriceItem } = await import('../src/models/PriceItem.js');
+    await (await as('admin')).get('/api/billing/prices'); // the built-in price list
+    await PriceItem.updateOne({ tenantId: hospital._id, key: 'registration' }, { $set: { pricePaise: 30000, active: true } });
+    const res = await (await as('lab')).post('/api/patients').send({ careType: 'gynaecology', fullName: 'Sample Lab New Walkin', ageYears: 31, phone: '90000 33344' });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    const p = res.body.patient;
+    const due = (await (await as('lab')).get(`/api/lab/walk-in/bill?patientId=${p.id}`)).body;
+    expect(due).toMatchObject({ admitted: false, duePaise: 30000, items: [{ name: 'Registration fee (new patient)', amountPaise: 30000 }] });
+    expect((await (await as('drA')).get(`/api/lab/walk-in/bill?patientId=${p.id}`)).status).toBe(403);
+    const walk = await (await as('lab')).post('/api/lab/walk-in').send({ clientRequestId: randomUUID(), patientId: p.id, tests: [{ key: 'hb' }], prescription: 'Self', payment: { mode: 'cash', amountPaise: 30000, reference: '' } });
+    expect(walk.status, JSON.stringify(walk.body)).toBe(201);
+    expect(walk.body.payment).toMatchObject({ amountPaise: 30000, duePaise: 0 });
+  });
+});

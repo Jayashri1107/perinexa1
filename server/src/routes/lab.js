@@ -37,7 +37,7 @@ import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js
 import { isClosed, refuseNewOnClosed } from '../patients/deathRules.js';
 import { findPatient } from '../utils/patientLookup.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex, safeText } from '../utils/pcpndt.js';
-import { hospitalDayStart, hospitalToday } from '../careplans/dates.js';
+import { hospitalDayStart, hospitalToday, utcDay } from '../careplans/dates.js';
 import { fileEntry, fileUploadSchema, findFile, sendFile, storeFile } from '../utils/storedFiles.js';
 import { escapeRegex, objectId, parse } from '../utils/validate.js';
 import { documentOffer, offerView, sendPatientPdf } from '../visits/whatsappDocuments.js';
@@ -48,7 +48,7 @@ import { Membership } from '../models/Membership.js';
 import { takeStock } from '../lab/stock.js';
 import { Bill } from '../models/Bill.js';
 import { nextNumber } from '../models/Counter.js';
-import { discountPaise, totals } from '../billing/money.js';
+import { discountPaise, liveLines, totals } from '../billing/money.js';
 import { padded } from '../billing/billingService.js';
 
 // The lab module (Version 2; the full lab system of docs/LAB_LIMS_PLAN.md). Two routers:
@@ -477,6 +477,20 @@ async function homeCollector(req, id) {
   const u = await User.findById(id, { name: 1 }).lean();
   return { collectorId: m.userId, collectorName: u?.name ?? '' };
 }
+
+// Lab → New (12 Nov 2026): what is already due on her bill today before the tests are added – the registration fee of a
+// new patient, for example – so the lab's "To pay" is the whole amount. Names and amounts only; nothing for a patient in
+// hospital (her stay bill is the billing desk's).
+labRouter.get('/walk-in/bill', async (req, res) => {
+  if (!isLab(req)) throw forbidden('This is for the lab.');
+  const { patientId } = parse(z.object({ patientId: objectId }).strict(), req.query);
+  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: patientId }, { _id: 1 }).lean();
+  if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  if (await Admission.exists({ tenantId: req.tenantId, patientId, status: 'admitted' })) return res.json({ admitted: true, duePaise: 0, items: [] });
+  const bill = await Bill.findOne({ tenantId: req.tenantId, patientId, kind: 'opd', on: utcDay(hospitalToday(req.now)), status: 'open' }).lean();
+  if (!bill) return res.json({ admitted: false, duePaise: 0, items: [] });
+  res.json({ admitted: false, billNumber: bill.number, duePaise: Math.max(0, totals(bill).balance), items: liveLines(bill).filter((l) => l.ratePaise > 0).map((l) => ({ name: l.name, amountPaise: l.ratePaise * (l.qty ?? 1) })) });
+});
 
 labRouter.post('/walk-in', async (req, res) => {
   if (!isLab(req)) throw forbidden('The lab enters walk-in orders.');

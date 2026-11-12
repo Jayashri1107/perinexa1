@@ -199,6 +199,10 @@ export function LabRegistrationPage() {
   const [done, setDone] = useState(null);
   const [requestId] = useState(newRequestId);
 
+  // What is already due on her bill today (a new patient's registration fee, for example) – added to "To pay"
+  const already = useFetch(patient ? '/lab/walk-in/bill' : null, patient ? { patientId: patient.id } : undefined);
+  const otherDue = already.data?.duePaise ?? 0;
+  const otherItems = already.data?.items ?? [];
   const who = patient?.careType === 'newborn' ? 'newborn' : 'adult';
   const all = useMemo(() => (catalogue.data?.tests ?? []).filter((t) => t.active !== false && t.who === who), [catalogue.data, who]);
   const words = find.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -207,8 +211,9 @@ export function LabRegistrationPage() {
   const price = (key) => priced.data?.tests?.find((t) => t.key === key)?.pricePaise ?? 0;
   const total = chosen.reduce((s, k) => s + price(k), 0);
   const discValue = !discOpen || disc.value === '' ? 0 : disc.mode === 'amount' ? (toPaise(disc.value) ?? 0) : Number(disc.value) || 0;
-  const discount = Math.min(disc.mode === 'percent' ? Math.round((total * discValue) / 100) : discValue, total);
-  const net = total - discount;
+  // The discount is on the bill (the tests and what is already on it), as the billing desk gives it
+  const discount = Math.min(disc.mode === 'percent' ? Math.round(((total + otherDue) * discValue) / 100) : discValue, total + otherDue);
+  const net = total + otherDue - discount;
   const taking = payMode !== '' && payMode !== 'later';
   const amount = !taking ? 0 : payAmount === '' ? net : (toPaise(payAmount) ?? 0);
   const balance = Math.max(net - amount, 0);
@@ -431,6 +436,15 @@ export function LabRegistrationPage() {
               <dt>Tests</dt>
               <dd className="tabular">{rupees(total)}</dd>
             </div>
+            {otherDue > 0 && (
+              <div>
+                <dt>
+                  Already on her bill today
+                  {otherItems.length ? <small className="lnr-sums-note">{otherItems.map((i) => i.name).join(', ')}</small> : null}
+                </dt>
+                <dd className="tabular">{rupees(otherDue)}</dd>
+              </div>
+            )}
             {discount > 0 && (
               <div>
                 <dt>Discount</dt>
@@ -443,7 +457,7 @@ export function LabRegistrationPage() {
             </div>
           </dl>
           {!discOpen ? (
-            <button type="button" className="btn btn-link btn-sm" onClick={() => setDiscOpen(true)} disabled={!total}>
+            <button type="button" className="btn btn-link btn-sm" onClick={() => setDiscOpen(true)} disabled={!total && !otherDue}>
               Add a discount
             </button>
           ) : (
@@ -509,23 +523,22 @@ export function LabRegistrationPage() {
         </Step>
 
         {/* Always at the foot: what she pays and the one button */}
-        <div className="lnr-bar">
-          <div className="lnr-bar-sum">
-            <span className="muted">
+        {/* sticky-actions: on a phone the app's bottom bar (the tab bar steps aside – mobile.css) */}
+        <div className="lnr-bar sticky-actions">
+          <div className="lnr-bar-sum grow">
+            <span className="muted lnr-bar-what">
               {chosen.length} test{chosen.length === 1 ? '' : 's'}
               {patient ? ` · ${patient.fullName}` : ''}
             </span>
             <strong className="tabular">{rupees(net)}</strong>
-          </div>
-          <div className="lnr-bar-actions">
             {missing && <span className="lnr-missing">{missing}</span>}
-            <Link to="/lab/dashboard" className="btn btn-link">
-              Cancel
-            </Link>
-            <button type="button" className="btn btn-primary" disabled={Boolean(missing) || busy} onClick={save}>
-              <TestTube aria-hidden="true" /> {busy ? 'Saving…' : taking && amount > 0 ? 'Save and print receipt' : 'Save'}
-            </button>
           </div>
+          <Link to="/lab/dashboard" className="btn btn-link">
+            Cancel
+          </Link>
+          <button type="button" className="btn btn-primary" disabled={Boolean(missing) || busy} onClick={save}>
+            <TestTube aria-hidden="true" /> {busy ? 'Saving…' : taking && amount > 0 ? 'Save and print receipt' : 'Save'}
+          </button>
         </div>
       </div>
     </>
