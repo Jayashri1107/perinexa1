@@ -203,6 +203,9 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   the pharmacist together; sales by doctor for the pharmacist and the super admin only; no bills sent on WhatsApp by
   themselves; a reason for every repeat sale) are in that note's section 7. The remaining pharmacy, lab and
   sonography development was approved by the owner on 11 Nov 2026.
+- **Access change (12 Nov 2026, the developer's request):** lab staff see the list of admitted patients – ward, bed,
+  name, patient number and their lab orders only (`GET /api/lab/inpatients`, Lab → Admitted); `patientAccess` for the lab
+  is not widened.
 - **Access change to review (PH13, 11 Nov 2026):** the staff named on a stock place (nurses, RMOs, doctors) can issue
   that place's stock to an admitted patient they may chart for (`routes/stockPlaces.js` `POST /:id/use`, the nursing
   chart's `recordVitals` rule). They see names, batches and quantities – no prices – and the invoice goes on her bill.

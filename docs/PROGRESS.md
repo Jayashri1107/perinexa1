@@ -1,5 +1,10 @@
 # Progress
 
+## Lab: admitted patients for the lab, and the lab user's test checklist (12 Nov 2026, branch `lab-inpatients`)
+- **Lab → Admitted** (lab staff only): who is in hospital now – ward, bed, name and patient number – with her lab
+  orders open or reported in the last two days, and "Only those with a sample to take". Nothing else of her record.
+- `docs/LAB_USER_TEST_CHECKLIST.md`: what the lab user tests and checks, step by step, with sample patients only.
+
 ## Sonography stage 2: reference tables, centile bands, Doppler, a second weight chart (12 Nov 2026, branch `lab-owner-values`)
 The owner approved stage 2 (`docs/USG_APPS_REVIEW.md` U1, U3, U5). No reference value is built in.
 - **Scans → Reference tables** (doctors write and approve; RMOs and sonographers read): for each of BPD, HC, AC, FL, a

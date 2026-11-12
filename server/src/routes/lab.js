@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { hasRole } from '../models/Membership.js';
 import { LabOrder } from '../models/LabOrder.js';
 import { Patient, currentAge } from '../models/Patient.js';
+import { Admission } from '../models/Admission.js';
 import { User } from '../models/User.js';
 import { markDoneFromLab, planCtx, syncPlanSafely } from '../careplans/plansService.js';
 import { refreshPatientRiskSafely } from '../careplans/templatesService.js';
@@ -573,6 +574,36 @@ labRouter.get('/home', async (req, res) => {
 // ---------- The lab's dashboard (owner, 19 Oct 2026 – docs/LAB_DASHBOARD_PLAN.md, eLabAssist-style) ----------
 // Lab staff: for a period (today by default) – orders registered (walk-in or from a doctor), reported, tests and
 // charges by department; and now – what waits at each step and what is late. Numbers only: no patient, no test names.
+// Admitted patients for the lab (12 Nov 2026, the developer's request): who is in hospital now – her name, patient
+// number, ward and bed – and her lab orders that are open or reported in the last two days, to collect samples on the
+// wards. Nothing else of her record (no doctor, diagnosis, notes or bill). The neutral name for a confidential test.
+labRouter.get('/inpatients', async (req, res) => {
+  if (!isLab(req)) throw forbidden('This list is for the lab.');
+  const stays = await Admission.find({ tenantId: req.tenantId, status: 'admitted' }, { patientId: 1, ward: 1, bed: 1, admittedAt: 1 }).lean();
+  const patients = new Map((await Patient.find({ tenantId: req.tenantId, _id: { $in: stays.map((s) => s.patientId) } }, { fullName: 1, mrn: 1 }).lean()).map((p) => [String(p._id), p]));
+  const since = new Date(req.now.getTime() - 2 * 86_400_000);
+  const orders = await LabOrder.find(
+    { tenantId: req.tenantId, patientId: { $in: [...patients.values()].map((p) => p._id) }, $or: [{ status: { $in: OPEN } }, { status: { $in: DONE }, 'reported.at': { $gte: since } }] },
+    { patientId: 1, status: 1, sampleNo: 1, urgent: 1, 'tests.key': 1, 'tests.name': 1, createdAt: 1 },
+  )
+    .sort({ createdAt: 1 })
+    .lean();
+  const byPatient = new Map();
+  for (const o of orders) {
+    const k = String(o.patientId);
+    if (!byPatient.has(k)) byPatient.set(k, []);
+    byPatient.get(k).push({ id: String(o._id), status: o.status, sampleNo: o.sampleNo ?? null, urgent: Boolean(o.urgent), tests: (o.tests ?? []).map((t) => shownName(t)) });
+  }
+  const rows = stays
+    .filter((s) => patients.has(String(s.patientId)))
+    .map((s) => {
+      const p = patients.get(String(s.patientId));
+      return { patient: { id: String(p._id), fullName: p.fullName, mrn: p.mrn }, ward: s.ward ?? '', bed: s.bed ?? '', orders: byPatient.get(String(p._id)) ?? [] };
+    })
+    .sort((a, b) => a.ward.localeCompare(b.ward) || String(a.bed).localeCompare(String(b.bed), undefined, { numeric: true }) || a.patient.fullName.localeCompare(b.patient.fullName));
+  res.json({ inpatients: rows });
+});
+
 labRouter.get('/dashboard', async (req, res) => {
   if (!isLab(req)) throw forbidden('The lab dashboard is for the lab.');
   const q = parse(z.object({ from: z.iso.date().optional(), to: z.iso.date().optional() }).strict(), req.query);

@@ -165,6 +165,7 @@ export const HOSPITAL_LAB = {
     { label: 'Worklist', to: '/lab', end: true, activeFor: '/lab/orders' },
     { label: 'Result entry', to: '/lab/results', end: true },
     { label: 'Find', to: '/lab/find', end: true },
+    { label: 'Admitted', to: '/lab/inpatients', end: true }, // the lab's list of admitted patients (12 Nov 2026)
     { label: 'Register', to: '/lab/register', end: true },
     // Lab version 2 (docs/LAB_V2_PLAN.md): quality control, the lab's stock and cost per test, referrers
     { label: 'QC', to: '/lab/qc', end: true },
