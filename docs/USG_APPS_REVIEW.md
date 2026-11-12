@@ -389,7 +389,17 @@ the rest once the owner gives the published tables to copy from (no reference va
   (the curve the app already used for the weight centile), twin 2 as squares, and a table of BPD, HC, AC, FL and weight
   (with its centile) across the scans. Measurements only are sent (`growth` on `GET /api/imaging/:id`).
 
-**Stage 2 – waiting for the owner's tables:**
+**Stage 2 – built 12 Nov 2026 (the owner's approval), the numbers left to the doctors:** Imaging → Scans → **Reference
+tables** (`models/UsgReference.js`, `routes/usgReferences.js`, website `ReferenceTablesPage.jsx`): for BPD, HC, AC, FL, a
+second weight chart and the Doppler indices (UA, MCA, UtA PI, CPR, DV PIV), a doctor copies the chosen published chart
+in (week, 5th, 50th, 95th) with its source; a doctor approves; none is built in. Approved tables only are sent with a
+scan (`references` on `GET /api/imaging/:id`) and used: centile bands for BPD, HC, AC, FL across her scans, the second
+weight chart dashed beside Hadlock and named, and the new **USG – fetal Doppler** template (`usg_doppler`, CPR worked
+out) with each index marked below the 5th / 5th–95th / above the 95th (`referenceTables.js`, `ReferenceMarks.jsx`).
+Doppler marks are information on the report, not urgent findings (U2's list is unchanged). Tests:
+`server/tests/usg-stage2.test.js`, `client/src/pages/imaging/referenceTables.test.jsx`.
+
+**Stage 2 as first planned (for reference):**
 - **U1, second part:** centile bands for BPD, HC, AC and FL (which reference: Hadlock 1984, INTERGROWTH-21st, an Indian
   chart).
 - **U3 Doppler in full:** uterine, umbilical, middle cerebral arteries, ductus venosus, the CPR, each with its normal

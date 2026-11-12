@@ -1,5 +1,18 @@
 # Progress
 
+## Sonography stage 2: reference tables, centile bands, Doppler, a second weight chart (12 Nov 2026, branch `lab-owner-values`)
+The owner approved stage 2 (`docs/USG_APPS_REVIEW.md` U1, U3, U5). No reference value is built in.
+- **Scans → Reference tables** (doctors write and approve; RMOs and sonographers read): for each of BPD, HC, AC, FL, a
+  second weight chart and the Doppler indices, copy the published chart in – one week per line: week, 5th, 50th, 95th –
+  with its source. DRAFT until a doctor approves; a change is a new DRAFT while the approved one stays in use.
+- **On a scan:** the growth section draws BPD, HC, AC and FL on their approved centile lines, and an approved second
+  weight chart dashed beside Hadlock, named on the report.
+- **USG – fetal Doppler:** a new scan template with UA PI, MCA PI, UtA PI, DV PIV (and flow choices); the CPR is worked
+  out; each index is marked against its approved table for her weeks by dates. With no approved table: "No approved
+  reference table" – nothing is judged.
+- **For the owner:** choose the charts (Hadlock 1984, INTERGROWTH-21st, an Indian chart …) and have a doctor copy
+  them in and approve them.
+
 ## Lab: critical choices, red flags beside ranges, RMO acknowledgement (12 Nov 2026, branch `lab-owner-values`)
 The owner approved the remaining lab work (`docs/LAB_BUILD_NOTE.md` section 7). The clinical values stay the owner's:
 the screens are built, the lists ship empty and DRAFT.

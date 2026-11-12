@@ -66,6 +66,7 @@ import { admissionDeskRouter } from './routes/admissionDesk.js';
 import { labQcRouter } from './routes/labQc.js';
 import { labStockRouter } from './routes/labStock.js';
 import { imagingRouter } from './routes/imaging.js';
+import { usgReferencesRouter } from './routes/usgReferences.js';
 import { scanBridgeRouter, scanBridgeSetupRouter } from './routes/scanBridge.js';
 import { verifyRouter } from './routes/verify.js';
 import { notificationsRouter } from './routes/notifications.js';
@@ -316,6 +317,7 @@ export function createApp({
   // Lab version 2 (docs/LAB_V2_PLAN.md): quality control, the lab's stock and cost per test, USG and radiology
   app.use('/api/lab-qc', ...inTenant, labQcRouter);
   app.use('/api/lab-stock', ...inTenant, labStockRouter);
+  app.use('/api/usg-references', ...inTenant, usgReferencesRouter); // sonography stage 2: the reference tables
   app.use('/api/imaging', ...inTenant, imagingRouter);
   // The bell: this person's notifications (routes/notifications.js)
   app.use('/api/notifications', ...inTenant, notificationsRouter);

@@ -188,7 +188,10 @@ const HOSPITAL_SCANS = {
   label: 'Sonography',
   icon: ScanLine,
   to: '/scans',
-  tabs: [{ label: 'Scans', to: '/scans', end: false }],
+  tabs: [
+    { label: 'Scans', to: '/scans', end: true },
+    { label: 'Reference tables', to: '/scans/references', end: true },
+  ],
 };
 
 // Referrals from other doctors (docs/REFERRALS_PLAN.md): the referral desk logs them, books her appointment and

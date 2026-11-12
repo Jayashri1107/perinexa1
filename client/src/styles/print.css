@@ -356,6 +356,10 @@
 .gr-tick { fill: var(--slate-600); font-size: 10px; }
 .gr-band { stroke-width: 1.5; }
 .gr-p50 { stroke: var(--indigo-700); }
+/* Sonography stage 2: an approved second weight chart (dashed) and the small centile graphs of BPD, HC, AC, FL */
+.gr-second { stroke: var(--indigo-700); stroke-dasharray: 4 3; opacity: 0.7; }
+.gr-measures { display: grid; grid-template-columns: repeat(auto-fill, minmax(60mm, 1fr)); gap: var(--space-2); }
+.gr-measure { margin: 0; }
 .gr-p10, .gr-p90 { stroke: var(--indigo-200); stroke-dasharray: 4 3; }
 .gr-point { fill: var(--teal-500); stroke: var(--surface); stroke-width: 1; }
 .gr-current { fill: var(--status-high-solid); }

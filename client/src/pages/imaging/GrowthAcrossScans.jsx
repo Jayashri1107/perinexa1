@@ -1,4 +1,6 @@
 import { estimatedWeight, gaWords, ordinal, reading, twinDiscordance, weeksByDates, weeksDays, weightBand, weightCentile } from './usgCalc.js';
+import { BAND_WORDS, bandAt, bandOf } from './referenceTables.js';
+import { MeasureBands } from './ReferenceMarks.jsx';
 
 // Growth across scans (owner's go-ahead, 10 Nov 2026 – docs/USG_APPS_REVIEW.md U1, stage 1): the estimated fetal weight
 // of each of her scans of this pregnancy on the Hadlock 1991 weight curves (10th, 50th, 90th centile – the curve the
@@ -30,8 +32,9 @@ export function growthRows(growth, eddByDates) {
   return rows;
 }
 
-/** The weight graph: x weeks by dates, y grams; the three centile lines and the points (twin 2 as squares). */
-function WeightGraph({ rows }) {
+/** The weight graph: x weeks by dates, y grams; the three centile lines and the points (twin 2 as squares). second:
+ * the hospital's approved second weight chart (U5), drawn dashed beside Hadlock. */
+function WeightGraph({ rows, second = null }) {
   const pts = rows.filter((r) => r.efw && r.weeks);
   if (!pts.length) return null;
   const x0 = Math.max(16, Math.floor(Math.min(...pts.map((p) => p.weeks)) - 2));
@@ -45,6 +48,14 @@ function WeightGraph({ rows }) {
   const line = (key) => {
     const p = [];
     for (let w = x0; w <= x1 + 0.001; w += 0.5) p.push(`${X(w).toFixed(1)},${Y(weightBand(w)[key]).toFixed(1)}`);
+    return p.join(' ');
+  };
+  const secondLine = (key) => {
+    const p = [];
+    for (let w = x0; w <= x1 + 0.001; w += 0.5) {
+      const b = bandAt(second, w);
+      if (b && b[key] <= yMax) p.push(`${X(w).toFixed(1)},${Y(b[key]).toFixed(1)}`);
+    }
     return p.join(' ');
   };
   const weeks = [];
@@ -84,6 +95,8 @@ function WeightGraph({ rows }) {
           </text>
         </g>
       ))}
+      {second &&
+        ['p95', 'p50', 'p5'].map((k) => <polyline key={`s${k}`} className="gr-band gr-second" points={secondLine(k)} fill="none" />)}
       {pts.map((p) =>
         p.twin === 2 ? (
           <rect key={p.id} className={`gr-point${p.current ? ' gr-current' : ''}`} x={X(p.weeks) - 4.5} y={Y(p.efw) - 4.5} width="9" height="9">
@@ -100,7 +113,7 @@ function WeightGraph({ rows }) {
 }
 
 /** The growth graph and the measurements across scans, or nothing when there is no measured scan. */
-export function GrowthAcrossScans({ growth, eddByDates }) {
+export function GrowthAcrossScans({ growth, eddByDates, references = null }) {
   const rows = growthRows(growth, eddByDates);
   if (!rows.length) return null;
   const twins = rows.some((r) => r.twin);
@@ -111,7 +124,7 @@ export function GrowthAcrossScans({ growth, eddByDates }) {
       <h2 id="gr-title" className="pdoc-sig-title">
         Growth across scans
       </h2>
-      {eddByDates ? <WeightGraph rows={rows} /> : <p className="pdoc-small">No EDD on her record: the weeks and the graph need her dates.</p>}
+      {eddByDates ? <WeightGraph rows={rows} second={references?.efw ?? null} /> : <p className="pdoc-small">No EDD on her record: the weeks and the graph need her dates.</p>}
       {twins && <p className="pdoc-small">Twin 1 ● · twin 2 ■{diff != null ? ` · weight difference on this scan ${diff} %` : ''}</p>}
       <table className="ptable pdoc-table gr-table">
         <thead>
@@ -145,12 +158,17 @@ export function GrowthAcrossScans({ growth, eddByDates }) {
               <td className="num pdoc-tabular">
                 {r.efw ?? '—'}
                 {r.centile ? ` (${ordinal(r.centile)})` : ''}
+                {references?.efw && r.efw && bandOf(references.efw, r.weeks, r.efw) && r.efw && bandOf(references.efw, r.weeks, r.efw) !== 'within' ? ` · 2nd chart: ${BAND_WORDS[bandOf(references.efw, r.weeks, r.efw)]}` : ''}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="pdoc-small">Weight curve: Hadlock 1991 (10th, 50th, 90th centile). DRAFT – for the hospital&apos;s doctor to check.</p>
+      <p className="pdoc-small">
+        Weight curve: Hadlock 1991 (10th, 50th, 90th centile). DRAFT – for the hospital&apos;s doctor to check.
+        {references?.efw ? ` Second chart (dashed, 5th, 50th, 95th): ${references.efw.source} – as approved by the hospital's doctor.` : ''}
+      </p>
+      {eddByDates && <MeasureBands rows={rows} references={references} />}
     </section>
   );
 }

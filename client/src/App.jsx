@@ -259,6 +259,8 @@ const VerifyReportPage = screen(load90, 'VerifyReportPage');
 const load91 = () => import('./pages/imaging/ImagingPages.jsx');
 const ImagingStudyPage = screen(load91, 'ImagingStudyPage');
 const ImagingWorklistPage = screen(load91, 'ImagingWorklistPage');
+const loadRefTables = () => import('./pages/imaging/ReferenceTablesPage.jsx');
+const ReferenceTablesPage = screen(loadRefTables, 'ReferenceTablesPage');
 const load92 = () => import('./pages/lab/PatientLabTab.jsx');
 const PatientLabTab = screen(load92, 'PatientLabTab');
 const loadAsk = () => import('./pages/ai/PatientAskTab.jsx');
@@ -555,6 +557,10 @@ export function App() {
                     treating doctor or RMO, who sees the signed report (owner, 10 Nov 2026) */}
                 <Route path="scans" element={<RequireTenantRole roles={SCAN_PAGE_ROLES} message="The Sonography module is for the Sonography role. Doctors order scans from her Lab tab." />}>
                   <Route index element={<ImagingWorklistPage />} />
+                </Route>
+                {/* Sonography stage 2: the reference tables – doctors write and approve, RMOs and sonographers read */}
+                <Route path="scans/references" element={<RequireTenantRole roles={SCAN_VIEW_ROLES} message="The scan reference tables are for doctors, RMOs and sonographers." />}>
+                  <Route index element={<ReferenceTablesPage />} />
                 </Route>
                 <Route path="scans/:id" element={<RequireTenantRole roles={SCAN_VIEW_ROLES} message="Scans are for her doctor, RMOs and sonography." />}>
                   <Route index element={<ImagingStudyPage />} />
