@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  BadgeCheck,
   Banknote,
   ClipboardCheck,
   ClipboardList,
@@ -9,7 +8,6 @@ import {
   FlaskConical,
   Home,
   Inbox,
-  LayoutGrid,
   ListChecks,
   Package,
   Search,
@@ -17,6 +15,7 @@ import {
   ShieldCheck,
   TestTube,
   Timer,
+  TriangleAlert,
   Truck,
   UserPlus,
   Users,
@@ -24,15 +23,15 @@ import {
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { Alert, KpiCard } from '../../components/ui.jsx';
+import { Alert } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { rupees } from '../billing/billingFormat.js';
 import { departmentName } from './labFormat.js';
 
-// The lab's dashboard (owner, 19 Oct 2026 – docs/LAB_DASHBOARD_PLAN.md, the eLabAssist layout in Perinexa's look): every
-// lab module as a button with what waits there; for lab staff also the day's numbers (registered, reported, charged,
-// late) and the tests and charges by department, for a period. Numbers only – no patient, no test names.
+// The lab's dashboard (owner, 19 Oct 2026 – docs/LAB_DASHBOARD_PLAN.md; made simpler 12 Nov 2026): first what waits
+// now as big counts that open their lists (and a critical or late line when there is one), then for lab staff the
+// period's four numbers (departments folded away), then every other lab screen as plain links. Numbers only.
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const PERIODS = {
@@ -41,49 +40,57 @@ const PERIODS = {
   month: { label: 'This month', range: () => [new Date(new Date().getFullYear(), new Date().getMonth(), 1), new Date()] },
 };
 
-/** The lab's modules as buttons, in the order work moves through the lab. waitKey: the worklist count shown on it. */
-const MODULES = [
-  { key: 'new', label: 'Registration', sub: 'Walk-in or referred patient', to: '/lab/new', icon: UserPlus, labOnly: true },
-  { key: 'collect', label: 'Sample collection', sub: 'Samples to take', to: '/lab?list=collect', icon: TestTube, waitKey: 'collect' },
-  { key: 'receive', label: 'Sample receiving', sub: 'Scan the label', to: '/lab?list=receive', icon: Inbox, waitKey: 'receive' },
-  { key: 'results', label: 'Result entry', sub: 'By department', to: '/lab/results', icon: ClipboardPen, waitKey: 'report' },
-  { key: 'verify', label: 'Authorisation', sub: 'Results to check', to: '/lab?list=verify', icon: ClipboardCheck, waitKey: 'verify' },
-  { key: 'reports', label: 'Reports', sub: 'Reported, last 7 days', to: '/lab?list=done', icon: FileText },
-  { key: 'home', label: 'Home collection', sub: 'Scheduled visits', to: '/lab?list=home', icon: Home, waitKey: 'home' },
-  { key: 'outside', label: 'Outside labs', sub: 'Sent out, not back', to: '/lab?list=outside', icon: Truck, waitKey: 'outside' },
-  { key: 'find', label: 'Find', sub: 'Sample, patient, date', to: '/lab/find', icon: Search },
-  { key: 'register', label: 'Lab register', sub: 'Print or save for Excel', to: '/lab/register', icon: ClipboardList },
-  { key: 'qc', label: 'Quality control', sub: 'Runs and Westgard rules', to: '/lab/qc', icon: ShieldCheck },
-  { key: 'stock', label: 'Stock', sub: 'Reagents, cost per test', to: '/lab/stock', icon: Package },
-  { key: 'tests', label: 'Test master', sub: 'Tests, ranges, times', to: '/lab/tests', icon: ListChecks },
-  { key: 'referrers', label: 'Referrers', sub: 'Doctors and centres', to: '/lab/referrers', icon: Users },
-  { key: 'cash', label: 'Cash', sub: 'Day-end handover', to: '/cash-handover', icon: Banknote, labOnly: true },
-  { key: 'settings', label: 'Settings', sub: 'Check before report', to: '/lab/settings', icon: Settings },
+/** What waits now, in the order work moves through the lab – each a big count that opens its list. */
+const WAITING = [
+  { key: 'collect', label: 'Samples to take', to: '/lab?list=collect', icon: TestTube },
+  { key: 'receive', label: 'Samples to receive', to: '/lab?list=receive', icon: Inbox },
+  { key: 'report', label: 'Results to enter', to: '/lab/results', icon: ClipboardPen },
+  { key: 'verify', label: 'Results to check', to: '/lab?list=verify', icon: ClipboardCheck },
+  { key: 'home', label: 'Home visits', to: '/lab?list=home', icon: Home },
+  { key: 'outside', label: 'At outside labs', to: '/lab?list=outside', icon: Truck },
 ];
 
-function ModuleGrid({ waiting, isLab }) {
+/** Everything else, as plain links in two short groups. */
+const LINKS = [
+  {
+    key: 'daily',
+    title: 'Daily work',
+    items: [
+      { label: 'Find a sample or patient', to: '/lab/find', icon: Search },
+      { label: 'Reports of the last 7 days', to: '/lab?list=done', icon: FileText },
+      { label: 'Lab register', to: '/lab/register', icon: ClipboardList },
+      { label: 'Cash handover', to: '/cash-handover', icon: Banknote, labOnly: true },
+    ],
+  },
+  {
+    key: 'setup',
+    title: 'Setup',
+    items: [
+      { label: 'Tests and prices', to: '/lab/tests', icon: ListChecks },
+      { label: 'Referring doctors', to: '/lab/referrers', icon: Users },
+      { label: 'Stock', to: '/lab/stock', icon: Package },
+      { label: 'Quality control', to: '/lab/qc', icon: ShieldCheck },
+      { label: 'Settings', to: '/lab/settings', icon: Settings },
+    ],
+  },
+];
+
+function WaitingTiles({ waiting }) {
   return (
-    <nav className="lab-modules" aria-label="Lab modules">
-      {MODULES.filter((m) => isLab || !m.labOnly).map((m) => {
-        const n = m.waitKey ? waiting?.[m.waitKey] : null;
+    <ul className="ldb-wait">
+      {WAITING.map((w) => {
+        const n = waiting?.[w.key];
         return (
-          <Link key={m.key} to={m.to} className="lab-module">
-            <span className="lab-module-icon" aria-hidden="true">
-              <m.icon />
-            </span>
-            <span className="lab-module-text">
-              <strong>{m.label}</strong>
-              <span className="muted">{m.sub}</span>
-            </span>
-            {n > 0 && (
-              <span className="lab-module-count tabular" aria-label={`${n} waiting`}>
-                {n}
-              </span>
-            )}
-          </Link>
+          <li key={w.key}>
+            <Link to={w.to} className={`ldb-tile${n > 0 ? ' has-work' : ''}`}>
+              <w.icon aria-hidden="true" />
+              <span className="ldb-tile-n tabular">{n ?? '–'}</span>
+              <span className="ldb-tile-label">{w.label}</span>
+            </Link>
+          </li>
         );
       })}
-    </nav>
+    </ul>
   );
 }
 
@@ -133,28 +140,46 @@ export function LabDashboardPage() {
   const d = dash.data;
   const waiting = isLab ? d?.waiting : work.data?.counts;
 
+  const late = isLab ? (d?.late ?? 0) : 0;
+  const critical = waiting?.critical ?? 0;
+
   return (
     <>
       <PageHeader
         tabs={HOSPITAL_LAB.tabs}
-        title="Lab dashboard"
+        title="Lab"
         documentTitle="Lab dashboard"
-        help="Every part of the lab in one place: open a module to work in it. The numbers are counts only."
+        help="What is waiting now, the day's numbers, and every other part of the lab. Numbers only – no patient names."
         actions={
           isLab && (
             <Link to="/lab/new" className="btn btn-primary">
-              <UserPlus aria-hidden="true" /> New registration
+              <UserPlus aria-hidden="true" /> New patient test
             </Link>
           )
         }
       />
       <div className="pf-content lab-dash">
         <Alert type="error">{dash.error || work.error}</Alert>
-        <section aria-labelledby="lab-dash-modules">
-          <h2 id="lab-dash-modules" className="lab-dash-title">
-            <LayoutGrid aria-hidden="true" /> Lab modules
+        {(critical > 0 || late > 0) && (
+          <div className="ldb-alerts">
+            {critical > 0 && (
+              <Link to="/lab?list=critical" className="ldb-alert is-high">
+                <TriangleAlert aria-hidden="true" /> Critical: {critical} result{critical === 1 ? '' : 's'} not yet called to a doctor
+              </Link>
+            )}
+            {late > 0 && (
+              <span className="ldb-alert is-watch">
+                <Timer aria-hidden="true" /> Late: {late} past their due time
+              </span>
+            )}
+          </div>
+        )}
+
+        <section aria-labelledby="lab-dash-waiting">
+          <h2 id="lab-dash-waiting" className="lab-dash-title">
+            Waiting now
           </h2>
-          <ModuleGrid waiting={waiting} isLab={isLab} />
+          <WaitingTiles waiting={waiting} />
         </section>
 
         {isLab && (
@@ -175,53 +200,51 @@ export function LabDashboardPage() {
               <p className="muted">Loading…</p>
             ) : (
               <>
-                <div className="kpi-grid">
-                  <KpiCard icon={UserPlus} label="Registered" value={d.registered.orders} sub={`${d.registered.patients} patient${d.registered.patients === 1 ? '' : 's'} · ${d.registered.walkIn} walk-in`} />
-                  <KpiCard icon={TestTube} label="Tests" value={d.registered.tests} sub="On the orders registered" />
-                  <KpiCard tone="stable" icon={BadgeCheck} label="Reported" value={d.reported} sub="Reports finished" />
-                  <KpiCard icon={Banknote} label="Charged" value={rupees(d.chargedPaise)} textValue sub="Lab tests on the bills" />
-                </div>
-                <div className="lab-dash-cols">
-                  <div className="card lab-dash-card">
-                    <h3>Tests and charges by department</h3>
-                    <DepartmentBars rows={d.byDepartment} />
+                <dl className="ldb-numbers">
+                  <div>
+                    <dt>Patients</dt>
+                    <dd className="tabular">{d.registered.patients}</dd>
                   </div>
-                  <div className="card lab-dash-card">
-                    <h3>Waiting now</h3>
-                    <dl className="lab-dash-wait">
-                      <div>
-                        <dt>Samples to take</dt>
-                        <dd className="tabular">{d.waiting.collect}</dd>
-                      </div>
-                      <div>
-                        <dt>Samples to receive</dt>
-                        <dd className="tabular">{d.waiting.receive}</dd>
-                      </div>
-                      <div>
-                        <dt>Results to enter</dt>
-                        <dd className="tabular">{d.waiting.report}</dd>
-                      </div>
-                      <div>
-                        <dt>Results to check</dt>
-                        <dd className="tabular">{d.waiting.verify}</dd>
-                      </div>
-                      <div>
-                        <dt>At outside labs</dt>
-                        <dd className="tabular">{d.waiting.outside}</dd>
-                      </div>
-                      <div className={d.late ? 'is-late' : ''}>
-                        <dt>
-                          <Timer aria-hidden="true" /> Past their due time
-                        </dt>
-                        <dd className="tabular">{d.late}</dd>
-                      </div>
-                    </dl>
+                  <div>
+                    <dt>Tests</dt>
+                    <dd className="tabular">{d.registered.tests}</dd>
                   </div>
-                </div>
+                  <div>
+                    <dt>Reports finished</dt>
+                    <dd className="tabular">{d.reported}</dd>
+                  </div>
+                  <div>
+                    <dt>Charged</dt>
+                    <dd className="tabular">{rupees(d.chargedPaise)}</dd>
+                  </div>
+                </dl>
+                <details className="ldb-more">
+                  <summary>By department</summary>
+                  <DepartmentBars rows={d.byDepartment} />
+                </details>
               </>
             )}
           </section>
         )}
+
+        <div className="ldb-links">
+          {LINKS.map((g) => (
+            <nav key={g.key} aria-labelledby={`ldb-${g.key}`} className="card ldb-group">
+              <h2 id={`ldb-${g.key}`}>{g.title}</h2>
+              <ul>
+                {g.items
+                  .filter((i) => isLab || !i.labOnly)
+                  .map((i) => (
+                    <li key={i.to}>
+                      <Link to={i.to}>
+                        <i.icon aria-hidden="true" /> {i.label}
+                      </Link>
+                    </li>
+                  ))}
+              </ul>
+            </nav>
+          ))}
+        </div>
       </div>
     </>
   );

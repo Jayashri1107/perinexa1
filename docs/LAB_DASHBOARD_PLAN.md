@@ -6,6 +6,10 @@ product pages), in Perinexa's own look (`docs/BRAND.md`). Most of the workflow a
 
 ## What was built
 
+**12 Nov 2026 – made simpler** (the developer found the sixteen module buttons too much): what waits now comes first as
+six big counts, then the period's numbers (departments folded away), then the other screens as plain links under Daily
+work and Setup. The list below is the first layout; see `docs/PROGRESS.md` for the current one.
+
 1. **Lab dashboard** (`/lab/dashboard`; the Lab item in the menu opens it for lab staff):
    - every lab module as a button – Registration, Sample collection, Sample receiving, Result entry, Authorisation,
      Reports, Home collection, Outside labs, Find, Lab register, Quality control, Stock, Test master, Referrers, Cash,
