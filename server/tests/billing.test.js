@@ -224,7 +224,6 @@ describe('bills and payments at the desk', () => {
     // A test taken off after payment: money to give back
     const full = await bill(b.id);
     const scanLine = full.lines.find((l) => l.name === 'Ultrasound – obstetric');
-    expect((await desk.post(`/api/billing/bills/${b.id}/lines/${scanLine.id}/remove`).send({ reason: '' })).status).toBe(400);
     expect((await desk.post(`/api/billing/bills/${b.id}/lines/${scanLine.id}/remove`).send({ reason: 'Scan not done' })).body.bill).toMatchObject({ status: 'refund_due' });
     const due = await bill(b.id);
     expect((await pay(b.id, { kind: 'refund', mode: 'cash', amountPaise: -due.balance + 1 })).status).toBe(400);
@@ -278,6 +277,22 @@ describe('bills and payments at the desk', () => {
     // The details cannot be taken off while an amount is approved
     expect((await desk.put(`/api/billing/bills/${b.id}/insurance`).send({})).status).toBe(409);
     expect((await AuditLog.findOne({ tenantId: hospital._id, action: 'INSURANCE_CLAIM_SET' }).lean()).details).toMatchObject({ number: b.number, fromPaise: 0, approvedPaise: 3000000 });
+  });
+
+  it('a service comes off with one click: no reason asked; who and when kept on the line and in the audit log (11 Nov 2026)', async () => {
+    const list = await prices({ consult_new: 50000, Dressing: 20000 });
+    const p = await register('One Click Mother');
+    await startVisit(p);
+    const [b] = await billsOf(p);
+    const desk = await as('reception');
+    const dressing = list.find((i) => i.name === 'Dressing');
+    const added = (await desk.post(`/api/billing/bills/${b.id}/lines`).send({ priceItemId: dressing.id })).body.bill.lines.at(-1);
+    const out = await desk.post(`/api/billing/bills/${b.id}/lines/${added.id}/remove`).send({});
+    expect(out.status).toBe(200);
+    expect(out.body.bill).toMatchObject({ subtotal: 50000 });
+    expect(out.body.bill.lines.find((l) => l.id === added.id).removed).toMatchObject({ byName: 'Sample reception', reason: '' });
+    expect((await AuditLog.findOne({ tenantId: hospital._id, action: 'BILL_ITEM_REMOVED' }).lean()).details).toMatchObject({ amountPaise: 20000 });
+    expect((await desk.post(`/api/billing/bills/${b.id}/lines/${added.id}/remove`).send({})).status).toBe(409); // already off
   });
 
   it('an unpaid bill can be cancelled; the next charge that day opens a new bill', async () => {

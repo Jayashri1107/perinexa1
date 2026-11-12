@@ -453,7 +453,7 @@ const any = (roles, list) => roles.some((r) => list.includes(r));
 // registers the women other doctors send. Same rule as server/src/utils/patientAccess.js (creationAccess.fullIdentity).
 const BABY_REGISTER_ROLES = ['doctor', 'rmo', 'receptionist'];
 /** The "New patient" menu (type of care) for this person: without Newborn for the referral desk. */
-export const newPatientLinks = (roles = []) => (any(roles, BABY_REGISTER_ROLES) ? NEW_PATIENT_LINKS : NEW_PATIENT_LINKS.filter((l) => l.to !== '/patients/new/newborn'));
+export const newPatientLinks = (roles = []) => (any(roles, BABY_REGISTER_ROLES) ? NEW_PATIENT_LINKS : NEW_PATIENT_LINKS.filter((l) => l.type !== 'newborn')); // every baby card, the vaccination one too
 export const canSeePatients = (roles = []) => any(roles, PATIENT_ROLES);
 /**
  * The hospital's patient list and search: everyone who sees patients, except a pharmacist with no other patient

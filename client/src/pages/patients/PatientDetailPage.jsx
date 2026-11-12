@@ -1035,7 +1035,7 @@ export function PatientOverviewTab() {
               {p.newborn?.birthAt && <Tip id="keepsake-2026-10" />}
               <Details
                 rows={[
-                  ['Born', p.newborn?.birthAt ? formatDateTime(p.newborn.birthAt) : ''],
+                  ['Born', p.newborn?.birthAt ? (p.newborn.birthTimeKnown === false ? `${formatDate(p.newborn.birthAt)} (time not known)` : formatDateTime(p.newborn.birthAt)) : ''],
                   ['Birth weight', p.newborn?.birthWeightGrams ? `${p.newborn.birthWeightGrams} g` : ''],
                   ['Sex', NEWBORN_SEX_LABELS[p.newborn?.sex] ?? ''],
                   ...(has('medical') ? [['Blood group', p.medical?.bloodGroup]] : []),
@@ -1128,7 +1128,7 @@ export function PatientOverviewTab() {
                       <span className="name-cell-text">
                         <Link to={`/patients/${baby.id}`}>{baby.fullName}</Link>
                         <span className="muted tabular">
-                          {baby.mrn} · born {formatDateTime(baby.birthAt)}
+                          {baby.mrn} · born {baby.birthTimeKnown === false ? formatDate(baby.birthAt) : formatDateTime(baby.birthAt)}
                           {baby.closed ? ' · Record closed' : ''}
                         </span>
                       </span>

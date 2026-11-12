@@ -30,7 +30,12 @@ export const CARE_TYPE_HINTS = {
 };
 export const CARE_TYPES = Object.keys(CARE_TYPE_LABELS);
 // The "New patient" menu: registering starts by choosing the type of care.
-export const NEW_PATIENT_LINKS = CARE_TYPES.map((t) => ({ type: t, label: CARE_TYPE_LABELS[t], to: `/patients/new/${t}` }));
+export const NEW_PATIENT_LINKS = CARE_TYPES.flatMap((t) => [
+  { type: t, label: CARE_TYPE_LABELS[t], to: `/patients/new/${t}` },
+  // An older baby for vaccination or follow-up (11 Nov 2026): still a baby's record (the vaccination dates are worked
+  // out from the date of birth), opened with "time of birth not known" and the Pediatric department chosen
+  ...(t === 'newborn' ? [{ type: t, followUp: true, label: 'Baby – vaccination or follow-up', hint: 'Older baby: date of birth only, Pediatric', to: `/patients/new/${t}?for=followup` }] : []),
+]);
 
 export const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
