@@ -3,7 +3,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ExpenseDocHead, ExpenseSheet, ExpenseVoucher, expenseHead } from './ExpensePrint.jsx';
-import { ExpensesList } from './ExpenseEntry.jsx';
+import { ExpensesTable, payLine } from './ExpensesTable.jsx';
 
 const text = (html) => html.replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 const exp = (id, more = {}) => ({ id, date: '2026-11-11', time: '08:30', head: 'Doctor charges', paidTo: 'Sample Doctor A', voucherNo: '01', mode: 'cash', amountPaise: 150000, description: 'Evening locum charges', byName: 'Sample Reception', cancelled: null, ...more });
@@ -27,15 +27,32 @@ describe('the daily expenses sheet', () => {
   });
 });
 
-describe('ticking expenses to print', () => {
-  it('shows a tick box on each expense not cancelled, and a ticked one as ticked', () => {
-    const html = renderToStaticMarkup(<ExpensesList expenses={[exp('1'), exp('2', { cancelled: { byName: 'A', reason: 'twice' } })]} selected={['1']} onSelect={() => {}} showDate />);
+describe('the Daily Expenses table', () => {
+  it('a tick box on each expense not cancelled, a ticked one shown as ticked', () => {
+    const html = renderToStaticMarkup(<ExpensesTable expenses={[exp('1'), exp('2', { cancelled: { byName: 'Sample Admin', reason: 'twice' } })]} selected={['1']} onSelect={() => {}} onCancel={() => {}} />);
     expect(html.match(/type="checkbox"/g)).toHaveLength(2); // tick all + the one not cancelled
     expect(html).toContain('Tick to print: Sample Doctor A');
-    expect(html).toMatch(/exp-picked/);
+    expect(html).toMatch(/exp-row-picked/);
   });
-  it('has no tick boxes where the list is not for printing (the daily summary)', () => {
-    expect(renderToStaticMarkup(<ExpensesList expenses={[exp('1')]} />)).not.toContain('checkbox');
+  it('each cell a main line and a small line: voucher under the name, payment under the head, who entered it under the reason', () => {
+    const t = text(renderToStaticMarkup(<ExpensesTable expenses={[exp('1', { mode: 'cheque', chequeNo: '004512', bankName: 'HDFC Bank' })]} onSelect={() => {}} onCancel={() => {}} />));
+    for (const part of ['08:30 11 Nov', 'Sample Doctor A Voucher 01', 'Doctor charges Cheque 004512 · HDFC Bank', 'Evening locum charges Entered by Sample Reception', '₹1,500', 'Total ₹1,500']) expect(t).toContain(part);
+  });
+  it('a cancelled expense: the Cancelled badge, who cancelled it and why, no cancel button, left out of the total', () => {
+    const html = renderToStaticMarkup(<ExpensesTable expenses={[exp('1'), exp('2', { amountPaise: 99900, cancelled: { byName: 'Sample Admin', reason: 'entered twice' } })]} onSelect={() => {}} onCancel={() => {}} />);
+    const t = text(html);
+    expect(t).toContain('Sample Doctor A Cancelled');
+    expect(t).toContain('Cancelled by Sample Admin: entered twice');
+    expect(t).toContain('Total ₹1,500');
+    expect(html.match(/Cancel the expense/g)).toHaveLength(1);
+  });
+  it('says so when there is nothing in the period', () => {
+    expect(text(renderToStaticMarkup(<ExpensesTable expenses={[]} onSelect={() => {}} />))).toContain('No expenses entered in this period.');
+  });
+  it('how it was paid, short', () => {
+    expect(payLine({ mode: 'cash' })).toBe('Cash');
+    expect(payLine({ mode: 'upi', walletName: 'PhonePe' })).toBe('UPI / wallet · PhonePe');
+    expect(payLine({ mode: 'bank', bankName: '' })).toBe('Bank transfer');
   });
 });
 

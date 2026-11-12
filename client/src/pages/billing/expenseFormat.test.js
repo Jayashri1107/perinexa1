@@ -1,6 +1,6 @@
 // Daily expenses: the form's checks and what is sent (fake sample data).
 import { describe, expect, it } from 'vitest';
-import { BANKS, OTHER_BANK, blankExpense, expenseFor, expensePayload, expenseProblems, expensesTotal, hospitalNow, paidHow, expenseFilter, filterExpenses, isFiltering, expenseSheet } from './expenseFormat.js';
+import { BANKS, OTHER_BANK, blankExpense, expenseFor, expensePayload, expenseProblems, expensesTotal, hospitalNow, paidHow, expenseFilter, filterExpenses, isFiltering, expenseSheet, quickPeriods, expenseFigures } from './expenseFormat.js';
 
 const NOW = new Date('2026-10-28T03:53:00Z'); // 09:23 in the hospital
 const filled = (more = {}) => ({ ...blankExpense(NOW), headId: 'h1', paidTo: 'Sample Driver', amount: '1,500', ...more });
@@ -103,5 +103,19 @@ describe('the printed expenses sheet', () => {
   });
   it('an empty list prints no groups', () => {
     expect(expenseSheet([])).toEqual({ groups: [], totalPaise: 0 });
+  });
+});
+
+describe('the Daily Expenses page: quick periods and figures', () => {
+  it('today, yesterday, this week from Monday and this month', () => {
+    const p = Object.fromEntries(quickPeriods('2026-11-12').map((q) => [q.key, [q.from, q.to]])); // a Thursday
+    expect(p).toEqual({ today: ['2026-11-12', '2026-11-12'], yesterday: ['2026-11-11', '2026-11-11'], week: ['2026-11-09', '2026-11-12'], month: ['2026-11-01', '2026-11-12'] });
+    expect(quickPeriods('2026-11-01').find((q) => q.key === 'yesterday').from).toBe('2026-10-31');
+    expect(quickPeriods('2026-11-09').find((q) => q.key === 'week').from).toBe('2026-11-09'); // a Monday
+  });
+  it('the total, how many, cash and the rest – without the cancelled', () => {
+    const e = (mode, amountPaise, cancelled = null) => ({ mode, amountPaise, cancelled });
+    expect(expenseFigures([e('cash', 150000), e('upi', 22000), e('cash', 18000, { reason: 'x' })])).toEqual({ totalPaise: 172000, count: 2, cashPaise: 150000, otherPaise: 22000, cancelled: 1 });
+    expect(expenseFigures([])).toEqual({ totalPaise: 0, count: 0, cashPaise: 0, otherPaise: 0, cancelled: 0 });
   });
 });
