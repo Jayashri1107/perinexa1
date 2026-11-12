@@ -497,6 +497,8 @@ export function patientMenu(roles = []) {
   ];
   const ipd = [
     ...(any(roles, BED_ROLES) ? [{ label: 'Admitted patients', to: '/patients?dept=ipd', match: (p, q) => onList(p) && q.get('dept') === 'ipd' }] : []),
+    // The lab (12 Nov 2026): its own list of admitted patients – ward, bed, name, number and her lab orders only
+    ...(roles.includes('lab') && !any(roles, BED_ROLES) ? [{ label: 'Admitted patients', to: '/lab/inpatients', match: (p) => p === '/lab/inpatients' }] : []),
     // Like the HIMS's IPD menu (owner, 9 Nov 2026): IPD advance and services of those in hospital, and every discharge
     // with its bill – reception, billing and the admin
     ...(any(roles, BILLING_MODULE_ROLES)

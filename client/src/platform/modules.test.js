@@ -133,6 +133,10 @@ describe('the Patients menu', () => {
     const main = new Set(hospitalModules(['receptionist']).filter((m) => m.key !== 'patients').map((m) => m.to.split('?')[0]));
     for (const item of patientMenu(['receptionist']).flatMap((g) => g.items)) expect(main.has(item.to.split('?')[0]), item.label).toBe(false);
   });
+  it("gives the lab its own admitted list under IPD – the lab's page, not the ward's list (12 Nov 2026)", () => {
+    expect(labels(['lab'])).toEqual({ OPD: ['OPD patients'], IPD: ['Admitted patients'] });
+    expect(patientMenu(['lab']).find((g) => g.key === 'ipd').items[0].to).toBe('/lab/inpatients');
+  });
   it('gives the billing department OPD registration (registered patients) and the IPD bill desk – no admitted list (9 Nov 2026)', () => {
     expect(labels(['billing'])).toEqual({ OPD: ['OPD registration', 'OPD patients'], IPD: ['IPD bills', 'Discharge'] });
   });
