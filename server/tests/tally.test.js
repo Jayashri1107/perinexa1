@@ -7,7 +7,7 @@ import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
 import { Admission } from '../src/models/Admission.js';
 import { AuditLog } from '../src/models/AuditLog.js';
-import { billVector, classifyBillDelta, counterPaymentVector, depositsHeld, depositsVector, ledgerFor, nextKey, parentGroupFor } from '../src/tally/events.js';
+import { billVector, classifyBillDelta, counterPaymentVector, deriveEvents, depositsHeld, depositsVector, ledgerFor, nextKey, parentGroupFor, purchaseVector, supplierPaymentVector } from '../src/tally/events.js';
 import { gstinCheckChar } from '../src/pharmacy/gstin.js';
 import { withDefaults } from '../src/tally/tallyRules.js';
 import { mastersXml, remoteIdFor, voucherXml, vouchersXml, xmlText } from '../src/tally/xml.js';
@@ -125,6 +125,42 @@ describe('the entries worked out from the documents (pure)', () => {
     expect([...counterPaymentVector({ patientId: null, customer: { name: 'x' } }, { kind: 'refund', mode: 'cash', amountPaise: 224 })]).toEqual([
       ['counter', 224],
       ['mode:cash', -224],
+    ]);
+  });
+
+  it('PH3 and PH11: a purchase is owed to its supplier with input GST, the bill discount and charges; a payment clears it; balanced', () => {
+    const grn = { taxType: 'cgst_sgst', schemeDiscPaise: 1000, discPaise: 500, crnAdjPaise: 0, otherChargesPaise: 0, surchargePaise: 0, freightPaise: 2000, cgstPaise: 1250, sgstPaise: 1250, igstPaise: 0, roundingPaise: -10, netPaise: 52990 };
+    const pu = { number: 'PU-000001', status: 'active', grn, lines: [{ gstRate: 5, pack: { taxablePaise: 30000 } }, { gstRate: 12, pack: { taxablePaise: 20000 } }] };
+    const v = purchaseVector(pu, 'supplier:s1');
+    expect(Object.fromEntries(v)).toEqual({ 'ppurch:5': 30000, 'ppurch:12': 20000, icgst: 1250, isgst: 1250, pdiscount: -1500, pcharges: 2000, roundoff: -10, 'supplier:s1': -52990 });
+    expect([...v.values()].reduce((a, b) => a + b, 0)).toBe(0);
+    expect(purchaseVector({ ...pu, status: 'cancelled' }, 'supplier:s1').size).toBe(0);
+    expect(purchaseVector({ ...pu, grn: null }, 'supplier:s1')).toBeNull(); // entered before the GRN: not sent
+    expect(purchaseVector({ ...pu, lines: [{ gstRate: 5 }] }, 'supplier:s1')).toBeNull();
+    expect(Object.fromEntries(supplierPaymentVector({ mode: 'bank', amountPaise: 50990 }, 'supplier:s1'))).toEqual({ 'supplier:s1': 50990, 'mode:neft': -50990 });
+    expect(supplierPaymentVector({ mode: 'cash', amountPaise: 100, cancelled: { at: new Date() } }, 'supplier:s1').size).toBe(0);
+    const settings = withDefaults({});
+    expect(ledgerFor(settings, 'ppurch:5')).toBe('Pharmacy purchases 5%');
+    expect(ledgerFor(settings, 'pdiscount')).toBe('Discount received');
+    expect(parentGroupFor('ppurch:12')).toBe('Purchase Accounts');
+    // The period's entries: a Purchase (supplier named, no medicine name) and a Payment; later both cancelled → reversed
+    const day = (iso) => new Date(`${iso}T00:00:00Z`);
+    const dayOf = (at) => (at ? day(new Date(at).toISOString().slice(0, 10)) : null);
+    const purchase = { ...pu, _id: 'p1', supplierId: 's1', supplierName: 'Sample Distributors', invoiceNo: 'SUP-9', created: { at: new Date('2026-09-10T06:00:00Z') } };
+    const payment = { _id: 'q1', number: 'SP-000001', supplierId: 's1', supplierName: 'Sample Distributors', on: new Date('2026-09-12T00:00:00Z'), mode: 'cheque', reference: 'CHQ 11', amountPaise: 50990 };
+    const base = { settings, booksFrom: day('2026-09-01'), from: day('2026-09-01'), to: day('2026-09-30'), bills: [], stays: new Map(), invoices: [], supplierReturns: [], dayOf };
+    const first = deriveEvents({ ...base, purchases: [purchase], supplierPayments: [payment], existing: [] });
+    expect(first.events.map((e) => [e.key, e.kind])).toEqual([
+      ['PU-000001', 'purchase'],
+      ['SP-000001', 'payment'],
+    ]);
+    expect(first.events[0].lines[0]).toMatchObject({ ledger: 'Sample Distributors', side: 'cr', paise: 52990 });
+    expect(JSON.stringify(first.events)).not.toMatch(/Tab|medicine/i);
+    const kept = first.events.map((e) => ({ key: e.key, kind: e.kind, status: 'imported', source: e.source, lines: e.lines }));
+    const later2 = deriveEvents({ ...base, from: day('2026-10-01'), to: day('2026-10-31'), purchases: [{ ...purchase, status: 'cancelled', cancelled: { at: new Date('2026-10-05T06:00:00Z') } }], supplierPayments: [{ ...payment, cancelled: { at: new Date('2026-10-05T06:00:00Z') } }], existing: kept });
+    expect(later2.events.map((e) => [e.key, e.kind])).toEqual([
+      ['PU-000001/J1', 'journal'],
+      ['SP-000001/J1', 'journal'],
     ]);
   });
 
@@ -256,9 +292,9 @@ describe('batches, files, corrections and the trail', () => {
     // The next day: what the batch up to yesterday holds
     later('2026-09-29T06:00:00Z');
     const pv = ok(await tally('get', '/preview?to=2026-09-28'));
-    expect(pv).toMatchObject({ from: '2026-09-01', to: '2026-09-28', entries: 5, resend: 0, byKind: { sales: 3, receipt: 2 }, amountPaise: 75000 + 50000 + 2240 + 448 + 448, problems: { blockers: [], warnings: [] } });
+    expect(pv).toMatchObject({ from: '2026-09-01', to: '2026-09-28', entries: 5, resend: 0, byKind: { sales: 3, receipt: 2 }, amountPaise: 75000 + 50000 + 2240 + 448 + 448, problems: { blockers: [], warnings: [expect.stringMatching(/1 purchase was entered without the bill's tax .* PU-000001/)] } });
     expect(pv.newLedgers.map((l) => l.name).sort()).toEqual(['Cash', 'Consultation income', 'Lab test income', 'Patients', 'Pharmacy counter customers', 'Pharmacy sales 5%']);
-    expect(pv.newVoucherTypes).toEqual(['Perinexa Sales', 'Perinexa Receipt', 'Perinexa Payment', 'Perinexa Credit Note', 'Perinexa Debit Note', 'Perinexa Journal']);
+    expect(pv.newVoucherTypes).toEqual(['Perinexa Sales', 'Perinexa Receipt', 'Perinexa Payment', 'Perinexa Credit Note', 'Perinexa Debit Note', 'Perinexa Journal', 'Perinexa Purchase']);
     expect(pv.gstLedgers).toEqual(['Output CGST', 'Output SGST']);
 
     const made = ok(await tally('post', '/batches', { to: '2026-09-28' }), 201).batch;

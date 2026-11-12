@@ -922,7 +922,7 @@ export function GrnSummary({ sums, taxType }) {
 
 // ---------- Medicines ----------
 
-const emptyMedicine = { name: '', generic: '', form: 'tablet', strength: '', unit: 'tablet', hsn: '3004', gstRate: 5, schedule: '', reorderLevel: 0, manufacturer: '', packSize: 1, packName: '', looseSale: true, barcodes: [] };
+const emptyMedicine = { name: '', generic: '', kind: 'medicine', form: 'tablet', strength: '', unit: 'tablet', hsn: '3004', gstRate: 5, schedule: '', reorderLevel: 0, manufacturer: '', packSize: 1, packName: '', looseSale: true, barcodes: [] };
 const MAX_BARCODES = 10;
 
 /**
@@ -1005,6 +1005,7 @@ function MedicineDialog({ medicine, lists, onClose, onDone }) {
     packSize: Math.max(1, Math.min(1000, Number.parseInt(m.packSize, 10) || 1)),
     packName: (m.packName ?? '').trim(),
     looseSale: m.looseSale !== false,
+    kind: m.kind ?? 'medicine',
     preferredSupplierId: m.preferredSupplierId || null,
     barcodes,
   };
@@ -1020,6 +1021,12 @@ function MedicineDialog({ medicine, lists, onClose, onDone }) {
         </Field>
         <Field label="Strength" id="med-strength">
           <input id="med-strength" value={m.strength} maxLength={60} onChange={f('strength')} />
+        </Field>
+        <Field label="Medicine or item" id="med-kind" error={s.fields.kind} hint="An item (gloves, cannula, suture …) has no schedule, is not in the registers and is not offered to doctors as in stock.">
+          <select id="med-kind" value={m.kind ?? 'medicine'} onChange={(e) => setM({ ...m, kind: e.target.value, ...(e.target.value === 'consumable' ? { schedule: '' } : {}) })}>
+            <option value="medicine">Medicine</option>
+            <option value="consumable">Consumable item</option>
+          </select>
         </Field>
         <Field label="Form" id="med-form">
           <select id="med-form" value={m.form} onChange={f('form')}>
@@ -1046,8 +1053,8 @@ function MedicineDialog({ medicine, lists, onClose, onDone }) {
             ))}
           </select>
         </Field>
-        <Field label="Schedule" id="med-schedule">
-          <select id="med-schedule" value={m.schedule} onChange={f('schedule')}>
+        <Field label="Schedule" id="med-schedule" error={s.fields.schedule}>
+          <select id="med-schedule" value={m.schedule} onChange={f('schedule')} disabled={m.kind === 'consumable'}>
             {Object.entries(SCHEDULE_LABELS).map(([k, v]) => (
               <option key={k} value={k}>
                 {v}
@@ -1125,11 +1132,19 @@ export function MedicinesPage() {
         title="Medicines"
         crumb="Medicines"
         actions={
-          canEdit && (
-            <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>
-              <Plus aria-hidden="true" /> Add a medicine
-            </button>
-          )
+          <>
+            <Link className="btn btn-secondary" to="/pharmacy/kits">
+              Kits
+            </Link>
+            <Link className="btn btn-secondary" to="/pharmacy/places">
+              Stock places
+            </Link>
+            {canEdit && (
+              <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>
+                <Plus aria-hidden="true" /> Add a medicine
+              </button>
+            )}
+          </>
         }
       />
       <div className="pf-content bill-page">

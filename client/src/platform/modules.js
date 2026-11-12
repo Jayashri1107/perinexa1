@@ -295,9 +295,10 @@ const HOSPITAL_PHARMACY = {
 const PHARMACIST_MENU = [
   // New bill and Sold as one Sales bill page with two tabs (9 Nov 2026); a bill opened from the list stays under it
   { key: 'pharmacy', label: 'Sales bill', icon: ReceiptText, to: '/pharmacy', end: true, activeFor: ['/pharmacy/issue', '/pharmacy/invoices'] },
+  { key: 'pharmacy-ward-requests', label: 'Ward requests', icon: BedDouble, to: '/pharmacy/ward-requests' }, // PH12
   { key: 'pharmacy-suppliers', label: 'Suppliers', icon: Truck, to: '/pharmacy/suppliers' },
   { key: 'pharmacy-purchases', label: 'Purchase bills', icon: PackagePlus, to: '/pharmacy/purchases', activeFor: ['/pharmacy/orders', '/pharmacy/supplier-returns'] },
-  { key: 'pharmacy-stock', label: 'Stock', icon: Boxes, to: '/pharmacy/stock' },
+  { key: 'pharmacy-stock', label: 'Stock', icon: Boxes, to: '/pharmacy/stock', activeFor: ['/pharmacy/places'] },
   { key: 'pharmacy-medicines', label: 'Medicines', icon: Pill, to: '/pharmacy/medicines' },
   { key: 'pharmacy-reports', label: 'Reports', icon: ChartColumn, to: '/pharmacy/reports' },
   { key: 'pharmacy-settings', label: 'Pharmacy settings', icon: Settings, to: '/pharmacy/settings' },
@@ -520,7 +521,7 @@ export const HOSPITAL_INCIDENTS = { key: 'incidents', label: 'Incidents', icon: 
 // The theatre list and the WHO Surgical Safety Checklist (Group B item 16): doctors, RMOs and nurses
 export const THEATRE_ROLES = ['doctor', 'rmo', 'nurse'];
 export const HOSPITAL_THEATRE = { key: 'theatre', label: 'Theatre', icon: Scissors, to: '/theatre', tabs: [{ label: 'Theatre list', to: '/theatre', end: false }] };
-export const HOSPITAL_FORMULARY = { key: 'formulary', label: 'Formulary', icon: Pill, to: '/formulary', tabs: [{ label: 'Formulary', to: '/formulary', end: true }, { label: 'Medicine marks', to: '/formulary/marks', end: true }] };
+export const HOSPITAL_FORMULARY = { key: 'formulary', label: 'Formulary', icon: Pill, to: '/formulary', tabs: [{ label: 'Formulary', to: '/formulary', end: true }, { label: 'Medicine marks', to: '/formulary/marks', end: true }, { label: 'Kits', to: '/formulary/kits', end: true }, { label: 'Stock places', to: '/formulary/places', end: true }] };
 // Clinical privileges (Group C, PX-X-07): kept by the hospital admin and the quality lead; doctors read them (RMOs
 // and nurses can open /privileges, and see the check on each theatre case)
 export const PRIVILEGE_MENU_ROLES = ['admin', 'quality', 'doctor'];

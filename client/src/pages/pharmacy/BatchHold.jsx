@@ -94,7 +94,7 @@ export function RecipientsPrint({ medicine, batch, onClose }) {
             {d.medicine.manufacturer ? `Manufacturer: ${d.medicine.manufacturer}. ` : ''}
             {d.hold ? `On hold since ${formatDateTime(d.hold.at)} (${HOLD_WORDS[d.hold.reason] ?? d.hold.reason}${d.hold.note ? `: ${d.hold.note}` : ''}). ` : ''}
             Still in stock: {d.inStock} {d.medicine.unit}s.
-          </p>
+          {d.vaccinationsRecorded ? ` Also given as a vaccination ${d.vaccinationsRecorded} time${d.vaccinationsRecorded === 1 ? '' : 's'} (recorded on care plans – the doctors see who).` : ''}</p>
           {!d.recipients.length ? (
             <p>Nothing from this batch was sold or issued (or everything came back).</p>
           ) : (

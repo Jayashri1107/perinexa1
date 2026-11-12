@@ -13,7 +13,7 @@ import { addDays, dateWords, hospitalDayStart, hospitalToday, isoDay, toHospital
 import { Admission } from '../models/Admission.js';
 import { Bill } from '../models/Bill.js';
 import { nextNumber } from '../models/Counter.js';
-import { PharmacyInvoice, Supplier, SupplierReturn } from '../models/Pharmacy.js';
+import { PharmacyInvoice, Purchase, Supplier, SupplierPayment, SupplierReturn } from '../models/Pharmacy.js';
 import { TallyBatch } from '../models/TallyBatch.js';
 import { TallyVoucher } from '../models/TallyVoucher.js';
 import { Tenant } from '../models/Tenant.js';
@@ -103,9 +103,12 @@ export async function collect(req, to) {
   const earlierBills = await Bill.find({ tenantId, on: { $lt: booksFrom }, 'payments.at': { $gte: hospitalDayStart(from), $lt: toEnd } }, { number: 1 }).lean();
   const invoices = await PharmacyInvoice.find({ tenantId, $or: [{ 'created.at': { $gte: fromStart } }, { 'returns.at': { $gte: fromStart } }, { 'payments.at': { $gte: fromStart } }] }).lean();
   const returns = await SupplierReturn.find({ tenantId, 'created.at': { $gte: fromStart } }).lean();
-  const supplierIds = [...new Set(returns.map((r) => String(r.supplierId)))];
+  // PH3 and PH11: purchases (a cancelled one too – a purchase already sent is reversed) and payments to suppliers
+  const purchases = await Purchase.find({ tenantId, $or: [{ 'created.at': { $gte: fromStart } }, { 'cancelled.at': { $gte: fromStart } }] }).lean();
+  const supplierPayments = await SupplierPayment.find({ tenantId, $or: [{ on: { $gte: fromStart } }, { 'cancelled.at': { $gte: fromStart } }] }).lean();
+  const supplierIds = [...new Set([...returns, ...purchases, ...supplierPayments].map((r) => String(r.supplierId)))];
   const suppliers = new Map((supplierIds.length ? await Supplier.find({ tenantId, _id: { $in: supplierIds } }, { name: 1, gstin: 1 }).lean() : []).map((s) => [String(s._id), s]));
-  for (const r of returns) {
+  for (const r of [...returns, ...purchases, ...supplierPayments]) {
     const s = suppliers.get(String(r.supplierId));
     r.supplierName = s?.name ?? 'Supplier';
     r.supplierGstin = s?.gstin ?? '';
@@ -113,7 +116,7 @@ export async function collect(req, to) {
   const existing = await TallyVoucher.find({ tenantId }, { key: 1, kind: 1, status: 1, source: 1, lines: 1 }).lean();
   const resend = await TallyVoucher.find({ tenantId, status: 'exported', batchId: null }).lean();
   const dayOf = (instant) => (instant == null || Number.isNaN(new Date(instant).getTime()) ? null : toHospitalDate(instant));
-  const { events, warnings, missing, parties } = deriveEvents({ settings, booksFrom, from, to, bills, stays, earlierBills, invoices, supplierReturns: returns, existing, dayOf });
+  const { events, warnings, missing, parties } = deriveEvents({ settings, booksFrom, from, to, bills, stays, earlierBills, invoices, supplierReturns: returns, purchases, supplierPayments, existing, dayOf });
   for (const role of missing) blockers.push(`No account name for “${roleWords(role)}” (Accounts → Account names).`);
   if (events.length + resend.length > MAX_BATCH_VOUCHERS) blockers.push(`${events.length + resend.length} entries is too many for one file: choose an earlier day (at most ${MAX_BATCH_VOUCHERS}).`);
   return { ...base, blockers, events, resend, warnings, parties };

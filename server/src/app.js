@@ -36,6 +36,8 @@ import { billingRouter } from './routes/billing.js';
 import { pharmacyRouter } from './routes/pharmacy.js';
 import { pharmacyStockRouter } from './routes/pharmacyStock.js';
 import { medicineMarksRouter } from './routes/medicineMarks.js';
+import { pharmacyKitsRouter } from './routes/pharmacyKits.js';
+import { stockPlacesRouter } from './routes/stockPlaces.js';
 import { tallyRouter } from './routes/tally.js';
 import { abdmPublicRouter, abdmRouter } from './routes/abdm.js';
 import { beforePushBody } from './routes/abdmFetch.js';
@@ -291,6 +293,8 @@ export function createApp({
   app.use('/api/pharmacy', ...inTenant, pharmacyRouter);
   // Stock while prescribing (doctors and RMOs): in stock / low / out only (routes/pharmacyStock.js)
   app.use('/api/pharmacy-stock', ...inTenant, pharmacyStockRouter);
+  app.use('/api/stock-places', ...inTenant, stockPlacesRouter); // PH13: stock kept outside the pharmacy
+  app.use('/api/pharmacy-kits', ...inTenant, pharmacyKitsRouter); // PH14: kits (doctors and the admin write, the pharmacist reads)
   app.use('/api/medicine-marks', ...inTenant, medicineMarksRouter); // PH7: high-alert and look-alike marks (doctors and the pharmacist)
   app.use('/api/abdm', ...inTenant, abdmRouter);
   app.use('/api/inpatients', ...inTenant, inpatientsRouter);

@@ -62,7 +62,7 @@ function RegisterTables({ reg }) {
               <td className="num">{r.in || ''}</td>
               <td className="num">{r.out || ''}</td>
               {reg.type !== 'H1' && <td className="num">{r.balance}</td>}
-              <td>{[r.reason, reg.type === 'H1' && ['supplier_return', 'supplier_return_cancelled'].includes(r.kind) && `balance ${r.balance}`, r.witness && `witness: ${r.witness}`, r.byName].filter(Boolean).join(' · ')}</td>
+              <td>{[r.place && `at ${r.place}`, r.otherPlace && (r.kind === 'transfer_out' ? `to ${r.otherPlace}` : r.kind === 'transfer_in' ? `from ${r.otherPlace}` : ''), r.reason, reg.type === 'H1' && ['supplier_return', 'supplier_return_cancelled'].includes(r.kind) && `balance ${r.balance}`, r.witness && `witness: ${r.witness}`, r.byName].filter(Boolean).join(' · ')}</td>
             </tr>
           ))}
           {!p.rows.length && (

@@ -5,6 +5,7 @@ import { api } from '../../api.js';
 import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { expiryLabel } from './pharmacyFormat.js';
 import { PharmacyHeader, money } from './pharmacyUi.jsx';
+import { WitnessFields, emptyWitness } from '../../components/WitnessFields.jsx';
 import { FIELD_LABELS, readStockFile } from './stockFile.js';
 
 // Pharmacy → Stock → Import opening stock (29 Oct 2026): the stock already on the shelves, from the old pharmacy
@@ -16,6 +17,7 @@ const SHOWN = 300; // lines listed without problems; every line with a problem i
 export function OpeningStockPage() {
   const [file, setFile] = useState(null); // { name, lines, columns }
   const [checked, setChecked] = useState(null); // the server's { lines, summary }
+  const [witness, setWitness] = useState(emptyWitness); // narcotic and Schedule X stock: a second person signs in
   const [done, setDone] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -46,7 +48,7 @@ export function OpeningStockPage() {
     setError(null);
     setBusy(true);
     try {
-      const res = await api('/pharmacy/opening-stock', { method: 'POST', body: { lines: file.lines } });
+      const res = await api('/pharmacy/opening-stock', { method: 'POST', body: { lines: file.lines, witness: controlled ? witness : '' } });
       setDone(res.imported);
       setChecked(null);
       setFile(null);
@@ -58,6 +60,8 @@ export function OpeningStockPage() {
   };
 
   const s = checked?.summary;
+  const controlled = checked ? checked.lines.filter((l) => !l.skip && !l.problems.length && ['X', 'narcotic'].includes(l.medicine?.schedule)).length : 0;
+  const witnessOk = !controlled || (witness.email.trim().length >= 3 && witness.password.length >= 1);
   const problemLines = checked ? checked.lines.filter((l) => l.problems.length) : [];
   const goodLines = checked ? checked.lines.filter((l) => !l.problems.length && !l.skip) : [];
   return (
@@ -106,12 +110,15 @@ export function OpeningStockPage() {
                 {s.problems} of {s.lines} lines have problems, listed below with their row in the file. Correct them in the file and choose it again: nothing is saved until every line is right.
               </Alert>
             ) : (
+              <>
+              {controlled > 0 && <WitnessFields id="os-wit" value={witness} onChange={setWitness} what={`${controlled} line${controlled === 1 ? ' is' : 's are'} narcotic or Schedule X stock: the count`} />}
               <div className="row">
-                <button type="button" className="btn btn-primary" disabled={busy || !s.batches} onClick={bringIn}>
+                <button type="button" className="btn btn-primary" disabled={busy || !s.batches || !witnessOk} onClick={bringIn}>
                   <PackagePlus aria-hidden="true" /> Import {s.batches} batches
                 </button>
                 <span className="muted">Check the totals against your old software&rsquo;s stock sheet first.</span>
               </div>
+              </>
             )}
 
             {problemLines.length > 0 && <OpeningLines caption={`Lines with problems (${problemLines.length})`} lines={problemLines} />}

@@ -92,7 +92,7 @@ describe('the left menu by role', () => {
     expect(moduleByKey('referrals').tabs.map((t) => t.to)).toEqual(['/referrals', '/referrals/doctors', '/referrals/review', '/referrals/slip']);
     // The pharmacist (owner, 26 Oct 2026): the pharmacy's sections in the sidebar; New bill and Sold as one Sales bill
     // page with two tabs (9 Nov 2026)
-    expect(menu(['pharmacist'])).toEqual(['Today', 'Sales bill', 'Suppliers', 'Purchase bills', 'Stock', 'Medicines', 'Reports', 'Pharmacy settings', 'Formulary', 'Incidents']);
+    expect(menu(['pharmacist'])).toEqual(['Today', 'Sales bill', 'Ward requests', 'Suppliers', 'Purchase bills', 'Stock', 'Medicines', 'Reports', 'Pharmacy settings', 'Formulary', 'Incidents']);
     expect(menu(['pharmacist', 'receptionist'])).toContain('Patients');
     expect(hospitalModules(['pharmacist']).find((m) => m.label === 'Sales bill').activeFor).toEqual(['/pharmacy/issue', '/pharmacy/invoices']);
     expect(hospitalModules(['admin']).find((m) => m.label === 'Pharmacy').to).toBe('/pharmacy/stock'); // the counter is for pharmacists

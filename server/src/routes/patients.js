@@ -59,6 +59,7 @@ import { patientAiRouter } from './ai.js';
 import { remindersRouter } from './reminders.js';
 import { visitsRouter } from './visits.js';
 import { admissionsRouter } from './admissions.js';
+import { wardRequestsRouter } from './wardRequests.js';
 import { patientLabRouter } from './lab.js';
 import { patientImagingRouter } from './imaging.js';
 import { workDoneRouter } from './workDone.js';
@@ -636,6 +637,7 @@ patientsRouter.use('/:id/fertility-plan', fertilityPlanRouter);
 patientsRouter.use('/:id/consents', patientConsentsRouter);
 patientsRouter.use('/:id/visits', visitsRouter);
 patientsRouter.use('/:id/admissions', admissionsRouter);
+patientsRouter.use('/:id/ward-requests', wardRequestsRouter); // PH12: the ward asks the pharmacy
 patientsRouter.use('/:id/lab-orders', patientLabRouter);
 patientsRouter.use('/:id/imaging', patientImagingRouter); // USG and radiology (Lab version 2)
 patientsRouter.use('/:id/work-done', workDoneRouter);

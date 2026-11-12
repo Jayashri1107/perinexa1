@@ -1199,6 +1199,9 @@ function checkWithPlan(plan, it, intent, today) {
     if (intent.on > today) fields.on = "The date can't be in the future.";
     else if (intent.on < addDays(dayZero(E), -DONE_EARLIEST_DAYS)) fields.on = 'This date is more than a year before this pregnancy – please check it.';
     if (intent.result && !['investigation', 'scan'].includes(it.kind)) fields.result = 'Results are recorded for lab tests and scans only.';
+    // PH8: a vaccine given here is marked done only with the vial's batch (given elsewhere: if she has it)
+    if (it.kind === 'vaccination' && !intent.elsewhere && !intent.vaccine?.batch) fields['vaccine.batch'] = `Write the batch number of the ${it.name} vial given.`;
+    if (intent.vaccine && it.kind !== 'vaccination') fields['vaccine.batch'] = 'A vaccine batch is recorded for vaccinations only.';
   }
   // A new due window for an item a doctor added: the same rules as when it was added (an unchanged window is not
   // checked again, so a name can still be corrected once the window is in the past)
@@ -1252,6 +1255,7 @@ function applyIntent(ctx, plan, it, intent) {
         via: intent.via ?? 'manual', // 'visit' from Feature 8, 'lab' from a reviewed lab result (Version 2)
         visitId: intent.visitId ?? null,
         labOrderId: intent.labOrderId ?? null,
+        vaccine: intent.vaccine ? { batch: intent.vaccine.batch, expiry: intent.vaccine.expiry ?? '', manufacturer: intent.vaccine.manufacturer ?? '', stockBatchId: intent.vaccine.stockBatchId ?? null } : null, // PH8
         ...by,
       };
       it.notNeeded = null;
@@ -1434,9 +1438,9 @@ export function markDoneAtVisit(ctx, patientId, { visitId, on, items }) {
   return changePlan(ctx, patientId, { planLevel: false }, ({ plan, facts }) => {
     const changedIds = new Set();
     const today = hospitalToday(ctx.now);
-    for (const { id, rev } of items) {
+    for (const { id, rev, vaccine = null } of items) {
       const it = findItem(plan, id);
-      const intent = { action: 'done', on, via: 'visit', visitId, rev, elsewhere: false, result: '', note: '' };
+      const intent = { action: 'done', on, via: 'visit', visitId, rev, elsewhere: false, result: '', note: '', vaccine }; // PH8: a vaccination ticked at the visit carries its batch
       if (isIdenticalRepeat(it, intent)) continue;
       checkRev(it, rev);
       checkState(it, intent);

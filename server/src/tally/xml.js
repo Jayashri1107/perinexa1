@@ -42,7 +42,7 @@ export function remoteIdFor(tenantId, key) {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}-${h.slice(32, 40)}`;
 }
 
-const INVOICE_KINDS = new Set(['sales', 'credit_note', 'debit_note']);
+const INVOICE_KINDS = new Set(['sales', 'credit_note', 'debit_note', 'purchase']);
 const el = (name, value) => `<${name}>${xmlText(value)}</${name}>`;
 
 /**

@@ -116,7 +116,7 @@ describe('vaccinations overdue – doctors, RMOs and nurses (the worklist)', () 
       const item = (await plan(p)).items.find((i) => i.key === 'nb_vacc_birth');
       expect((await (await as('rmo')).patch(`/api/patients/${p.id}/care-plan/items/${item.id}`).send({ rev: item.rev, ...body })).status).toBe(200);
     };
-    await act(given, { action: 'done', on: '2026-10-02' });
+    await act(given, { action: 'done', on: '2026-10-02', vaccine: { batch: 'TD-SAMPLE-1' } });
     await act(notNeeded, { action: 'not_needed', reasonCode: 'covered', reason: '' });
     expect((await (await as('rmo')).post(`/api/patients/${closed.id}/care-plan/close`).send({ reason: 'care_elsewhere' })).status).toBe(200);
     const rows = (await worklist('rmo')).body.vaccinationsOverdue;
@@ -228,5 +228,32 @@ describe('babies due – reception (the Today page)', () => {
     expect((await worklist('rmo')).body.vaccinationsOverdue).toHaveLength(1);
     expect((await (await loginAs(outsiders.rmo, { app })).get('/api/worklist')).body.vaccinationsOverdue).toEqual([]);
     expect((await (await loginAs(outsiders.receptionist, { app })).get('/api/today')).body.babiesDue).toEqual([]);
+  });
+});
+
+describe('PH8 – the vaccine batch when a vaccination is marked done', () => {
+  it('given here needs the batch; given elsewhere does not; the batch shows on the item; one done before shows none', async () => {
+    const here = await baby('Baby Batch Here', { phone: '90000 00011' });
+    const away = await baby('Baby Batch Away', { phone: '90000 00012' });
+    on('2026-10-03');
+    const itemOf = async (p) => (await plan(p)).items.find((i) => i.key === 'nb_vacc_birth');
+    const patch = async (p, body) => {
+      const it = await itemOf(p);
+      const agent = await as('rmo');
+      return agent.patch(`/api/patients/${p.id}/care-plan/items/${it.id}`).send({ rev: it.rev, ...body });
+    };
+    const refused = await patch(here, { action: 'done', on: '2026-10-02' });
+    expect(refused.status).toBe(400);
+    expect(refused.body.error.fields['vaccine.batch']).toMatch(/batch number/);
+    expect((await patch(here, { action: 'done', on: '2026-10-02', vaccine: { batch: '', expiry: '2027-03' } })).status).toBe(400);
+    expect((await patch(here, { action: 'done', on: '2026-10-02', vaccine: { batch: 'BCG-2611A', expiry: '2027-13' } })).status).toBe(400);
+    expect((await patch(here, { action: 'done', on: '2026-10-02', vaccine: { batch: 'BCG-2611A', expiry: '2027-03', manufacturer: 'Sample Vaccines Ltd' } })).status).toBe(200);
+    expect((await itemOf(here)).done.vaccine).toEqual({ batch: 'BCG-2611A', expiry: '2027-03', manufacturer: 'Sample Vaccines Ltd' });
+    expect((await patch(away, { action: 'done', on: '2026-10-02', elsewhere: true })).status).toBe(200);
+    expect((await itemOf(away)).done.vaccine).toBeNull();
+    // Not a vaccination: no batch accepted
+    const other = (await plan(here)).items.find((i) => i.kind !== 'vaccination' && i.state === 'open');
+    const agent = await as('rmo');
+    if (other) expect((await agent.patch(`/api/patients/${here.id}/care-plan/items/${other.id}`).send({ rev: other.rev, action: 'done', on: '2026-10-02', vaccine: { batch: 'X1' } })).status).toBe(400);
   });
 });

@@ -237,7 +237,9 @@ describe('opening stock from the old software’s file', () => {
     expect(check.lines[3].medicine).toMatchObject({ form: 'injection', unit: 'vial', schedule: 'narcotic' });
     expect(check.lines[4].notes.join(' ')).toMatch(/GST not given.*Schedule not given.*Expired/);
 
-    const res = await ph('post', '/opening-stock', { lines });
+    // The narcotic line needs a second person who signs in (since 11 Nov 2026)
+    expect((await ph('post', '/opening-stock', { lines })).status).toBe(400);
+    const res = await ph('post', '/opening-stock', { lines, witness: { email: people.nurse.email, password: PASSWORD } });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     expect(res.body.imported).toMatchObject({ batches: 5, medicinesAdded: 3, units: 44 });
     expect(await Medicine.countDocuments({ tenantId: hospital._id, name: /zifi/i })).toBe(1);

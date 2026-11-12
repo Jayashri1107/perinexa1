@@ -77,7 +77,7 @@ export function suggestedQty(rx) {
  * into CGST and SGST.
  */
 export function debitMoney({ qty, ratePaise, gstRate, interState = false }) {
-  const taxable = qty * ratePaise;
+  const taxable = Math.round(qty * ratePaise); // the rate may be a fraction of a paisa (a pack's rate per unit)
   const gst = Math.round((taxable * gstRate) / 100);
   const cgst = interState ? 0 : Math.floor(gst / 2);
   return { taxablePaise: taxable, gstPaise: gst, cgstPaise: cgst, sgstPaise: interState ? 0 : gst - cgst, igstPaise: interState ? gst : 0, amountPaise: taxable + gst };

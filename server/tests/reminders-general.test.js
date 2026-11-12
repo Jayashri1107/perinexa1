@@ -399,7 +399,7 @@ describe('babies', () => {
     await admit(mum);
     // The birth doses were given; the newborn examination and tests are still unticked (overdue)
     const view = await plan(vaccinated);
-    await act(vaccinated, view.items.find((i) => i.key === 'nb_vacc_birth'), { action: 'done', on: '2026-10-01' });
+    await act(vaccinated, view.items.find((i) => i.key === 'nb_vacc_birth'), { action: 'done', on: '2026-10-01', vaccine: { batch: 'BCG-SAMPLE-1' } });
     expect(view.items.filter((i) => i.kind !== 'vaccination' && i.status === 'overdue').length).toBeGreaterThan(0);
     await round('2026-10-09');
     expect(await messages()).toHaveLength(0);
@@ -671,7 +671,7 @@ describe('the outbox (Calendar → Reminders)', () => {
     on('2026-10-22');
     await admit(admitted);
     await admit(mum);
-    await act(babyDone, (await plan(babyDone)).items.find((i) => i.key === 'nb_vacc_birth'), { action: 'done', on: '2026-10-02' });
+    await act(babyDone, (await plan(babyDone)).items.find((i) => i.key === 'nb_vacc_birth'), { action: 'done', on: '2026-10-02', vaccine: { batch: 'BCG-SAMPLE-2' } });
     expect((await (await as('drA')).post(`/api/patients/${closed.id}/care-plan/close`).send({ reason: 'care_elsewhere' })).status).toBe(200);
     expect((await openList()).map((m) => m.patient.fullName)).toEqual(['Stays Sample']);
     const all = await messages();

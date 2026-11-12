@@ -22,6 +22,7 @@ import {
 } from './rxFormat.js';
 import { vitalFlags } from './vitalLimits.js';
 import { appendText } from './rxRows.js';
+import { VaccineFields } from '../patients/carePlanDialogs.jsx';
 import { ReportReaderDialog } from '../ai/ReportReaderDialog.jsx';
 import { TranslateDialog } from '../ai/TranslateDialog.jsx';
 import {
@@ -181,6 +182,9 @@ export function VisitDetailsForm({ patient, page, onSaved, onConflict, onPlanCon
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [fields, setFields] = useState({});
+  // PH8: the batch of each vaccination ticked here (item id → { batch, expiry, manufacturer, stockBatchId })
+  const [vaccines, setVaccines] = useState({});
+  const isVaccination = (id) => plan?.dueNow.find((i) => i.id === id)?.kind === 'vaccination';
   const [fromVoice, setFromVoice] = useState(() => new Set()); // fields filled from what was said, until changed by hand
   const [recording, setRecording] = useState(false); // voice entry is recording: saving waits for Stop
   const [voiceStatus, setVoiceStatus] = useState(null); // the recording's status, for the bar above Save
@@ -294,6 +298,7 @@ export function VisitDetailsForm({ patient, page, onSaved, onConflict, onPlanCon
       for (const k of TEXT_KEYS) if (canEdit && mentionsFetalSex(details[k])) local[`details.${k}`] = PCPNDT_MESSAGE;
     }
     if (canVitals && Boolean(vitals.bpSystolic) !== Boolean(vitals.bpDiastolic)) local[`vitals.${vitals.bpSystolic ? 'bpDiastolic' : 'bpSystolic'}`] = 'Enter both numbers of the blood pressure';
+    if (canEdit) for (const id of ticked) if (isVaccination(id) && !(vaccines[id]?.batch ?? '').trim()) local[`vaccine.${id}`] = 'Write the batch number on the vial.';
     if (Object.keys(local).length) {
       setFields(local);
       setError('Please check the highlighted fields.');
@@ -305,7 +310,11 @@ export function VisitDetailsForm({ patient, page, onSaved, onConflict, onPlanCon
       const { privateNote, ...rest } = details;
       body.details = { rev: visit.details.rev, ...rest, ...(access.canViewNotes ? { privateNote } : {}) };
     }
-    if (canEdit && ticked.length) body.doneItems = ticked.map((id) => ({ id, rev: plan.dueNow.find((i) => i.id === id)?.rev ?? 0 }));
+    const vaccineOf = (id) => {
+      const v = vaccines[id];
+      return isVaccination(id) && v?.batch?.trim() ? { batch: v.batch.trim(), expiry: v.expiry ?? '', manufacturer: (v.manufacturer ?? '').trim(), ...(v.stockBatchId ? { stockBatchId: v.stockBatchId } : {}) } : null;
+    };
+    if (canEdit && ticked.length) body.doneItems = ticked.map((id) => ({ id, rev: plan.dueNow.find((i) => i.id === id)?.rev ?? 0, vaccine: vaccineOf(id) }));
     if (!Object.keys(body).length) return null;
     setSaving(true);
     setFields({});
@@ -351,7 +360,7 @@ export function VisitDetailsForm({ patient, page, onSaved, onConflict, onPlanCon
   const lateItems = (plan?.dueNow ?? []).filter((i) => i.status === 'overdue');
   const tickRow = (i) => {
     const Icon = ITEM_KIND_ICONS[i.kind];
-    return (
+    const row = (
       <label key={i.id} className="check vs-plan-item" htmlFor={`vs-plan-${i.id}`}>
         <input id={`vs-plan-${i.id}`} type="checkbox" checked={ticked.includes(i.id)} onChange={() => toggle(i.id)} />
         <span>
@@ -363,6 +372,14 @@ export function VisitDetailsForm({ patient, page, onSaved, onConflict, onPlanCon
           </span>
         </span>
       </label>
+    );
+    // PH8: a vaccination ticked here asks for the vial's batch
+    if (i.kind !== 'vaccination' || !ticked.includes(i.id)) return row;
+    return (
+      <div key={i.id} className="vs-plan-vaccine">
+        {row}
+        <VaccineFields idPrefix={`vs-vacc-${i.id}`} value={vaccines[i.id] ?? { batch: '', expiry: '', manufacturer: '', stockBatchId: null }} onChange={(v) => setVaccines((x) => ({ ...x, [i.id]: v }))} error={fields[`vaccine.${i.id}`]} itemName={i.name} />
+      </div>
     );
   };
   // Read-only: what is due, without the tick boxes.

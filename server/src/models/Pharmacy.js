@@ -20,6 +20,8 @@ const medicineSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true, maxlength: 120 }, // brand, as on the pack
     generic: text(160),
     form: { type: String, enum: FORMS, default: 'tablet' },
+    // PH14: a consumable (gloves, cannula, suture …) – no schedule, not in the registers, not in the doctor's "in stock"
+    kind: { type: String, enum: ['medicine', 'consumable'], default: 'medicine' },
     strength: text(60),
     unit: { type: String, trim: true, maxlength: 30, default: 'tablet' }, // the unit of sale
     hsn: text(12),
@@ -268,6 +270,10 @@ const batchSchema = new mongoose.Schema(
     qtyLeft: { type: Number, required: true, min: 0 },
     purchaseId: { type: ObjectId, ref: 'Purchase', default: null },
     supplierId: { type: ObjectId, ref: 'Supplier', default: null },
+    // PH13: the place that holds it – null is the pharmacy (every batch before 11 Nov 2026 is the pharmacy's, so
+    // nothing is rewritten). A move to a place makes a copy of the batch there (same number, expiry and prices).
+    locationId: { type: ObjectId, ref: 'StockLocation', default: null },
+    fromBatchId: { type: ObjectId, ref: 'StockBatch', default: null },
   },
   { timestamps: true },
 );
@@ -280,7 +286,7 @@ export const StockBatch = mongoose.model('StockBatch', batchSchema);
 // 'supplier_return': stock sent back to the supplier it was bought from (4 Oct 2026).
 // 'supplier_return_cancelled': such a return was entered by mistake and cancelled – the units are back (5 Oct 2026).
 // 'opening': stock already on the shelves when the pharmacy started with Perinexa, imported once (pharmacy/openingStock.js).
-export const MOVE_KINDS = ['opening', 'purchase', 'purchase_cancelled', 'sale', 'issue', 'return', 'writeoff', 'count', 'supplier_return', 'supplier_return_cancelled'];
+export const MOVE_KINDS = ['opening', 'purchase', 'purchase_cancelled', 'sale', 'issue', 'return', 'writeoff', 'count', 'supplier_return', 'supplier_return_cancelled', 'transfer_out', 'transfer_in'];
 const moveSchema = new mongoose.Schema({
   medicineId: { type: ObjectId, ref: 'Medicine', required: true },
   batchId: { type: ObjectId, ref: 'StockBatch', required: true },
@@ -297,6 +303,9 @@ const moveSchema = new mongoose.Schema({
   witness: text(150), // stock counts, and returns to a supplier (and their cancelling) of Schedule X and narcotic medicines
   // PH15: what kind of write-off (the value lost to expiry); '' on older write-offs (their reason is read)
   writeoffKind: { type: String, enum: ['', 'expired', 'damaged', 'lost', 'other'], default: '' },
+  // PH13: the place of the batch ('' = the pharmacy) and, for a move, the other end – shown in the registers
+  place: text(80),
+  otherPlace: text(80),
   ...stamp,
 });
 moveSchema.plugin(tenantScoped);
@@ -355,6 +364,11 @@ const invoiceSchema = new mongoose.Schema(
     // userId: the prescription's doctor (PH24, kept from 11 Nov 2026); an outside doctor has a typed name only
     doctor: { type: new mongoose.Schema({ name: String, reg: String, userId: { type: ObjectId, default: null } }, { _id: false }), default: null },
     visitId: { type: ObjectId, ref: 'Visit', default: null }, // the Perinexa prescription it was sold from
+    kitName: { type: String, default: '' }, // PH14: issued from this kit
+    // PH13: issued from a place's stock (labour room, theatre …) – by a nurse of that place, or the pharmacist
+    locationId: { type: ObjectId, ref: 'StockLocation', default: null },
+    placeName: { type: String, default: '' },
+    wardRequestId: { type: ObjectId, ref: 'WardRequest', default: null }, // PH12: answering this ward request
     rxSeen: { type: Boolean, default: false }, // an outside prescription was seen
     admissionId: { type: ObjectId, ref: 'Admission', default: null },
     lines: { type: [invoiceLineSchema], default: [] },
@@ -457,3 +471,58 @@ const noSubstituteSchema = new mongoose.Schema(
 noSubstituteSchema.plugin(tenantScoped);
 noSubstituteSchema.index({ tenantId: 1, key: 1 });
 export const NoSubstitute = mongoose.model('NoSubstitute', noSubstituteSchema);
+
+// ---------- PH14: kits (docs/PHARMACY_BUILD_NOTE.md, owner's decision 4) ----------
+// A named set of medicines and items with quantities (a delivery kit, a caesarean kit). Made by a doctor or the
+// hospital admin; the pharmacist uses it to fill an issue. No kit stock of its own: the lines are issued from the
+// medicines' own batches.
+const kitSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true, maxlength: 80 },
+    note: text(300),
+    lines: { type: [new mongoose.Schema({ medicineId: { type: ObjectId, ref: 'Medicine', required: true }, qty: { type: Number, min: 1, max: 1000, required: true } }, { _id: false })], default: [] },
+    active: { type: Boolean, default: true },
+    created: { type: stampSchema, default: null },
+    updated: { type: stampSchema, default: null },
+  },
+  { timestamps: true },
+);
+kitSchema.plugin(tenantScoped);
+kitSchema.index({ tenantId: 1, name: 1 });
+export const Kit = mongoose.model('Kit', kitSchema);
+
+// ---------- PH13: places that hold stock outside the pharmacy (owner's decision 4) ----------
+// Each hospital's doctors and admin decide which places exist (labour room, theatre, a ward, an emergency tray);
+// Perinexa ships none beyond the pharmacy itself (a batch with no place). staffIds: who may use the place's stock
+// for a patient (nurses, RMOs, doctors) and check it.
+export const LOCATION_KINDS = ['labour_room', 'theatre', 'ward', 'tray', 'other'];
+const locationSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true, maxlength: 80 },
+    kind: { type: String, enum: LOCATION_KINDS, default: 'other' },
+    checkEveryDays: { type: Number, min: 1, max: 90, default: 7 },
+    staffIds: { type: [ObjectId], default: [] },
+    active: { type: Boolean, default: true },
+    created: { type: stampSchema, default: null },
+    updated: { type: stampSchema, default: null },
+  },
+  { timestamps: true },
+);
+locationSchema.plugin(tenantScoped);
+locationSchema.index({ tenantId: 1, name: 1 });
+export const StockLocation = mongoose.model('StockLocation', locationSchema);
+
+// A check of a place: each batch seen, what was found, expired stock taken out
+const locationCheckSchema = new mongoose.Schema(
+  {
+    locationId: { type: ObjectId, ref: 'StockLocation', required: true },
+    lines: { type: [new mongoose.Schema({ batchId: ObjectId, medicineId: ObjectId, name: String, batch: String, expected: Number, found: Number, expiredOut: { type: Boolean, default: false } }, { _id: false })], default: [] },
+    note: text(300),
+    witness: text(150),
+    created: { type: stampSchema, required: true },
+  },
+  { timestamps: true },
+);
+locationCheckSchema.plugin(tenantScoped);
+locationCheckSchema.index({ tenantId: 1, locationId: 1, createdAt: -1 });
+export const LocationCheck = mongoose.model('LocationCheck', locationCheckSchema);

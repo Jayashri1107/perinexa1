@@ -7,7 +7,7 @@
 > "what exists" again against this code before building. The ideas list in this repository is
 > `docs/IDEAS_FOR_LATER.md`. **Stage A (PH4, PH2, PH3, PH1) built on 11 Nov 2026, branch `pharm-stage-a` – see
 > `docs/PROGRESS.md` and the note under Stage A below.** **Stage B (PH6, PH5, PH7, PH10) built on 11 Nov 2026, branch
-> `pharm-stage-b` – see the note under Stage B.** Stages C and D are not built.
+> `pharm-stage-b` – see the note under Stage B.** **Stages C and D built on 11 Nov 2026 (branches `pharm-stage-c`, `pharm-stage-d`) – see the notes under each stage.** Not built: PH26 (its condition is not met), the refrigerator log of PH8 (put off by the owner), a photo or PDF reader for PH16. There is no printed pick list in perinexa1; the marks show on Sell, Issue and Stock.
 
 Written 10 Nov 2026 for the developer, at the owner's request. After a comparison with pharmacy (medical store)
 programs and hospital pharmacy modules (`docs/PHARMACY_APPS_REVIEW.md`), the owner chose **these 18 features and only
@@ -101,10 +101,10 @@ The features lean on each other; four stages, one branch per feature inside each
 > sale line `grossPaise` (`pharmacy/gst.js grossOf`); the medicine has `packSize`, `packName`, `looseSale`. PH3 –
 > discount, IGST and rounding were already in the GRN; added `grn.printedTotalPaise` (409 `BILL_TOTAL_DIFFERS` beyond
 > ₹1 unless `totalConfirmed`), `SupplierReturn.creditNote` (`POST /supplier-returns/:id/credit-note`, audit
-> `PHARMACY_SUPPLIER_CREDIT_NOTE`) and the register in `GET /reports/purchases`. **Purchases to Tally are not built.**
+> `PHARMACY_SUPPLIER_CREDIT_NOTE`) and the register in `GET /reports/purchases`. **Purchases to Tally: built 11 Nov 2026 (`tally/events.js purchaseVector`, voucher kind `purchase`).**
 > PH1 – opening stock already existed (Excel read in the browser, `pharmacy/openingStock.js`); added the manufacturer
-> and pack-size columns and the refusal of a batch already brought in. No `StockImport` model and no witness for
-> controlled opening stock yet. Tests: `server/tests/pharmacy-stage-a.test.js`.
+> and pack-size columns and the refusal of a batch already brought in. No `StockImport` model; the witness for
+> controlled opening stock was added 11 Nov 2026. Tests: `server/tests/pharmacy-stage-a.test.js`.
 
 ### PH4 – the manufacturer's name
 
@@ -209,8 +209,8 @@ rows that are right** – nothing is saved before that.
 > website Formulary → Medicine marks), a witness on `POST /batches/:id/writeoff` for X and narcotic medicines. PH10 –
 > `pharmacy/substitutes.js` (sure only when a brand was written and another brand of the same generic is chosen –
 > unclear cases are left as before rather than blocked), `NoSubstitute` model (doctors), `substitution` on the sale
-> line, `GET /medicines/:id/substitutes`, `GET /doctors`, `409 SUBSTITUTE_NEEDS_DOCTOR` / `NO_SUBSTITUTE`. Not built:
-> the printed pick list's marks; the formulary's own `highAlert` is still separate. Tests:
+> line, `GET /medicines/:id/substitutes`, `GET /doctors`, `409 SUBSTITUTE_NEEDS_DOCTOR` / `NO_SUBSTITUTE`. The formulary's own
+> `highAlert` feeds the marks since 11 Nov 2026 (`pharmacy/formularyAlerts.js`). Tests:
 > `server/tests/pharmacy-stage-b.test.js`.
 
 ### PH6 – "already sold" on a prescription
@@ -326,7 +326,7 @@ nothing is offered: "The doctors do not allow another brand for this medicine."
 
 > **Built in perinexa1 (11 Nov 2026), except PH26.** PH11 – `pharmacy/supplierAccount.js`, `SupplierPayment`
 > (SP-numbers, cancelled never deleted), `GET /suppliers/:id/account`, `POST /suppliers/:id/payments`,
-> `GET /reports/supplier-dues`; payments are not sent to Tally yet. PH15 – `pharmacy/figures.js` (profit by medicine,
+> `GET /reports/supplier-dues`; payments go to Tally since 11 Nov 2026 (`supplierPaymentVector`). PH15 – `pharmacy/figures.js` (profit by medicine,
 > slow stock, expiry loss, days out of stock, prescriptions filled, H1 use), `StockMove.writeoffKind`, invoice line
 > `costPaise`, `PharmacyDayClose` and `POST /day-close`. PH24 – `pharmacy/salesByDoctor.js`, invoice `doctor.userId`,
 > `GET /reports/by-doctor` (pharmacist only), `GET /api/platform/analytics/pharmacy-by-doctor` (numbers only, a doctor
@@ -427,6 +427,26 @@ Every `aggregate()` starts with a `$match` on `tenantId` (the guard in `utils/te
   nothing is ordered by itself. In tests the key is empty (`server/vitest.config.js`) – use a fake provider.
 
 ## 6. Stage D – the hospital side
+
+> **Stage D built in perinexa1 (11 Nov 2026).** PH13 – `StockLocation` and `LocationCheck` models,
+> `StockBatch.locationId` (null = the pharmacy, so no script was needed), `/api/stock-places`
+> (`routes/stockPlaces.js`: places by a doctor or the admin with `staffIds`; `move-in` / `move-out` by the pharmacist,
+> a copy of the batch at the destination and moves `transfer_out` / `transfer_in` with `place` and `otherPlace`;
+> `checks`; `use` by the place's staff for a patient with `patientAccess(...).recordVitals`, through `createInvoice`
+> with `_place` and `_orderedBy`); `usableMatch(today, locationId)` is the pharmacy's by default; the reorder
+> suggestion counts all places. PH8 – `done.vaccine { batch, expiry, manufacturer, stockBatchId }` on a care-plan
+> item, required when a vaccination is marked done here (also `doneItems[].vaccine` at a visit),
+> `GET /api/pharmacy-stock/vaccine-batches`, `vaccinationsRecorded` in `GET /batches/recipients`.
+> **PH14 and PH12:** PH14 – `Kit` model, `/api/pharmacy-kits`
+> (`routes/pharmacyKits.js`: a doctor or the hospital admin writes, the pharmacist reads with what is short),
+> `kitId` on an issue (the invoice keeps `kitName`), `Medicine.kind` 'medicine' | 'consumable' (a consumable has no
+> schedule – 400 – and is left out of `/api/pharmacy-stock/check`). Website: Formulary → Kits, Pharmacy → Medicines →
+> Kits, "From a kit" at the issue counter. PH12 – `WardRequest` model (WR-numbers, `statusOfLines`),
+> `/api/patients/:id/ward-requests` (`routes/wardRequests.js`: those with the nursing chart's access, current stay only,
+> stock words only), `GET /pharmacy/ward-requests`, `POST /pharmacy/ward-requests/:id/refuse`, `wardRequestId` on an
+> issue (the ordering doctor becomes the prescriber; the narcotic and X rule still needs that doctor's registration
+> number). Website: "Pharmacy requests" on the stay page, Pharmacy → Ward requests, a notice on the pharmacist's Today.
+> Tests: `server/tests/pharmacy-stage-d.test.js`.
 
 ### PH13 – stock outside the pharmacy
 

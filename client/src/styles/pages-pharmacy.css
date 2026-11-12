@@ -633,3 +633,12 @@
 .bf-ok { color: var(--status-stable-fg); width: 1em; height: 1em; }
 .bf-warn { color: var(--status-high-fg); display: inline-flex; gap: var(--space-1); align-items: center; }
 .bf-warn svg { width: 1em; height: 1em; }
+
+/* PH14: kits – the kit's lines, and the kit picker at the issue counter */
+.kit-line { display: flex; gap: var(--space-2); align-items: center; padding: var(--space-1) 0; }
+.kit-line > span:first-child { flex: 1 1 auto; }
+.kit-qty { width: 5rem; }
+.ph-kit { margin-bottom: var(--space-3); }
+
+/* PH13: the staff of a place */
+.pl-staff { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: var(--space-1) var(--space-3); }

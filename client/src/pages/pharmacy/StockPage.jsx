@@ -10,6 +10,7 @@ import { WitnessFields, emptyWitness } from '../../components/WitnessFields.jsx'
 import { CONTROLLED, MOVE_LABELS, expiryLabel, inPacks, medicineLabel } from './pharmacyFormat.js';
 import { BarcodeBox, Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { HoldDialog, HoldPill, RecipientsPrint, ReleaseDialog } from './BatchHold.jsx';
+import { HighAlertPill } from './MedicineMarks.jsx';
 
 // Pharmacy → Stock: every medicine with its usable and expired stock, value, nearest expiry and the low mark; one
 // medicine's batches and its stock moves, with write-off and stock count (a witness for X and narcotic medicines).
@@ -53,6 +54,9 @@ export function StockPage() {
               <Link className="btn btn-secondary btn-sm" to="/pharmacy/stock/import">
                 <FileUp aria-hidden="true" /> Import opening stock
               </Link>
+              <Link className="btn btn-secondary btn-sm" to="/pharmacy/places">
+                Stock places
+              </Link>
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet(true)}>
                 <FileDown aria-hidden="true" /> Stock sheet
               </button>
@@ -92,7 +96,7 @@ export function StockPage() {
             </div>
           }
           columns={[
-            { key: 'name', header: 'Medicine', render: (m) => <span>{medicineLabel(m)} <ScheduleMark schedule={m.schedule} />{!m.active && <span className="muted"> (stopped)</span>}</span> },
+            { key: 'name', header: 'Medicine', render: (m) => <span>{medicineLabel(m)} <ScheduleMark schedule={m.schedule} /> <HighAlertPill medicine={m} />{!m.active && <span className="muted"> (stopped)</span>}</span> },
             // PH2: a medicine bought by the pack also in packs – "143 tablets – 14 strips and 3 tablets"
             { key: 'qty', header: 'In stock', align: 'right', render: (m) => <span className="tabular">{m.qty} {m.unit}{m.qty === 1 ? '' : 's'}{m.packSize > 1 && m.qty >= m.packSize ? <span className="ph-line-note">{inPacks(m.qty, m)}</span> : null}</span> },
             {
@@ -313,12 +317,18 @@ export function MedicineStockPage() {
   };
   return (
     <>
-      <PharmacyHeader title={d ? d.medicine.name : 'Medicine'} crumb="Stock" subtitle={d ? `${medicineLabel(d.medicine)} · ${d.medicine.inStock} ${d.medicine.unit}s usable` : undefined} badges={d && <ScheduleMark schedule={d.medicine.schedule} />} />
+      <PharmacyHeader title={d ? d.medicine.name : 'Medicine'} crumb="Stock" subtitle={d ? `${medicineLabel(d.medicine)} · ${d.medicine.inStock} ${d.medicine.unit}s usable` : undefined} badges={d && (
+          <>
+            <ScheduleMark schedule={d.medicine.schedule} /> <HighAlertPill medicine={d.medicine} />
+          </>
+        )} />
       <div className="pf-content bill-page">
         {res.error && <Alert type="error">{res.error}</Alert>}
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
+        {/* PH7: the look-alike mark, as at the counter */}
+        {d?.medicine.lookAlike?.length > 0 && <Alert type="warning">Looks or sounds like {d.medicine.lookAlike.map((x) => x.name).join(', ')} – check the pack.</Alert>}
         {d && (
           <section className="card bill-section">
             <h2>Batches</h2>
@@ -339,7 +349,10 @@ export function MedicineStockPage() {
               <tbody>
                 {batchPage.shown.map((b) => (
                   <tr key={b.id}>
-                    <td>{b.batch}</td>
+                    <td>
+                      {b.batch}
+                      {b.place && <span className="ph-line-note">At {b.place}</span>}
+                    </td>
                     <td>
                       {expiryLabel(b.expiry)} {b.expired && <StatusPill tone="high">Expired</StatusPill>} <HoldPill hold={b.hold} />
                     </td>

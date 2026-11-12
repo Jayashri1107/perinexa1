@@ -16,7 +16,7 @@ import { Admission } from '../models/Admission.js';
 import { Bill } from '../models/Bill.js';
 import { nextNumber } from '../models/Counter.js';
 import { Patient } from '../models/Patient.js';
-import { Medicine, NoSubstitute, PharmacyInvoice, Purchase, StockBatch, StockMove, Supplier } from '../models/Pharmacy.js';
+import { Kit, Medicine, NoSubstitute, PharmacyInvoice, Purchase, StockBatch, StockMove, Supplier } from '../models/Pharmacy.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { refuseNewOnDuplicate } from '../patients/duplicateRules.js';
@@ -29,6 +29,7 @@ import { CONTROLLED, NEEDS_PRESCRIPTION } from './pharmacyRules.js';
 import { givenFromPrescriptions, givenWords } from './rxGiven.js';
 import { neverSubstitute, substituteFor } from './substitutes.js';
 import { Membership } from '../models/Membership.js';
+import { WardRequest, statusOfLines } from '../models/WardRequest.js';
 
 const padded = (prefix, n) => `${prefix}-${String(n).padStart(6, '0')}`;
 const rupeesOf = (paise) => `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -46,7 +47,8 @@ export const isExpired = (batch, today) => utcDay(batch.expiry) < utcDay(today);
  * PH5 (docs/PHARMACY_BUILD_NOTE.md): the stock that may be sold, issued or counted as "in stock" – some left, not
  * expired, not on hold. Every usable-stock query uses this one filter.
  */
-export const usableMatch = (today) => ({ qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) }, hold: null });
+// PH13: the pharmacy's own stock by default (locationId null); a place's stock with its id
+export const usableMatch = (today, locationId = null) => ({ qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) }, hold: null, locationId: locationId ?? null });
 export const HOLD_REASONS = { recalled: 'Recalled', quality: 'Quality doubt', other: 'Other' };
 
 /** Units in stock of each medicine (all batches, expired or not): Map "<medicineId>" -> qty. */
@@ -152,16 +154,16 @@ export async function cancelPurchase(req, purchase, reason) {
 // ---------- Invoices: counter sales and issues ----------
 
 /** The batches to take `qty` units of a medicine from: the chosen one, or the earliest-expiring first. */
-async function allocate(req, medicine, qty, batchId, today) {
+async function allocate(req, medicine, qty, batchId, today, locationId = null) {
   if (batchId) {
-    const b = await StockBatch.findOne({ tenantId: req.tenantId, _id: batchId, medicineId: medicine._id }).lean();
-    if (!b) throw bad(`${medicine.name}: choose a batch of this medicine.`);
+    const b = await StockBatch.findOne({ tenantId: req.tenantId, _id: batchId, medicineId: medicine._id, locationId: locationId ?? null }).lean();
+    if (!b) throw bad(`${medicine.name}: choose a batch of this medicine${locationId ? ' kept at this place' : ' in the pharmacy'}.`);
     if (isExpired(b, today)) throw conflict(`${medicine.name}, batch ${b.batch}, has expired and cannot be sold.`, 'EXPIRED');
     if (b.hold) throw conflict(`${medicine.name}, batch ${b.batch}, is on hold (${HOLD_REASONS[b.hold.reason] ?? b.hold.reason}) and cannot be sold or issued.`, 'ON_HOLD');
     if (b.qtyLeft < qty) throw conflict(`${medicine.name}, batch ${b.batch}: only ${b.qtyLeft} left.`, 'OUT_OF_STOCK');
     return [{ batch: b, qty }];
   }
-  const batches = await StockBatch.find({ tenantId: req.tenantId, medicineId: medicine._id, ...usableMatch(today) }).sort({ expiry: 1, createdAt: 1 }).lean();
+  const batches = await StockBatch.find({ tenantId: req.tenantId, medicineId: medicine._id, ...usableMatch(today, locationId) }).sort({ expiry: 1, createdAt: 1 }).lean();
   const out = [];
   let need = qty;
   for (const b of batches) {
@@ -187,6 +189,14 @@ async function allocate(req, medicine, qty, batchId, today) {
 export async function createInvoice(req, body, { dryRun = false } = {}) {
   const tenantId = req.tenantId;
   const today = hospitalToday(req.now);
+  // PH14: an issue filled from a kit keeps the kit's name (the lines are the pharmacist's, as issued)
+  let kitName = '';
+  if (body.kitId) {
+    if (body.kind !== 'issue') throw bad('A kit is issued to a patient, not sold.');
+    const kit = await Kit.findOne({ tenantId, _id: body.kitId }, { name: 1 }).lean();
+    if (!kit) throw new HttpError(404, 'Kit not found.', 'NOT_FOUND');
+    kitName = kit.name;
+  }
   let patient = null;
   if (body.patientId) {
     patient = await Patient.findOne({ tenantId, _id: body.patientId }, { _id: 1, fullName: 1, duplicateOf: 1, 'death.on': 1 }).lean();
@@ -218,6 +228,23 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     const by = visit.prescription?.by ? await User.findById(visit.prescription.by, { name: 1, professional: 1 }).lean() : null;
     if (by) doctor = { name: by.name, reg: by.professional?.registrationNumber ?? '', userId: by._id }; // PH24: the doctor's id
   }
+  // PH13: an issue from a place's stock (routes/stockPlaces.js) – the place's batches; the doctor who ordered it
+  const place = body._place ?? null;
+  if (place) {
+    if (body.kind !== 'issue' || !patient) throw bad('A place issues its stock to an admitted patient.');
+    if (body._orderedBy) doctor = { name: body._orderedBy.name, reg: body._orderedBy.reg ?? '', userId: body._orderedBy.userId ?? null };
+  }
+  // PH12: an issue answering the ward's request – the doctor who ordered it is the prescriber (a doctor's order on the
+  // ward); the narcotic and Schedule X rule still needs that doctor's registration number
+  let wardRequest = null;
+  if (body.wardRequestId) {
+    if (body.kind !== 'issue' || !patient) throw bad('A ward request is answered by an issue to its patient.');
+    wardRequest = await WardRequest.findOne({ tenantId, _id: body.wardRequestId, patientId: patient._id });
+    if (!wardRequest) throw new HttpError(404, 'This ward request was not found for this patient.', 'NOT_FOUND');
+    if (!['requested', 'part_issued'].includes(wardRequest.status)) throw new HttpError(409, 'This ward request is already closed.', 'CONFLICT');
+    if (visitId) throw bad('Answer the ward request or use a prescription, not both.');
+    doctor = { name: wardRequest.orderedBy.name, reg: wardRequest.orderedBy.reg ?? '', userId: wardRequest.orderedBy.userId ?? null };
+  }
 
   const ids = [...new Set(body.lines.map((l) => String(l.medicineId)))];
   const meds = new Map((await Medicine.find({ tenantId, _id: { $in: ids }, active: true }).lean()).map((m) => [String(m._id), m]));
@@ -225,7 +252,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
   body.lines.forEach((l, i) => {
     const m = meds.get(String(l.medicineId));
     if (!m) return (fields[`lines.${i}.medicineId`] = 'Choose a medicine in use.');
-    if (NEEDS_PRESCRIPTION.includes(m.schedule) && !visitId && !(body.rxSeen && doctor?.name)) {
+    if (NEEDS_PRESCRIPTION.includes(m.schedule) && !visitId && !wardRequest && !(place && body._orderedBy) && !(body.rxSeen && doctor?.name)) {
       fields[`lines.${i}.medicineId`] = `${m.name} needs a prescription: choose her Perinexa prescription, or write the doctor's name and tick "prescription seen".`;
     }
     // PH2: a medicine that is not sold loose goes in whole packs only
@@ -301,7 +328,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
   try {
     for (const [lineNo, l] of body.lines.entries()) {
       const m = meds.get(String(l.medicineId));
-      for (const part of await allocate(req, m, l.qty, l.batchId, today)) {
+      for (const part of await allocate(req, m, l.qty, l.batchId, today, place?.id ?? null)) {
         if (!dryRun) {
           const after = await moveStock(req, part.batch, -part.qty, meta);
           taken.push({ batch: after, qty: part.qty });
@@ -362,6 +389,10 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     doctor,
     visitId,
     rxSeen: Boolean(body.rxSeen),
+    kitName: kitName ?? '',
+    wardRequestId: wardRequest?._id ?? null,
+    locationId: place?.id ?? null,
+    placeName: place?.name ?? '',
     admissionId: stay?._id ?? null,
     lines,
     discountPercent: pct,
@@ -370,6 +401,16 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     paymentRemarks: patient ? '' : (body.paymentRemarks ?? ''),
     created: stampOf(req),
   });
+
+  // PH12: what was issued is counted on the ward's request
+  if (wardRequest) {
+    const given = new Map();
+    for (const l of lines) given.set(String(l.medicineId), (given.get(String(l.medicineId)) ?? 0) + l.qty);
+    for (const l of wardRequest.lines) if (!l.refused) l.issuedQty = (l.issuedQty ?? 0) + (given.get(String(l.medicineId)) ?? 0);
+    wardRequest.status = statusOfLines(wardRequest.lines);
+    wardRequest.issues.push({ invoiceId: invoice._id, number, ...stampOf(req) });
+    await wardRequest.save();
+  }
 
   // A registered patient: the invoice goes on her hospital bill (her stay's while she is admitted)
   if (patient) {
@@ -467,6 +508,7 @@ export function invoiceView(inv, { patient = null, today = new Date() } = {}) {
     doctor: inv.doctor ? { name: inv.doctor.name, reg: inv.doctor.reg ?? '' } : null,
     fromPrescription: Boolean(inv.visitId),
     rxSeen: Boolean(inv.rxSeen),
+    kitName: inv.kitName ?? '', // PH14
     discountPercent: inv.discountPercent ?? 0,
     discountReason: inv.discountReason ?? '',
     billId: inv.billId ? String(inv.billId) : null,

@@ -59,9 +59,13 @@ const settingsSchema = z
         inputSgst: name,
         inputIgst: name,
         purchaseReturns: name,
+        pharmacyPurchases: z.record(z.string().regex(/^\d{1,2}$/), name),
+        discountReceived: name,
+        purchaseCharges: name,
+        roundOff: name,
       })
       .partial(),
-    voucherTypes: names(['sales', 'receipt', 'payment', 'creditNote', 'debitNote', 'journal'], typeName),
+    voucherTypes: names(['sales', 'receipt', 'payment', 'creditNote', 'debitNote', 'journal', 'purchase'], typeName),
   })
   .partial();
 
@@ -80,7 +84,7 @@ tallyRouter.put('/settings', async (req, res) => {
   const merged = {
     ...current,
     ...body,
-    ledgers: { ...current.ledgers, ...L, income: { ...current.ledgers.income, ...(L.income ?? {}) }, modes: { ...current.ledgers.modes, ...(L.modes ?? {}) }, pharmacySales: { ...current.ledgers.pharmacySales, ...(L.pharmacySales ?? {}) } },
+    ledgers: { ...current.ledgers, ...L, income: { ...current.ledgers.income, ...(L.income ?? {}) }, modes: { ...current.ledgers.modes, ...(L.modes ?? {}) }, pharmacySales: { ...current.ledgers.pharmacySales, ...(L.pharmacySales ?? {}) }, pharmacyPurchases: { ...current.ledgers.pharmacyPurchases, ...(L.pharmacyPurchases ?? {}) } },
     voucherTypes: { ...current.voucherTypes, ...(body.voucherTypes ?? {}) },
   };
   const types = Object.values(merged.voucherTypes).map((n) => String(n ?? '').trim().toLowerCase());

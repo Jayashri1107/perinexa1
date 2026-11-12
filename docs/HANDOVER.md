@@ -203,6 +203,10 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   the pharmacist together; sales by doctor for the pharmacist and the super admin only; no bills sent on WhatsApp by
   themselves; a reason for every repeat sale) are in that note's section 7. The remaining pharmacy, lab and
   sonography development was approved by the owner on 11 Nov 2026.
+- **Access change to review (PH13, 11 Nov 2026):** the staff named on a stock place (nurses, RMOs, doctors) can issue
+  that place's stock to an admitted patient they may chart for (`routes/stockPlaces.js` `POST /:id/use`, the nursing
+  chart's `recordVitals` rule). They see names, batches and quantities – no prices – and the invoice goes on her bill.
+  The ward's requests (PH12) use the same charting rule. The pharmacist still issues everything else.
 - **Feature freeze lifted for sonography U1–U5 (10 Nov 2026)**: the owner agreed to build them; built in two stages
   (developer's choice). Stage 1, built: U2 urgent findings to her doctor, U4 twins template, U1 the weight graph and the
   measurements across scans. Stage 2, waiting for the owner's published tables: U3 Doppler normal ranges, U5 a second

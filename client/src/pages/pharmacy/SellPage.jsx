@@ -11,6 +11,7 @@ import { HighAlertPill } from './MedicineMarks.jsx';
 import { OtherBrandsDialog } from './Substitutes.jsx';
 import { BatchGrid, PaymentWindow } from './CounterParts.jsx';
 import { BarcodeBox, MedicineFinder, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
+import { KitPicker, kitShortfall } from './Kits.jsx';
 import { FindElsewhere, TypePill, billsPlace, useClickOrDouble } from './RegisterPage.jsx';
 
 // Pharmacy → New bill (counter) and → Issue to ward (kind 'issue', admitted patients only): choose OPD, IPD or External
@@ -405,7 +406,14 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const [otherBrands, setOtherBrands] = useState(null);
   const [doctor, setDoctor] = useState({ name: '', reg: '' });
   const [rxSeen, setRxSeen] = useState(false);
-  const [lines, setLines] = useState([]); // { key, medicine, qty, batchId }
+  const [lines, setLines] = useState(() =>
+    issue && start.wardRequest
+      ? start.wardRequest.lines.filter((l) => l.medicine && !l.refused && l.issuedQty < l.qty).map((l) => ({ key: `${l.medicineId}-wr`, medicine: l.medicine, qty: String(l.qty - l.issuedQty), batchId: null, dose: '' }))
+      : [],
+  ); // { key, medicine, qty, batchId }
+  const [kit, setKit] = useState(null); // PH14: the issue was filled from this kit { id, name, note }
+  // PH12: answering a ward request – its open lines fill the issue; its doctor is the prescriber
+  const [wardRequest, setWardRequest] = useState(issue && start.wardRequest ? start.wardRequest : null);
   const [discount, setDiscount] = useState(''); // Disc % (what the invoice keeps)
   const [discountAmount, setDiscountAmount] = useState(''); // Disc amount in rupees: the % is worked out from it
   const [discountReason, setDiscountReason] = useState('');
@@ -500,6 +508,8 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
       ...(visitId ? { visitId } : {}),
       ...(!visitId && (doctor.name.trim() || doctor.reg.trim()) ? { doctor: { name: doctor.name.trim(), reg: doctor.reg.trim() } } : {}),
       rxSeen: !visitId && rxSeen,
+      ...(issue && kit ? { kitId: kit.id } : {}),
+      ...(issue && wardRequest ? { wardRequestId: wardRequest.id } : {}),
       lines: lines.map((l) => ({
         medicineId: l.medicine.id,
         qty: Number(l.qty),
@@ -669,6 +679,33 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
               <p className="muted ph-counter-wait">Choose the patient first, then add the medicines here.</p>
             ) : (
               <>
+                {issue && wardRequest && (
+                  <p className="hint">
+                    Answering the ward’s request <strong>{wardRequest.number}</strong>, ordered by {wardRequest.orderedBy.name}. Change a quantity to give less; what is not given stays open for later.{' '}
+                    <button type="button" className="btn btn-link btn-sm" onClick={() => setWardRequest(null)}>
+                      Not for this request
+                    </button>
+                  </p>
+                )}
+                {issue && (
+                  <div className="ph-kit">
+                    <KitPicker
+                      onPick={(k) => {
+                        for (const l of k.lines) if (l.medicine.active !== false) addMedicine(l.medicine, l.qty);
+                        const gap = kitShortfall(k);
+                        setKit({ id: k.id, name: k.name, note: [gap.short.length ? `Short: ${gap.short.join(', ')}.` : '', gap.stopped.length ? `No longer used, left out: ${gap.stopped.join(', ')}.` : ''].filter(Boolean).join(' ') });
+                      }}
+                    />
+                    {kit && (
+                      <p className="hint">
+                        From the kit <strong>{kit.name}</strong>. {kit.note}{' '}
+                        <button type="button" className="btn btn-link btn-sm" onClick={() => setKit(null)}>
+                          Not from a kit
+                        </button>
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="ph-item-row" role="group" aria-label="Medicine to add">
                   <div className="ph-item-name">
                     <span className="ph-item-label">Item name</span>

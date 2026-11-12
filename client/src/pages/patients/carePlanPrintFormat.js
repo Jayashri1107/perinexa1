@@ -233,7 +233,8 @@ export function patientDone(item, lang = 'en') {
   if (!d) return '';
   const date = formatDate(d.on);
   const words = lang === 'mr' || lang === 'hi' ? (DONE_IN[lang][item.kind] ?? DONE_DEFAULT[lang])(date) : `${DONE_WORDS[item.kind] ?? 'Done'} ${date}`;
-  return `${words}${d.elsewhere ? pick(ELSEWHERE, lang) : ''}`;
+  // PH8: the vaccine's batch, as a vaccination card shows it
+  return `${words}${d.elsewhere ? pick(ELSEWHERE, lang) : ''}${d.vaccine?.batch ? ` · Batch ${d.vaccine.batch}` : ''}`;
 }
 
 const NEXT_WORDS = {
@@ -596,10 +597,14 @@ export function staffWhen(item) {
   return [item.timingText, dates].filter(Boolean);
 }
 
+/** PH8: "Batch BCG-2611A, expiry 03/2027, Sample Vaccines Ltd". */
+export const vaccineWords = (v) => `Batch ${v.batch}${v.expiry ? `, expiry ${v.expiry.slice(5)}/${v.expiry.slice(0, 4)}` : ''}${v.manufacturer ? `, ${v.manufacturer}` : ''}`;
+
 /** The staff copy's details: guideline source, result, notes, and who moved, included or added it (and why). */
 export function staffDetails(item) {
   const out = [];
   if (item.done?.result) out.push(`Result: ${item.done.result}`);
+  if (item.done?.vaccine) out.push(vaccineWords(item.done.vaccine));
   if (item.done?.note) out.push(`Note: ${item.done.note}`);
   if (item.note?.text) out.push(`Note: ${item.note.text} (${item.note.byName})`);
   if (item.manualDate) out.push(`Date moved by ${item.manualDate.byName}${item.manualDate.reason ? `: ${item.manualDate.reason}` : ''}`);
