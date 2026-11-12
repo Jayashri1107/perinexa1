@@ -590,6 +590,43 @@
 .lab-dash-wait dt svg { width: 16px; height: 16px; }
 .lab-dash-wait dd { margin: 0; font-weight: 600; }
 .lab-dash-wait .is-late dt, .lab-dash-wait .is-late dd { color: var(--status-high-fg); }
+/* The simpler dashboard (12 Nov 2026): waiting counts as big tiles, four numbers, plain link groups */
+.ldb-alerts { display: grid; gap: var(--space-2); }
+.ldb-alert { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); font-weight: 600; text-decoration: none; }
+.ldb-alert svg { width: 18px; height: 18px; flex: none; }
+.ldb-alert.is-high { background: var(--status-high-bg); color: var(--status-high-fg); }
+.ldb-alert.is-watch { background: var(--status-watch-bg); color: var(--status-watch-fg); }
+a.ldb-alert:hover, a.ldb-alert:focus-visible { text-decoration: underline; }
+.ldb-wait { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.ldb-tile {
+  display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: var(--space-2); row-gap: var(--space-1); height: 100%;
+  padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); color: var(--slate-600); text-decoration: none;
+}
+.ldb-tile svg { width: 20px; height: 20px; }
+.ldb-tile-n { font-size: var(--fs-h2); line-height: 1; font-weight: 700; color: var(--slate-600); }
+.ldb-tile-label { grid-column: 1 / -1; color: var(--ink); font-weight: 600; }
+.ldb-tile.has-work { border-color: var(--indigo-700); }
+.ldb-tile.has-work svg, .ldb-tile.has-work .ldb-tile-n { color: var(--indigo-700); }
+.ldb-tile:hover, .ldb-tile:focus-visible { background: var(--indigo-100); border-color: var(--indigo-700); }
+.ldb-tile:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+.ldb-numbers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); margin: 0; }
+.ldb-numbers > div { padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.ldb-numbers dt { color: var(--slate-600); font-size: var(--fs-label); }
+.ldb-numbers dd { margin: var(--space-1) 0 0; font-size: var(--fs-h3); font-weight: 700; }
+.ldb-more { margin-top: var(--space-3); }
+.ldb-more summary { cursor: pointer; color: var(--indigo-700); font-weight: 600; padding: var(--space-2) 0; }
+.ldb-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-4); align-items: start; }
+.ldb-group { padding: var(--space-4); }
+.ldb-group h2 { margin: 0 0 var(--space-2); font-size: var(--fs-body); color: var(--slate-600); }
+.ldb-group ul { margin: 0; padding: 0; list-style: none; }
+.ldb-group li + li { border-top: 1px solid var(--border); }
+.ldb-group a { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) 0; color: var(--ink); text-decoration: none; }
+.ldb-group a svg { width: 18px; height: 18px; color: var(--indigo-700); }
+.ldb-group a:hover, .ldb-group a:focus-visible { color: var(--indigo-700); text-decoration: underline; }
+@media (max-width: 640px) {
+  .ldb-wait { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ldb-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 /* Lab → New patient test (12 Nov 2026): one column, four numbered steps, the total and the button always at the foot */
 .lnr { max-width: 860px; display: grid; gap: var(--space-4); padding-bottom: 96px; }

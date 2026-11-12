@@ -1,5 +1,17 @@
 # Progress
 
+## Lab: a simpler Lab dashboard, and IPD in the lab's Patients menu (12 Nov 2026, branches `lab-ipd-menu`, `lab-dash-simple`)
+- **Patients → IPD → Admitted patients** for lab staff (they had only OPD there): opens `/lab/inpatients` – ward, bed,
+  name, number and her lab orders only, as before.
+- **Lab dashboard** (`/lab/dashboard`) made simpler: first **Waiting now** – six big counts (samples to take, to
+  receive, results to enter, to check, home visits, at outside labs) that open their lists; a red **Critical** line
+  (results not yet called to a doctor) and an amber **Late** line only when there are some; then for lab staff the
+  period's four numbers (patients, tests, reports finished, charged) with the departments folded under **By
+  department**; then the other screens as plain links in two groups, **Daily work** and **Setup**. The primary button
+  is **New patient test**. Same data and counts as before (numbers only, no patient names); doctors and nurses see the
+  counts of their own patients and no cash or registration.
+- Tests: `client/src/pages/lab/labDashboard.test.jsx`, `client/src/platform/modules.test.js`.
+
 ## Lab: a simpler Lab → New, and the last parts of P6 and P9 (12 Nov 2026, branch `lab-new-ui`)
 - **Lab → New patient test** in four plain steps: 1 Patient (search, or **+ New patient**: name, age, mobile, woman or
   man, pregnant or not, address – no care type or department to choose), 2 Doctor and tests, 3 Sample (now, later, at

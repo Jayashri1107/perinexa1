@@ -545,7 +545,8 @@ describe('signing and finishing a visit', () => {
       ['VISIT_SIGNED', 'Sample drA', null],
       ['VISIT_ADDITION_ADDED', 'Sample nurse', null],
     ]);
-    expect(JSON.stringify(res.body)).not.toMatch(/58\.5|Folic|nausea/);
+    // Without the times: a time such as 08:47:58.568 would match the weight 58.5
+    expect(JSON.stringify(res.body.history.map((h) => ({ ...h, at: undefined })))).not.toMatch(/58\.5|Folic|nausea/);
     expect((await (await as('reception')).get(url(p, `/${v.id}/history`))).status).toBe(403);
   });
 });
