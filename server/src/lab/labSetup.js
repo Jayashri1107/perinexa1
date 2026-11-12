@@ -130,6 +130,7 @@ export function rangeContext(patient, now = new Date()) {
     postnatal: patient.careType === 'postnatal',
     // Weeks of pregnancy on the sample's day (null without an EDD: a range by weeks then does not apply)
     weeks: patient.careType === 'antenatal' ? (gaOnSample(patient, now)?.weeks ?? null) : null,
+    sampleAt: now, // P6: a big change is measured only against a result from the last N days before this sample
   };
 }
 function gaOnSample(patient, at) {
@@ -247,7 +248,7 @@ function builtInAsSet(t, s) {
     const changed = r.low !== undefined || r.high !== undefined;
     const low = r.low !== undefined ? r.low : f.low;
     const high = r.high !== undefined ? r.high : f.high;
-    return { ...f, low, high, range: r.range || (changed ? rangeText(low, high, f.unit) : f.range), bands: r.bands !== undefined ? r.bands : (f.bands ?? []), deltaPercent: r.deltaPercent ?? null, criticalLow: r.criticalLow ?? null, criticalHigh: r.criticalHigh ?? null };
+    return { ...f, low, high, range: r.range || (changed ? rangeText(low, high, f.unit) : f.range), bands: r.bands !== undefined ? r.bands : (f.bands ?? []), deltaPercent: r.deltaPercent ?? null, deltaAmount: r.deltaAmount ?? null, deltaWithinDays: r.deltaWithinDays ?? null, criticalLow: r.criticalLow ?? null, criticalHigh: r.criticalHigh ?? null };
   });
   return {
     key: t.key,
@@ -287,7 +288,7 @@ function customAsSet(s) {
     who: s.who,
     fields: (s.fields ?? []).map((f) => {
       const n = f.type === 'number';
-      return { ...f, bands: n ? (f.bands ?? []) : [], deltaPercent: n ? (f.deltaPercent ?? null) : null, criticalLow: n ? (f.criticalLow ?? null) : null, criticalHigh: n ? (f.criticalHigh ?? null) : null, ...(f.type === 'choice' ? { criticalOptions: f.criticalOptions ?? [] } : {}) };
+      return { ...f, bands: n ? (f.bands ?? []) : [], deltaPercent: n ? (f.deltaPercent ?? null) : null, deltaAmount: n ? (f.deltaAmount ?? null) : null, deltaWithinDays: n ? (f.deltaWithinDays ?? null) : null, criticalLow: n ? (f.criticalLow ?? null) : null, criticalHigh: n ? (f.criticalHigh ?? null) : null, ...(f.type === 'choice' ? { criticalOptions: f.criticalOptions ?? [] } : {}) };
     }),
     planKeys: [],
     report: reportOf(null, s.report),

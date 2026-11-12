@@ -8,7 +8,7 @@ import { Alert, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
 import { Section } from '../worklist/WorklistSections.jsx';
-import { CRITICAL_LOOK, DEPARTMENTS, FLAG_LOOK, LATE_LOOK, OPEN_CALL_LOOK, orderLook, testNames } from './labFormat.js';
+import { CRITICAL_LOOK, DEPARTMENTS, FLAG_LOOK, LATE_LOOK, OPEN_CALL_LOOK, orderLook, testNames, waitedWords } from './labFormat.js';
 import { homeWord } from './LabWalkIn.jsx';
 import { ExportButton } from '../../components/ExportButton.jsx';
 
@@ -91,6 +91,8 @@ export function LabRow({ o, list }) {
       </div>
       <span className="hint">
         {testNames(o)} · ordered by {o.ordered.byName}, {formatDateTime(o.ordered.at)}
+        {/* P9: how long an order still in the lab has waited since it was ordered */}
+        {['ordered', 'collected', 'entered'].includes(o.status) ? ` · waiting ${waitedWords(o.ordered.at)}` : ''}
         {o.reported ? ` · reported ${formatDateTime(o.reported.at)}` : o.dueAt && o.status !== 'cancelled' ? ` · due ${formatDateTime(o.dueAt)}` : ''}
         {o.home && o.status === 'ordered' ? ` · home ${o.home.time}, ${o.home.address}${o.home.collectorName ? ` (${o.home.collectorName})` : ''}` : ''}
         {list === 'outside'

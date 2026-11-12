@@ -144,6 +144,7 @@ const valueView = (v, clinical = true) => ({
   ...(v.range ? { range: v.range } : {}),
   ...(clinical && v.rangeWho ? { rangeWho: v.rangeWho } : {}),
   ...(v.deltaPercent != null ? { deltaPercent: v.deltaPercent } : {}),
+  ...(v.deltaAmount != null ? { deltaAmount: v.deltaAmount } : {}),
   ...(v.bigChange ? { bigChange: true } : {}),
   ...(v.section ? { section: v.section } : {}),
   ...(v.calculated ? { calculated: true } : {}),
@@ -1118,11 +1119,18 @@ function checkedTests(order, sent, catalogue, ctx, previous = {}) {
       }
       if (field.type === 'choice' && !field.options.includes(v.value)) fields[at] = 'Choose one of the options.';
       // The change from her last result of this value (trends), and "Big change" past the hospital's limit
-      const prev = previous[t.key]?.[v.key]?.[0];
+      // P6: only against a result from the hospital's last N days (deltaWithinDays) when set; a big change by the per cent
+      // limit or by the fixed amount (deltaAmount, in the value's unit), whichever the hospital set
+      const prevAny = previous[t.key]?.[v.key]?.[0];
+      const tooOld = prevAny && field.deltaWithinDays != null && ctx.sampleAt && prevAny.at && new Date(ctx.sampleAt) - new Date(prevAny.at) > field.deltaWithinDays * 86_400_000;
+      const prev = tooOld ? null : prevAny;
       let delta = {};
-      if (field.type === 'number' && prev && Number(prev.value) !== 0 && Number.isFinite(Number(prev.value)) && Number.isFinite(Number(value))) {
-        const pct = Math.round(((Number(value) - Number(prev.value)) / Math.abs(Number(prev.value))) * 1000) / 10;
-        delta = { deltaPercent: pct, bigChange: field.deltaPercent != null && Math.abs(pct) >= field.deltaPercent };
+      if (field.type === 'number' && prev && Number.isFinite(Number(prev.value)) && Number.isFinite(Number(value))) {
+        const diff = Number(value) - Number(prev.value);
+        const pct = Number(prev.value) !== 0 ? Math.round((diff / Math.abs(Number(prev.value))) * 1000) / 10 : null;
+        const byPct = pct != null && field.deltaPercent != null && Math.abs(pct) >= field.deltaPercent;
+        const byAmount = field.deltaAmount != null && Math.abs(diff) >= field.deltaAmount;
+        delta = { ...(pct != null ? { deltaPercent: pct } : {}), deltaAmount: Math.round(diff * 1000) / 1000, bigChange: byPct || byAmount };
       }
       values.push({ key: v.key, value, flag: v.flag || flagFor(field, value), ...words, ...section, ...delta, ...(isCritical(field, value) ? { critical: true } : {}) });
     }

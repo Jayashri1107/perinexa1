@@ -137,3 +137,45 @@ describe("an RMO acknowledging a critical result – the hospital's choice", () 
     expect(await AuditLog.countDocuments({ action: 'LAB_SETTINGS_CHANGED', 'details.rmoAcknowledges': true })).toBe(1);
   });
 });
+
+describe('P6 – a big change by an amount, and only against a recent result', () => {
+  it('asks when Hb moved by the amount; not against a result older than the days set', async () => {
+    await hbSettings({ deltaAmount: 2, deltaWithinDays: 30 });
+    const p = await mother();
+    const o1 = await order(p);
+    expect((await report(o1, '11.8')).status).toBe(200);
+    later(60);
+    const o2 = await order(p);
+    const ask = await report(o2, '9.6'); // down 2.2 g/dL – at least the amount
+    expect(ask.status).toBe(409);
+    expect(ask.body.error.code).toBe('DELTA_CHECK');
+    const done = await report(o2, '9.6', { deltaConfirmed: true });
+    expect(done.status, JSON.stringify(done.body)).toBe(200);
+    expect(done.body.order.tests[0].values[0]).toMatchObject({ bigChange: true, deltaAmount: -2.2 });
+    // 31 days later: her last result is too old to compare – no question
+    later(31 * 24 * 60);
+    const o3 = await order(p);
+    expect((await report(o3, '12.5')).status).toBe(200);
+  });
+});
+
+describe('P9 – an old amended order takes its first report time from the audit log', () => {
+  it('the earliest LAB_RESULTS_REPORTED of the order', async () => {
+    const { LabOrder } = await import('../src/models/LabOrder.js');
+    const { loadLabTimes } = await import('../src/analytics/labTimes.js');
+    const p = await mother();
+    const o = await order(p);
+    later(30);
+    const first = (await report(o, '11.0')).body.order;
+    later(30);
+    expect((await (await as('lab')).put(lab(`${o.id}/results`)).send({ rev: first.rev, tests: hb('11.2'), reason: 'Typing error corrected' })).status).toBe(200);
+    // As an order from before 10 Nov 2026: no firstReported
+    await LabOrder.updateOne({ tenantId: hospital._id, _id: o.id }, { $unset: { firstReported: 1 } });
+    // The audit log stamps the real clock; put its entries on the test's clock (first report at 30, amendment at 60 minutes)
+    const entries = await AuditLog.find({ 'details.orderId': o.id, action: { $in: ['LAB_RESULTS_REPORTED', 'LAB_RESULTS_AMENDED'] } }).sort({ _id: 1 }).lean();
+    for (const [i, e] of entries.entries()) await AuditLog.collection.updateOne({ _id: e._id }, { $set: { createdAt: new Date(NOW.getTime() + (i === 0 ? 30 : 60) * MIN) } });
+    const day = new Date(NOW.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
+    const rows = await loadLabTimes(hospital._id, day, day);
+    expect(rows[0].stages.whole).toBe(30);
+  });
+});

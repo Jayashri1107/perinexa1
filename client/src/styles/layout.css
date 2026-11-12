@@ -591,6 +591,72 @@
 .lab-dash-wait dd { margin: 0; font-weight: 600; }
 .lab-dash-wait .is-late dt, .lab-dash-wait .is-late dd { color: var(--status-high-fg); }
 
+/* Lab → New patient test (12 Nov 2026): one column, four numbered steps, the total and the button always at the foot */
+.lnr { max-width: 860px; display: grid; gap: var(--space-4); padding-bottom: 96px; }
+.lnr-step { padding: var(--space-6) var(--space-6); }
+.lnr-step-title { display: flex; align-items: center; gap: var(--space-3); margin: 0; font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.lnr-step-no { display: inline-grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: 50%; background: var(--indigo-700); color: var(--surface); font-size: var(--fs-label); font-weight: 700; }
+.lnr-step.is-done .lnr-step-no { background: var(--status-stable-fg); }
+.lnr-step-help { margin: var(--space-2) 0 var(--space-4) 42px; color: var(--slate-600); }
+.lnr-step > :not(.lnr-step-title):not(.lnr-step-help) { margin-left: 42px; }
+.lnr-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-4); margin-top: var(--space-3); }
+.lnr-label { margin: var(--space-3) 0 var(--space-2); font-weight: 600; }
+.lnr-choices { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.lnr-choice { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 44px; padding: var(--space-2) var(--space-4); border: 1.5px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.lnr-choice svg { width: 20px; height: 20px; flex: none; color: var(--indigo-700); }
+.lnr-choice span { display: grid; }
+.lnr-choice small { color: var(--slate-600); font-size: var(--fs-caption); }
+.lnr-choice:hover { border-color: var(--indigo-200); }
+.lnr-choice.is-on { border-color: var(--indigo-700); background: var(--indigo-100); box-shadow: inset 0 0 0 1px var(--indigo-700); }
+.lnr-new-btn { margin-top: var(--space-3); }
+.lnr-new { margin-top: var(--space-2); padding: var(--space-4); border: 1px dashed var(--indigo-200); border-radius: var(--radius-md); }
+.lnr-new h3 { margin: 0 0 var(--space-2); }
+.lnr-matches { list-style: none; padding: 0; margin: var(--space-2) 0; display: grid; gap: var(--space-2); }
+.lnr-matches li { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
+.lnr-actions { margin-top: var(--space-4); }
+.lnr-patient { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.lnr-patient > div:first-child { display: grid; }
+.lnr-patient-name { font-size: var(--fs-h3); }
+.lnr-sex { display: flex; align-items: center; gap: var(--space-3); flex-basis: 100%; }
+.lnr-sex .lnr-label { margin: 0; }
+.lnr-search { position: relative; display: flex; align-items: center; margin-top: var(--space-4); }
+.lnr-search svg { position: absolute; left: 14px; width: 20px; height: 20px; color: var(--slate-600); pointer-events: none; }
+.lnr-search input { width: 100%; min-height: 48px; padding-left: 44px; font-size: var(--fs-body); }
+.lnr-found { list-style: none; margin: var(--space-2) 0 0; padding: var(--space-1); display: grid; gap: 2px; border: 1px solid var(--card-border); border-radius: var(--radius-md); }
+.lnr-pick { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-3); width: 100%; min-height: 44px; padding: var(--space-2) var(--space-3); border: 0; border-radius: var(--radius-sm); background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.lnr-pick:hover, .lnr-pick:focus-visible { background: var(--indigo-100); }
+.lnr-pick svg { width: 18px; height: 18px; color: var(--indigo-700); }
+.lnr-pick .muted { font-size: var(--fs-caption); }
+.lnr-chosen { list-style: none; margin: var(--space-3) 0 0; padding: 0; border: 1px solid var(--card-border); border-radius: var(--radius-md); }
+.lnr-chosen li { display: grid; grid-template-columns: minmax(0, 1fr) auto 36px; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--card-border); }
+.lnr-chosen li:last-child { border-bottom: 0; }
+.lnr-chosen-total { background: var(--indigo-100); font-weight: 600; }
+.lnr-more { margin-top: var(--space-3); }
+.lnr-more svg { width: 16px; height: 16px; }
+.lnr-more[aria-expanded="true"] svg { transform: rotate(180deg); }
+.lnr-urgent { align-self: center; }
+.lnr-urgent svg { width: 16px; height: 16px; color: var(--status-high-fg); vertical-align: -3px; }
+.lnr-sums { margin: 0 0 var(--space-2); max-width: 360px; }
+.lnr-sums div { display: flex; justify-content: space-between; padding: var(--space-1) 0; }
+.lnr-sums dt { color: var(--slate-600); }
+.lnr-sums dd { margin: 0; }
+.lnr-sums-total { border-top: 1px solid var(--card-border); font-weight: 700; font-size: var(--fs-h3); }
+.lnr-sums-total dt { color: var(--ink); }
+.lnr-balance { margin: var(--space-3) 0 0; }
+.lnr-bar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-6); border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-card); }
+.lnr-bar-sum { display: grid; }
+.lnr-bar-sum strong { font-size: var(--fs-h3); }
+.lnr-bar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.lnr-missing { color: var(--slate-600); font-size: var(--fs-caption); }
+@media (max-width: 719px) {
+  .lnr-step { padding: var(--space-4); }
+  .lnr-step-help, .lnr-step > :not(.lnr-step-title):not(.lnr-step-help) { margin-left: 0; }
+  .lnr-grid { grid-template-columns: 1fr; }
+  .lnr-choice { flex: 1 1 140px; }
+  .lnr-pick { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .lnr-pick .muted { display: none; }
+  .lnr-bar { border-radius: 0; margin: 0 calc(-1 * var(--space-4)); }
+}
 .lab-reg-cols { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--space-4); align-items: start; }
 .lab-reg-main { display: grid; gap: var(--space-4); }
 .lab-reg-card { padding: var(--space-4); }

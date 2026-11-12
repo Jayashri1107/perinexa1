@@ -15,7 +15,8 @@
 //  - critical results: the report to the first call noted (the call's own time; a call before the report counts as 0),
 //    and the report to the doctor's acknowledgement.
 // The report time is the FIRST report (`firstReported`). Orders reported before that stamp existed use `reported`
-// when they were never amended; an amended old order has lost its first time and is left out of the report stages.
+// when they were never amended; an amended old order takes it from the audit log (its first LAB_RESULTS_REPORTED) where
+// the log still has it, else it is left out of the report stages.
 //
 // Who sees what (as Waiting times):
 //  - doctor: exact numbers, the current month too, the orders of patients whose clinical details she may see;
@@ -24,6 +25,7 @@
 //  - super admin: the same as the hospital admin, per hospital and for all hospitals together.
 // A confidential test (HIV) is never named here: the groups are the lab's departments.
 
+import { AuditLog } from '../models/AuditLog.js';
 import { hospitalDayStart, hospitalToday, utcDay } from '../careplans/dates.js';
 import { DEPARTMENT_KEYS } from '../lab/labSetup.js';
 import { LabOrder } from '../models/LabOrder.js';
@@ -150,6 +152,17 @@ export async function loadLabTimes(tenantId, fromDay, toDay, { limit = 20000 } =
     .sort({ 'ordered.at': -1 })
     .limit(limit)
     .lean();
+  // P9: an order amended before firstReported existed (10 Nov 2026) takes its first report time from the audit log –
+  // the earliest LAB_RESULTS_REPORTED of that order, where the log still has it; otherwise it stays out of the stages
+  const lost = orders.filter((o) => !o.firstReported?.at && o.reported?.at && (o.amendments ?? []).length);
+  if (lost.length) {
+    const first = new Map();
+    const entries = await AuditLog.find({ tenantId, action: 'LAB_RESULTS_REPORTED', 'details.orderId': { $in: lost.map((o) => String(o._id)) } }, { 'details.orderId': 1, createdAt: 1 })
+      .sort({ createdAt: 1 })
+      .lean();
+    for (const e of entries) if (!first.has(e.details.orderId)) first.set(e.details.orderId, e.createdAt);
+    for (const o of lost) if (first.has(String(o._id))) o.firstReported = { at: first.get(String(o._id)) };
+  }
   return orders.map((o) => ({ patientId: String(o.patientId), ...orderTimes(o) }));
 }
 

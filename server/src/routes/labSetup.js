@@ -75,6 +75,9 @@ const fieldSchema = z
     bands: z.array(bandSchema).max(MAX_BANDS, `At most ${MAX_BANDS} group ranges`).default([]),
     // Lab version 2: flag "Big change" when the value moved by at least this much from her last result (per cent)
     deltaPercent: z.number().min(1).max(1000).nullable().default(null),
+    // P6: a big change by a fixed amount (in the value's unit), and only against a result from the last N days
+    deltaAmount: z.number().positive().max(1_000_000).nullable().default(null),
+    deltaWithinDays: z.number().int().min(1).max(3650).nullable().default(null),
     // P5 (docs/LAB_BUILD_NOTE.md): the hospital's critical limits - a value at or beyond one needs the lab's call
     criticalLow: limit,
     criticalHigh: limit,
@@ -93,6 +96,9 @@ const rangeSchema = z
     range: safeText('Usual range in words', 150).default(''),
     bands: z.array(bandSchema).max(MAX_BANDS).optional(),
     deltaPercent: z.number().min(1).max(1000).nullable().default(null),
+    // P6: a big change by a fixed amount (in the value's unit), and only against a result from the last N days
+    deltaAmount: z.number().positive().max(1_000_000).nullable().default(null),
+    deltaWithinDays: z.number().int().min(1).max(3650).nullable().default(null),
     criticalLow: limit,
     criticalHigh: limit,
     criticalOptions: z.array(z.string().max(40)).max(12).optional(), // P5: a choice value's critical options
@@ -164,7 +170,7 @@ function checkedFields(data, fields) {
     }
     const base = { key, name: f.name.trim(), type: f.type, ...(f.section.trim() ? { section: f.section.trim() } : {}) };
     if (f.type === 'text' && f.long) return { ...base, long: true };
-    if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: f.low, high: f.high, range: f.range.trim() || rangeText(f.low, f.high, f.unit.trim()), bands: f.bands, deltaPercent: f.deltaPercent, criticalLow: f.criticalLow, criticalHigh: f.criticalHigh };
+    if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: f.low, high: f.high, range: f.range.trim() || rangeText(f.low, f.high, f.unit.trim()), bands: f.bands, deltaPercent: f.deltaPercent, deltaAmount: f.deltaAmount, deltaWithinDays: f.deltaWithinDays, criticalLow: f.criticalLow, criticalHigh: f.criticalHigh };
     if (f.type === 'choice') return { ...base, options: f.options.map((o) => o.trim()), abnormal: f.abnormal, criticalOptions: f.criticalOptions };
     return base;
   });
@@ -323,6 +329,8 @@ labSetupRouter.put('/tests/:key', async (req, res) => {
       // The built-in group ranges (men) stay unless the hospital's differ (an empty list then removes them)
       if (r.bands !== undefined && !sameBands(r.bands, f.bands)) entry.bands = r.bands;
       if (r.deltaPercent != null) entry.deltaPercent = r.deltaPercent;
+      if (r.deltaAmount != null) entry.deltaAmount = r.deltaAmount;
+      if (r.deltaWithinDays != null) entry.deltaWithinDays = r.deltaWithinDays;
       if (r.criticalLow != null) entry.criticalLow = r.criticalLow;
       if (r.criticalHigh != null) entry.criticalHigh = r.criticalHigh;
       if (Object.keys(entry).length) ranges[k] = entry;

@@ -8,7 +8,7 @@ import { Letterhead, LetterheadFooter } from '../../components/print/Letterhead.
 import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { Alert, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
-import { SENSITIVITY, bySection, departmentName, isAbnormal, isConfidential, sampleLabels, shownName, testDef, valueWords } from './labFormat.js';
+import { SENSITIVITY, bySection, departmentName, isAbnormal, isConfidential, sampleLabels, shownName, testDef, valueWords, bigChangeWords } from './labFormat.js';
 
 // The lab's printouts (docs/LAB_LIMS_PLAN.md features 1 and 4), printed by the browser on A4:
 //  - sample labels: one per container, with a Code 128 barcode of the sample number and the container's number,
@@ -85,8 +85,7 @@ function Result({ v }) {
       {v.bigChange && (
         <span className="lab-report-flag">
           {' '}
-          · big change ({v.deltaPercent > 0 ? '+' : ''}
-          {v.deltaPercent} %)
+          · big change ({bigChangeWords(v, v.unit)})
         </span>
       )}
       {v.calculated && <span className="pdoc-kind lab-report-calc">worked out</span>}

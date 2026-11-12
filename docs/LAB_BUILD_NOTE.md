@@ -42,12 +42,13 @@ The four features are built with **no clinical numbers filled in** (section 7 is
 - **P6** – perinexa1 already had her earlier results beside each value and a "Big change" mark (`deltaPercent`, Lab
   version 2). Added: the question before the report (`409 DELTA_CHECK` unless `deltaConfirmed`; kept in
   `order.deltaChecks`, audited `LAB_DELTA_CONFIRMED`), asked once per value; Results over time and inline-SVG graphs on
-  the Lab tab (`LabTrends.jsx`, `GRAPH_VALUES` in `labFormat.js` – the proposed set). Not built: `withinDays` (a big
-  change is measured against her last result however old).
+  the Lab tab (`LabTrends.jsx`, `GRAPH_VALUES` in `labFormat.js` – the proposed set). Added 12 Nov 2026: a big change by an amount
+  (`deltaAmount`, in the value's unit) and only against a result of the last N days (`deltaWithinDays`); the graphs
+  show the weeks of pregnancy under the dates for clinical users and a baby's bilirubin against its age in hours.
 - **P9** – perinexa1 already had due times per test (`tatHours`, `urgentTatHours`, `dueAt`) and the Late mark in the
   lists. Added: `firstReported` and **Analytics → Lab times** (`analytics/labTimes.js`, its own page beside Waiting
-  times, the same protection). Old orders: `reported` when never amended, else left out – the audit-log fallback was
-  not built. Closed hours are counted (open point), and the lab in-charge sees no figures.
+  times, the same protection). Old orders: `reported` when never amended, else the first `LAB_RESULTS_REPORTED` in the audit log (12 Nov 2026)
+  where the log still has it. The lab's list shows how long each open order has waited (12 Nov 2026). Closed hours are counted (open point), and the lab in-charge sees no figures.
 - Tests: `server/tests/lab-four.test.js`.
 
 ## 1. What exists today (read in the code, 10 Nov 2026)

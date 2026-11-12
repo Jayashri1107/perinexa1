@@ -26,6 +26,7 @@ const valueSchema = new mongoose.Schema(
     // Lab version 2 (docs/LAB_V2_PLAN.md): the change from her earlier result of this value (per cent), and whether it
     // passed the hospital's limit for this value ("Big change")
     deltaPercent: { type: Number, default: null },
+    deltaAmount: { type: Number, default: null }, // P6: the change from her last result, in the value's unit
     bigChange: { type: Boolean, default: false },
     // Report templates (docs/LAB_TEMPLATES_PLAN.md): the heading it prints under, and whether it was worked out from
     // other values (lab/labCalcs.js) rather than typed

@@ -39,6 +39,7 @@ import {
   testsFromForm,
   turnaround,
   valueWords,
+  bigChangeWords,
 } from './labFormat.js';
 
 // One lab order (Version 2, lab module) – in the Lab module (/lab/orders/:orderId) and on the patient record
@@ -88,8 +89,7 @@ function ResultsView({ order, catalogue }) {
                           {v.calculated && <span className="muted"> (worked out)</span>}
                           {v.bigChange && (
                             <StatusPill tone="watch" icon={Siren}>
-                              Big change ({v.deltaPercent > 0 ? '+' : ''}
-                              {v.deltaPercent} %)
+                              Big change ({bigChangeWords(v, w.unit)})
                             </StatusPill>
                           )}
                         </td>
