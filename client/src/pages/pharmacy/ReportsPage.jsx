@@ -5,6 +5,7 @@ import { apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { downloadFile } from '../../components/print/pdfExport.js';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
+import { usePagedRows } from '../../components/DataTable.jsx';
 import { Alert, Field, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
@@ -158,6 +159,9 @@ function Period({ from, to, setFrom, setTo }) {
 function StockAlerts({ a }) {
   // Expired first (take them off the shelf), then the soonest to expire
   const batches = [...a.expiring].sort((x, y) => (x.expired === y.expired ? x.daysLeft - y.daysLeft : x.expired ? -1 : 1));
+  // 13 Nov 2026: the lists in pages (10, 25 or 50 at a time) – a long expiry list made the page very long
+  const lowPage = usePagedRows(a.low, { label: 'medicines' });
+  const expPage = usePagedRows(batches, { label: 'batches' });
   return (
     <div className="ph-rep-two ph-rep-alerts">
       <section className="card bill-section" aria-labelledby="rep-low">
@@ -187,7 +191,7 @@ function StockAlerts({ a }) {
               </tr>
             </thead>
             <tbody>
-              {a.low.map((m) => (
+              {lowPage.shown.map((m) => (
                 <tr key={m.id}>
                   <td>
                     <Link to={`/pharmacy/stock/${m.id}`}>{m.name}</Link>
@@ -199,6 +203,7 @@ function StockAlerts({ a }) {
             </tbody>
           </table>
         )}
+        {lowPage.pager}
         {a.low.length > 0 && <p className="hint">Order now → "Suggest from low stock" fills the order for you.</p>}
       </section>
       <section className="card bill-section" aria-labelledby="rep-exp">
@@ -228,7 +233,7 @@ function StockAlerts({ a }) {
               </tr>
             </thead>
             <tbody>
-              {batches.map((b) => (
+              {expPage.shown.map((b) => (
                 <tr key={b.id}>
                   <td>
                     <Link to={`/pharmacy/stock/${b.medicine.id}`}>{b.medicine.name}</Link>
@@ -252,6 +257,7 @@ function StockAlerts({ a }) {
             </tbody>
           </table>
         )}
+        {expPage.pager}
         {batches.length > 0 && <p className="hint">Sell these first. Expired stock: write it off under Stock, or send it back with Return to supplier.</p>}
       </section>
     </div>
