@@ -16,6 +16,7 @@ import { runReminders } from './reminders/reminderService.js';
 import { takeTurn } from './utils/sharedState.js';
 import { runNicuAutomationsAll } from './clinical/nicuData.js';
 import { moveDepartments } from './patients/moveDepartments.js';
+import { addDoctorTitles } from './users/doctorTitles.js';
 
 // A hosted database with its own CA certificate (docs/DEPLOY.md): the certificate is written to a private temporary
 // file, which the database driver reads.
@@ -78,6 +79,14 @@ try {
   if (moved) console.log(`Billing and admission types: ${moved} older record(s) moved to the new types.`);
 } catch (err) {
   console.error('\n⚠️  WARNING: could not move the older billing and admission types at startup. Details:', err.message, '\n');
+}
+
+// "Dr." in front of the doctors' names (13 Nov 2026) – once; running again finds nothing to do (users/doctorTitles.js).
+try {
+  const titled = await addDoctorTitles();
+  if (titled) console.log(`Doctors: ${titled} name(s) given "Dr." in front.`);
+} catch (err) {
+  console.error('\n⚠️  WARNING: could not add "Dr." to the doctors\' names at startup. Details:', err.message, '\n');
 }
 
 const server = createApp().listen(config.API_PORT, () => {

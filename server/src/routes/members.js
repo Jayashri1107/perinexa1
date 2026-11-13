@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { ADMIN_RIGHTS, DEPARTMENTS, Membership, TENANT_ROLES, departmentsOf } from '../models/Membership.js';
+import { ADMIN_RIGHTS, DEPARTMENTS, Membership, TENANT_ROLES, departmentsOf, giveDoctorTitle } from '../models/Membership.js';
 import { User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, parse } from '../utils/validate.js';
 import { generateTemporaryPassword, hashPassword } from '../utils/password.js';
 import { capitalizeName } from '../utils/personName.js';
+import { withDoctorTitle } from '../utils/doctorTitle.js';
 
 const role = z.enum(TENANT_ROLES, `Role must be one of: ${TENANT_ROLES.join(', ')}`);
 const roles = z
@@ -235,6 +236,8 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
       department: departments[0] ?? '',
       createdBy: req.user._id,
     });
+    await giveDoctorTitle(membership);
+    if (data.roles.includes('doctor')) user.name = withDoctorTitle(user.name); // as giveDoctorTitle saved it
     await audit(req, 'MEMBER_ADDED', { target: user, tenantId: req.scopeTenantId, details: { roles: data.roles } });
     if (departments.length) {
       await audit(req, 'MEMBER_ROLE_CHANGED', { target: user, tenantId: req.scopeTenantId, details: { department: { from: '', to: departments.join(', ') } } });
@@ -258,6 +261,7 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
 
     m.roles = newRoles;
     await m.save();
+    await giveDoctorTitle(m);
     await audit(req, 'MEMBER_ROLE_CHANGED', { target: m.userId, tenantId: req.scopeTenantId, details: { from, to: newRoles } });
     res.json({ member: toMember(m) });
   });
@@ -315,6 +319,10 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
       }
       if (Object.keys(changes).length) {
         await user.save();
+        if (changes.name) changes.name.to = user.name; // a doctor keeps "Dr." (models/User.js)
+        if (changes.name?.from === changes.name?.to) delete changes.name;
+      }
+      if (Object.keys(changes).length) {
         await audit(req, 'USER_UPDATED', { target: user, tenantId: req.scopeTenantId, details: { changes } });
       }
       res.json({ member: toMember(m) });

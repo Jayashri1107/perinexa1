@@ -471,8 +471,12 @@ export function PatientForm({
       if (a.contactName && !cur.emergencyContact.name.trim()) out.emergencyContact = { ...cur.emergencyContact, name: a.contactName, relation: cur.emergencyContact.relation || a.contactRelation };
       return out;
     });
+  // A field's red message goes as soon as it is changed (13 Nov 2026): "Age is required" stayed under the age after it
+  // was filled in, and the form looked stuck until saved again
+  const clearError = (path) => setFieldErrors((f) => (f[path] ? Object.fromEntries(Object.entries(f).filter(([k]) => k !== path)) : f));
   const set = (key) => (e) => {
     unmark(key);
+    clearError(key);
     setV({ ...v, [key]: e.target.value });
   };
   // A change of the type of care between Antenatal and Abortion may carry the LMP over, into an empty field only
@@ -551,6 +555,7 @@ export function PatientForm({
   };
   const setIn = (section, key) => (e) => {
     unmark(`${section}.${key}`);
+    clearError(`${section}.${key}`);
     setV({ ...v, [section]: { ...v[section], [key]: e.target.value } });
   };
   const toggleCondition = (c) => {

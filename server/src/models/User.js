@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { APPEARANCE_CHOICES, STANDARD_APPEARANCE } from '../utils/appearance.js';
+import { hasDoctorTitle, withDoctorTitle } from '../utils/doctorTitle.js';
 
 // What a platform admin may be allowed to change: hospitals (create, rename, activate), user accounts (not super
 // admins or platform admins) and each hospital's setup (staff, letterhead, patient messages, OPD timings, ABDM).
@@ -58,6 +59,13 @@ userSchema.index({ name: 1 });
 userSchema.index({ lastLoginAt: -1 });
 userSchema.index({ isSuperAdmin: 1, isActive: 1 });
 userSchema.index({ isPlatformAdmin: 1, isActive: 1 });
+
+// A doctor keeps "Dr." in front of their name when it is edited (utils/doctorTitle.js). A new person gets it when the
+// doctor role is given (models/Membership.js).
+userSchema.pre('save', async function () {
+  if (this.isNew || !this.isModified('name') || hasDoctorTitle(this.name)) return;
+  if (await mongoose.model('Membership').exists({ userId: this._id, roles: 'doctor' })) this.name = withDoctorTitle(this.name);
+});
 
 // Remove private fields whenever a user is turned into JSON for a response.
 userSchema.set('toJSON', {

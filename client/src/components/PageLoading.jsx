@@ -9,17 +9,24 @@ export function PageLoading() {
 }
 
 // A new deploy renames the screens' files, so a page left open asks for a name that is gone: one reload fetches the new ones.
+// The time of the last such reload is kept, not just "reloaded once" (13 Nov 2026): before, after the first reload every
+// later deploy (or a dropped connection while a screen's file arrived) left "This page could not open" until the tab
+// was closed. A second failure within a minute of a reload shows the message, so a page that truly fails never loops.
 const RELOADED = 'perinexa-reloaded-for-new-version';
-const isOldFiles = (error) => /dynamically imported module|importing a module script failed|loading chunk/i.test(String(error?.message ?? error));
+const RELOAD_GAP_MS = 60 * 1000;
+const isOldFiles = (error) => /dynamically imported module|importing a module script failed|loading chunk|unable to preload css/i.test(String(error?.message ?? error));
 
-function reloadOnce() {
+/** Reloads the page unless it was reloaded for this less than a minute ago; true when it reloads. */
+export function reloadOnce() {
   try {
-    if (sessionStorage.getItem(RELOADED)) return;
-    sessionStorage.setItem(RELOADED, '1');
+    const last = Number(sessionStorage.getItem(RELOADED)) || 0;
+    if (Date.now() - last < RELOAD_GAP_MS) return false;
+    sessionStorage.setItem(RELOADED, String(Date.now()));
   } catch {
-    return;
+    return false;
   }
   window.location.reload();
+  return true;
 }
 
 /** One screen failing does not blank the whole app: the header and menu stay, with a short message and the way on. */

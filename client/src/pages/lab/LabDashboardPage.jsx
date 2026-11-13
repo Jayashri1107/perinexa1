@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Banknote,
+  ChevronRight,
   ClipboardCheck,
   ClipboardList,
   ClipboardPen,
@@ -83,7 +84,9 @@ function WaitingTiles({ waiting }) {
         return (
           <li key={w.key}>
             <Link to={w.to} className={`ldb-tile${n > 0 ? ' has-work' : ''}`}>
-              <w.icon aria-hidden="true" />
+              <span className="ldb-tile-icon" aria-hidden="true">
+                <w.icon />
+              </span>
               <span className="ldb-tile-n tabular">{n ?? '–'}</span>
               <span className="ldb-tile-label">{w.label}</span>
             </Link>
@@ -183,7 +186,7 @@ export function LabDashboardPage() {
         </section>
 
         {isLab && (
-          <section aria-labelledby="lab-dash-numbers">
+          <section aria-labelledby="lab-dash-numbers" className="card ldb-period">
             <div className="row-between lab-dash-head">
               <h2 id="lab-dash-numbers" className="lab-dash-title">
                 <FlaskConical aria-hidden="true" /> {PERIODS[period].label}
@@ -219,7 +222,9 @@ export function LabDashboardPage() {
                   </div>
                 </dl>
                 <details className="ldb-more">
-                  <summary>By department</summary>
+                  <summary>
+                    <ChevronRight aria-hidden="true" /> Tests by department
+                  </summary>
                   <DepartmentBars rows={d.byDepartment} />
                 </details>
               </>
@@ -238,6 +243,7 @@ export function LabDashboardPage() {
                     <li key={i.to}>
                       <Link to={i.to}>
                         <i.icon aria-hidden="true" /> {i.label}
+                        <ChevronRight aria-hidden="true" className="ldb-go" />
                       </Link>
                     </li>
                   ))}
