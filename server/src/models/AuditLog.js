@@ -157,6 +157,7 @@ export const AUDIT_ACTIONS = [
   'PHARMACY_PRINTED',
   'PHARMACY_REGISTER_VIEWED',
   'PHARMACY_MIS_VIEWED', // a pharmacy MIS report with patient or customer names (13 Nov 2026)
+  'PHARMACY_PAYMENT_RECEIVED', // a bill on credit paid later at the counter (13 Nov 2026)
   'PHARMACY_EXPORTED',
   // The pharmacy's daily register (26 Oct 2026): someone from another day found by her number or phone
   'PHARMACY_PATIENT_LOOKED_UP',
@@ -653,6 +654,7 @@ export const AUDIT_CATEGORIES = {
     'PHARMACY_OPENING_STOCK_IMPORTED',
     'PHARMACY_REGISTER_VIEWED',
     'PHARMACY_MIS_VIEWED',
+    'PHARMACY_PAYMENT_RECEIVED',
     'PHARMACY_EXPORTED',
     'PHARMACY_ORDER_CREATED',
     'PHARMACY_ORDER_CHANGED',

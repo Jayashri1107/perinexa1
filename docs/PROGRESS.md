@@ -1,5 +1,14 @@
 # Progress
 
+## Credit when no payment is chosen; typed dates in the pharmacy (13 Nov 2026, branch `pharmacy-mis`)
+- **Payment window**: with nothing ticked, Save puts the bill on credit – a registered patient's on her hospital bill,
+  a walk-in's owed (`onCredit`, no hospital bill). The bill shows Payment due and prints Balance Due; **Receive payment**
+  on the invoice takes it later in parts, never more than is due (`POST /api/pharmacy/invoices/:id/payments`, audited
+  `PHARMACY_PAYMENT_RECEIVED`). Credit bills are in Reports → Credit report.
+- **Typed dates**: every pharmacy date (report periods, the register's and bills' day, the GRN invoice date, payment
+  dates, the day closing, supplier payments and credit notes) is a `DateText` box – typed dd/mm/yyyy with the slashes
+  added (13112026, 13-11-26 also read), a small calendar button to pick (`components/DateText.jsx`, `dateTyped.js`).
+
 ## The store's heading on every pharmacy paper; tax and credit or cash set on the supplier (13 Nov 2026, branch `pharmacy-mis`)
 - Every pharmacy paper now carries the same store block from Pharmacy → Settings (name, address, "Mobile No.",
   GSTIN and licences – `components/print/StoreHead.jsx`): the bills, orders, debit notes, registers, reports, the

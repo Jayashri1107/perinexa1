@@ -148,3 +148,29 @@ describe('a registered patient’s bill: the hospital bill, or paid here (13 Nov
     expect(back.status, JSON.stringify(back.body)).toBe(200);
   });
 });
+
+describe('a bill with no payment chosen goes on credit (13 Nov 2026)', () => {
+  it('a walk-in owes it and pays later at the counter, never more than is due; a patient’s goes on her hospital bill', async () => {
+    const m = await inStock();
+    const owed = await ph('post', '/invoices', walkIn(m, { onCredit: true }));
+    expect(owed.status, JSON.stringify(owed.body)).toBe(201);
+    const inv = owed.body.invoice;
+    expect(inv).toMatchObject({ billId: null, paidPaise: 0, balancePaise: 600 });
+    // Credit with a payment, or a patient on "credit", is refused
+    expect((await ph('post', '/invoices', walkIn(m, { onCredit: true, payment: { mode: 'cash' } }))).status).toBe(400);
+    // Paid later in two parts; not more than is due
+    expect((await ph('post', `/invoices/${inv.id}/payments`, { payments: [{ mode: 'cash', amountPaise: 700 }] })).status).toBe(400);
+    const part = await ph('post', `/invoices/${inv.id}/payments`, { payments: [{ mode: 'upi', amountPaise: 400, reference: 'UPI-9' }] });
+    expect(part.status, JSON.stringify(part.body)).toBe(200);
+    expect(part.body.invoice).toMatchObject({ paidPaise: 400, balancePaise: 200 });
+    const rest = await ph('post', `/invoices/${inv.id}/payments`, { payments: [{ mode: 'cash', amountPaise: 200 }] });
+    expect(rest.body.invoice.balancePaise).toBe(0);
+    expect((await ph('post', `/invoices/${inv.id}/payments`, { payments: [{ mode: 'cash', amountPaise: 1 }] })).status).toBe(400);
+
+    const p = (await (await as('reception')).post('/api/patients').send(samplePatient({ fullName: 'Sample Credit Mother', assignedDoctor: people.drA._id.toString() }))).body.patient;
+    expect((await ph('post', '/invoices', { kind: 'sale', patientId: p.id, onCredit: true, lines: [{ medicineId: m.id, qty: 1 }] })).status).toBe(400);
+    const onBill = (await ph('post', '/invoices', { kind: 'sale', patientId: p.id, onHospitalBill: true, lines: [{ medicineId: m.id, qty: 1 }] })).body.invoice;
+    // A bill on the hospital bill is paid at the billing desk, not here
+    expect((await ph('post', `/invoices/${onBill.id}/payments`, { payments: [{ mode: 'cash', amountPaise: 100 }] })).status).toBe(400);
+  });
+});

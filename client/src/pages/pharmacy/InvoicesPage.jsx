@@ -16,6 +16,7 @@ import { amountInWords } from '../billing/amountWords.js';
 import { MODE_LABELS, expiryLabel, soldItems } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { TypePill, billsPlace } from './RegisterPage.jsx';
+import { DateText } from '../../components/DateText.jsx';
 
 // Pharmacy → Invoices: a day's invoices (or a search), one invoice with its GST tax invoice to print, and returns of
 // unopened medicines before their expiry (each a credit note). A walk-in sale to a business with a GSTIN shows the
@@ -147,7 +148,7 @@ export function InvoicesPage({ pick = null }) {
       <button type="button" className="icon-btn" onClick={() => go(addDaysIso(day, -1))} aria-label="Previous day">
         <ChevronLeft aria-hidden="true" />
       </button>
-      <input type="date" aria-label="Day" value={day} onChange={(e) => e.target.value && go(e.target.value)} />
+      <DateText aria-label="Day" value={day} onChange={(v) => v && go(v)} />
       <button type="button" className="icon-btn" onClick={() => go(addDaysIso(day, 1))} aria-label="Next day">
         <ChevronRight aria-hidden="true" />
       </button>
@@ -519,10 +520,18 @@ export function BillPaper({ invoice: v, settings }) {
         {v.billId ? (
           <div>Payable at the billing desk with the hospital bill</div>
         ) : (
-          <div>
-            <span>Paid Amount</span>
-            <span>{plain(v.paidPaise ?? 0)}</span>
-          </div>
+          <>
+            <div>
+              <span>Paid Amount</span>
+              <span>{plain(v.paidPaise ?? 0)}</span>
+            </div>
+            {(v.balancePaise ?? 0) > 0 && (
+              <div>
+                <span>Balance Due (credit)</span>
+                <span>{plain(v.balancePaise)}</span>
+              </div>
+            )}
+          </>
         )}
       </div>
       <div className="ph-slip-foot">
@@ -816,6 +825,50 @@ function BusinessBuyer({ invoice: v, einvoice }) {
   );
 }
 
+/** A bill on credit paid later (13 Nov 2026): how, how much (what is due by default) and the reference. */
+function ReceivePayment({ invoice: v, onClose, onDone }) {
+  const [mode, setMode] = useState('cash');
+  const [amount, setAmount] = useState(((v.balancePaise ?? 0) / 100).toFixed(2));
+  const [reference, setReference] = useState('');
+  const s = useSend((res) => onDone(res.invoice));
+  const paise = /^\d+(\.\d{0,2})?$/.test(amount.trim()) ? Math.round(Number(amount) * 100) : null;
+  const cardWrong = mode === 'card' && reference.trim() !== '' && !/^\d{4}$/.test(reference.trim());
+  const ok = paise > 0 && paise <= (v.balancePaise ?? 0) && !cardWrong;
+  return (
+    <Modal id="ph-receive" title={`Receive payment – ${v.number}`} onClose={onClose}>
+      <Alert type="error">{s.error}</Alert>
+      <p className="hint">Due on this bill: {money(v.balancePaise ?? 0)}.</p>
+      <div className="form-grid">
+        <Field label="Paid by" id="rp-mode">
+          <select id="rp-mode" value={mode} onChange={(e) => setMode(e.target.value)}>
+            {Object.entries(MODE_LABELS).map(([k, label]) => (
+              <option key={k} value={k}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Amount ₹" id="rp-amount" error={s.fields.payments}>
+          <input id="rp-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        </Field>
+        {mode !== 'cash' && (
+          <Field label={mode === 'card' ? 'Card no (last 4 digits)' : mode === 'cheque' ? 'Cheque no' : 'Transaction id'} id="rp-ref" error={cardWrong ? 'Only the last 4 digits of the card.' : undefined}>
+            <input id="rp-ref" value={reference} maxLength={mode === 'card' ? 4 : 80} autoComplete="off" onChange={(e) => setReference(mode === 'card' ? e.target.value.replace(/\D/g, '') : e.target.value)} />
+          </Field>
+        )}
+      </div>
+      <div className="row">
+        <button type="button" className="btn btn-primary" disabled={!ok || s.busy} onClick={() => s.send(`/pharmacy/invoices/${v.id}/payments`, { payments: [{ mode, amountPaise: paise, ...(reference.trim() ? { reference: reference.trim() } : {}) }] })}>
+          {s.busy ? 'Saving…' : 'Save payment'}
+        </button>
+        <button type="button" className="btn btn-link" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 /** The invoice's state as a pill – colour, icon and words: paid here, on the hospital bill, money due, or returned. */
 function InvoiceStatus({ invoice: v }) {
   const look = v.billId
@@ -846,6 +899,7 @@ export function InvoicePage() {
   const [flash, setFlash] = useState(location.state?.flash ?? null);
   const [returning, setReturning] = useState(false);
   const [printing, setPrinting] = useState(null); // { creditNote? }
+  const [receiving, setReceiving] = useState(false); // a bill on credit paid later
   const v = invoice ?? res.data?.invoice;
   if (res.error && !v) return <div className="pf-content"><Alert type="error">{res.error}</Alert></div>;
   if (!v) return <div className="pf-content"><p className="muted" aria-busy="true">Loading the invoice…</p></div>;
@@ -986,6 +1040,11 @@ export function InvoicePage() {
                   </div>
                 </dl>
               )}
+              {desk && !v.billId && (v.balancePaise ?? 0) > 0 && (
+                <button type="button" className="btn btn-secondary btn-sm ph-inv-receive" onClick={() => setReceiving(true)}>
+                  Receive payment
+                </button>
+              )}
               {v.payments.length > 0 && (
                 <ul className="ph-inv-list">
                   {v.payments.map((p, i) => (
@@ -1037,6 +1096,17 @@ export function InvoicePage() {
           </aside>
         </div>
       </div>
+      {receiving && (
+        <ReceivePayment
+          invoice={v}
+          onClose={() => setReceiving(false)}
+          onDone={(next) => {
+            setInvoice(next);
+            setReceiving(false);
+            setFlash('Payment received.');
+          }}
+        />
+      )}
       {returning && (
         <ReturnDialog
           invoice={v}

@@ -663,3 +663,12 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 @media (max-width: 480px) { .dr-facts { grid-template-columns: minmax(0, 1fr); } }
 .pf-content.dr-page { display: flex; flex-direction: column; gap: var(--space-4); }
 .pf-content.dr-page > * { margin-top: 0; margin-bottom: 0; }
+
+/* A typed date box (components/DateText.jsx, 13 Nov 2026): dd/mm/yyyy, a calendar button inside on the right */
+.date-text { position: relative; display: inline-flex; align-items: center; width: 100%; min-width: 140px; }
+.date-text > input:not(.date-text-native) { width: 100%; padding-right: 34px; font-variant-numeric: tabular-nums; }
+.date-text > input[aria-invalid='true'] { border-color: var(--status-high-fg); }
+.date-text-pick { position: absolute; right: 4px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--radius-sm); background: none; color: var(--slate-600); cursor: pointer; }
+.date-text-pick:hover { background: var(--mist-50); color: var(--indigo-700); }
+.date-text-pick svg { width: 16px; height: 16px; }
+.date-text-native { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }

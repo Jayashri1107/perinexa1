@@ -4,6 +4,7 @@ import { api } from '../../api.js';
 import { Alert, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { expiryLabel } from './pharmacyFormat.js';
+import { DateText } from '../../components/DateText.jsx';
 
 // The counter's two windows from the store's earlier software (7 Nov 2026): the batches of the medicine chosen, to pick
 // one with the arrow keys, and the Payment window that opens when the bill is saved.
@@ -141,7 +142,9 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
   const balance = hospital ? 0 : net - paid;
   const cardOk = !ways.card.on || !ways.card.reference.trim() || /^\d{4}$/.test(ways.card.reference.trim());
   const paysHere = chosen.length > 0 && amounts.every((a) => a && a > 0) && balance === 0 && cardOk;
-  const ready = Boolean(quote) && !saving && ((!walkIn && hospital) || paysHere);
+  // Nothing ticked (13 Nov 2026): the bill goes on credit – a patient's on her hospital bill, a walk-in's to be paid later
+  const onCredit = !hospital && chosen.length === 0;
+  const ready = Boolean(quote) && !saving && (onCredit || (!walkIn && hospital) || paysHere);
   const set = (mode, change) => setWays((all) => ({ ...all, [mode]: { ...all[mode], ...change } }));
   // Ticking a way fills in what is still to pay; unticking clears it. Paying here and the hospital bill exclude each other.
   const tick = (mode, on) => {
@@ -152,12 +155,14 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
     setHospital(on);
     if (on) setWays((all) => Object.fromEntries(Object.entries(all).map(([k, v]) => [k, { ...v, on: false, amount: '' }])));
   };
-  const nothingChosen = Boolean(quote) && !hospital && chosen.length === 0;
+  const nothingChosen = Boolean(quote) && onCredit;
   const save = () =>
     onSave(
-      !walkIn && hospital
+      !walkIn && (hospital || onCredit)
         ? { onHospitalBill: true }
-        : {
+        : onCredit
+          ? { onCredit: true, paymentRemarks: remarks.trim() }
+          : {
             payments: chosen.map((w) => {
               const x = ways[w.mode];
               return {
@@ -243,7 +248,7 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
                             </label>
                             <label className="ph-pay-field">
                               <span>Date</span>
-                              <input type="date" disabled={!x.on} value={x.date} onChange={(e) => set(w.mode, { date: e.target.value })} />
+                              <DateText disabled={!x.on} value={x.date} onChange={(v) => set(w.mode, { date: v })} />
                             </label>
                           </>
                         )}
@@ -270,7 +275,8 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
                 </label>
                 {nothingChosen && (
                   <p className="ph-pay-choose" role="status">
-                    <CircleAlert aria-hidden="true" /> Choose how the bill is paid{walkIn ? '' : ': the hospital bill, or cash, cheque, card, NEFT or online here'}. The bill is saved and printed after that.
+                    <CircleAlert aria-hidden="true" /> No payment chosen: the bill goes on credit
+                    {walkIn ? ' – the customer pays later (Receive payment on the bill)' : ' – on the patient’s hospital bill'}. Tick a way above if it is paid now.
                   </p>
                 )}
             </>

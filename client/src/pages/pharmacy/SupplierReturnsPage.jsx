@@ -12,6 +12,7 @@ import { dayLabel } from '../appointments/appointmentFormat.js';
 import { toPaise } from '../billing/billingFormat.js';
 import { SUPPLIER_RETURN_REASONS, debitSums, expiryLabel, medicineLabel, momentDay, returnBatchesShown, returnChosen, unitsLabel } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
+import { DateText } from '../../components/DateText.jsx';
 
 // Pharmacy → Purchases → Returns to supplier: stock sent back to the supplier it was bought from (SR-000001 …) –
 // expired, damaged, recalled, excess or the wrong item – each with a printable debit note. The stock leaves with its
@@ -513,7 +514,7 @@ function CreditNoteCard({ ret, onDone }) {
               <input id="sr-cn-no" maxLength={60} value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value })} />
             </Field>
             <Field label="Date" id="sr-cn-date" error={s.fields.date}>
-              <input id="sr-cn-date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+              <DateText id="sr-cn-date" value={form.date} onChange={(v) => setForm({ ...form, date: v })} />
             </Field>
             <Field label="Amount ₹" id="sr-cn-amt" error={s.fields.amountPaise} hint={gap ? `${money(Math.abs(gap))} ${gap > 0 ? 'more' : 'less'} than the debit note.` : 'Same as the debit note.'} keepHint>
               <input id="sr-cn-amt" inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />

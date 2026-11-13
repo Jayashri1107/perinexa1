@@ -13,6 +13,7 @@ import { FORM_LABELS, SCHEDULE_LABELS, cleanBarcode, expiryLabel, isBarcode, med
 import { FindMedicine, Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { SupplierAccountCard } from './SupplierAccount.jsx';
 import { BillFileDialog } from './BillFile.jsx';
+import { DateText } from '../../components/DateText.jsx';
 
 // Pharmacy → Purchases (supplier invoices: stock in, batch by batch – also received against a purchase order),
 // → Medicines (the stock list, with the barcodes on their packs) and → Suppliers, each supplier with its own page:
@@ -638,7 +639,7 @@ export function NewPurchasePage() {
                 <input id="pu-gate" value={gateEntryNo} maxLength={40} onChange={(e) => setGateEntryNo(e.target.value)} />
               </Field>
               <Field label="Invoice date" id="pu-date">
-                <input id="pu-date" type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+                <DateText id="pu-date" value={invoiceDate} onChange={(v) => setInvoiceDate(v)} />
               </Field>
               <Field label="Date and time entered" id="pu-at">
                 <input id="pu-at" value={formatDateTime(enteredAt)} readOnly />

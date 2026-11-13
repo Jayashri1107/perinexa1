@@ -6,6 +6,7 @@ import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview
 import { Alert, formatDate } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PharmacyLetterhead, money } from './pharmacyUi.jsx';
+import { DateText } from '../../components/DateText.jsx';
 
 // Pharmacy → Reports → Report list (13 Nov 2026, the developer, after the pharmacy's earlier software): two trees,
 // Inventory MIS (purchase and stock) and Pharmacy MIS (sales and returns, GST, schedule drugs); beside them the chosen
@@ -264,11 +265,11 @@ export function MisReports({ from, to, setFrom, setTo, admin, pharmacist, openDo
           <div className="ph-mis-fields">
             <label className="ph-mis-f">
               <span>From date</span>
-              <input type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} />
+              <DateText value={from} max={to} onChange={(v) => v && setFrom(v)} />
             </label>
             <label className="ph-mis-f">
               <span>To date</span>
-              <input type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} />
+              <DateText value={to} min={from} onChange={(v) => v && setTo(v)} />
             </label>
             {uses('supplier') && (
               <label className="ph-mis-f">

@@ -4,6 +4,7 @@ import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../comp
 import { useFetch } from '../../hooks/useFetch.js';
 import { toPaise } from '../billing/billingFormat.js';
 import { money, useSend } from './pharmacyUi.jsx';
+import { DateText } from '../../components/DateText.jsx';
 
 // PH15 (docs/PHARMACY_BUILD_NOTE.md): the pharmacy's missing reports and the day's closing, on Reports.
 // Counts and amounts only – no patient list. "Use by ward" comes with stock outside the pharmacy (PH13).
@@ -157,7 +158,7 @@ export function DayClosing() {
     <section className="card bill-section" aria-labelledby="day-close">
       <h2 id="day-close">Day closing</h2>
       <Field label="Day" id="dc-date">
-        <input id="dc-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <DateText id="dc-date" value={date} onChange={(v) => setDate(v)} />
       </Field>
       {res.error && <Alert type="error">{res.error}</Alert>}
       {d && (

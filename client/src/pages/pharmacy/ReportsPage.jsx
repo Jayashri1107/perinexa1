@@ -16,6 +16,7 @@ import { SupplierDues } from './SupplierAccount.jsx';
 import { DayClosing, FiguresReport } from './PharmacyFigures.jsx';
 import { SalesByDoctorReport } from './SalesByDoctor.jsx';
 import { MisReports } from './MisReports.jsx';
+import { DateText } from '../../components/DateText.jsx';
 
 // Pharmacy → Reports (laid out for easy reading, owner 26 Oct 2026): a period with quick choices, the period's numbers
 // as cards, then one report at a time – stock alerts (low stock, expiring and expired batches), sales and GST by rate,
@@ -146,11 +147,11 @@ function Period({ from, to, setFrom, setTo }) {
       </div>
       <label className="ph-rep-date">
         <span>From</span>
-        <input type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} />
+        <DateText value={from} max={to} onChange={(v) => v && setFrom(v)} />
       </label>
       <label className="ph-rep-date">
         <span>To</span>
-        <input type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} />
+        <DateText value={to} min={from} onChange={(v) => v && setTo(v)} />
       </label>
     </div>
   );

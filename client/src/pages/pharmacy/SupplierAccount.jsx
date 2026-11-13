@@ -5,6 +5,7 @@ import { Alert, Field, StatusPill, formatDate } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { toPaise } from '../billing/billingFormat.js';
 import { Modal, money, useSend } from './pharmacyUi.jsx';
+import { DateText } from '../../components/DateText.jsx';
 
 // PH11 (docs/PHARMACY_BUILD_NOTE.md): what a supplier is owed – its bills with tax, less returns (debit notes) and
 // the payments entered here; due on the bill date + the supplier's credit days; what is paid settles the oldest bills
@@ -28,7 +29,7 @@ function PayDialog({ supplierId, bills, onClose, onDone }) {
       <Alert type="error">{s.error}</Alert>
       <div className="form-grid">
         <Field label="Date" id="sp-on" error={s.fields.on}>
-          <input id="sp-on" type="date" value={on} onChange={(e) => setOn(e.target.value)} />
+          <DateText id="sp-on" value={on} onChange={(v) => setOn(v)} />
         </Field>
         <Field label="Amount ₹" id="sp-amt" error={s.fields.amountPaise}>
           <input id="sp-amt" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus />

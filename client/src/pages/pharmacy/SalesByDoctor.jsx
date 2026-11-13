@@ -6,6 +6,7 @@ import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { analyticsTabs } from '../analytics/analyticsFormat.js';
 import { money } from './pharmacyUi.jsx';
+import { DateText } from '../../components/DateText.jsx';
 
 // PH24 (docs/PHARMACY_BUILD_NOTE.md, owner's decision 5): pharmacy sales by prescribing doctor – the pharmacist only
 // (Reports → Sales by doctor) and the super admin (numbers only, per hospital, with a minimum number of invoices per
@@ -88,10 +89,10 @@ export function PlatformPharmacyDoctorsPage() {
             />
           </div>
           <Field label="From" id="pbd-from">
-            <input id="pbd-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <DateText id="pbd-from" value={from} onChange={(v) => setFrom(v)} />
           </Field>
           <Field label="To" id="pbd-to">
-            <input id="pbd-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            <DateText id="pbd-to" value={to} onChange={(v) => setTo(v)} />
           </Field>
         </div>
         <Alert type="error">{res.error}</Alert>
