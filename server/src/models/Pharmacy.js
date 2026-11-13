@@ -74,6 +74,10 @@ const supplierSchema = new mongoose.Schema(
     phone: text(30),
     address: text(300),
     creditDays: { type: Number, min: 0, max: 365, default: 0 }, // PH11: a bill is due this many days after its date
+    // Set once with the supplier (13 Nov 2026), used by every purchase bill from it: the GST on its bills ('' – read
+    // from the two GSTINs: IGST from another state) and whether it is bought on credit or paid in cash
+    taxType: { type: String, enum: ['', 'cgst_sgst', 'igst'], default: '' },
+    payment: { type: String, enum: ['credit', 'cash'], default: 'credit' },
     // PH16: this supplier's bill file – which heading holds each field, and their item names matched to our medicines
     // (picked by the pharmacist once, then remembered). It only fills the purchase form.
     billFile: {

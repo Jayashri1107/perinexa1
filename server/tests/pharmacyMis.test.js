@@ -154,3 +154,13 @@ describe('inventory MIS reports', () => {
     expect((await inv('current-stock', '&expiryBy=2027-13')).status).toBe(400);
   });
 });
+
+describe('the supplier keeps the bills’ tax and credit or cash (13 Nov 2026)', () => {
+  it('saved with the supplier and changed later; nothing else accepted', async () => {
+    const sup = ok(await ph('post', '/suppliers', { name: 'Sample Terms Supplier', taxType: 'igst', payment: 'cash' }), 201).supplier;
+    expect(sup).toMatchObject({ taxType: 'igst', payment: 'cash' });
+    expect(ok(await ph('post', '/suppliers', { name: 'Sample Plain Supplier' }), 201).supplier).toMatchObject({ taxType: '', payment: 'credit' });
+    expect(ok(await ph('patch', `/suppliers/${sup.id}`, { taxType: '', payment: 'credit' })).supplier).toMatchObject({ taxType: '', payment: 'credit' });
+    expect((await ph('post', '/suppliers', { name: 'Sample Bad Supplier', payment: 'later' })).status).toBe(400);
+  });
+});

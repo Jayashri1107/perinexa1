@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { StoreHead } from '../../components/print/StoreHead.jsx';
 import { PackageX, ScanBarcode, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
@@ -293,17 +294,9 @@ export function FindMedicine({ onPick, onScan, label = 'Add a medicine' }) {
 
 export const money = rupees;
 
-/** The store's letterhead at the top of every pharmacy paper: its name, address, phone, GSTIN and drug licences. */
+/** The store's letterhead at the top of every pharmacy paper: its name, address, mobile numbers, GSTIN and drug licences. */
 export function PharmacyLetterhead({ settings, rmi = false }) {
-  const ids = [settings.gstin && `GSTIN: ${settings.gstin}`, settings.licence20 && `DL 20: ${settings.licence20}`, settings.licence21 && `DL 21: ${settings.licence21}`, rmi && settings.rmi && `RMI: ${settings.rmi}`].filter(Boolean);
-  return (
-    <header className="ph-doc-head">
-      <div className="lh-name">{settings.name}</div>
-      {settings.address && <div className="ph-doc-address">{settings.address}</div>}
-      {settings.phone && <div>Phone: {settings.phone}</div>}
-      {ids.length > 0 && <div className="pdoc-small ph-doc-ids">{ids.join(' · ')}</div>}
-    </header>
-  );
+  return <StoreHead settings={settings} rmi={rmi} />;
 }
 
 /** The pharmacist's notice on the Today page: low stock and batches expiring soon or expired. */

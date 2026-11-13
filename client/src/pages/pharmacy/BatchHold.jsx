@@ -3,7 +3,7 @@ import { PauseCircle } from 'lucide-react';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
-import { Modal, useSend } from './pharmacyUi.jsx';
+import { Modal, PharmacyLetterhead, useSend } from './pharmacyUi.jsx';
 
 // PH5 (docs/PHARMACY_BUILD_NOTE.md): a batch on hold, and who received it. A recall names a manufacturer's batch
 // number: the hold covers every stock batch with that number of the medicine (two purchases of the same batch). Held
@@ -82,11 +82,13 @@ export function ReleaseDialog({ medicine, batch, onClose, onDone }) {
 export function RecipientsPrint({ medicine, batch, onClose }) {
   const res = useFetch('/pharmacy/batches/recipients', { medicineId: medicine.id, batch: batch.batch });
   const d = res.data;
+  const store = useFetch('/pharmacy/settings').data; // the store's heading on top, as on every pharmacy paper
   return (
     <PrintPreview title={`Who received batch ${batch.batch} – print preview`} hint="The pharmacist's list for a recall. Telling the patients is the hospital's own step." docKey={d ? `recipients-${d.recipients.length}` : null} onClose={onClose}>
       {res.error && <Alert type="error">{res.error}</Alert>}
       {d && (
-        <PrintDocument className="bill-doc ph-recipients">
+        <PrintDocument className="bill-doc ph-doc ph-recipients">
+          {store?.settings && <PharmacyLetterhead settings={store.settings} />}
           <h2>
             {d.medicine.name} · batch {d.batch}
           </h2>

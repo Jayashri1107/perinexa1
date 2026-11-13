@@ -270,6 +270,8 @@ const supplierFields = {
   phone: z.string().trim().max(30),
   address: z.string().trim().max(300),
   creditDays: z.number().int().min(0).max(365), // PH11
+  taxType: z.enum(['', 'cgst_sgst', 'igst']), // 13 Nov 2026: set with the supplier, not on each bill
+  payment: z.enum(['credit', 'cash']),
   active: z.boolean(),
 };
 const supplierSchema = z
@@ -280,6 +282,8 @@ const supplierSchema = z
     phone: supplierFields.phone.default(''),
     address: supplierFields.address.default(''),
     creditDays: supplierFields.creditDays.default(0),
+    taxType: supplierFields.taxType.default(''),
+    payment: supplierFields.payment.default('credit'),
     active: supplierFields.active.optional(),
   })
   .strict();

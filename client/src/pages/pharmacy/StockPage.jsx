@@ -186,7 +186,7 @@ function StockSheet({ onClose }) {
           <div className="ph-sheet-top">
             <p className="ph-sheet-name">{s.name}</p>
             {s.address && <p>{s.address}</p>}
-            {s.phone && <p>{s.phone}</p>}
+            {s.phone && <p>Mobile No. {s.phone}</p>}
             <p className="ph-sheet-title">Current Stock</p>
             <p>Store name: Pharmacy store</p>
           </div>

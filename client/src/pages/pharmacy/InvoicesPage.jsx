@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BedDouble, ChevronLeft, ChevronRight, FileJson, History, Printer, RotateCcw, Search, Stethoscope, UserPlus, Users } from 'lucide-react';
+import { BedDouble, Building2, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, FileJson, History, Printer, RotateCcw, Search, Stethoscope, UserPlus, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -7,7 +7,7 @@ import { DataTable } from '../../components/DataTable.jsx';
 import { MenuButton } from '../../components/MenuButton.jsx';
 import { downloadFile } from '../../components/print/pdfExport.js';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
-import { Alert, Field, formatDateTime, useDebounced } from '../../components/ui.jsx';
+import { Alert, Field, StatusPill, formatDateTime, useDebounced } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { savedNote } from '../../platform/androidApp.js';
 import { addDaysIso } from '../appointments/appointmentFormat.js';
@@ -816,6 +816,27 @@ function BusinessBuyer({ invoice: v, einvoice }) {
   );
 }
 
+/** The invoice's state as a pill – colour, icon and words: paid here, on the hospital bill, money due, or returned. */
+function InvoiceStatus({ invoice: v }) {
+  const look = v.billId
+    ? { tone: 'due', icon: Building2, text: 'On hospital bill' }
+    : (v.balancePaise ?? 0) > 0
+      ? { tone: 'watch', icon: CircleAlert, text: 'Payment due' }
+      : { tone: 'stable', icon: CircleCheck, text: 'Paid' };
+  return (
+    <div className="ph-inv-status">
+      <StatusPill tone={look.tone} icon={look.icon}>
+        {look.text}
+      </StatusPill>
+      {v.returnedPaise > 0 && (
+        <StatusPill tone="watch" icon={RotateCcw}>
+          {v.netPaise <= 0 ? 'Returned' : 'Part returned'}
+        </StatusPill>
+      )}
+    </div>
+  );
+}
+
 export function InvoicePage() {
   const { id } = useParams();
   const location = useLocation();
@@ -846,127 +867,175 @@ export function InvoicePage() {
           </>
         }
       />
+      {/* One invoice, laid out as an invoice (13 Nov 2026): the bill on the left – number, date and status, who it is
+          for, the medicines and the totals; beside it how it was paid, what came back and the prescription */}
       <div className="pf-content bill-page">
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
-        {v.billId && (
-          <p className="hint">
-            On her hospital bill: <Link to={`/billing/bills/${v.billId}`}>open the bill</Link> (reception takes the payment).
-          </p>
-        )}
-        {activeMembership.roles.includes('admin') && <TallyMarks model="invoice" id={v.id} />}
-        <section className="card bill-section">
-          <dl className="ph-inv-facts">
-            {[
-              ['Type', v.kind === 'issue' ? 'IPD – issue to an admitted patient' : v.patient ? 'OPD – counter sale' : 'External – counter sale'],
-              [v.patient ? 'Patient' : 'Customer', v.patient ? v.patient.fullName : whoOf(v)],
-              ...(v.patient ? [['Patient number', v.patient.mrn]] : []),
-              ['Date and time', formatDateTime(v.date)],
-              ['Doctor', v.doctor?.name || '–'],
-              ['Billed by', v.byName],
-            ].map(([k, val]) => (
-              <div key={k}>
-                <dt>{k}</dt>
-                <dd>{val}</dd>
+        <div className="ph-inv">
+          <section className="card ph-inv-main" aria-labelledby="ph-inv-no">
+            <header className="ph-inv-head">
+              <div>
+                <p className="ph-inv-kicker">{v.kind === 'issue' ? 'Issue to ward · IPD' : v.patient ? 'Counter sale · OPD' : 'Counter sale · External'}</p>
+                <h2 id="ph-inv-no" className="ph-inv-no">
+                  {v.number}
+                </h2>
+                <p className="ph-inv-date">{formatDateTime(v.date)}</p>
               </div>
-            ))}
-          </dl>
-          <table className="bill-lines">
-            <thead>
-              <tr>
-                <th scope="col" className="num">Sr.</th>
-                <th scope="col">Medicine</th>
-                <th scope="col">Batch</th>
-                <th scope="col">Expiry</th>
-                <th scope="col" className="num">Qty</th>
-                <th scope="col" className="num">MRP</th>
-                <th scope="col" className="num">GST</th>
-                <th scope="col" className="num">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {v.lines.map((l, i) => (
-                <tr key={l.id}>
-                  <td data-label="Sr." className="num">{i + 1}</td>
-                  <td data-label="Medicine">
-                    {l.name} <ScheduleMark schedule={l.schedule} />
-                    {l.returnedQty > 0 && <span className="muted"> · {l.returnedQty} returned</span>}
-                    {l.substitution && <span className="ph-line-note">Given in place of {l.substitution.prescribed}, agreed by {l.substitution.agreedByName}</span>}
-                  </td>
-                  <td data-label="Batch">{l.batch}</td>
-                  <td data-label="Expiry">{expiryLabel(l.expiry)}</td>
-                  <td data-label="Qty" className="num">{l.qty}</td>
-                  <td data-label="MRP" className="num">{paper(l.mrpPaise)}</td>
-                  <td data-label="GST" className="num">{l.gstRate}%</td>
-                  <td data-label="Amount" className="num">{paper(l.amountPaise)}</td>
-                </tr>
+              <InvoiceStatus invoice={v} />
+            </header>
+            <dl className="ph-inv-facts">
+              {[
+                [v.patient ? 'Patient' : 'Customer', v.patient ? v.patient.fullName : whoOf(v)],
+                ...(v.patient ? [['Patient number', v.patient.mrn]] : v.customer?.phone ? [['Phone', v.customer.phone]] : []),
+                ['Doctor', v.doctor?.name ? `${v.doctor.name}${v.doctor.reg ? ` · Reg. ${v.doctor.reg}` : ''}` : '–'],
+                ['Billed by', v.byName || '–'],
+              ].map(([k, val]) => (
+                <div key={k}>
+                  <dt>{k}</dt>
+                  <dd>{val}</dd>
+                </div>
               ))}
-            </tbody>
-          </table>
-          <table className="bill-sums">
-            <tbody>
-              {v.discountPercent > 0 && (
-                <tr>
-                  <th scope="row">Discount</th>
-                  <td>
-                    {v.discountPercent}% – {v.discountReason}
-                  </td>
-                </tr>
-              )}
-              {v.returnedPaise > 0 && (
-                <tr>
-                  <th scope="row">Returned</th>
-                  <td>−{paper(v.returnedPaise)}</td>
-                </tr>
-              )}
-              <tr>
-                <th scope="row">Taxable value</th>
-                <td>{paper(v.taxablePaise)}</td>
-              </tr>
-              <tr>
-                <th scope="row">CGST + SGST</th>
-                <td>
-                  {paper(v.cgstPaise)} + {paper(v.sgstPaise)}
-                </td>
-              </tr>
-              <tr className="bill-balance">
-                <th scope="row">Total</th>
-                <td>{paper(v.netPaise)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
-        {v.buyer && <BusinessBuyer invoice={v} einvoice={res.data?.einvoice} />}
-        {(v.payments.length > 0 || v.returns.length > 0) && (
-          <section className="card bill-section">
-            <h2>Payments and returns</h2>
-            <ul className="appt-lines">
-              {v.payments.map((p, i) => (
-                <li key={`p${i}`}>
-                  {p.kind === 'refund' ? 'Refund' : 'Paid'} {money(p.amountPaise)} · {MODE_LABELS[p.mode]}
-                  {p.reference ? ` · ${p.mode === 'card' ? `card ending ${p.reference}` : p.reference}` : ''}
-                  {p.bank ? ` · ${p.bank}` : ''}
-                  {p.authorisedBy ? ` · authorised by ${p.authorisedBy}` : ''}
-                  {p.narration ? ` · ${p.narration}` : ''} <span className="muted">· {formatDateTime(p.at)} · {p.byName}</span>
-                </li>
-              ))}
-              {v.returns.map((r) => (
-                <li key={r.number}>
-                  Credit note {r.number}: {money(r.amountPaise)} – {r.reason} <span className="muted">· {formatDateTime(r.at)} · {r.byName}</span>
-                </li>
-              ))}
-            </ul>
-            {v.paymentRemarks && <p className="hint">Remarks: {v.paymentRemarks}</p>}
+            </dl>
+            <div className="ph-grn-scroll">
+              <table className="bill-lines ph-inv-lines">
+                <thead>
+                  <tr>
+                    <th scope="col" className="num">Sr.</th>
+                    <th scope="col">Medicine</th>
+                    <th scope="col">Batch</th>
+                    <th scope="col">Expiry</th>
+                    <th scope="col" className="num">Qty</th>
+                    <th scope="col" className="num">MRP</th>
+                    <th scope="col" className="num">GST</th>
+                    <th scope="col" className="num">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {v.lines.map((l, i) => (
+                    <tr key={l.id}>
+                      <td data-label="Sr." className="num">{i + 1}</td>
+                      <td data-label="Medicine">
+                        <span className="ph-inv-med">{l.name}</span> <ScheduleMark schedule={l.schedule} />
+                        {l.returnedQty > 0 && <span className="muted"> · {l.returnedQty} returned</span>}
+                        {l.dose && <span className="ph-line-note">{l.dose}</span>}
+                        {l.substitution && <span className="ph-line-note">Given in place of {l.substitution.prescribed}, agreed by {l.substitution.agreedByName}</span>}
+                      </td>
+                      <td data-label="Batch">{l.batch}</td>
+                      <td data-label="Expiry">{expiryLabel(l.expiry)}</td>
+                      <td data-label="Qty" className="num">{l.qty}</td>
+                      <td data-label="MRP" className="num">{paper(l.mrpPaise)}</td>
+                      <td data-label="GST" className="num">{l.gstRate}%</td>
+                      <td data-label="Amount" className="num">{paper(l.amountPaise)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="ph-inv-totals">
+              <dl>
+                {v.discountPercent > 0 && (
+                  <div>
+                    <dt>Discount {v.discountPercent}%</dt>
+                    <dd className="ph-inv-why">{v.discountReason}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt>Taxable value</dt>
+                  <dd>{paper(v.taxablePaise)}</dd>
+                </div>
+                <div>
+                  <dt>CGST</dt>
+                  <dd>{paper(v.cgstPaise)}</dd>
+                </div>
+                <div>
+                  <dt>SGST</dt>
+                  <dd>{paper(v.sgstPaise)}</dd>
+                </div>
+                {v.returnedPaise > 0 && (
+                  <div>
+                    <dt>Returned</dt>
+                    <dd>−{paper(v.returnedPaise)}</dd>
+                  </div>
+                )}
+                <div className="ph-inv-grand">
+                  <dt>Total</dt>
+                  <dd>{paper(v.netPaise)}</dd>
+                </div>
+              </dl>
+            </div>
           </section>
-        )}
-        {v.doctor && (
-          <p className="hint">
-            Prescribed by {v.doctor.name}
-            {v.doctor.reg ? ` (Reg. ${v.doctor.reg})` : ''}
-            {v.fromPrescription ? ' – Perinexa prescription' : v.rxSeen ? ' – outside prescription seen' : ''}.
-          </p>
-        )}
+
+          <aside className="ph-inv-side">
+            <section className="card ph-inv-card" aria-labelledby="ph-inv-pay">
+              <h2 id="ph-inv-pay">Payment</h2>
+              {v.billId ? (
+                <p className="ph-inv-note">
+                  On the patient’s hospital bill – paid at the billing desk. <Link to={`/billing/bills/${v.billId}`}>Open the bill</Link>
+                </p>
+              ) : (
+                <dl className="ph-inv-paid">
+                  <div>
+                    <dt>Paid</dt>
+                    <dd>{money(v.paidPaise ?? 0)}</dd>
+                  </div>
+                  <div>
+                    <dt>Balance</dt>
+                    <dd>{money(v.balancePaise ?? 0)}</dd>
+                  </div>
+                </dl>
+              )}
+              {v.payments.length > 0 && (
+                <ul className="ph-inv-list">
+                  {v.payments.map((p, i) => (
+                    <li key={`p${i}`}>
+                      <div className="ph-inv-row">
+                        <strong>{p.kind === 'refund' ? `Refund · ${MODE_LABELS[p.mode]}` : MODE_LABELS[p.mode]}</strong>
+                        <span className="tabular">
+                          {p.kind === 'refund' ? '−' : ''}
+                          {money(p.amountPaise)}
+                        </span>
+                      </div>
+                      <div className="ph-inv-meta">
+                        {[p.reference && (p.mode === 'card' ? `card ending ${p.reference}` : p.reference), p.bank, p.authorisedBy && `authorised by ${p.authorisedBy}`, p.narration, formatDateTime(p.at), p.byName].filter(Boolean).join(' · ')}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {v.paymentRemarks && <p className="hint">Remarks: {v.paymentRemarks}</p>}
+            </section>
+            {v.returns.length > 0 && (
+              <section className="card ph-inv-card" aria-labelledby="ph-inv-ret">
+                <h2 id="ph-inv-ret">Returns</h2>
+                <ul className="ph-inv-list">
+                  {v.returns.map((r) => (
+                    <li key={r.number}>
+                      <div className="ph-inv-row">
+                        <strong>Credit note {r.number}</strong>
+                        <span className="tabular">{money(r.amountPaise)}</span>
+                      </div>
+                      <div className="ph-inv-meta">{[r.reason, formatDateTime(r.at), r.byName].filter(Boolean).join(' · ')}</div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {v.doctor && (
+              <section className="card ph-inv-card" aria-labelledby="ph-inv-rx">
+                <h2 id="ph-inv-rx">Prescription</h2>
+                <p className="ph-inv-note">
+                  {v.doctor.name}
+                  {v.doctor.reg ? ` (Reg. ${v.doctor.reg})` : ''}
+                  {v.fromPrescription ? ' – Perinexa prescription' : v.rxSeen ? ' – outside prescription seen' : ''}
+                </p>
+              </section>
+            )}
+            {v.buyer && <BusinessBuyer invoice={v} einvoice={res.data?.einvoice} />}
+            {activeMembership.roles.includes('admin') && <TallyMarks model="invoice" id={v.id} />}
+          </aside>
+        </div>
       </div>
       {returning && (
         <ReturnDialog

@@ -503,15 +503,12 @@ export function NewPurchasePage() {
   const [invoiceNo, setInvoiceNo] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [gateEntryNo, setGateEntryNo] = useState('');
-  const [payment, setPayment] = useState('credit');
-  const [againstOrder, setAgainstOrder] = useState(false);
-  const orders = useFetch(againstOrder && !order ? '/pharmacy/orders' : null);
-  const openOrders = (orders.data?.orders ?? []).filter((o) => o.supplier?.id === supplierId && (o.status === 'sent' || o.status === 'part_received'));
-  // CGST + SGST from a supplier in the pharmacy's state, IGST from another state (read from the two GSTINs) – changeable
-  const [taxChoice, setTaxChoice] = useState(null);
+  // 13 Nov 2026: the tax and credit or cash come from the supplier (set when it is added – Suppliers); a supplier
+  // without a tax choice: CGST + SGST from the pharmacy's state, IGST from another state (read from the two GSTINs)
+  const payment = supplier?.payment ?? 'credit';
   const ours = gstinState(settings.data?.settings.gstin ?? '');
   const theirs = gstinState(supplier?.gstin ?? '');
-  const taxType = taxChoice ?? (ours && theirs && ours.code !== theirs.code ? 'igst' : 'cgst_sgst');
+  const taxType = supplier?.taxType || (ours && theirs && ours.code !== theirs.code ? 'igst' : 'cgst_sgst');
   const [extra, setExtra] = useState({ scheme: '', discPercent: '', crnAdj: '', other: '', surcharge: '', freight: '', receivedBy: '', remark: '', printed: '' });
   // PH3: the server's "the bill says ₹… but the lines add up to ₹…" – answered with Save as it is
   const [differs, setDiffers] = useState(null);
@@ -647,44 +644,13 @@ export function NewPurchasePage() {
                 <input id="pu-at" value={formatDateTime(enteredAt)} readOnly />
               </Field>
             </div>
-            <div className="ph-grn-choices">
-              <Choice label="Tax name" value={taxType} options={Object.entries(TAX_LABELS)} onChange={setTaxChoice} />
-              <Choice
-                label="Purchase"
-                value={order || againstOrder ? 'order' : 'direct'}
-                options={[
-                  ['direct', 'Direct purchase'],
-                  ['order', 'Purchase order'],
-                ]}
-                onChange={(k) => {
-                  if (k === 'order') return setAgainstOrder(true);
-                  setAgainstOrder(false);
-                  if (order) navigate(`/pharmacy/purchases/new${supplierId ? `?supplier=${supplierId}` : ''}`);
-                  return undefined;
-                }}
-              />
-              {againstOrder && !order && (
-                <Field label="Purchase order" id="pu-order" hint={supplierId ? (orders.data && !openOrders.length ? 'No order of this supplier is waiting for delivery.' : undefined) : 'Choose the supplier first.'}>
-                  <select id="pu-order" value="" disabled={!supplierId} onChange={(e) => e.target.value && navigate(`/pharmacy/purchases/new?order=${e.target.value}`)}>
-                    <option value="">Choose…</option>
-                    {openOrders.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.number}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              )}
-              <Choice
-                label="Payment"
-                value={payment}
-                options={[
-                  ['credit', 'Credit'],
-                  ['cash', 'Cash'],
-                ]}
-                onChange={setPayment}
-              />
-            </div>
+            {supplier && (
+              <p className="hint ph-grn-terms">
+                {TAX_LABELS[taxType]} · {payment === 'cash' ? 'Cash' : 'Credit'}
+                {order ? ` · against order ${order.number}` : ''} – as set for this supplier.{' '}
+                <Link to={`/pharmacy/suppliers/${supplier.id}`}>Change</Link>
+              </p>
+            )}
           </section>
           <section className="card bill-section ph-grn-items" aria-labelledby="pu-lines">
             <h2 id="pu-lines">Items</h2>
@@ -1266,10 +1232,11 @@ function MedicineActive({ m, onDone }) {
 // ---------- Suppliers ----------
 
 function SupplierDialog({ supplier, onClose, onDone }) {
-  const [x, setX] = useState(supplier ? { ...supplier, creditDays: String(supplier.creditDays ?? 0) } : { name: '', gstin: '', drugLicence: '', phone: '', address: '', creditDays: '0' });
+  const [x, setX] = useState(supplier ? { ...supplier, creditDays: String(supplier.creditDays ?? 0), taxType: supplier.taxType ?? '', payment: supplier.payment ?? 'credit' } : { name: '', gstin: '', drugLicence: '', phone: '', address: '', creditDays: '0', taxType: '', payment: 'credit' });
   const s = useSend(onDone);
   const f = (k) => (e) => setX({ ...x, [k]: e.target.value });
-  const body = { name: x.name.trim(), gstin: x.gstin.trim(), drugLicence: x.drugLicence.trim(), phone: x.phone.trim(), address: x.address.trim(), creditDays: Math.max(0, Math.min(365, Number.parseInt(x.creditDays, 10) || 0)) };
+  const body = { name: x.name.trim(), gstin: x.gstin.trim(), drugLicence: x.drugLicence.trim(), phone: x.phone.trim(), address: x.address.trim(), creditDays: Math.max(0, Math.min(365, Number.parseInt(x.creditDays, 10) || 0)), taxType: x.taxType, payment: x.payment };
+  // 13 Nov 2026: the bills' GST and credit or cash are set here once, not on each purchase bill
   return (
     <Modal id="ph-sup" title={supplier ? `Change ${supplier.name}` : 'Add a supplier'} onClose={onClose}>
       <Alert type="error">{s.error}</Alert>
@@ -1293,6 +1260,28 @@ function SupplierDialog({ supplier, onClose, onDone }) {
       <Field label="Address" id="sup-address">
         <input id="sup-address" value={x.address} maxLength={300} onChange={f('address')} />
       </Field>
+      <div className="ph-sup-choices">
+        <Choice
+          label="Tax name"
+          value={x.taxType}
+          options={[
+            ['', 'From the GSTINs'],
+            ['cgst_sgst', TAX_LABELS.cgst_sgst],
+            ['igst', TAX_LABELS.igst],
+          ]}
+          onChange={(k) => setX({ ...x, taxType: k })}
+        />
+        <Choice
+          label="Payment"
+          value={x.payment}
+          options={[
+            ['credit', 'Credit'],
+            ['cash', 'Cash'],
+          ]}
+          onChange={(k) => setX({ ...x, payment: k })}
+        />
+        <p className="hint">Used on every purchase bill (GRN) from this supplier. From the GSTINs: IGST when the supplier is in another state, else CGST + SGST.</p>
+      </div>
       <div className="row">
         <button type="button" className="btn btn-primary" disabled={body.name.length < 2 || s.busy} onClick={() => (supplier ? s.send(`/pharmacy/suppliers/${supplier.id}`, body, 'PATCH') : s.send('/pharmacy/suppliers', body))}>
           <Save aria-hidden="true" /> Save

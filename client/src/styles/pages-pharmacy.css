@@ -758,3 +758,82 @@
 .ph-rep-tabs { overflow-x: auto; flex-wrap: nowrap; max-width: 100%; }
 .ph-rep-tabs button { white-space: nowrap; }
 .ph-rep-periodbar { padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); }
+
+/* The supplier's tax and credit or cash (13 Nov 2026), set once on the supplier form; the New GRN shows them in a line */
+.ph-sup-choices { display: grid; gap: var(--space-2); margin: var(--space-3) 0; }
+.ph-sup-choices .ph-choice { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.ph-sup-choices .hint { margin: 0; }
+.ph-grn-terms { margin: var(--space-2) 0 0; }
+
+/* The pharmacist's Today cards (13 Nov 2026, more finished): label and icon on top, the number large, what it means
+   underneath; a coloured top edge and the line's colour carry the status (watch, high, due) with the words. Phones keep
+   their own list layout (mobile.css). */
+@media (min-width: 720px) {
+  .ph-stats.ph-today-stats { grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); background: none; flex: none; }
+  .ph-today-stats .ph-stat {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'label icon' 'value value' 'why why';
+    align-items: start; gap: 2px var(--space-2); padding: var(--space-3) var(--space-4); min-height: 112px;
+    border-radius: var(--radius-lg); border-top: 3px solid var(--indigo-200); box-shadow: var(--shadow-card);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .ph-today-stats .ph-stat:hover { transform: translateY(-1px); border-color: var(--indigo-200); }
+  .ph-today-stats .ph-stat.is-due { border-top-color: var(--status-due-fg); }
+  .ph-today-stats .ph-stat.is-watch { border-top-color: var(--status-watch-fg); }
+  .ph-today-stats .ph-stat.is-high { border-top-color: var(--status-high-fg); }
+  .ph-today-stats .ph-stat-icon { grid-area: icon; width: 36px; height: 36px; border-radius: var(--radius-md); }
+  .ph-today-stats .ph-stat-text { display: contents; }
+  .ph-today-stats .ph-stat-text > span { grid-area: label; align-self: center; font-size: 0.8125rem; font-weight: 600; color: var(--slate-600); white-space: normal; }
+  .ph-today-stats .ph-stat-text strong { grid-area: value; margin-top: var(--space-1); font-size: 1.625rem; line-height: 1.15; font-weight: 700; color: var(--ink); }
+  .ph-today-stats .ph-stat-why { grid-area: why; font-size: 0.75rem; line-height: 1.3; color: var(--slate-600); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ph-today-stats .ph-stat.is-watch .ph-stat-why { color: var(--status-watch-fg); }
+  .ph-today-stats .ph-stat.is-high :is(.ph-stat-why, strong) { color: var(--status-high-fg); }
+}
+@media (max-width: 719px) { .ph-today-stats .ph-stat-why { display: none; } }
+
+/* One pharmacy invoice (13 Nov 2026): the bill on the left, payment / returns / prescription beside it */
+.ph-inv { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-4); align-items: start; }
+.ph-inv > .card, .ph-inv-side > .card { margin: 0; }
+.ph-inv-main { padding: var(--space-6); }
+.ph-inv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); padding-bottom: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--border); }
+.ph-inv-kicker { margin: 0 0 2px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--teal-700); }
+.ph-inv-no { margin: 0; font-size: 1.5rem; line-height: 1.2; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ph-inv-date { margin: 2px 0 0; font-size: 0.875rem; color: var(--slate-600); }
+.ph-inv-status { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+.ph-inv .ph-inv-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: var(--space-3) var(--space-4); border: 0; border-radius: var(--radius-md); background: var(--mist-50); }
+.ph-inv-lines { width: 100%; }
+.ph-inv-lines thead th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--slate-600); }
+.ph-inv-med { font-weight: 600; }
+.ph-inv-totals { display: flex; justify-content: flex-end; margin-top: var(--space-4); }
+.ph-inv-totals dl { display: grid; gap: 6px; width: min(100%, 320px); margin: 0; }
+.ph-inv-totals dl > div { display: flex; justify-content: space-between; gap: var(--space-3); font-size: 0.875rem; }
+.ph-inv-totals dt { color: var(--slate-600); }
+.ph-inv-totals dd { margin: 0; font-variant-numeric: tabular-nums; }
+.ph-inv-totals .ph-inv-why { color: var(--slate-600); text-align: right; }
+.ph-inv-totals .ph-inv-grand { margin-top: var(--space-1); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--indigo-100); font-size: 1.0625rem; }
+.ph-inv-totals .ph-inv-grand :is(dt, dd) { color: var(--indigo-800); font-weight: 700; }
+.ph-inv-side { display: grid; gap: var(--space-3); position: sticky; top: var(--space-4); }
+.ph-inv-card { padding: var(--space-4); }
+.ph-inv-card h2 { margin: 0 0 var(--space-3); font-size: 0.9375rem; }
+.ph-inv-note { margin: 0; font-size: 0.875rem; }
+.ph-inv-paid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin: 0; }
+.ph-inv-paid > div { padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mist-50); }
+.ph-inv-paid dt { font-size: 0.75rem; color: var(--slate-600); }
+.ph-inv-paid dd { margin: 0; font-size: 1.125rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ph-inv-list { list-style: none; margin: var(--space-3) 0 0; padding: 0; }
+.ph-inv-list li { padding: var(--space-2) 0; border-top: 1px solid var(--border); }
+.ph-inv-row { display: flex; justify-content: space-between; gap: var(--space-2); font-size: 0.875rem; }
+.ph-inv-meta { margin-top: 2px; font-size: 0.75rem; color: var(--slate-600); overflow-wrap: anywhere; }
+@media (max-width: 1100px) {
+  .ph-inv { grid-template-columns: minmax(0, 1fr); }
+  .ph-inv-side { position: static; }
+  .ph-inv .ph-inv-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 719px) { .ph-inv-main { padding: var(--space-4); } .ph-inv-head { flex-direction: column; } .ph-inv-status { justify-content: flex-start; } }
+.ph-inv-lines td:is([data-label="Batch"], [data-label="Expiry"], [data-label="MRP"], [data-label="Amount"]) { white-space: nowrap; }
+.ph-stats.ph-today-stats { background: none; }
+@media (min-width: 720px) {
+  .ph-today-stats .ph-stat { padding: var(--space-3); gap: 2px var(--space-1); }
+  .ph-today-stats .ph-stat-icon { width: 30px; height: 30px; }
+  .ph-today-stats .ph-stat-icon svg { width: 16px; height: 16px; }
+  .ph-today-stats .ph-stat-text > span { font-size: 0.78rem; line-height: 1.2; }
+}

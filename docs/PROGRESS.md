@@ -1,5 +1,19 @@
 # Progress
 
+## The store's heading on every pharmacy paper; tax and credit or cash set on the supplier (13 Nov 2026, branch `pharmacy-mis`)
+- Every pharmacy paper now carries the same store block from Pharmacy → Settings (name, address, "Mobile No.",
+  GSTIN and licences – `components/print/StoreHead.jsx`): the bills, orders, debit notes, registers, reports, the
+  stock sheet, the batch-recall list (had no heading), and a pharmacy screen printed with the browser's Print (had the
+  hospital's letterhead – `PagePrintHead` now uses the store's on `/pharmacy` pages).
+- **Suppliers**: Tax name (from the GSTINs, CGST + SGST or IGST) and Payment (credit or cash) are set once on the
+  supplier (`Supplier.taxType`, `Supplier.payment`). **New GRN** no longer asks Tax name, Purchase or Payment: it shows
+  the supplier's in a line with Change. Receiving against an order is from Orders → Receive, as before.
+- **Today cards** (pharmacist): label and icon on top, the number large, what it means underneath, a coloured top
+  edge for watch / high / due; all seven on one row (the Reports panel's grey `.ph-stats` background no longer leaks in).
+- **One invoice** (Pharmacy → an invoice): laid out as an invoice – number, date and a status pill (Paid, On hospital
+  bill, Payment due, Part returned), the bill's details, the medicines and a totals box; payment, returns and the
+  prescription in a column beside it.
+
 ## Inventory MIS reports and a dense New GRN, like the earlier software (13 Nov 2026, branch `pharmacy-mis`)
 - **Reports → Report list** is now two trees, **Inventory MIS** and **Pharmacy MIS**, with the chosen report's form
   beside them: From/To date and only the choices that report uses (supplier, item, batch, expiring by MM/YY, summary
