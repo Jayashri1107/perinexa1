@@ -204,7 +204,7 @@ export function UserProfileTab() {
         <h2>Account details</h2>
         <Alert type="success">{saved && 'Changes saved.'}</Alert>
         <Alert type="error">{error}</Alert>
-        <Field label="Full name" id="name" error={fieldErrors.name}>
+        <Field label="Full name" id="name" error={fieldErrors.name} hint='A doctor keeps "Dr." in front of the name.'>
           <input id="name" value={form.name} onChange={asName((e) => setForm({ ...form, name: e.target.value }))} maxLength={100} />
         </Field>
         <Field label="Email" id="email" error={fieldErrors.email}>
