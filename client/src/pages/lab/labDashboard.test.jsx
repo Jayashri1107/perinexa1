@@ -38,7 +38,7 @@ describe('the lab dashboard', () => {
     expect(t.indexOf('Waiting now')).toBeLessThan(t.indexOf('Reports finished'));
     expect(t.indexOf('Reports finished')).toBeLessThan(t.indexOf('Daily work'));
     expect(t).toContain('Cash handover');
-    expect(t).toContain('By department');
+    expect(t).toContain('Tests by department');
   });
   it('a doctor: the counts of her patients and the screens, no numbers, no cash, no registration', () => {
     roles = ['doctor'];

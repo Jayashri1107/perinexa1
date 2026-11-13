@@ -1,5 +1,20 @@
 # Progress
 
+## Fewer "Try again" pages; lab dashboard and admitted patients tidied (13 Nov 2026, branch `page-fixes`)
+- **"Try again"**: a page that loads while the server restarts (a deploy, or `node --watch` after a file change) now
+  waits up to about 18 s (5 tries) instead of 5 s, and the development proxy's 500 ("server not running") counts as a
+  restart (`client/src/api.js`). Saves are still never sent twice. A screen whose file is gone after a deploy reloads
+  again if the last such reload was over a minute ago – before, only once per tab, so every later deploy left
+  "This page could not open" (`components/PageLoading.jsx`, `main.jsx` `vite:preloadError`).
+- **Development note**: the usual dev server runs in `C:\perinexa1`, where other sessions switch branches; each switch
+  restarts the server and pages show errors meanwhile. Run the dev server from a checkout no session switches.
+- **Registration**: a field's red message (e.g. "Age is required") goes as soon as the field is changed. Age then
+  save and continue worked for reception and for a doctor (page 2 opened); the exact case reported was not reproduced.
+- **Lab → Dashboard**: count cards like the KPI cards (icon tile, big number, words; quieter when 0), the period's
+  numbers in one card, "Tests by department" with an arrow, links with a chevron.
+- **Lab → Admitted**: the app's usual table – "All admitted (n)" / "Sample to take (n)", find by name, number, ward or
+  bed, ward and bed in their own columns sorted by ward then bed, each order on its own line.
+
 ## Lab: a simpler Lab dashboard, and IPD in the lab's Patients menu (12 Nov 2026, branches `lab-ipd-menu`, `lab-dash-simple`)
 - **Patients → IPD → Admitted patients** for lab staff (they had only OPD there): opens `/lab/inpatients` – ward, bed,
   name, number and her lab orders only, as before.

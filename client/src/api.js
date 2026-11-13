@@ -34,11 +34,16 @@ export const setActiveTenant = (id) => {
 };
 
 const RETRY_STATUSES = new Set([0, 502, 503, 504]); // no answer, or the hosting's "the server is restarting"
-const RETRIES = 3;
-/** Whether a request tries again: reading only, after no answer or a restart answer, at most 3 times. */
+// 13 Nov 2026: 5 tries over about 18 s (it was 3 over 5 s) – a server start runs its once-only data fixes first, and
+// pages showed "Try again" while it did.
+const RETRIES = 5;
+const DELAYS = [500, 1500, 3000, 5000, 8000];
+/** Whether a request tries again: reading only, after no answer or a restart answer, at most 5 times. */
 export const shouldRetry = (method, status, attempt) => method === 'GET' && attempt < RETRIES && RETRY_STATUSES.has(status);
-/** Wait before try number attempt + 2: 0.5 s, 1.5 s, 3 s. */
-export const retryDelay = (attempt) => [500, 1500, 3000][Math.min(attempt, 2)];
+/** Wait before try number attempt + 2: 0.5 s, 1.5 s, 3 s, 5 s, 8 s. */
+export const retryDelay = (attempt) => DELAYS[Math.min(attempt, DELAYS.length - 1)];
+/** A 500 that is not the server's own answer (no JSON): the development proxy's "the server is not running". */
+const answerStatus = (res) => (res.status === 500 && !/json/i.test(res.headers.get('Content-Type') ?? '') ? 0 : res.status);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export async function api(path, { method = 'GET', body, query } = {}) {
@@ -69,7 +74,7 @@ export async function api(path, { method = 'GET', body, query } = {}) {
       }
       throw new ApiError(0, { message: "Can't reach the server. Please check that the app is running." });
     }
-    if (!shouldRetry(method, res.status, attempt)) break;
+    if (!shouldRetry(method, answerStatus(res), attempt)) break;
     await wait(retryDelay(attempt));
   }
 

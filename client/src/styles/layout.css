@@ -597,35 +597,48 @@
 .ldb-alert.is-high { background: var(--status-high-bg); color: var(--status-high-fg); }
 .ldb-alert.is-watch { background: var(--status-watch-bg); color: var(--status-watch-fg); }
 a.ldb-alert:hover, a.ldb-alert:focus-visible { text-decoration: underline; }
-.ldb-wait { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+/* Lab dashboard look (13 Nov 2026): each count a card like the KPI cards – the icon in a pastel tile, a big number, the
+   words under it; a count with work waiting in indigo, an empty one quieter. The period's numbers in one card. */
+.ldb-wait { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
 .ldb-tile {
-  display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: var(--space-2); row-gap: var(--space-1); height: 100%;
-  padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); color: var(--slate-600); text-decoration: none;
+  display: flex; flex-direction: column; gap: var(--space-2); height: 100%; box-sizing: border-box;
+  padding: var(--space-4); border: 1px solid var(--card-border); border-radius: var(--radius-lg); background: var(--surface);
+  box-shadow: var(--shadow-card); color: var(--ink); text-decoration: none; transition: box-shadow 0.15s, border-color 0.15s;
 }
-.ldb-tile svg { width: 20px; height: 20px; }
-.ldb-tile-n { font-size: var(--fs-h2); line-height: 1; font-weight: 700; color: var(--slate-600); }
-.ldb-tile-label { grid-column: 1 / -1; color: var(--ink); font-weight: 600; }
-.ldb-tile.has-work { border-color: var(--indigo-700); }
-.ldb-tile.has-work svg, .ldb-tile.has-work .ldb-tile-n { color: var(--indigo-700); }
-.ldb-tile:hover, .ldb-tile:focus-visible { background: var(--indigo-100); border-color: var(--indigo-700); }
-.ldb-tile:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+.ldb-tile-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--mist-100); color: var(--slate-600); }
+.ldb-tile-icon svg { width: 20px; height: 20px; }
+.ldb-tile-n { margin-top: var(--space-1); font-size: var(--fs-kpi); line-height: var(--lh-kpi); font-weight: 500; color: var(--slate-600); }
+.ldb-tile-label { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+.ldb-tile.has-work .ldb-tile-icon { background: var(--indigo-100); color: var(--indigo-700); }
+.ldb-tile.has-work .ldb-tile-n { color: var(--ink); }
+.ldb-tile.has-work .ldb-tile-label { color: var(--ink); }
+.ldb-tile:hover, .ldb-tile:focus-visible { box-shadow: var(--shadow-hover); border-color: var(--indigo-200); color: var(--ink); }
+.ldb-tile:focus-visible { box-shadow: var(--focus-ring), var(--shadow-card); outline: none; }
+.ldb-period { padding: var(--space-6); }
+.ldb-period .lab-dash-head { margin-bottom: var(--space-4); }
 .ldb-numbers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); margin: 0; }
-.ldb-numbers > div { padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
-.ldb-numbers dt { color: var(--slate-600); font-size: var(--fs-label); }
-.ldb-numbers dd { margin: var(--space-1) 0 0; font-size: var(--fs-h3); font-weight: 700; }
-.ldb-more { margin-top: var(--space-3); }
-.ldb-more summary { cursor: pointer; color: var(--indigo-700); font-weight: 600; padding: var(--space-2) 0; }
+.ldb-numbers > div { padding: var(--space-4); border-radius: var(--radius-md); background: var(--mist-50); }
+.ldb-numbers dt { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.ldb-numbers dd { margin: var(--space-1) 0 0; font-size: var(--fs-h1); line-height: var(--lh-h1); font-weight: 600; color: var(--ink); }
+.ldb-more { margin-top: var(--space-4); border-top: 1px solid var(--border); padding-top: var(--space-2); }
+.ldb-more summary { display: inline-flex; align-items: center; gap: var(--space-1); cursor: pointer; color: var(--indigo-700); font-weight: 600; padding: var(--space-2) 0; list-style: none; }
+.ldb-more summary::-webkit-details-marker { display: none; }
+.ldb-more summary svg { width: 18px; height: 18px; transition: transform 0.15s; }
+.ldb-more[open] summary svg { transform: rotate(90deg); }
 .ldb-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-4); align-items: start; }
-.ldb-group { padding: var(--space-4); }
-.ldb-group h2 { margin: 0 0 var(--space-2); font-size: var(--fs-body); color: var(--slate-600); }
+.ldb-group { padding: var(--space-4) var(--space-6); }
+.ldb-group h2 { margin: 0 0 var(--space-1); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; color: var(--slate-600); text-transform: uppercase; letter-spacing: 0.04em; }
 .ldb-group ul { margin: 0; padding: 0; list-style: none; }
 .ldb-group li + li { border-top: 1px solid var(--border); }
-.ldb-group a { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) 0; color: var(--ink); text-decoration: none; }
-.ldb-group a svg { width: 18px; height: 18px; color: var(--indigo-700); }
-.ldb-group a:hover, .ldb-group a:focus-visible { color: var(--indigo-700); text-decoration: underline; }
+.ldb-group a { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; color: var(--ink); text-decoration: none; }
+.ldb-group a > svg:first-child { width: 18px; height: 18px; color: var(--indigo-700); }
+.ldb-group a .ldb-go { margin-left: auto; width: 16px; height: 16px; color: var(--slate-300); }
+.ldb-group a:hover, .ldb-group a:focus-visible { color: var(--indigo-700); }
+.ldb-group a:hover .ldb-go { color: var(--indigo-700); }
 @media (max-width: 640px) {
   .ldb-wait { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ldb-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ldb-period { padding: var(--space-4); }
 }
 
 /* Lab → New patient test (12 Nov 2026): one column, four numbered steps, the total and the button always at the foot */
