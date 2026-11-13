@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { hasDoctorTitle, withDoctorTitle } from '../utils/doctorTitle.js';
 
 // Roles a person can have inside one hospital. Only "admin" can manage that hospital's users.
 // "rmo" = resident medical officer; "lab" = lab staff; "pharmacist" = the pharmacy (stock, counter, registers);
@@ -91,6 +92,22 @@ membershipSchema.index({ tenantId: 1, roles: 1, isActive: 1 });
 membershipSchema.pre('validate', function () {
   if (Array.isArray(this.roles)) this.roles = TENANT_ROLES.filter((r) => this.roles.includes(r));
 });
+
+/**
+ * A doctor's name gets "Dr." in front once they have the doctor role (utils/doctorTitle.js) – called by the routes that
+ * add staff or change roles, after the membership is saved; doctors added any other way get it at the next start
+ * (users/doctorTitles.js). A loaded person (populate) gets the new name too, so the answer already shows it.
+ */
+export async function giveDoctorTitle(membership) {
+  if (!membership?.roles?.includes('doctor')) return;
+  const loaded = membership.userId?._id ? membership.userId : null;
+  const User = mongoose.model('User');
+  const user = await User.findById(loaded?._id ?? membership.userId, { name: 1 }).lean();
+  if (!user || hasDoctorTitle(user.name)) return;
+  const name = withDoctorTitle(user.name);
+  await User.updateOne({ _id: user._id }, { $set: { name } });
+  if (loaded) loaded.name = name;
+}
 
 export const hasRole = (membership, ...roles) => Boolean(membership?.roles?.some((r) => roles.includes(r)));
 

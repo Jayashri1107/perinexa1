@@ -34,3 +34,23 @@ describe("the medicine pop-up's figures", () => {
     expect(grnLineFigures({ conv: 10 })).toMatchObject({ units: 0, landedPaise: null, saleRatePaise: null, profitPercent: null });
   });
 });
+
+describe('the expiry typed on the purchase pop-up', () => {
+  it('reads a month and year the way packs print it', async () => {
+    const { typedExpiry } = await import('./grnFormat.js');
+    for (const t of ['08/27', '8/27', '08/2027', '0827', '082027', '08-27', '08.2027', ' 8 / 2027 ', '15/08/2027']) expect(typedExpiry(t)).toBe('2027-08');
+    expect(typedExpiry('12/30')).toBe('2030-12');
+  });
+  it('refuses what is not a month and year', async () => {
+    const { typedExpiry } = await import('./grnFormat.js');
+    for (const t of ['', '13/27', '00/27', '8', '827', 'aug 27', '08/1999', '31/02']) expect(typedExpiry(t)).toBeNull();
+  });
+  it('adds the slash after the month and shows a saved month back', async () => {
+    const { expiryAsTyped, expiryTyped } = await import('./grnFormat.js');
+    expect(expiryAsTyped('08', '0')).toBe('08/');
+    expect(expiryAsTyped('08', '08/')).toBe('08'); // deleting the slash
+    expect(expiryAsTyped('08/27x', '08/27')).toBe('08/27');
+    expect(expiryTyped('2027-08')).toBe('08/2027');
+    expect(expiryTyped('')).toBe('');
+  });
+});

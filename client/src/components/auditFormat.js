@@ -215,6 +215,7 @@ export const AUDIT_LABELS = {
   PHARMACY_RETURNED: 'Medicines returned to the pharmacy',
   PHARMACY_PRINTED: 'Pharmacy invoice or credit note printed',
   PHARMACY_REGISTER_VIEWED: 'Pharmacy register opened',
+  PHARMACY_MIS_VIEWED: 'Pharmacy report opened',
   PHARMACY_PATIENT_LOOKED_UP: 'Patient looked up in the pharmacy',
   PHARMACY_EXPORTED: 'Pharmacy export downloaded',
   TENANT_SETTINGS_UPDATED: 'Letterhead changed',
@@ -1023,6 +1024,13 @@ const paidOf = (d) => [d.receipt ? `receipt ${d.receipt}` : '', d.amountPaise !=
 // supplier screens send every field when saving, so the names there are what was saved, not what changed.
 const PHARMACY_SETTING_WORDS = { name: 'pharmacy name', gstin: 'GSTIN', licence20: 'drug licence (Form 20)', licence21: 'drug licence (Form 21)', rmi: 'NDPS recognition (RMI) number', pharmacistName: 'registered pharmacist', address: 'store address', phone: 'store phone', state: 'state', place: 'city or town', pin: 'PIN code' };
 const SCHEDULE_WORDS = { G: 'Schedule G', H: 'Schedule H', H1: 'Schedule H1', X: 'Schedule X', narcotic: 'Narcotic (NDPS)' };
+// The pharmacy MIS reports (13 Nov 2026; server/src/pharmacy/misReports.js)
+const MIS_WORDS = {
+  sales: 'Sales report', 'sale-lines': 'Sales bill details', collection: 'Sales collection', 'card-collection': 'Card collection', 'patient-collection': 'Patient-wise collection',
+  returns: 'Sales return report', 'return-lines': 'Sales return details', credit: 'Credit report', 'patient-credit': 'Patient-wise credit', 'sales-gst': 'Sales GST report',
+  'sales-return-gst': 'Sales return GST report', 'h1-sales': 'Sales – Schedule H1', 'narcotic-sales': 'Sales – narcotic (NDPS)', 'antitb-sales': 'Sales – anti-TB',
+  'antitb-returns': 'Sales returns – anti-TB', 'h1-returns': 'Sales returns – Schedule H1',
+};
 const PHARMACY_EXPORT_WORDS = { sales: 'Sales with GST', purchases: 'Purchases', supplier_returns: 'Returns to suppliers' };
 const invoiceOf = (d) => (d.number ? `Invoice ${d.number}` : 'An invoice');
 // A medicine or a supplier: added, or its details saved ("Stop using" and "Use again" send only `active`)
@@ -1824,6 +1832,8 @@ export function describeAudit(entry) {
       return d.what === 'credit_note' ? `Credit note of ${d.number ? `invoice ${d.number}` : 'an invoice'}` : invoiceOf(d);
     case 'PHARMACY_REGISTER_VIEWED':
       return joined(`${SCHEDULE_WORDS[d.type] ?? 'Drug'} register`, periodOf(d));
+    case 'PHARMACY_MIS_VIEWED':
+      return joined(MIS_WORDS[d.report] ?? 'Pharmacy report', periodOf(d), d.rows != null ? count(d.rows, 'row') : '');
     case 'PHARMACY_PATIENT_LOOKED_UP':
       if (d.by === 'list') return joined('List of people billed', count(d.people ?? 0, 'person', 'people'));
       return joined(d.by === 'phone' ? 'By phone number' : d.by === 'name' ? 'By name, among people billed' : 'By patient number', count(d.patientIds?.length ?? 0, 'record'), d.walkInBills ? count(d.walkInBills, d.by === 'name' ? 'walk-in customer' : 'walk-in bill') : '');

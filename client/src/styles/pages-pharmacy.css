@@ -272,26 +272,31 @@
 /* New GRN as on the earlier software (28 Oct 2026): GRN List / New GRN tabs, the invoice on the left, the items on the
    right, a pop-up per medicine, CRN adjust / Save / Close under the amounts */
 .ph-grn-tabs { margin-bottom: var(--space-4); }
-.ph-grn-layout { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(0, 2.4fr); gap: var(--space-4); align-items: start; }
+/* 13 Nov 2026: the invoice across the top in four columns and the items full width below – the narrow invoice column
+   cut the dates off and left the items card half empty */
+.ph-grn-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.ph-grn-dense .ph-grn-layout { grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-3); align-items: stretch; }
 .ph-grn-layout > .card { margin: 0; }
-.ph-grn-invoice .form-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.ph-grn-invoice .form-grid > :is(:nth-child(1), :nth-child(2), .ph-grn-supplier) { grid-column: 1 / -1; }
-.ph-grn-invoice .ph-grn-choices { margin-top: var(--space-4); }
+.ph-grn-invoice .form-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); }
+.ph-grn-invoice .form-grid > :is(:nth-child(1), :nth-child(2)) { grid-column: span 2; }
+.ph-grn-invoice .form-grid > .ph-grn-supplier { grid-column: 1 / -1; }
+.ph-grn-invoice .form-grid .field { margin: 0; }
+.ph-grn-invoice .ph-grn-choices { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-3) var(--space-6); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.ph-grn-invoice .ph-grn-choices .field { margin: 0; min-width: 200px; }
+.ph-grn-items h2, .ph-grn-invoice h2 { margin-top: 0; }
 .ph-grn-row-actions { white-space: nowrap; text-align: right; }
 .ph-grn-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-4); }
-.modal:has(.ph-grn-pop) { max-width: 960px; }
-.ph-grn-pop { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); }
-.ph-grn-pop .ph-ro { font-variant-numeric: tabular-nums; text-align: right; }
-@media (max-width: 1100px) { .ph-grn-layout { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 720px) { .ph-grn-pop { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .ph-grn-invoice .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .ph-grn-choices { display: grid; gap: var(--space-4); }
 .ph-choice { display: grid; gap: var(--space-1); }
 .ph-grn-supplier { grid-column: 1 / -1; margin: calc(-1 * var(--space-2)) 0 0; }
-.ph-grn-scroll { overflow-x: auto; }
-.ph-grn-lines { min-width: 1100px; }
-.ph-grn-lines td:first-child { min-width: 220px; }
+.ph-grn-scroll { overflow-x: auto; position: relative; } /* relative: a hidden label inside never widens the page */
+.ph-grn-lines { min-width: 900px; }
+.ph-grn-lines td:first-child { min-width: 160px; }
+.bill-lines.ph-grn-lines th { white-space: normal; }
+.bill-lines.ph-grn-lines :is(th, td) { padding-inline: 8px; }
+.bill-lines.ph-grn-lines .ph-grn-row-actions { padding-inline-end: 4px; }
 .ph-grn-supplier { margin-bottom: var(--space-1); }
-.ph-grn-meta { display: block; margin: 2px 0 0; }
 .ph-grn-sums th { text-align: left; font-weight: 400; }
 .ph-grn-net th, .ph-grn-net td { font-weight: 700; border-top: 1px solid var(--border); }
 .ph-grn-facts { margin: 0 0 var(--space-3); }
@@ -642,3 +647,193 @@
 
 /* PH13: the staff of a place */
 .pl-staff { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: var(--space-1) var(--space-3); }
+
+/* The purchase pop-up per medicine, compact (13 Nov 2026): the typed fields in one block of five columns, what they come
+   to as a strip of small figures, the actions at the foot on the right – no tall empty boxes */
+.modal:has(.ph-gl-inputs) { max-width: 880px; }
+.ph-gl-meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: 0 0 var(--space-4); }
+.ph-gl-last.is-higher { color: var(--status-watch-fg); font-weight: 600; }
+.ph-gl-inputs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3); }
+.ph-gl-inputs .field { margin: 0; }
+.ph-gl-figures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: var(--space-4) 0 0; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.ph-gl-figures > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--mist-50); }
+.ph-gl-figures dt { color: var(--slate-600); font-size: 0.8125rem; }
+.ph-gl-figures dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.ph-gl-figures > .is-net { background: var(--indigo-100); }
+.ph-gl-figures > .is-net :is(dt, dd) { color: var(--indigo-800); font-weight: 700; }
+.ph-gl-actions { display: flex; justify-content: flex-end; align-items: center; gap: var(--space-3); margin-top: var(--space-4); }
+@media (max-width: 760px) {
+  .ph-gl-inputs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-gl-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Pharmacy → Reports → Report list (13 Nov 2026): the reports as a grouped list on the left, the chosen one on the right */
+.ph-mis { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.ph-mis > .card { margin: 0; }
+.ph-mis-list { padding: var(--space-3); position: sticky; top: var(--space-4); }
+.ph-mis-group + .ph-mis-group { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.ph-mis-group-title { margin: 0 0 var(--space-1); padding: 0 var(--space-2); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--slate-600); }
+.ph-mis-list ul { list-style: none; margin: 0; padding: 0; }
+.ph-mis-item { display: flex; align-items: center; gap: var(--space-1); width: 100%; padding: 6px var(--space-2); border: 0; border-radius: var(--radius-sm); background: none; color: var(--ink); font: inherit; font-size: 0.875rem; text-align: left; cursor: pointer; }
+.ph-mis-item svg { width: 14px; height: 14px; flex: none; color: var(--slate-300); }
+.ph-mis-item:hover { background: var(--mist-50); }
+.ph-mis-item.is-on { background: var(--selected-bg); color: var(--indigo-800); font-weight: 600; box-shadow: inset 3px 0 0 var(--selected-edge); }
+.ph-mis-item.is-on svg { color: var(--indigo-700); }
+.ph-mis-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: var(--space-3); margin-bottom: var(--space-3); }
+.ph-mis-head h2 { margin: 0; }
+.ph-mis-head .hint { margin: 2px 0 0; }
+.ph-mis-summary { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-3); }
+.ph-mis-summary > div { display: flex; gap: var(--space-2); align-items: baseline; padding: var(--space-1) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--mist-50); }
+.ph-mis-summary dt { font-size: 0.8125rem; color: var(--slate-600); }
+.ph-mis-summary dd { margin: 0; font-weight: 600; }
+.ph-mis-table { font-size: 0.875rem; }
+.bill-report.ph-mis-table :is(td, th) { white-space: nowrap; padding: 6px 8px; }
+.ph-mis-doc .ph-mis-table { font-size: 8.5pt; }
+.ph-mis-doc .ph-mis-table td, .ph-mis-doc .ph-mis-table th { white-space: normal; }
+@media (max-width: 900px) {
+  .ph-mis { grid-template-columns: minmax(0, 1fr); }
+  .ph-mis-list { position: static; }
+}
+
+/* New GRN, dense like the pharmacy's earlier software (13 Nov 2026): small fields and labels, the invoice in a 340px
+   column, the items beside it, the amounts as four columns of label-beside-field */
+.ph-grn-dense .card.bill-section { padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); }
+.ph-grn-dense .card.bill-section h2 { font-size: 0.9375rem; margin: 0 0 var(--space-2); }
+.ph-grn-dense :is(input, select, textarea), .ph-gl-inputs :is(input, select) { min-height: 0; height: 30px; padding-block: 3px; font-size: 0.8125rem; border-radius: var(--radius-sm); }
+.ph-grn-dense :is(input:not([type='search']):not([type='checkbox']):not(.bill-search input), select), .ph-gl-inputs :is(input, select) { padding-inline: 8px; }
+.ph-grn-dense .field > label, .ph-grn-dense .field-label, .ph-gl-inputs .field > label { font-size: 0.75rem; margin-bottom: 2px; }
+.ph-grn-dense .field { margin: 0; }
+.ph-grn-dense .ph-grn-invoice .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
+.ph-grn-dense .ph-grn-invoice .form-grid > :is(:nth-child(1), :nth-child(2), .ph-grn-supplier) { grid-column: 1 / -1; }
+.ph-grn-dense .ph-grn-invoice .ph-grn-choices { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); margin-top: var(--space-3); padding-top: var(--space-3); }
+.ph-grn-dense .ph-choice { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.ph-grn-dense .ph-choice .segmented button { padding: 3px 10px; font-size: 0.8125rem; min-height: 0; }
+.ph-grn-dense .ph-grn-tabs { margin-bottom: var(--space-3); }
+.ph-grn-dense .ph-grn-tabs a { padding: 4px 14px; font-size: 0.8125rem; }
+.ph-grn-dense .ph-grn-items .btn { min-height: 0; padding: 4px 12px; font-size: 0.8125rem; }
+.ph-grn-dense .ph-grn-items p.row { margin: var(--space-2) 0; }
+.ph-grn-dense .bill-lines.ph-grn-lines { font-size: 0.8125rem; }
+.ph-grn-dense .bill-lines.ph-grn-lines :is(th, td) { padding-block: 5px; }
+.ph-amt-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2) var(--space-6); }
+.ph-amt-col { display: grid; gap: 6px; align-content: start; }
+.ph-amt { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: var(--space-2); }
+.ph-amt label { font-size: 0.75rem; color: var(--slate-600); text-align: right; line-height: 1.2; }
+.ph-amt input { width: 100%; text-align: right; font-variant-numeric: tabular-nums; }
+.ph-amt-col:nth-child(2) .ph-amt:nth-child(n + 4) input { text-align: left; }
+.ph-amt .ph-ro { background: var(--mist-50); }
+.ph-amt.is-strong label { color: var(--indigo-800); font-weight: 700; }
+.ph-amt.is-strong input { font-weight: 700; color: var(--indigo-800); background: var(--indigo-100); }
+.ph-amt-note { margin: 0; font-size: 0.75rem; }
+.ph-grn-dense .ph-grn-actions { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+@media (max-width: 1100px) {
+  .ph-grn-dense .ph-grn-layout { grid-template-columns: minmax(0, 1fr); }
+  .ph-amt-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) { .ph-amt-cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* Report list as two trees with the report's form beside it (13 Nov 2026, like the earlier software's MIS) */
+.ph-mis-tree + .ph-mis-tree { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.ph-mis-root { display: flex; align-items: center; gap: var(--space-1); width: 100%; padding: 4px var(--space-1); border: 0; background: none; color: var(--indigo-800); font: inherit; font-weight: 700; font-size: 0.875rem; text-align: left; cursor: pointer; }
+.ph-mis-root svg { width: 16px; height: 16px; }
+.ph-mis-tree .ph-mis-group { margin: var(--space-2) 0 0 var(--space-3); padding-left: var(--space-2); border-left: 1px dashed var(--slate-300); }
+.ph-mis-tree .ph-mis-group + .ph-mis-group { border-top: 0; padding-top: 0; }
+.ph-mis-item { padding: 4px var(--space-2); font-size: 0.8125rem; }
+.ph-mis-main { display: grid; gap: var(--space-3); min-width: 0; }
+.ph-mis-main > .card { margin: 0; }
+.ph-mis-form { padding: var(--space-3) var(--space-4); }
+.ph-mis-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--space-2) var(--space-3); }
+.ph-mis-f { display: grid; gap: 2px; min-width: 0; }
+.ph-mis-f > span { font-size: 0.75rem; font-weight: 600; color: var(--slate-600); }
+.ph-mis-f :is(input, select) { height: 30px; min-height: 0; padding: 3px 8px; font-size: 0.8125rem; }
+.ph-mis-f .segmented button { padding: 3px 12px; font-size: 0.8125rem; min-height: 0; }
+.ph-mis-period { margin: 0 0 var(--space-2); }
+
+/* The Payment window (13 Nov 2026): a registered patient's bill also needs a choice – the hospital bill, or paid here */
+.ph-pay-way.ph-pay-hospital-way { grid-template-columns: 150px minmax(0, 1fr); align-items: center; margin-bottom: var(--space-2); }
+.ph-pay-hospital-way .hint { margin: 0; }
+.ph-pay-choose { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--status-watch-bg); color: var(--status-watch-fg); font-size: 0.875rem; }
+.ph-pay-choose svg { width: 16px; height: 16px; flex: none; }
+
+/* Reports (13 Nov 2026): the tabs first, a report then fills the page; the period in a slim bar where a report needs it */
+.ph-rep-tabs { overflow-x: auto; flex-wrap: nowrap; max-width: 100%; }
+.ph-rep-tabs button { white-space: nowrap; }
+.ph-rep-periodbar { padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); }
+
+/* The supplier's tax and credit or cash (13 Nov 2026), set once on the supplier form; the New GRN shows them in a line */
+.ph-sup-choices { display: grid; gap: var(--space-2); margin: var(--space-3) 0; }
+.ph-sup-choices .ph-choice { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.ph-sup-choices .hint { margin: 0; }
+.ph-grn-terms { margin: var(--space-2) 0 0; }
+
+/* The pharmacist's Today cards (13 Nov 2026, more finished): label and icon on top, the number large, what it means
+   underneath; a coloured top edge and the line's colour carry the status (watch, high, due) with the words. Phones keep
+   their own list layout (mobile.css). */
+@media (min-width: 720px) {
+  .ph-stats.ph-today-stats { grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); background: none; flex: none; }
+  .ph-today-stats .ph-stat {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'label icon' 'value value' 'why why';
+    align-items: start; gap: 2px var(--space-2); padding: var(--space-3) var(--space-4); min-height: 112px;
+    border-radius: var(--radius-lg); border-top: 3px solid var(--indigo-200); box-shadow: var(--shadow-card);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .ph-today-stats .ph-stat:hover { transform: translateY(-1px); border-color: var(--indigo-200); }
+  .ph-today-stats .ph-stat.is-due { border-top-color: var(--status-due-fg); }
+  .ph-today-stats .ph-stat.is-watch { border-top-color: var(--status-watch-fg); }
+  .ph-today-stats .ph-stat.is-high { border-top-color: var(--status-high-fg); }
+  .ph-today-stats .ph-stat-icon { grid-area: icon; width: 36px; height: 36px; border-radius: var(--radius-md); }
+  .ph-today-stats .ph-stat-text { display: contents; }
+  .ph-today-stats .ph-stat-text > span { grid-area: label; align-self: center; font-size: 0.8125rem; font-weight: 600; color: var(--slate-600); white-space: normal; }
+  .ph-today-stats .ph-stat-text strong { grid-area: value; margin-top: var(--space-1); font-size: 1.625rem; line-height: 1.15; font-weight: 700; color: var(--ink); }
+  .ph-today-stats .ph-stat-why { grid-area: why; font-size: 0.75rem; line-height: 1.3; color: var(--slate-600); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ph-today-stats .ph-stat.is-watch .ph-stat-why { color: var(--status-watch-fg); }
+  .ph-today-stats .ph-stat.is-high :is(.ph-stat-why, strong) { color: var(--status-high-fg); }
+}
+@media (max-width: 719px) { .ph-today-stats .ph-stat-why { display: none; } }
+
+/* One pharmacy invoice (13 Nov 2026): the bill on the left, payment / returns / prescription beside it */
+.ph-inv { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-4); align-items: start; }
+.ph-inv > .card, .ph-inv-side > .card { margin: 0; }
+.ph-inv-main { padding: var(--space-6); }
+.ph-inv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); padding-bottom: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--border); }
+.ph-inv-kicker { margin: 0 0 2px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--teal-700); }
+.ph-inv-no { margin: 0; font-size: 1.5rem; line-height: 1.2; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ph-inv-date { margin: 2px 0 0; font-size: 0.875rem; color: var(--slate-600); }
+.ph-inv-status { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+.ph-inv .ph-inv-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: var(--space-3) var(--space-4); border: 0; border-radius: var(--radius-md); background: var(--mist-50); }
+.ph-inv-lines { width: 100%; }
+.ph-inv-lines thead th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--slate-600); }
+.ph-inv-med { font-weight: 600; }
+.ph-inv-totals { display: flex; justify-content: flex-end; margin-top: var(--space-4); }
+.ph-inv-totals dl { display: grid; gap: 6px; width: min(100%, 320px); margin: 0; }
+.ph-inv-totals dl > div { display: flex; justify-content: space-between; gap: var(--space-3); font-size: 0.875rem; }
+.ph-inv-totals dt { color: var(--slate-600); }
+.ph-inv-totals dd { margin: 0; font-variant-numeric: tabular-nums; }
+.ph-inv-totals .ph-inv-why { color: var(--slate-600); text-align: right; }
+.ph-inv-totals .ph-inv-grand { margin-top: var(--space-1); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--indigo-100); font-size: 1.0625rem; }
+.ph-inv-totals .ph-inv-grand :is(dt, dd) { color: var(--indigo-800); font-weight: 700; }
+.ph-inv-side { display: grid; gap: var(--space-3); position: sticky; top: var(--space-4); }
+.ph-inv-card { padding: var(--space-4); }
+.ph-inv-card h2 { margin: 0 0 var(--space-3); font-size: 0.9375rem; }
+.ph-inv-note { margin: 0; font-size: 0.875rem; }
+.ph-inv-paid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin: 0; }
+.ph-inv-paid > div { padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mist-50); }
+.ph-inv-paid dt { font-size: 0.75rem; color: var(--slate-600); }
+.ph-inv-paid dd { margin: 0; font-size: 1.125rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ph-inv-list { list-style: none; margin: var(--space-3) 0 0; padding: 0; }
+.ph-inv-list li { padding: var(--space-2) 0; border-top: 1px solid var(--border); }
+.ph-inv-row { display: flex; justify-content: space-between; gap: var(--space-2); font-size: 0.875rem; }
+.ph-inv-meta { margin-top: 2px; font-size: 0.75rem; color: var(--slate-600); overflow-wrap: anywhere; }
+@media (max-width: 1100px) {
+  .ph-inv { grid-template-columns: minmax(0, 1fr); }
+  .ph-inv-side { position: static; }
+  .ph-inv .ph-inv-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 719px) { .ph-inv-main { padding: var(--space-4); } .ph-inv-head { flex-direction: column; } .ph-inv-status { justify-content: flex-start; } }
+.ph-inv-lines td:is([data-label="Batch"], [data-label="Expiry"], [data-label="MRP"], [data-label="Amount"]) { white-space: nowrap; }
+.ph-stats.ph-today-stats { background: none; }
+@media (min-width: 720px) {
+  .ph-today-stats .ph-stat { padding: var(--space-3); gap: 2px var(--space-1); }
+  .ph-today-stats .ph-stat-icon { width: 30px; height: 30px; }
+  .ph-today-stats .ph-stat-icon svg { width: 16px; height: 16px; }
+  .ph-today-stats .ph-stat-text > span { font-size: 0.78rem; line-height: 1.2; }
+}

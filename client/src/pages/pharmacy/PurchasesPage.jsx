@@ -7,7 +7,7 @@ import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.js
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { toPaise } from '../billing/billingFormat.js';
-import { grnLineFigures, grnTotals } from './grnFormat.js';
+import { expiryAsTyped, expiryTyped, grnLineFigures, grnTotals, typedExpiry } from './grnFormat.js';
 import { gstinProblem, gstinState } from './gstin.js';
 import { FORM_LABELS, SCHEDULE_LABELS, cleanBarcode, expiryLabel, isBarcode, medicineLabel, medicinesToCheck, orderLook, receiveLines, receivedFlash, scannedForPurchase, packWords } from './pharmacyFormat.js';
 import { FindMedicine, Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
@@ -298,7 +298,7 @@ const parseLine = (l) => ({ l, conv: num(l.conv), qty: num(l.qty), free: num(l.f
 function lineErrors(x) {
   const e = {};
   if (!x.l.batch.trim()) e.batch = 'Write the batch number.';
-  if (!/^\d{4}-\d{2}$/.test(x.l.expiry)) e.expiry = 'Choose the expiry month.';
+  if (!/^\d{4}-\d{2}$/.test(x.l.expiry)) e.expiry = 'Type the expiry as month/year, for example 08/27.';
   if (!Number.isInteger(x.conv) || x.conv < 1) e.conv = 'Write how many units of sale are in a pack (1 or more).';
   if (!Number.isInteger(x.qty) || x.qty < 0) e.qty = 'Write the number of packs.';
   if (!Number.isInteger(x.free) || x.free < 0) e.freeQty = 'Write the free packs as a whole number, or leave it empty.';
@@ -347,13 +347,21 @@ function GrnTabs({ desk }) {
  * The pop-up for one medicine of the bill, laid out like the pharmacy's earlier software: batch, expiry, quantity and
  * free quantity, rate, MRP, discount, pack size and GST as written on the supplier's invoice, and what they come to –
  * total, discount and GST amounts, net, the units of sale received, the sale rate, the landed rate and the profit.
+ * Tidied 13 Nov 2026 (the developer): what is typed in one compact block, what it comes to as a strip of figures below,
+ * the last price paid in the line under the title; the expiry is typed (08/27), not picked from a calendar.
  */
 function GrnLineDialog({ line, isNew, onClose, onDone }) {
   const [l, setL] = useState(line);
+  const [expText, setExpText] = useState(expiryTyped(line.expiry));
   // PH17: the last price paid for this medicine (per pack as on that bill)
   const lastPrice = useFetch(`/pharmacy/medicines/${line.medicine.id}/last-price`).data?.last ?? null;
   const [tried, setTried] = useState(false);
   const f = (k) => (e) => setL({ ...l, [k]: e.target.value });
+  const typeExpiry = (e) => {
+    const v = expiryAsTyped(e.target.value, expText);
+    setExpText(v);
+    setL({ ...l, expiry: typedExpiry(v) ?? '' });
+  };
   const x = parseLine(l);
   const errors = lineErrors(x);
   const err = (k) => (tried ? errors[k] : undefined);
@@ -368,62 +376,60 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
   });
   const m = l.medicine;
   const unit = m.unit || 'unit';
-  const shown = (id, v) => <input id={id} value={v ?? ''} readOnly tabIndex={-1} className="ph-ro" />;
   const submit = (e) => {
     e.preventDefault();
     if (Object.keys(errors).length) return setTried(true);
     return onDone(l);
   };
+  const higher = lastPrice && x.rate && lastPrice.conv === x.conv && x.rate > lastPrice.ratePaise;
+  const figures = [
+    ['Total amount', money(fig.totalPaise)],
+    ['Disc amount', money(fig.discPaise)],
+    ['GST amount', money(fig.gstPaise)],
+    ['Net amount', money(fig.netPaise), true],
+    [`Total qty (${unit}s)`, fig.units || '—'],
+    [`Sale rate / ${unit}`, money(fig.saleRatePaise)],
+    [`Landed rate / ${unit}`, money(fig.landedPaise)],
+    ['Profit %', fig.profitPercent == null ? '—' : `${fig.profitPercent} %`],
+  ];
   return (
     <Modal id="ph-grn-line" title={medicineLabel(m)} onClose={onClose} wide>
-      <p className="hint ph-grn-meta">{[`UOM ${unit}`, m.hsn && `HSN ${m.hsn}`].filter(Boolean).join(' · ')}</p>
+      <p className="hint ph-gl-meta">
+        <span>UOM {unit}</span>
+        <span>HSN {m.hsn || '—'}</span>
+        {lastPrice && (
+          <span className={higher ? 'ph-gl-last is-higher' : 'ph-gl-last'}>
+            Last paid {money(lastPrice.ratePaise)} a pack of {lastPrice.conv} on {dayLabel(lastPrice.date)}
+            {lastPrice.supplier ? ` from ${lastPrice.supplier}` : ''}
+            {higher ? ' – today’s rate is higher' : ''}
+          </span>
+        )}
+      </p>
       <form onSubmit={submit} noValidate>
-        <div className="ph-grn-pop">
+        <div className="ph-gl-inputs">
           <Field label="Batch no." id="gl-batch" error={err('batch')}>
             <input id="gl-batch" value={l.batch} maxLength={40} onChange={f('batch')} autoFocus />
           </Field>
-          <Field label="Exp. date" id="gl-exp" error={err('expiry')}>
-            <input id="gl-exp" type="month" value={l.expiry} onChange={f('expiry')} />
+          <Field label="Exp. (MM/YY)" id="gl-exp" error={err('expiry')}>
+            <input id="gl-exp" inputMode="numeric" placeholder="08/27" autoComplete="off" value={expText} onChange={typeExpiry} />
           </Field>
           <Field label="Qty (packs)" id="gl-qty" error={err('qty')}>
             <input id="gl-qty" inputMode="numeric" value={l.qty} onChange={f('qty')} />
           </Field>
-          <Field label="Free qty (packs)" id="gl-free" error={err('freeQty')}>
+          <Field label="Free (packs)" id="gl-free" error={err('freeQty')}>
             <input id="gl-free" inputMode="numeric" value={l.freeQty} onChange={f('freeQty')} />
           </Field>
-          <Field label={`Conv. factor (${unit}s in a pack)`} id="gl-conv" error={err('conv')}>
+          <Field label={`${unit[0].toUpperCase()}${unit.slice(1)}s in a pack`} id="gl-conv" error={err('conv')}>
             <input id="gl-conv" inputMode="numeric" value={l.conv} onChange={f('conv')} />
+          </Field>
+          <Field label="Rate ₹ / pack" id="gl-rate" error={err('rate')}>
+            <input id="gl-rate" inputMode="decimal" value={l.rate} onChange={f('rate')} />
+          </Field>
+          <Field label="MRP ₹ / pack" id="gl-mrp" error={err('mrp')}>
+            <input id="gl-mrp" inputMode="decimal" value={l.mrp} onChange={f('mrp')} />
           </Field>
           <Field label="Disc %" id="gl-disc" error={err('disc')}>
             <input id="gl-disc" inputMode="decimal" value={l.disc} onChange={f('disc')} />
-          </Field>
-          <Field label="Disc amount" id="gl-discamt">
-            {shown('gl-discamt', money(fig.discPaise))}
-          </Field>
-          <Field
-            label="Rate ₹ (per pack)"
-            id="gl-rate"
-            error={err('rate')}
-            keepHint
-            hint={
-              lastPrice
-                ? `Last paid ${money(lastPrice.ratePaise)} a pack of ${lastPrice.conv} on ${lastPrice.date}${lastPrice.supplier ? ` (${lastPrice.supplier})` : ''}${x.rate && lastPrice.conv === x.conv && x.rate > lastPrice.ratePaise ? ' – today’s rate is higher' : ''}.`
-                : undefined
-            }
-          >
-            <input id="gl-rate" inputMode="decimal" value={l.rate} onChange={f('rate')} />
-          </Field>
-          <Field label="MRP ₹ (per pack)" id="gl-mrp" error={err('mrp')}>
-            <input id="gl-mrp" inputMode="decimal" value={l.mrp} onChange={f('mrp')} />
-          </Field>
-          <Field label={`Sale rate (per ${unit})`} id="gl-sale">
-            {shown('gl-sale', money(fig.saleRatePaise))}
-          </Field>
-          <Field label="Total amount" id="gl-total">
-            {shown('gl-total', money(fig.totalPaise))}
-          </Field>
-          <Field label={`Total qty (${unit}s)`} id="gl-units">
-            {shown('gl-units', fig.units || '')}
           </Field>
           <Field label="GST %" id="gl-gst">
             <select id="gl-gst" value={l.gst} onChange={f('gst')}>
@@ -434,32 +440,40 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
               ))}
             </select>
           </Field>
-          <Field label="GST amount" id="gl-gstamt">
-            {shown('gl-gstamt', money(fig.gstPaise))}
-          </Field>
-          <Field label="Net amount" id="gl-net">
-            {shown('gl-net', money(fig.netPaise))}
-          </Field>
-          <Field label="HSN code" id="gl-hsn">
-            {shown('gl-hsn', m.hsn || '—')}
-          </Field>
-          <Field label={`Landed rate (per ${unit})`} id="gl-landed">
-            {shown('gl-landed', money(fig.landedPaise))}
-          </Field>
-          <Field label="Profit %" id="gl-profit">
-            {shown('gl-profit', fig.profitPercent == null ? '' : `${fig.profitPercent} %`)}
-          </Field>
         </div>
-        <div className="row">
-          <button type="submit" className="btn btn-primary">
-            {isNew ? 'Add to the bill' : 'Save the line'}
-          </button>
+        <dl className="ph-gl-figures" aria-label="What the line comes to">
+          {figures.map(([label, value, strong]) => (
+            <div key={label} className={strong ? 'is-net' : undefined}>
+              <dt>{label}</dt>
+              <dd className="tabular">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="ph-gl-actions">
           <button type="button" className="btn btn-link" onClick={onClose}>
             Cancel
+          </button>
+          <button type="submit" className="btn btn-primary">
+            {isNew ? 'Add to the bill' : 'Save the line'}
           </button>
         </div>
       </form>
     </Modal>
+  );
+}
+
+/** One amount of the bill, label beside a small field; without onChange it is a worked-out figure (read only). */
+function Amt({ label, id, value, onChange, text = false, strong = false, maxLength }) {
+  const own = id ?? `pu-amt-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`;
+  return (
+    <div className={strong ? 'ph-amt is-strong' : 'ph-amt'}>
+      <label htmlFor={own}>{label}</label>
+      {onChange ? (
+        <input id={own} inputMode={text ? undefined : 'decimal'} value={value} maxLength={maxLength} onChange={onChange} />
+      ) : (
+        <input id={own} value={value} readOnly tabIndex={-1} className="ph-ro" />
+      )}
+    </div>
   );
 }
 
@@ -489,15 +503,12 @@ export function NewPurchasePage() {
   const [invoiceNo, setInvoiceNo] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [gateEntryNo, setGateEntryNo] = useState('');
-  const [payment, setPayment] = useState('credit');
-  const [againstOrder, setAgainstOrder] = useState(false);
-  const orders = useFetch(againstOrder && !order ? '/pharmacy/orders' : null);
-  const openOrders = (orders.data?.orders ?? []).filter((o) => o.supplier?.id === supplierId && (o.status === 'sent' || o.status === 'part_received'));
-  // CGST + SGST from a supplier in the pharmacy's state, IGST from another state (read from the two GSTINs) – changeable
-  const [taxChoice, setTaxChoice] = useState(null);
+  // 13 Nov 2026: the tax and credit or cash come from the supplier (set when it is added – Suppliers); a supplier
+  // without a tax choice: CGST + SGST from the pharmacy's state, IGST from another state (read from the two GSTINs)
+  const payment = supplier?.payment ?? 'credit';
   const ours = gstinState(settings.data?.settings.gstin ?? '');
   const theirs = gstinState(supplier?.gstin ?? '');
-  const taxType = taxChoice ?? (ours && theirs && ours.code !== theirs.code ? 'igst' : 'cgst_sgst');
+  const taxType = supplier?.taxType || (ours && theirs && ours.code !== theirs.code ? 'igst' : 'cgst_sgst');
   const [extra, setExtra] = useState({ scheme: '', discPercent: '', crnAdj: '', other: '', surcharge: '', freight: '', receivedBy: '', remark: '', printed: '' });
   // PH3: the server's "the bill says ₹… but the lines add up to ₹…" – answered with Save as it is
   const [differs, setDiffers] = useState(null);
@@ -578,7 +589,7 @@ export function NewPurchasePage() {
   return (
     <>
       <PharmacyHeader title={order ? `Receive order ${order.number}` : 'Add a purchase bill'} crumb={order ? `Receive ${order.number}` : 'New GRN'} buying />
-      <div className="pf-content bill-page">
+      <div className="pf-content bill-page ph-grn-dense">
         <GrnTabs desk />
         <Alert type="error" onClose={() => s.setError(null)}>
           {s.error}
@@ -633,44 +644,13 @@ export function NewPurchasePage() {
                 <input id="pu-at" value={formatDateTime(enteredAt)} readOnly />
               </Field>
             </div>
-            <div className="ph-grn-choices">
-              <Choice label="Tax name" value={taxType} options={Object.entries(TAX_LABELS)} onChange={setTaxChoice} />
-              <Choice
-                label="Purchase"
-                value={order || againstOrder ? 'order' : 'direct'}
-                options={[
-                  ['direct', 'Direct purchase'],
-                  ['order', 'Purchase order'],
-                ]}
-                onChange={(k) => {
-                  if (k === 'order') return setAgainstOrder(true);
-                  setAgainstOrder(false);
-                  if (order) navigate(`/pharmacy/purchases/new${supplierId ? `?supplier=${supplierId}` : ''}`);
-                  return undefined;
-                }}
-              />
-              {againstOrder && !order && (
-                <Field label="Purchase order" id="pu-order" hint={supplierId ? (orders.data && !openOrders.length ? 'No order of this supplier is waiting for delivery.' : undefined) : 'Choose the supplier first.'}>
-                  <select id="pu-order" value="" disabled={!supplierId} onChange={(e) => e.target.value && navigate(`/pharmacy/purchases/new?order=${e.target.value}`)}>
-                    <option value="">Choose…</option>
-                    {openOrders.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.number}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              )}
-              <Choice
-                label="Payment"
-                value={payment}
-                options={[
-                  ['credit', 'Credit'],
-                  ['cash', 'Cash'],
-                ]}
-                onChange={setPayment}
-              />
-            </div>
+            {supplier && (
+              <p className="hint ph-grn-terms">
+                {TAX_LABELS[taxType]} · {payment === 'cash' ? 'Cash' : 'Credit'}
+                {order ? ` · against order ${order.number}` : ''} – as set for this supplier.{' '}
+                <Link to={`/pharmacy/suppliers/${supplier.id}`}>Change</Link>
+              </p>
+            )}
           </section>
           <section className="card bill-section ph-grn-items" aria-labelledby="pu-lines">
             <h2 id="pu-lines">Items</h2>
@@ -788,45 +768,48 @@ export function NewPurchasePage() {
             )}
           </section>
         </div>
-        <section className="card bill-section" aria-labelledby="pu-amounts">
-          <h2 id="pu-amounts">Bill amounts</h2>
-          <div className="ph-grn-foot">
-            <div className="form-grid">
-              <Field label="Scheme discount ₹" id="pu-scheme">
-                <input id="pu-scheme" inputMode="decimal" value={extra.scheme} onChange={setX('scheme')} />
-              </Field>
-              <Field label="Discount %" id="pu-discp" hint={sums.discPaise ? `Discount amount ${money(sums.discPaise)}` : undefined}>
-                <input id="pu-discp" inputMode="decimal" value={extra.discPercent} onChange={setX('discPercent')} />
-              </Field>
-              <Field label="Credit note adjusted ₹" id="pu-crn">
-                <input id="pu-crn" inputMode="decimal" value={extra.crnAdj} onChange={setX('crnAdj')} />
-              </Field>
-              <Field label="Other charges ₹" id="pu-other">
-                <input id="pu-other" inputMode="decimal" value={extra.other} onChange={setX('other')} />
-              </Field>
-              <Field label="Surcharge ₹" id="pu-surcharge">
-                <input id="pu-surcharge" inputMode="decimal" value={extra.surcharge} onChange={setX('surcharge')} />
-              </Field>
-              <Field label="Freight ₹" id="pu-freight">
-                <input id="pu-freight" inputMode="decimal" value={extra.freight} onChange={setX('freight')} />
-              </Field>
-              <Field label="Received by" id="pu-recv">
-                <input id="pu-recv" value={extra.receivedBy} maxLength={100} onChange={setX('receivedBy')} />
-              </Field>
-              <Field label="Remark" id="pu-remark">
-                <input id="pu-remark" value={extra.remark} maxLength={300} onChange={setX('remark')} />
-              </Field>
-              <Field
-                label="Bill total as printed ₹"
-                id="pu-printed"
-                hint={printedGap == null ? 'Type the supplier’s total to check the sums.' : Math.abs(printedGap) <= 100 ? 'Matches the sums (within ₹1).' : undefined}
-                error={printedGap != null && Math.abs(printedGap) > 100 ? `The lines add up to ${money(sums.netPaise)} – ${money(Math.abs(printedGap))} ${printedGap > 0 ? 'less' : 'more'} than the bill. Check the rates, discounts and GST.` : undefined}
-                keepHint
-              >
-                <input id="pu-printed" inputMode="decimal" value={extra.printed} onChange={setX('printed')} />
-              </Field>
+        {/* The bill's amounts as on the earlier software (13 Nov 2026): four columns of small fields, label beside field –
+            discounts, charges, the GST split, and the totals down to the net to pay */}
+        <section className="card bill-section ph-grn-amounts" aria-labelledby="pu-amounts">
+          <h2 id="pu-amounts" className="sr-only">
+            Bill amounts
+          </h2>
+          <div className="ph-amt-cols">
+            <div className="ph-amt-col">
+              <Amt label="Item disc" value={money(sums.itemDiscPaise)} />
+              <Amt label="Scheme disc ₹" id="pu-scheme" value={extra.scheme} onChange={setX('scheme')} />
+              <Amt label="Disc amount" value={money(sums.discPaise)} />
+              <Amt label="Disc %" id="pu-discp" value={extra.discPercent} onChange={setX('discPercent')} />
+              <Amt label="CRN adj. ₹" id="pu-crn" value={extra.crnAdj} onChange={setX('crnAdj')} />
             </div>
-            <GrnSummary sums={sums} taxType={taxType} />
+            <div className="ph-amt-col">
+              <Amt label="Other charges ₹" id="pu-other" value={extra.other} onChange={setX('other')} />
+              <Amt label="Surcharge ₹" id="pu-surcharge" value={extra.surcharge} onChange={setX('surcharge')} />
+              <Amt label="Freight ₹" id="pu-freight" value={extra.freight} onChange={setX('freight')} />
+              <Amt label="Received by" id="pu-recv" text value={extra.receivedBy} maxLength={100} onChange={setX('receivedBy')} />
+              <Amt label="Remark" id="pu-remark" text value={extra.remark} maxLength={300} onChange={setX('remark')} />
+            </div>
+            <div className="ph-amt-col">
+              <Amt label="IGST amt" value={money(sums.igstPaise)} />
+              <Amt label="CGST amt" value={money(sums.cgstPaise)} />
+              <Amt label="SGST amt" value={money(sums.sgstPaise)} />
+              <Amt label="Bill total as printed ₹" id="pu-printed" value={extra.printed} onChange={setX('printed')} />
+              {printedGap != null && (
+                <p className={Math.abs(printedGap) > 100 ? 'field-error ph-amt-note' : 'hint ph-amt-note'}>
+                  {Math.abs(printedGap) <= 100
+                    ? 'Matches the sums (within ₹1).'
+                    : `The lines add up to ${money(sums.netPaise)} – ${money(Math.abs(printedGap))} ${printedGap > 0 ? 'less' : 'more'} than the bill. Check the rates, discounts and GST.`}
+                </p>
+              )}
+            </div>
+            <div className="ph-amt-col ph-amt-totals">
+              <Amt label="Total amount" value={money(sums.totalPaise)} />
+              <Amt label="Less amount" value={money(sums.lessPaise)} />
+              <Amt label="Add amount" value={money(sums.addPaise)} />
+              <Amt label="GST amount" value={money(sums.gstPaise)} />
+              <Amt label="Net pay amt" value={money(sums.netPaise)} strong />
+              <Amt label="Rounding amt" value={money(sums.roundingPaise)} />
+            </div>
           </div>
           {!amountsOk && <p className="field-error">Write the amounts in rupees (for example 125.50) and the discount as 0 to 100 %.</p>}
           {amountsOk && sums.netPaise < 0 && <p className="field-error">The discounts are more than the bill.</p>}
@@ -1249,10 +1232,11 @@ function MedicineActive({ m, onDone }) {
 // ---------- Suppliers ----------
 
 function SupplierDialog({ supplier, onClose, onDone }) {
-  const [x, setX] = useState(supplier ? { ...supplier, creditDays: String(supplier.creditDays ?? 0) } : { name: '', gstin: '', drugLicence: '', phone: '', address: '', creditDays: '0' });
+  const [x, setX] = useState(supplier ? { ...supplier, creditDays: String(supplier.creditDays ?? 0), taxType: supplier.taxType ?? '', payment: supplier.payment ?? 'credit' } : { name: '', gstin: '', drugLicence: '', phone: '', address: '', creditDays: '0', taxType: '', payment: 'credit' });
   const s = useSend(onDone);
   const f = (k) => (e) => setX({ ...x, [k]: e.target.value });
-  const body = { name: x.name.trim(), gstin: x.gstin.trim(), drugLicence: x.drugLicence.trim(), phone: x.phone.trim(), address: x.address.trim(), creditDays: Math.max(0, Math.min(365, Number.parseInt(x.creditDays, 10) || 0)) };
+  const body = { name: x.name.trim(), gstin: x.gstin.trim(), drugLicence: x.drugLicence.trim(), phone: x.phone.trim(), address: x.address.trim(), creditDays: Math.max(0, Math.min(365, Number.parseInt(x.creditDays, 10) || 0)), taxType: x.taxType, payment: x.payment };
+  // 13 Nov 2026: the bills' GST and credit or cash are set here once, not on each purchase bill
   return (
     <Modal id="ph-sup" title={supplier ? `Change ${supplier.name}` : 'Add a supplier'} onClose={onClose}>
       <Alert type="error">{s.error}</Alert>
@@ -1276,6 +1260,28 @@ function SupplierDialog({ supplier, onClose, onDone }) {
       <Field label="Address" id="sup-address">
         <input id="sup-address" value={x.address} maxLength={300} onChange={f('address')} />
       </Field>
+      <div className="ph-sup-choices">
+        <Choice
+          label="Tax name"
+          value={x.taxType}
+          options={[
+            ['', 'From the GSTINs'],
+            ['cgst_sgst', TAX_LABELS.cgst_sgst],
+            ['igst', TAX_LABELS.igst],
+          ]}
+          onChange={(k) => setX({ ...x, taxType: k })}
+        />
+        <Choice
+          label="Payment"
+          value={x.payment}
+          options={[
+            ['credit', 'Credit'],
+            ['cash', 'Cash'],
+          ]}
+          onChange={(k) => setX({ ...x, payment: k })}
+        />
+        <p className="hint">Used on every purchase bill (GRN) from this supplier. From the GSTINs: IGST when the supplier is in another state, else CGST + SGST.</p>
+      </div>
       <div className="row">
         <button type="button" className="btn btn-primary" disabled={body.name.length < 2 || s.busy} onClick={() => (supplier ? s.send(`/pharmacy/suppliers/${supplier.id}`, body, 'PATCH') : s.send('/pharmacy/suppliers', body))}>
           <Save aria-hidden="true" /> Save

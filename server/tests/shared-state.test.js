@@ -40,7 +40,9 @@ describe('shared working state', () => {
   });
 
   it('gives each background-job round to one copy only', async () => {
-    const rounds = await Promise.all([1, 2, 3, 4].map(() => takeTurn('test-job', 60_000)));
+    // Four copies of the server at once (13 Nov 2026: all four were this one copy, which keeps its own turn by design –
+    // so two "yes" answers came now and then, and CI failed)
+    const rounds = await Promise.all(['a', 'b', 'c', 'd'].map((copy) => takeTurn('test-job', 60_000, `copy-${copy}`)));
     expect(rounds.filter(Boolean)).toHaveLength(1);
     await SharedState.updateOne({ _id: 'job:test-job' }, { $set: { until: new Date(Date.now() - 1) } });
     expect(await takeTurn('test-job', 60_000)).toBe(true); // the round ended: taken again

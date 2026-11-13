@@ -50,7 +50,7 @@ export function PharmacyToday() {
           {asked.data.requests.some((r) => r.urgent) ? `, ${asked.data.requests.filter((r) => r.urgent).length} urgent` : ''}. <Link to="/pharmacy/ward-requests">Open the ward requests</Link>
         </Alert>
       )}
-      <nav className="ph-stats" aria-label="Pharmacy at a glance">
+      <nav className="ph-stats ph-today-stats" aria-label="Pharmacy at a glance">
         {stats.map((s) => (
           <Link key={s.label} to={s.to} className={`ph-stat${s.tone ? ` is-${s.tone}` : ''}`} title={s.why}>
             <span className="ph-stat-icon" aria-hidden="true">
@@ -59,8 +59,8 @@ export function PharmacyToday() {
             <span className="ph-stat-text">
               <strong className="tabular">{s.value}</strong>
               <span>{s.label}</span>
+              {s.why && <small className="ph-stat-why">{s.why}</small>}
             </span>
-            <span className="sr-only">{s.why}</span>
           </Link>
         ))}
       </nav>

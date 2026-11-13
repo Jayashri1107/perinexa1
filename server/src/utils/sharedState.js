@@ -110,15 +110,16 @@ const COPY = randomUUID();
 
 /**
  * Whether this copy runs `job` now: true for exactly one copy per round of `everyMs`. A copy that stops keeps its
- * turn only until the round ends, so another copy takes over by itself.
+ * turn only until the round ends, so another copy takes over by itself. copy: this copy's name – the tests pass
+ * several names to act as several copies (the same copy asking twice keeps its own turn, by design).
  */
-export async function takeTurn(job, everyMs) {
+export async function takeTurn(job, everyMs, copy = COPY) {
   const now = new Date();
   const until = new Date(now.getTime() + Math.max(1000, everyMs - 5000));
   try {
     const res = await SharedState.updateOne(
-      { _id: id('job', job), $or: [{ until: { $lte: now } }, { 'value.copy': COPY }] },
-      { $set: { value: { copy: COPY, at: now }, until, purgeAt: purgeAfter(until) } },
+      { _id: id('job', job), $or: [{ until: { $lte: now } }, { 'value.copy': copy }] },
+      { $set: { value: { copy, at: now }, until, purgeAt: purgeAfter(until) } },
       { upsert: true },
     );
     return res.modifiedCount + res.upsertedCount > 0;

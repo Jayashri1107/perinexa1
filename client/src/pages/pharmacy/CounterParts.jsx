@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CircleCheck, CircleX } from 'lucide-react';
+import { CircleAlert, CircleCheck, CircleX } from 'lucide-react';
 import { api } from '../../api.js';
 import { Alert, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -109,8 +109,11 @@ const toPaise = (text) => (/^\d+(\.\d{0,2})?$/.test(String(text).trim()) ? Math.
 /**
  * The Payment window: opens when the bill is saved. The bill's figures on the left (worked out by the server, so they are
  * exactly the invoice's); on the right, for a walk-in, how it is paid – cash, cheque, card, NEFT / RTGS or online, alone
- * or in parts that make up the bill. A registered patient pays at the billing desk: her invoice goes on her hospital bill.
- * body: the invoice about to be made (without the payment); who: { uhid, name }; onSave({ payments, paymentRemarks }).
+ * or in parts that make up the bill. A registered patient's bill (13 Nov 2026, the developer): choosing how is compulsory
+ * – Hospital bill (paid later at the billing desk, as before) or paid here like a walk-in; Save stays off until one is
+ * chosen, and the bill's print preview then opens.
+ * body: the invoice about to be made (without the payment); who: { uhid, name };
+ * onSave({ payments, paymentRemarks } | { onHospitalBill: true }).
  */
 export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClose }) {
   const ref = useDialogFocus(onClose);
@@ -119,6 +122,7 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
   const today = hospitalTodayIso();
   const [ways, setWays] = useState(() => Object.fromEntries(WAYS.map((w) => [w.mode, { on: false, amount: '', reference: '', bank: '', date: today, authorisedBy: '', narration: '' }])));
   const [remarks, setRemarks] = useState('');
+  const [hospital, setHospital] = useState(false); // a registered patient: on her hospital bill
   const [now] = useState(() => new Date());
   useEffect(() => {
     let current = true;
@@ -134,16 +138,26 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
   const chosen = WAYS.filter((w) => ways[w.mode].on);
   const amounts = chosen.map((w) => toPaise(ways[w.mode].amount));
   const paid = amounts.reduce((n, a) => n + (a ?? 0), 0);
-  const balance = walkIn ? net - paid : net;
+  const balance = hospital ? 0 : net - paid;
   const cardOk = !ways.card.on || !ways.card.reference.trim() || /^\d{4}$/.test(ways.card.reference.trim());
-  const ready = Boolean(quote) && !saving && (!walkIn || (chosen.length > 0 && amounts.every((a) => a && a > 0) && balance === 0 && cardOk));
+  const paysHere = chosen.length > 0 && amounts.every((a) => a && a > 0) && balance === 0 && cardOk;
+  const ready = Boolean(quote) && !saving && ((!walkIn && hospital) || paysHere);
   const set = (mode, change) => setWays((all) => ({ ...all, [mode]: { ...all[mode], ...change } }));
-  // Ticking a way fills in what is still to pay; unticking clears it
-  const tick = (mode, on) => set(mode, on ? { on, amount: balance > 0 ? two(balance) : '' } : { on, amount: '' });
+  // Ticking a way fills in what is still to pay; unticking clears it. Paying here and the hospital bill exclude each other.
+  const tick = (mode, on) => {
+    if (on) setHospital(false);
+    set(mode, on ? { on, amount: !hospital && balance > 0 ? two(balance) : hospital ? two(net) : '' } : { on, amount: '' });
+  };
+  const toHospital = (on) => {
+    setHospital(on);
+    if (on) setWays((all) => Object.fromEntries(Object.entries(all).map(([k, v]) => [k, { ...v, on: false, amount: '' }])));
+  };
+  const nothingChosen = Boolean(quote) && !hospital && chosen.length === 0;
   const save = () =>
     onSave(
-      walkIn
-        ? {
+      !walkIn && hospital
+        ? { onHospitalBill: true }
+        : {
             payments: chosen.map((w) => {
               const x = ways[w.mode];
               return {
@@ -157,8 +171,7 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
               };
             }),
             paymentRemarks: remarks.trim(),
-          }
-        : {},
+          },
     );
 
   const fact = (label, value, id) => (
@@ -187,8 +200,16 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
             {fact('Balance amount', quote ? two(balance) : '…', 'ph-pay-balance')}
           </div>
           <div className="ph-pay-right">
-            {walkIn ? (
-              <>
+            <>
+                {!walkIn && (
+                  <fieldset className={`ph-pay-way ph-pay-hospital-way${hospital ? ' is-on' : ''}`}>
+                    <legend className="sr-only">Hospital bill</legend>
+                    <label className="ph-pay-tick">
+                      <input type="checkbox" checked={hospital} onChange={(e) => toHospital(e.target.checked)} /> Hospital bill
+                    </label>
+                    <p className="hint">Goes on the patient’s hospital bill and is paid at the billing desk.</p>
+                  </fieldset>
+                )}
                 <div className="ph-pay-grid">
                   {WAYS.map((w) => {
                     const x = ways[w.mode];
@@ -245,16 +266,18 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
                 {!cardOk && <p className="field-error">Write only the last 4 digits of the card, never the whole number.</p>}
                 <label className="ph-pay-field ph-pay-wide">
                   <span>Remarks</span>
-                  <input value={remarks} maxLength={200} onChange={(e) => setRemarks(e.target.value)} />
+                  <input value={remarks} maxLength={200} disabled={hospital} onChange={(e) => setRemarks(e.target.value)} />
                 </label>
-              </>
-            ) : (
-              <p className="ph-pay-hospital">The invoice goes on the patient’s hospital bill. The payment is taken at the billing desk, not at the pharmacy counter.</p>
-            )}
+                {nothingChosen && (
+                  <p className="ph-pay-choose" role="status">
+                    <CircleAlert aria-hidden="true" /> Choose how the bill is paid{walkIn ? '' : ': the hospital bill, or cash, cheque, card, NEFT or online here'}. The bill is saved and printed after that.
+                  </p>
+                )}
+            </>
           </div>
         </div>
         <div className="ph-pay-foot">
-          {walkIn && (
+          {!hospital && (
             <div className="ph-pay-sums">
               {fact('Paid amount', two(paid), 'ph-pay-paid')}
               {fact('Bal amt', quote ? two(balance) : '…', 'ph-pay-bal')}
@@ -269,7 +292,7 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
             </button>
           </div>
         </div>
-        {walkIn && quote && balance !== 0 && chosen.length > 0 && <p className="hint">{balance > 0 ? `₹${two(balance)} is still to be paid.` : `₹${two(-balance)} more than the bill: lower an amount.`}</p>}
+        {quote && balance !== 0 && chosen.length > 0 && <p className="hint">{balance > 0 ? `₹${two(balance)} is still to be paid.` : `₹${two(-balance)} more than the bill: lower an amount.`}</p>}
       </div>
     </div>
   );

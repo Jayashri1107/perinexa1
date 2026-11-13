@@ -57,6 +57,8 @@ import { supplierAccount } from '../pharmacy/supplierAccount.js';
 import { nextNumber } from '../models/Counter.js';
 import { daysOutOfStock, expiryLoss, h1Use, nonMoving, prescriptionsFilled, profitByMedicine } from '../pharmacy/figures.js';
 import { doctorOf, salesByDoctor } from '../pharmacy/salesByDoctor.js';
+import { MIS_KEYS, misNeeds, misReport } from '../pharmacy/misReports.js';
+import { INVENTORY_KEYS, inventoryReport } from '../pharmacy/inventoryReports.js';
 import { WardRequest, statusOfLines } from '../models/WardRequest.js';
 import { wardRequestView } from './wardRequests.js';
 import { CarePlan } from '../models/CarePlan.js';
@@ -268,6 +270,8 @@ const supplierFields = {
   phone: z.string().trim().max(30),
   address: z.string().trim().max(300),
   creditDays: z.number().int().min(0).max(365), // PH11
+  taxType: z.enum(['', 'cgst_sgst', 'igst']), // 13 Nov 2026: set with the supplier, not on each bill
+  payment: z.enum(['credit', 'cash']),
   active: z.boolean(),
 };
 const supplierSchema = z
@@ -278,6 +282,8 @@ const supplierSchema = z
     phone: supplierFields.phone.default(''),
     address: supplierFields.address.default(''),
     creditDays: supplierFields.creditDays.default(0),
+    taxType: supplierFields.taxType.default(''),
+    payment: supplierFields.payment.default('credit'),
     active: supplierFields.active.optional(),
   })
   .strict();
@@ -1040,6 +1046,8 @@ const invoiceFields = z
     payment: z.object({ mode: z.enum(COUNTER_MODES), reference: z.string().trim().max(80).default('') }).strict().optional(),
     payments: z.array(paymentPart).min(1).max(5).optional(),
     paymentRemarks: z.string().trim().max(200).default(''),
+    // A registered patient's bill (13 Nov 2026): on her hospital bill (paid at the billing desk), or paid here
+    onHospitalBill: z.literal(true).optional(),
     // A walk-in sale to a business that gives its GSTIN (for its tax invoice and the e-invoice file). Its state is
     // read from the GSTIN's first two digits.
     buyer: z
@@ -1065,9 +1073,12 @@ const invoiceFields = z
   .refine((b) => Boolean(b.patientId) !== Boolean(b.customer), { message: 'Choose the patient, or write a walk-in customer’s name.', path: ['patientId'] })
   .refine((b) => !b.discountPercent || b.discountReason.length >= MIN_REASON, { message: 'Please write why the discount is given.', path: ['discountReason'] })
   .refine((b) => b.kind === 'sale' || b.patientId, { message: 'Medicines are issued to an admitted patient.', path: ['patientId'] })
-  // A registered patient's invoice goes on her hospital bill: she pays at the billing desk, never here
-  .refine((b) => !b.patientId || (!b.payment && !b.payments), { message: 'A registered patient pays at the billing desk: the invoice goes on her hospital bill.', path: ['payments'] })
+  // A registered patient's invoice goes on her hospital bill, or is paid here (13 Nov 2026) – not both; a walk-in has no hospital bill
+  .refine((b) => !b.onHospitalBill || b.patientId, { message: 'Only a registered patient’s bill can go on a hospital bill.', path: ['onHospitalBill'] })
+  .refine((b) => !(b.onHospitalBill && (b.payment || b.payments)), { message: 'Choose the hospital bill or a payment here, not both.', path: ['payments'] })
   .refine((b) => !(b.payment && b.payments), { message: 'Send the payment once.', path: ['payments'] });
+// A patient's invoice sent without either choice goes on her hospital bill (as before 13 Nov 2026; the Payment window
+// always asks)
 const invoiceSchema = invoiceFields.refine((b) => b.patientId || b.payment || b.payments, { message: 'A walk-in customer pays at the counter: choose how.', path: ['payment'] });
 
 const loadInvoice = async (req) => {
@@ -1397,7 +1408,7 @@ async function takingsOf(req, day) {
   for (const inv of invoices) {
     const made = inv.created?.at >= from && inv.created?.at < to;
     if (made) count += 1;
-    if (made && inv.patientId) onBillsPaise += invoiceTotals(inv).totalPaise;
+    if (made && inv.billId) onBillsPaise += invoiceTotals(inv).totalPaise;
     for (const p of inv.payments ?? []) {
       if (!(p.at >= from && p.at < to)) continue;
       const v = p.kind === 'refund' ? -p.amountPaise : p.amountPaise;
@@ -1555,6 +1566,52 @@ pharmacyRouter.get('/reports/purchases', async (req, res) => {
   const totalPaise = bySupplier.reduce((s, r) => s + r.totalPaise, 0);
   const returnedPaise = bySupplier.reduce((s, r) => s + r.returnedPaise, 0);
   res.json({ from: isoDay(q.from), to: isoDay(q.to), bySupplier, totalPaise, returnedPaise, netPaise: totalPaise - returnedPaise, register: purchaseRegister(list, names) });
+});
+
+// MIS reports (13 Nov 2026): the list of reports of the pharmacy's earlier software – sales and returns, GST, schedule
+// drugs – each one table for a period (pharmacy/misReports.js). Those with patient or customer names are audited.
+pharmacyRouter.get('/reports/mis', async (req, res) => {
+  reports(req);
+  const q = parse(z.object({ report: z.enum(MIS_KEYS), from: requiredDateOnly('From'), to: requiredDateOnly('To') }).strict(), req.query);
+  const [from, to] = period(q);
+  const need = misNeeds(q.report);
+  const inPeriod = { $gte: from, $lt: to };
+  const invoices = need.invoices ? await PharmacyInvoice.find({ tenantId: req.tenantId, $or: [{ 'created.at': inPeriod }, { 'returns.at': inPeriod }, { 'payments.at': inPeriod }] }).lean() : [];
+  const pids = [...new Set(invoices.map((i) => i.patientId && String(i.patientId)).filter(Boolean))];
+  const patients = new Map((pids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
+  const purchases = need.purchases ? await Purchase.find({ tenantId: req.tenantId, status: 'active', invoiceDate: { $gte: q.from, $lte: q.to } }).lean() : [];
+  const supplierReturns = need.supplierReturns ? await SupplierReturn.find({ tenantId: req.tenantId, ...NOT_CANCELLED, 'created.at': inPeriod }).lean() : [];
+  const suppliers = new Map((purchases.length || supplierReturns.length ? await Supplier.find({ tenantId: req.tenantId }, { name: 1, gstin: 1 }).lean() : []).map((s) => [String(s._id), s]));
+  const report = misReport(q.report, { invoices, patients, purchases, supplierReturns, suppliers }, { from, to });
+  if (report.patients) await audit(req, 'PHARMACY_MIS_VIEWED', { details: { report: q.report, from: isoDay(q.from), to: isoDay(q.to), rows: report.rows.length } });
+  res.json({ ...report, from: isoDay(q.from), to: isoDay(q.to), settings: await settingsOf(req.tenantId) });
+});
+
+// Inventory MIS (13 Nov 2026): purchase and stock reports with the filters of the earlier software
+// (pharmacy/inventoryReports.js). Indents name the patient for the pharmacist only; those are audited.
+pharmacyRouter.get('/reports/inventory', async (req, res) => {
+  reports(req);
+  const q = parse(
+    z
+      .object({
+        report: z.enum(INVENTORY_KEYS),
+        from: requiredDateOnly('From'),
+        to: requiredDateOnly('To'),
+        supplierId: objectId.optional(),
+        medicineId: objectId.optional(),
+        batch: z.string().trim().max(40).optional(),
+        expiryBy: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Choose the expiry month.').optional(),
+        detail: z.enum(['0', '1']).optional(),
+        days: z.coerce.number().int().min(1).max(730).optional(),
+      })
+      .strict(),
+    req.query,
+  );
+  period(q);
+  const seesPatients = hasRole(req.membership, 'pharmacist');
+  const report = await inventoryReport(req.tenantId, { ...q, detail: q.detail === '1' }, { now: req.now ?? new Date(), seesPatients });
+  if (report.patients) await audit(req, 'PHARMACY_MIS_VIEWED', { details: { report: q.report, from: isoDay(q.from), to: isoDay(q.to), rows: report.rows.length } });
+  res.json({ ...report, from: isoDay(q.from), to: isoDay(q.to), settings: await settingsOf(req.tenantId) });
 });
 
 /**

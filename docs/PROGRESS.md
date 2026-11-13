@@ -1,5 +1,88 @@
 # Progress
 
+## The store's heading on every pharmacy paper; tax and credit or cash set on the supplier (13 Nov 2026, branch `pharmacy-mis`)
+- Every pharmacy paper now carries the same store block from Pharmacy → Settings (name, address, "Mobile No.",
+  GSTIN and licences – `components/print/StoreHead.jsx`): the bills, orders, debit notes, registers, reports, the
+  stock sheet, the batch-recall list (had no heading), and a pharmacy screen printed with the browser's Print (had the
+  hospital's letterhead – `PagePrintHead` now uses the store's on `/pharmacy` pages).
+- **Suppliers**: Tax name (from the GSTINs, CGST + SGST or IGST) and Payment (credit or cash) are set once on the
+  supplier (`Supplier.taxType`, `Supplier.payment`). **New GRN** no longer asks Tax name, Purchase or Payment: it shows
+  the supplier's in a line with Change. Receiving against an order is from Orders → Receive, as before.
+- **Today cards** (pharmacist): label and icon on top, the number large, what it means underneath, a coloured top
+  edge for watch / high / due; all seven on one row (the Reports panel's grey `.ph-stats` background no longer leaks in).
+- **One invoice** (Pharmacy → an invoice): laid out as an invoice – number, date and a status pill (Paid, On hospital
+  bill, Payment due, Part returned), the bill's details, the medicines and a totals box; payment, returns and the
+  prescription in a column beside it.
+
+## Inventory MIS reports and a dense New GRN, like the earlier software (13 Nov 2026, branch `pharmacy-mis`)
+- **Reports → Report list** is now two trees, **Inventory MIS** and **Pharmacy MIS**, with the chosen report's form
+  beside them: From/To date and only the choices that report uses (supplier, item, batch, expiring by MM/YY, summary
+  or detail, days for non-moving), then the result with Print and Excel.
+- Inventory MIS (`GET /api/pharmacy/reports/inventory`, `pharmacy/inventoryReports.js`): Purchase MIS – indent report
+  and indent date-wise (the wards' requests; the patient's name for the pharmacist only), GRN, GRN return, purchase
+  order, item-wise and supplier-wise GRN lists; Stock MIS – current stock (by item or by batch), stock date-wise
+  (opening, in, out, closing) and non-moving items.
+- **New GRN** is dense like the earlier software: small fields, the invoice in a narrow column with the items beside
+  it, and the bill amounts in four columns with the label beside each field (discounts, charges, the GST split, totals
+  to the net to pay and rounding).
+- **Payment window: the payment type is compulsory for a registered patient too** (the developer's choice): **Hospital
+  bill** (on her hospital bill, paid at the billing desk – as before) or paid here by cash, cheque, card, NEFT / RTGS or
+  online, like a walk-in. Save stays off until one is chosen; the bill's print preview then opens as before. A bill
+  paid here stays off the hospital bill (`billId` null), counts in the counter's takings, and a return of it is
+  refunded here. The server still puts a patient's bill on the hospital bill when no choice is sent (older callers,
+  a nurse's issue from a ward store).
+- **Reports**: the tabs are at the top; the summary panel shows on Stock alerts only, other reports fill the page with
+  a slim period bar where they need one.
+- Test: Reports → Report list → Inventory MIS → Current stock report, switch Detail, type 12/28 in Expiring by.
+  Purchase bills → New GRN: the amounts sit in four columns under the items.
+
+## Pharmacy report list, and a tidier New GRN (13 Nov 2026, branch `pharmacy-mis`)
+- **Pharmacy → Reports → Report list**: the reports of the pharmacy's earlier software in one grouped list, the chosen
+  one beside it for the period above, each with **Print** (A4 landscape, on the store's letterhead) and – for the
+  hospital admin, or a report without patient names – **Excel** (CSV). Sales and returns: sales, bill details,
+  collection, card collection, patient-wise collection, doctor-wise sales (the existing Sales by doctor, pharmacist
+  only), sales returns and their details, credit and patient-wise credit. GST: GRN, sales, GRN return, sales return,
+  and a summary by rate. Schedule drugs: H1 sales and returns, narcotic sales, anti-TB sales and returns.
+  Server: `GET /api/pharmacy/reports/mis?report=&from=&to=` (`pharmacy/misReports.js`), pharmacist and admin;
+  reports with names are audited as `PHARMACY_MIS_VIEWED`.
+- **Credit** means bills not paid at the counter: a walk-in always pays in full, so these are registered patients'
+  bills that went on the hospital bill. Not built: the earlier software's **Advance report** (the pharmacy takes no
+  advance in Perinexa).
+- **DRAFT, needs the owner's approval**: the anti-TB medicines are found by generic name from a list
+  (`ANTI_TB_GENERICS` in `misReports.js`) – clinical content.
+- **New GRN**: the supplier invoice across the top in four columns, the items full width below (the narrow column cut
+  the dates off); the page no longer scrolls sideways. The per-medicine pop-up is compact – typed fields in five
+  columns, the sums as a strip of figures, the last price paid under the title – and the **expiry is typed** as on the
+  pack (08/27, 0827, 08/2027 or 15/08/2027; the slash comes by itself).
+- Test: Pharmacy → Reports → Report list; pick each report, change the period, Print. Pharmacy → Purchase bills → New
+  GRN; pick a medicine, type 0827 in Exp., fill the rest, Add to the bill: the line shows 08/2027.
+
+## "Dr." in front of every doctor's name (13 Nov 2026, branch `doctor-title`)
+- A person with the **doctor** role (not RMOs – the developer's choice) has "Dr. " stored in their name, so every
+  screen, list, bill and print shows it without changes of its own (`server/src/utils/doctorTitle.js`). Written one
+  way: "Dr Asha", "dr. asha" → "Dr. Asha"; never twice.
+- Given when staff are added or given the doctor role (`giveDoctorTitle` in `models/Membership.js`, called by
+  `routes/members.js`, `routes/platformUsers.js`, the super admin's own doctor account in `routes/auth.js`); kept when
+  the name is edited (`models/User.js`). Taking the role away leaves the name.
+- Doctors from before get it at the next server start (`users/doctorTitles.js`, from `index.js`), with the doctor's name
+  kept on their stays; each rename is in the audit log. Other names kept on records stay as written. Lab report
+  signers are typed by hand and are not changed.
+- The staff forms say a doctor gets "Dr." automatically.
+## Fewer "Try again" pages; lab dashboard and admitted patients tidied (13 Nov 2026, branch `page-fixes`)
+- **"Try again"**: a page that loads while the server restarts (a deploy, or `node --watch` after a file change) now
+  waits up to about 18 s (5 tries) instead of 5 s, and the development proxy's 500 ("server not running") counts as a
+  restart (`client/src/api.js`). Saves are still never sent twice. A screen whose file is gone after a deploy reloads
+  again if the last such reload was over a minute ago – before, only once per tab, so every later deploy left
+  "This page could not open" (`components/PageLoading.jsx`, `main.jsx` `vite:preloadError`).
+- **Development note**: the usual dev server runs in `C:\perinexa1`, where other sessions switch branches; each switch
+  restarts the server and pages show errors meanwhile. Run the dev server from a checkout no session switches.
+- **Registration**: a field's red message (e.g. "Age is required") goes as soon as the field is changed. Age then
+  save and continue worked for reception and for a doctor (page 2 opened); the exact case reported was not reproduced.
+- **Lab → Dashboard**: count cards like the KPI cards (icon tile, big number, words; quieter when 0), the period's
+  numbers in one card, "Tests by department" with an arrow, links with a chevron.
+- **Lab → Admitted**: the app's usual table – "All admitted (n)" / "Sample to take (n)", find by name, number, ward or
+  bed, ward and bed in their own columns sorted by ward then bed, each order on its own line.
+
 ## Lab: a simpler Lab dashboard, and IPD in the lab's Patients menu (12 Nov 2026, branches `lab-ipd-menu`, `lab-dash-simple`)
 - **Patients → IPD → Admitted patients** for lab staff (they had only OPD there): opens `/lab/inpatients` – ward, bed,
   name, number and her lab orders only, as before.

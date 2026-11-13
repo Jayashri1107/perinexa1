@@ -99,4 +99,4 @@ export const batchView = (b, t) => ({
 });
 
 /** A supplier as the website gets it. */
-export const supplierView = (s) => ({ id: String(s._id), name: s.name, gstin: s.gstin ?? '', drugLicence: s.drugLicence ?? '', phone: s.phone ?? '', address: s.address ?? '', creditDays: s.creditDays ?? 0, active: s.active });
+export const supplierView = (s) => ({ id: String(s._id), name: s.name, gstin: s.gstin ?? '', drugLicence: s.drugLicence ?? '', phone: s.phone ?? '', address: s.address ?? '', creditDays: s.creditDays ?? 0, taxType: s.taxType ?? '', payment: s.payment ?? 'credit', active: s.active });
