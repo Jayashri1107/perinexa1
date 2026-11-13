@@ -7,7 +7,7 @@ import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.js
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { toPaise } from '../billing/billingFormat.js';
-import { grnLineFigures, grnTotals } from './grnFormat.js';
+import { expiryAsTyped, expiryTyped, grnLineFigures, grnTotals, typedExpiry } from './grnFormat.js';
 import { gstinProblem, gstinState } from './gstin.js';
 import { FORM_LABELS, SCHEDULE_LABELS, cleanBarcode, expiryLabel, isBarcode, medicineLabel, medicinesToCheck, orderLook, receiveLines, receivedFlash, scannedForPurchase, packWords } from './pharmacyFormat.js';
 import { FindMedicine, Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
@@ -298,7 +298,7 @@ const parseLine = (l) => ({ l, conv: num(l.conv), qty: num(l.qty), free: num(l.f
 function lineErrors(x) {
   const e = {};
   if (!x.l.batch.trim()) e.batch = 'Write the batch number.';
-  if (!/^\d{4}-\d{2}$/.test(x.l.expiry)) e.expiry = 'Choose the expiry month.';
+  if (!/^\d{4}-\d{2}$/.test(x.l.expiry)) e.expiry = 'Type the expiry as month/year, for example 08/27.';
   if (!Number.isInteger(x.conv) || x.conv < 1) e.conv = 'Write how many units of sale are in a pack (1 or more).';
   if (!Number.isInteger(x.qty) || x.qty < 0) e.qty = 'Write the number of packs.';
   if (!Number.isInteger(x.free) || x.free < 0) e.freeQty = 'Write the free packs as a whole number, or leave it empty.';
@@ -347,13 +347,21 @@ function GrnTabs({ desk }) {
  * The pop-up for one medicine of the bill, laid out like the pharmacy's earlier software: batch, expiry, quantity and
  * free quantity, rate, MRP, discount, pack size and GST as written on the supplier's invoice, and what they come to –
  * total, discount and GST amounts, net, the units of sale received, the sale rate, the landed rate and the profit.
+ * Tidied 13 Nov 2026 (the developer): what is typed in one compact block, what it comes to as a strip of figures below,
+ * the last price paid in the line under the title; the expiry is typed (08/27), not picked from a calendar.
  */
 function GrnLineDialog({ line, isNew, onClose, onDone }) {
   const [l, setL] = useState(line);
+  const [expText, setExpText] = useState(expiryTyped(line.expiry));
   // PH17: the last price paid for this medicine (per pack as on that bill)
   const lastPrice = useFetch(`/pharmacy/medicines/${line.medicine.id}/last-price`).data?.last ?? null;
   const [tried, setTried] = useState(false);
   const f = (k) => (e) => setL({ ...l, [k]: e.target.value });
+  const typeExpiry = (e) => {
+    const v = expiryAsTyped(e.target.value, expText);
+    setExpText(v);
+    setL({ ...l, expiry: typedExpiry(v) ?? '' });
+  };
   const x = parseLine(l);
   const errors = lineErrors(x);
   const err = (k) => (tried ? errors[k] : undefined);
@@ -368,62 +376,60 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
   });
   const m = l.medicine;
   const unit = m.unit || 'unit';
-  const shown = (id, v) => <input id={id} value={v ?? ''} readOnly tabIndex={-1} className="ph-ro" />;
   const submit = (e) => {
     e.preventDefault();
     if (Object.keys(errors).length) return setTried(true);
     return onDone(l);
   };
+  const higher = lastPrice && x.rate && lastPrice.conv === x.conv && x.rate > lastPrice.ratePaise;
+  const figures = [
+    ['Total amount', money(fig.totalPaise)],
+    ['Disc amount', money(fig.discPaise)],
+    ['GST amount', money(fig.gstPaise)],
+    ['Net amount', money(fig.netPaise), true],
+    [`Total qty (${unit}s)`, fig.units || '—'],
+    [`Sale rate / ${unit}`, money(fig.saleRatePaise)],
+    [`Landed rate / ${unit}`, money(fig.landedPaise)],
+    ['Profit %', fig.profitPercent == null ? '—' : `${fig.profitPercent} %`],
+  ];
   return (
     <Modal id="ph-grn-line" title={medicineLabel(m)} onClose={onClose} wide>
-      <p className="hint ph-grn-meta">{[`UOM ${unit}`, m.hsn && `HSN ${m.hsn}`].filter(Boolean).join(' · ')}</p>
+      <p className="hint ph-gl-meta">
+        <span>UOM {unit}</span>
+        <span>HSN {m.hsn || '—'}</span>
+        {lastPrice && (
+          <span className={higher ? 'ph-gl-last is-higher' : 'ph-gl-last'}>
+            Last paid {money(lastPrice.ratePaise)} a pack of {lastPrice.conv} on {dayLabel(lastPrice.date)}
+            {lastPrice.supplier ? ` from ${lastPrice.supplier}` : ''}
+            {higher ? ' – today’s rate is higher' : ''}
+          </span>
+        )}
+      </p>
       <form onSubmit={submit} noValidate>
-        <div className="ph-grn-pop">
+        <div className="ph-gl-inputs">
           <Field label="Batch no." id="gl-batch" error={err('batch')}>
             <input id="gl-batch" value={l.batch} maxLength={40} onChange={f('batch')} autoFocus />
           </Field>
-          <Field label="Exp. date" id="gl-exp" error={err('expiry')}>
-            <input id="gl-exp" type="month" value={l.expiry} onChange={f('expiry')} />
+          <Field label="Exp. (MM/YY)" id="gl-exp" error={err('expiry')}>
+            <input id="gl-exp" inputMode="numeric" placeholder="08/27" autoComplete="off" value={expText} onChange={typeExpiry} />
           </Field>
           <Field label="Qty (packs)" id="gl-qty" error={err('qty')}>
             <input id="gl-qty" inputMode="numeric" value={l.qty} onChange={f('qty')} />
           </Field>
-          <Field label="Free qty (packs)" id="gl-free" error={err('freeQty')}>
+          <Field label="Free (packs)" id="gl-free" error={err('freeQty')}>
             <input id="gl-free" inputMode="numeric" value={l.freeQty} onChange={f('freeQty')} />
           </Field>
-          <Field label={`Conv. factor (${unit}s in a pack)`} id="gl-conv" error={err('conv')}>
+          <Field label={`${unit[0].toUpperCase()}${unit.slice(1)}s in a pack`} id="gl-conv" error={err('conv')}>
             <input id="gl-conv" inputMode="numeric" value={l.conv} onChange={f('conv')} />
+          </Field>
+          <Field label="Rate ₹ / pack" id="gl-rate" error={err('rate')}>
+            <input id="gl-rate" inputMode="decimal" value={l.rate} onChange={f('rate')} />
+          </Field>
+          <Field label="MRP ₹ / pack" id="gl-mrp" error={err('mrp')}>
+            <input id="gl-mrp" inputMode="decimal" value={l.mrp} onChange={f('mrp')} />
           </Field>
           <Field label="Disc %" id="gl-disc" error={err('disc')}>
             <input id="gl-disc" inputMode="decimal" value={l.disc} onChange={f('disc')} />
-          </Field>
-          <Field label="Disc amount" id="gl-discamt">
-            {shown('gl-discamt', money(fig.discPaise))}
-          </Field>
-          <Field
-            label="Rate ₹ (per pack)"
-            id="gl-rate"
-            error={err('rate')}
-            keepHint
-            hint={
-              lastPrice
-                ? `Last paid ${money(lastPrice.ratePaise)} a pack of ${lastPrice.conv} on ${lastPrice.date}${lastPrice.supplier ? ` (${lastPrice.supplier})` : ''}${x.rate && lastPrice.conv === x.conv && x.rate > lastPrice.ratePaise ? ' – today’s rate is higher' : ''}.`
-                : undefined
-            }
-          >
-            <input id="gl-rate" inputMode="decimal" value={l.rate} onChange={f('rate')} />
-          </Field>
-          <Field label="MRP ₹ (per pack)" id="gl-mrp" error={err('mrp')}>
-            <input id="gl-mrp" inputMode="decimal" value={l.mrp} onChange={f('mrp')} />
-          </Field>
-          <Field label={`Sale rate (per ${unit})`} id="gl-sale">
-            {shown('gl-sale', money(fig.saleRatePaise))}
-          </Field>
-          <Field label="Total amount" id="gl-total">
-            {shown('gl-total', money(fig.totalPaise))}
-          </Field>
-          <Field label={`Total qty (${unit}s)`} id="gl-units">
-            {shown('gl-units', fig.units || '')}
           </Field>
           <Field label="GST %" id="gl-gst">
             <select id="gl-gst" value={l.gst} onChange={f('gst')}>
@@ -434,28 +440,21 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
               ))}
             </select>
           </Field>
-          <Field label="GST amount" id="gl-gstamt">
-            {shown('gl-gstamt', money(fig.gstPaise))}
-          </Field>
-          <Field label="Net amount" id="gl-net">
-            {shown('gl-net', money(fig.netPaise))}
-          </Field>
-          <Field label="HSN code" id="gl-hsn">
-            {shown('gl-hsn', m.hsn || '—')}
-          </Field>
-          <Field label={`Landed rate (per ${unit})`} id="gl-landed">
-            {shown('gl-landed', money(fig.landedPaise))}
-          </Field>
-          <Field label="Profit %" id="gl-profit">
-            {shown('gl-profit', fig.profitPercent == null ? '' : `${fig.profitPercent} %`)}
-          </Field>
         </div>
-        <div className="row">
-          <button type="submit" className="btn btn-primary">
-            {isNew ? 'Add to the bill' : 'Save the line'}
-          </button>
+        <dl className="ph-gl-figures" aria-label="What the line comes to">
+          {figures.map(([label, value, strong]) => (
+            <div key={label} className={strong ? 'is-net' : undefined}>
+              <dt>{label}</dt>
+              <dd className="tabular">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="ph-gl-actions">
           <button type="button" className="btn btn-link" onClick={onClose}>
             Cancel
+          </button>
+          <button type="submit" className="btn btn-primary">
+            {isNew ? 'Add to the bill' : 'Save the line'}
           </button>
         </div>
       </form>

@@ -14,6 +14,7 @@ import { PharmacyHeader, PharmacyLetterhead, money, useSend } from './pharmacyUi
 import { SupplierDues } from './SupplierAccount.jsx';
 import { DayClosing, FiguresReport } from './PharmacyFigures.jsx';
 import { SalesByDoctorReport } from './SalesByDoctor.jsx';
+import { MisReports } from './MisReports.jsx';
 
 // Pharmacy → Reports (laid out for easy reading, owner 26 Oct 2026): a period with quick choices, the period's numbers
 // as cards, then one report at a time – stock alerts (low stock, expiring and expired batches), sales and GST by rate,
@@ -83,6 +84,7 @@ function RegisterTables({ reg }) {
 // registers and – for the hospital admin – the export.
 const VIEWS = [
   ['alerts', 'Stock alerts'],
+  ['list', 'Report list'], // 13 Nov 2026: every report of the earlier software, printable (MisReports.jsx)
   ['sales', 'Sales & GST'],
   ['purchases', 'Purchases'],
   ['registers', 'Registers'],
@@ -558,6 +560,7 @@ export function ReportsPage() {
         {view === 'figures' && <FiguresReport from={from} to={to} />}
         {view === 'day' && <DayClosing />}
         {view === 'by-doctor' && pharmacist && <SalesByDoctorReport from={from} to={to} />}
+        {view === 'list' && <MisReports from={from} to={to} admin={admin} pharmacist={pharmacist} openDoctorSales={() => go('by-doctor')} />}
 
         {view === 'registers' && (
           <section className="card bill-section" aria-labelledby="rep-reg">

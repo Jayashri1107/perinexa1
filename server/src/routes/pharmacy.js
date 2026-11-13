@@ -57,6 +57,7 @@ import { supplierAccount } from '../pharmacy/supplierAccount.js';
 import { nextNumber } from '../models/Counter.js';
 import { daysOutOfStock, expiryLoss, h1Use, nonMoving, prescriptionsFilled, profitByMedicine } from '../pharmacy/figures.js';
 import { doctorOf, salesByDoctor } from '../pharmacy/salesByDoctor.js';
+import { MIS_KEYS, misNeeds, misReport } from '../pharmacy/misReports.js';
 import { WardRequest, statusOfLines } from '../models/WardRequest.js';
 import { wardRequestView } from './wardRequests.js';
 import { CarePlan } from '../models/CarePlan.js';
@@ -1555,6 +1556,25 @@ pharmacyRouter.get('/reports/purchases', async (req, res) => {
   const totalPaise = bySupplier.reduce((s, r) => s + r.totalPaise, 0);
   const returnedPaise = bySupplier.reduce((s, r) => s + r.returnedPaise, 0);
   res.json({ from: isoDay(q.from), to: isoDay(q.to), bySupplier, totalPaise, returnedPaise, netPaise: totalPaise - returnedPaise, register: purchaseRegister(list, names) });
+});
+
+// MIS reports (13 Nov 2026): the list of reports of the pharmacy's earlier software – sales and returns, GST, schedule
+// drugs – each one table for a period (pharmacy/misReports.js). Those with patient or customer names are audited.
+pharmacyRouter.get('/reports/mis', async (req, res) => {
+  reports(req);
+  const q = parse(z.object({ report: z.enum(MIS_KEYS), from: requiredDateOnly('From'), to: requiredDateOnly('To') }).strict(), req.query);
+  const [from, to] = period(q);
+  const need = misNeeds(q.report);
+  const inPeriod = { $gte: from, $lt: to };
+  const invoices = need.invoices ? await PharmacyInvoice.find({ tenantId: req.tenantId, $or: [{ 'created.at': inPeriod }, { 'returns.at': inPeriod }, { 'payments.at': inPeriod }] }).lean() : [];
+  const pids = [...new Set(invoices.map((i) => i.patientId && String(i.patientId)).filter(Boolean))];
+  const patients = new Map((pids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
+  const purchases = need.purchases ? await Purchase.find({ tenantId: req.tenantId, status: 'active', invoiceDate: { $gte: q.from, $lte: q.to } }).lean() : [];
+  const supplierReturns = need.supplierReturns ? await SupplierReturn.find({ tenantId: req.tenantId, ...NOT_CANCELLED, 'created.at': inPeriod }).lean() : [];
+  const suppliers = new Map((purchases.length || supplierReturns.length ? await Supplier.find({ tenantId: req.tenantId }, { name: 1, gstin: 1 }).lean() : []).map((s) => [String(s._id), s]));
+  const report = misReport(q.report, { invoices, patients, purchases, supplierReturns, suppliers }, { from, to });
+  if (report.patients) await audit(req, 'PHARMACY_MIS_VIEWED', { details: { report: q.report, from: isoDay(q.from), to: isoDay(q.to), rows: report.rows.length } });
+  res.json({ ...report, from: isoDay(q.from), to: isoDay(q.to), settings: await settingsOf(req.tenantId) });
 });
 
 /**

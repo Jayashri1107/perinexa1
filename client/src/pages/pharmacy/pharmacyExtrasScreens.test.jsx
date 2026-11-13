@@ -351,7 +351,7 @@ describe('returns to a supplier', () => {
     // One report at a time (owner, 26 Oct 2026): the tab is in the address
     const view = (v) => at(`/pharmacy/reports?view=${v}`, '/pharmacy/reports', <ReportsPage />);
     const first = at('/pharmacy/reports', '/pharmacy/reports', <ReportsPage />);
-    expect(text(first)).toContain('Stock alerts Sales & GST Purchases Registers Profit and stock Day closing Export'); // Export: the admin only
+    expect(text(first)).toContain('Stock alerts Report list Sales & GST Purchases Registers Profit and stock Day closing Export'); // Export: the admin only
     expect(text(first)).toContain('Bought from suppliers ₹35,000');
     brand(first);
     const purchases = text(view('purchases'));

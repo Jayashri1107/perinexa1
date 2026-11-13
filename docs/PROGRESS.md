@@ -1,5 +1,26 @@
 # Progress
 
+## Pharmacy report list, and a tidier New GRN (13 Nov 2026, branch `pharmacy-mis`)
+- **Pharmacy → Reports → Report list**: the reports of the pharmacy's earlier software in one grouped list, the chosen
+  one beside it for the period above, each with **Print** (A4 landscape, on the store's letterhead) and – for the
+  hospital admin, or a report without patient names – **Excel** (CSV). Sales and returns: sales, bill details,
+  collection, card collection, patient-wise collection, doctor-wise sales (the existing Sales by doctor, pharmacist
+  only), sales returns and their details, credit and patient-wise credit. GST: GRN, sales, GRN return, sales return,
+  and a summary by rate. Schedule drugs: H1 sales and returns, narcotic sales, anti-TB sales and returns.
+  Server: `GET /api/pharmacy/reports/mis?report=&from=&to=` (`pharmacy/misReports.js`), pharmacist and admin;
+  reports with names are audited as `PHARMACY_MIS_VIEWED`.
+- **Credit** means bills not paid at the counter: a walk-in always pays in full, so these are registered patients'
+  bills that went on the hospital bill. Not built: the earlier software's **Advance report** (the pharmacy takes no
+  advance in Perinexa).
+- **DRAFT, needs the owner's approval**: the anti-TB medicines are found by generic name from a list
+  (`ANTI_TB_GENERICS` in `misReports.js`) – clinical content.
+- **New GRN**: the supplier invoice across the top in four columns, the items full width below (the narrow column cut
+  the dates off); the page no longer scrolls sideways. The per-medicine pop-up is compact – typed fields in five
+  columns, the sums as a strip of figures, the last price paid under the title – and the **expiry is typed** as on the
+  pack (08/27, 0827, 08/2027 or 15/08/2027; the slash comes by itself).
+- Test: Pharmacy → Reports → Report list; pick each report, change the period, Print. Pharmacy → Purchase bills → New
+  GRN; pick a medicine, type 0827 in Exp., fill the rest, Add to the bill: the line shows 08/2027.
+
 ## "Dr." in front of every doctor's name (13 Nov 2026, branch `doctor-title`)
 - A person with the **doctor** role (not RMOs – the developer's choice) has "Dr. " stored in their name, so every
   screen, list, bill and print shows it without changes of its own (`server/src/utils/doctorTitle.js`). Written one

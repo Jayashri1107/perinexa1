@@ -83,3 +83,31 @@ export function grnLineFigures({ conv = 1, qty = 0, freeQty = 0, ratePaise = 0, 
   const profitPercent = landedPaise && saleRatePaise != null ? Math.round(((saleRatePaise - landedPaise) / landedPaise) * 1000) / 10 : null;
   return { totalPaise, discPaise, gstPaise, netPaise, units, landedPaise, saleRatePaise, profitPercent };
 }
+
+/**
+ * The expiry as typed on the purchase pop-up (13 Nov 2026: typed, not picked from a calendar), read as on the pack:
+ * "08/27", "8/2027", "0827", "082027", "08-27", "08.2027", or a full date "15/08/2027". Returns 'YYYY-MM', or null
+ * when it is not a month and year.
+ */
+export function typedExpiry(text) {
+  const t = String(text ?? '').trim();
+  let m = /^(\d{1,2})\s*[/.\s-]\s*(\d{2}|\d{4})$/.exec(t) ?? /^(\d{2})(\d{2}|\d{4})$/.exec(t);
+  if (!m) {
+    const full = /^\d{1,2}\s*[/.-]\s*(\d{1,2})\s*[/.-]\s*(\d{4})$/.exec(t);
+    if (!full) return null;
+    m = [null, full[1], full[2]];
+  }
+  const month = Number(m[1]);
+  const year = m[2].length === 2 ? 2000 + Number(m[2]) : Number(m[2]);
+  if (month < 1 || month > 12 || year < 2000 || year > 2099) return null;
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+/** 'YYYY-MM' as it is typed back: "08/2027" ('' for anything else). */
+export const expiryTyped = (ym) => (/^\d{4}-\d{2}$/.test(ym ?? '') ? `${ym.slice(5)}/${ym.slice(0, 4)}` : '');
+
+/** While typing: "08" becomes "08/" so the month and year need no slash key. Deleting is left alone. */
+export function expiryAsTyped(next, before = '') {
+  const v = String(next ?? '').replace(/[^\d/.\-\s]/g, '').slice(0, 10);
+  return v.length > before.length && /^\d{2}$/.test(v) ? `${v}/` : v;
+}
