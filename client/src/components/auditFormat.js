@@ -216,6 +216,7 @@ export const AUDIT_LABELS = {
   PHARMACY_PRINTED: 'Pharmacy invoice or credit note printed',
   PHARMACY_REGISTER_VIEWED: 'Pharmacy register opened',
   PHARMACY_MIS_VIEWED: 'Pharmacy report opened',
+  PHARMACY_PAYMENT_RECEIVED: 'Payment received on a pharmacy bill',
   PHARMACY_PATIENT_LOOKED_UP: 'Patient looked up in the pharmacy',
   PHARMACY_EXPORTED: 'Pharmacy export downloaded',
   TENANT_SETTINGS_UPDATED: 'Letterhead changed',
@@ -1832,6 +1833,8 @@ export function describeAudit(entry) {
       return d.what === 'credit_note' ? `Credit note of ${d.number ? `invoice ${d.number}` : 'an invoice'}` : invoiceOf(d);
     case 'PHARMACY_REGISTER_VIEWED':
       return joined(`${SCHEDULE_WORDS[d.type] ?? 'Drug'} register`, periodOf(d));
+    case 'PHARMACY_PAYMENT_RECEIVED':
+      return joined(invoiceOf(d), d.amountPaise != null ? rupeesOf(d.amountPaise) : '', d.duePaise ? `${rupeesOf(d.duePaise)} still due` : '');
     case 'PHARMACY_MIS_VIEWED':
       return joined(MIS_WORDS[d.report] ?? 'Pharmacy report', periodOf(d), d.rows != null ? count(d.rows, 'row') : '');
     case 'PHARMACY_PATIENT_LOOKED_UP':

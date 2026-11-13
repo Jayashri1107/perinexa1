@@ -7,6 +7,7 @@ import { Alert, StatusPill, formatDateTime, useDebounced } from '../../component
 import { useFetch } from '../../hooks/useFetch.js';
 import { addDaysIso } from '../appointments/appointmentFormat.js';
 import { money } from './pharmacyUi.jsx';
+import { DateText } from '../../components/DateText.jsx';
 
 // The pharmacy's daily register, on the pharmacist's Today page (owner, 26 Oct 2026): the day's patients who need the
 // pharmacy, never the whole patient list – OPD (arrived that day or prescribed that day), IPD (in hospital) and External (walk-in customers billed that
@@ -271,7 +272,7 @@ export function DailyRegister({ glance = null, actions = null }) {
                   <button type="button" className="icon-btn" onClick={() => goDay(addDaysIso(day, -1))} aria-label="Previous day">
                     <ChevronLeft aria-hidden="true" />
                   </button>
-                  <input type="date" aria-label="Day" value={day} max={res.data?.today} onChange={(e) => e.target.value && goDay(e.target.value)} />
+                  <DateText aria-label="Day" value={day} max={res.data?.today} onChange={(v) => v && goDay(v)} />
                   <button type="button" className="icon-btn" onClick={() => goDay(addDaysIso(day, 1))} aria-label="Next day" disabled={isToday}>
                     <ChevronRight aria-hidden="true" />
                   </button>

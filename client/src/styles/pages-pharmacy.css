@@ -853,3 +853,4 @@
 .ph-glance .ph-glance-period { background: var(--surface); }
 @media (max-width: 1250px) { .ph-glance .is-money .ph-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .ph-glance .ph-stat-label { min-height: 2.6em; align-items: flex-start; } .ph-glance .ph-stat-label svg.lucide { margin-top: 1px; }
+.ph-inv-receive { margin-top: var(--space-3); width: 100%; justify-content: center; }

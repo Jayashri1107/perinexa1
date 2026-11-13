@@ -51,6 +51,7 @@ import { pharmacyOrdersRouter } from './pharmacyOrders.js';
 import { pharmacyRegisterRouter } from './pharmacyRegister.js';
 import { pharmacySupplierReturnsRouter } from './pharmacySupplierReturns.js';
 import { capitalizeName } from '../utils/personName.js';
+import { stampOf } from '../billing/billingService.js';
 import { givenFromPrescriptions, givenWords } from '../pharmacy/rxGiven.js';
 import { neverSubstitute, sameMedicine } from '../pharmacy/substitutes.js';
 import { supplierAccount } from '../pharmacy/supplierAccount.js';
@@ -1048,6 +1049,8 @@ const invoiceFields = z
     paymentRemarks: z.string().trim().max(200).default(''),
     // A registered patient's bill (13 Nov 2026): on her hospital bill (paid at the billing desk), or paid here
     onHospitalBill: z.literal(true).optional(),
+    // A walk-in's bill with no payment chosen (13 Nov 2026): on credit – paid later on the invoice (Receive payment)
+    onCredit: z.literal(true).optional(),
     // A walk-in sale to a business that gives its GSTIN (for its tax invoice and the e-invoice file). Its state is
     // read from the GSTIN's first two digits.
     buyer: z
@@ -1076,10 +1079,12 @@ const invoiceFields = z
   // A registered patient's invoice goes on her hospital bill, or is paid here (13 Nov 2026) – not both; a walk-in has no hospital bill
   .refine((b) => !b.onHospitalBill || b.patientId, { message: 'Only a registered patient’s bill can go on a hospital bill.', path: ['onHospitalBill'] })
   .refine((b) => !(b.onHospitalBill && (b.payment || b.payments)), { message: 'Choose the hospital bill or a payment here, not both.', path: ['payments'] })
+  .refine((b) => !b.onCredit || !b.patientId, { message: 'A registered patient’s bill on credit goes on her hospital bill.', path: ['onCredit'] })
+  .refine((b) => !(b.onCredit && (b.payment || b.payments)), { message: 'A bill on credit has no payment now.', path: ['payments'] })
   .refine((b) => !(b.payment && b.payments), { message: 'Send the payment once.', path: ['payments'] });
 // A patient's invoice sent without either choice goes on her hospital bill (as before 13 Nov 2026; the Payment window
 // always asks)
-const invoiceSchema = invoiceFields.refine((b) => b.patientId || b.payment || b.payments, { message: 'A walk-in customer pays at the counter: choose how.', path: ['payment'] });
+const invoiceSchema = invoiceFields.refine((b) => b.patientId || b.payment || b.payments || b.onCredit, { message: 'A walk-in customer pays at the counter: choose how, or put the bill on credit.', path: ['payment'] });
 
 const loadInvoice = async (req) => {
   const inv = await PharmacyInvoice.findOne({ tenantId: req.tenantId, _id: idParam(req) });
@@ -1348,6 +1353,24 @@ pharmacyRouter.post('/invoices/:id/returns', async (req, res) => {
   const out = await returnItems(req, inv, body.items, body.reason, body.refund);
   await audit(req, 'PHARMACY_RETURNED', { details: { invoiceId: String(inv._id), number: inv.number, creditNote: out.number, amountPaise: out.credit.amountPaise, reason: body.reason } });
   res.json({ invoice: await oneView(req, out.invoice), creditNote: out.number });
+});
+
+// A bill on credit paid later (13 Nov 2026): one or more parts at the counter, up to what is still due. Not for a bill
+// on a hospital bill (that is paid at the billing desk).
+pharmacyRouter.post('/invoices/:id/payments', async (req, res) => {
+  desk(req);
+  const body = parse(z.object({ payments: z.array(paymentPart).min(1).max(5), remarks: z.string().trim().max(200).default('') }).strict(), req.body);
+  const inv = await loadInvoice(req);
+  if (inv.billId) throw new HttpError(400, 'This bill is on the hospital bill: it is paid at the billing desk.', 'ON_HOSPITAL_BILL');
+  const due = invoiceTotals(inv).balancePaise ?? 0;
+  const paying = body.payments.reduce((n, p) => n + p.amountPaise, 0);
+  if (due <= 0) throw new HttpError(400, 'Nothing is due on this bill.', 'NOTHING_DUE');
+  if (paying > due) throw Object.assign(new HttpError(400, `Only ₹${(due / 100).toFixed(2)} is due on this bill.`, 'VALIDATION'), { fields: { payments: 'The amounts paid are more than what is due.' } });
+  for (const p of body.payments) inv.payments.push({ kind: 'payment', mode: p.mode, amountPaise: p.amountPaise, reference: p.reference ?? '', bank: p.bank ?? '', on: p.on ?? null, authorisedBy: p.authorisedBy ?? '', narration: p.narration ?? '', ...stampOf(req) });
+  if (body.remarks) inv.paymentRemarks = [inv.paymentRemarks, body.remarks].filter(Boolean).join(' · ');
+  await inv.save();
+  await audit(req, 'PHARMACY_PAYMENT_RECEIVED', { details: { invoiceId: String(inv._id), number: inv.number, amountPaise: paying, duePaise: due - paying } });
+  res.json({ invoice: await oneView(req, inv) });
 });
 
 pharmacyRouter.post('/invoices/:id/printed', async (req, res) => {
