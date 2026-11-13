@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { rateLimitStore } from '../utils/sharedState.js';
-import { Membership } from '../models/Membership.js';
+import { Membership, giveDoctorTitle } from '../models/Membership.js';
 import { Tenant } from '../models/Tenant.js';
 import { PLATFORM_AREAS, User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { audit } from '../utils/audit.js';
@@ -403,13 +403,14 @@ export function authRouter({ loginRateLimitMax }) {
     }
     const membership = await Membership.findOne({ tenantId: tenant._id, userId: doctor._id });
     if (!membership) {
-      await Membership.create({ tenantId: tenant._id, userId: doctor._id, roles: ['doctor'], createdBy: me._id });
+      await giveDoctorTitle(await Membership.create({ tenantId: tenant._id, userId: doctor._id, roles: ['doctor'], createdBy: me._id }));
       await audit(req, 'MEMBER_ADDED', { target: doctor, tenantId: tenant._id, details: { roles: ['doctor'], ownDoctorAccount: true } });
     } else if (!membership.isActive || !membership.roles.includes('doctor')) {
       const before = [...membership.roles];
       if (!membership.roles.includes('doctor')) membership.roles = [...membership.roles, 'doctor'];
       membership.isActive = true;
       await membership.save();
+      await giveDoctorTitle(membership);
       await audit(req, 'MEMBER_ROLE_CHANGED', { target: doctor, tenantId: tenant._id, details: { from: before, to: membership.roles, ownDoctorAccount: true } });
     }
     res.json({ platform: await platformInfo(me, req.tenant), hospitals: await listActiveMemberships(doctor) });

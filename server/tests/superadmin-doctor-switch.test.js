@@ -25,7 +25,7 @@ describe('a super admin who is also a doctor – one login', () => {
 
     const first = await s.post('/api/auth/me/doctor-account').send({ tenantId: a._id.toString() });
     expect(first.status, JSON.stringify(first.body)).toBe(200);
-    expect(first.body.platform.linkedAccount).toEqual({ email: 'asha.owner+doctor@example.com', name: 'Dr Asha Owner', own: true });
+    expect(first.body.platform.linkedAccount).toEqual({ email: 'asha.owner+doctor@example.com', name: 'Dr. Asha Owner', own: true }); // the doctor account's name gets "Dr." (utils/doctorTitle.js)
     expect(first.body.hospitals.map((h) => [h.tenantName, h.roles])).toEqual([['Switch Hospital A', ['doctor']]]);
     const doctor = await User.findOne({ email: 'asha.owner+doctor@example.com' });
     expect(doctor.ownedBy.equals(sa._id)).toBe(true);

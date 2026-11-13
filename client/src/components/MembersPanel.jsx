@@ -69,7 +69,7 @@ function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel, noAdmin = fa
         <Field label="Email" id="member-email" error={fieldErrors.email}>
           <input id="member-email" type="email" value={form.email} onChange={update('email')} placeholder="name@example.com" required autoFocus />
         </Field>
-        <Field label="Full name (for new accounts)" id="member-name" error={fieldErrors.name}>
+        <Field label="Full name (for new accounts)" id="member-name" error={fieldErrors.name} hint='A doctor gets "Dr." in front of the name automatically.'>
           <input id="member-name" value={form.name} onChange={asName(update('name'))} maxLength={100} />
         </Field>
       </div>

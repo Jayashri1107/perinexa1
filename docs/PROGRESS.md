@@ -1,5 +1,17 @@
 # Progress
 
+## "Dr." in front of every doctor's name (13 Nov 2026, branch `doctor-title`)
+- A person with the **doctor** role (not RMOs – the developer's choice) has "Dr. " stored in their name, so every
+  screen, list, bill and print shows it without changes of its own (`server/src/utils/doctorTitle.js`). Written one
+  way: "Dr Asha", "dr. asha" → "Dr. Asha"; never twice.
+- Given when staff are added or given the doctor role (`giveDoctorTitle` in `models/Membership.js`, called by
+  `routes/members.js`, `routes/platformUsers.js`, the super admin's own doctor account in `routes/auth.js`); kept when
+  the name is edited (`models/User.js`). Taking the role away leaves the name.
+- Doctors from before get it at the next server start (`users/doctorTitles.js`, from `index.js`), with the doctor's name
+  kept on their stays; each rename is in the audit log. Other names kept on records stay as written. Lab report
+  signers are typed by hand and are not changed.
+- The staff forms say a doctor gets "Dr." automatically.
+
 ## Lab: a simpler Lab dashboard, and IPD in the lab's Patients menu (12 Nov 2026, branches `lab-ipd-menu`, `lab-dash-simple`)
 - **Patients → IPD → Admitted patients** for lab staff (they had only OPD there): opens `/lab/inpatients` – ward, bed,
   name, number and her lab orders only, as before.
