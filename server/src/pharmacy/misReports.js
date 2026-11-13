@@ -84,7 +84,7 @@ function billMoney(inv) {
   const sold = sum(inv.lines);
   const returned = sum((inv.returns ?? []).flatMap((r) => r.lines));
   const net = sold.amountPaise - returned.amountPaise;
-  const counter = !inv.patientId && inv.kind === 'sale';
+  const counter = !inv.billId; // paid at the counter (a walk-in, or a patient who paid here); else on the hospital bill
   const paid = counter ? (inv.payments ?? []).reduce((s, x) => s + (x.kind === 'refund' ? -x.amountPaise : x.amountPaise), 0) : 0;
   return { sold, returned, net, counter, paid, due: counter ? net - paid : 0 };
 }

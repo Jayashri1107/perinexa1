@@ -1,5 +1,27 @@
 # Progress
 
+## Inventory MIS reports and a dense New GRN, like the earlier software (13 Nov 2026, branch `pharmacy-mis`)
+- **Reports → Report list** is now two trees, **Inventory MIS** and **Pharmacy MIS**, with the chosen report's form
+  beside them: From/To date and only the choices that report uses (supplier, item, batch, expiring by MM/YY, summary
+  or detail, days for non-moving), then the result with Print and Excel.
+- Inventory MIS (`GET /api/pharmacy/reports/inventory`, `pharmacy/inventoryReports.js`): Purchase MIS – indent report
+  and indent date-wise (the wards' requests; the patient's name for the pharmacist only), GRN, GRN return, purchase
+  order, item-wise and supplier-wise GRN lists; Stock MIS – current stock (by item or by batch), stock date-wise
+  (opening, in, out, closing) and non-moving items.
+- **New GRN** is dense like the earlier software: small fields, the invoice in a narrow column with the items beside
+  it, and the bill amounts in four columns with the label beside each field (discounts, charges, the GST split, totals
+  to the net to pay and rounding).
+- **Payment window: the payment type is compulsory for a registered patient too** (the developer's choice): **Hospital
+  bill** (on her hospital bill, paid at the billing desk – as before) or paid here by cash, cheque, card, NEFT / RTGS or
+  online, like a walk-in. Save stays off until one is chosen; the bill's print preview then opens as before. A bill
+  paid here stays off the hospital bill (`billId` null), counts in the counter's takings, and a return of it is
+  refunded here. The server still puts a patient's bill on the hospital bill when no choice is sent (older callers,
+  a nurse's issue from a ward store).
+- **Reports**: the tabs are at the top; the summary panel shows on Stock alerts only, other reports fill the page with
+  a slim period bar where they need one.
+- Test: Reports → Report list → Inventory MIS → Current stock report, switch Detail, type 12/28 in Expiring by.
+  Purchase bills → New GRN: the amounts sit in four columns under the items.
+
 ## Pharmacy report list, and a tidier New GRN (13 Nov 2026, branch `pharmacy-mis`)
 - **Pharmacy → Reports → Report list**: the reports of the pharmacy's earlier software in one grouped list, the chosen
   one beside it for the period above, each with **Print** (A4 landscape, on the store's letterhead) and – for the

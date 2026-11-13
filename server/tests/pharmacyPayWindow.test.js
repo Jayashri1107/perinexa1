@@ -113,11 +113,38 @@ describe('the Payment window', () => {
     expect(res.status).toBe(400);
   });
 
-  it('a registered patient pays at the billing desk, never here', async () => {
+  // Until 13 Nov 2026 a registered patient always paid at the billing desk; now she may pay here too (tested below)
+  it('a registered patient’s bill is quoted like any other', async () => {
     const m = await inStock();
     const p = (await (await as('reception')).post('/api/patients').send(samplePatient({ fullName: 'Sample Counter Mother', assignedDoctor: people.drA._id.toString() }))).body.patient;
-    const res = await ph('post', '/invoices', { kind: 'sale', patientId: p.id, lines: [{ medicineId: m.id, qty: 1 }], payments: [{ mode: 'cash', amountPaise: 200 }] });
-    expect(res.status).toBe(400);
     expect((await ph('post', '/invoices/quote', { kind: 'sale', patientId: p.id, lines: [{ medicineId: m.id, qty: 1 }] })).body.quote.totalPaise).toBe(200);
+  });
+});
+
+describe('a registered patient’s bill: the hospital bill, or paid here (13 Nov 2026)', () => {
+  it('paid here stays off the hospital bill and is refunded here; the hospital bill as before; never both', async () => {
+    const m = await inStock();
+    const p = (await (await as('reception')).post('/api/patients').send(samplePatient({ fullName: 'Sample Paying Mother', assignedDoctor: people.drA._id.toString() }))).body.patient;
+    const sale = (extra) => ph('post', '/invoices', { kind: 'sale', patientId: p.id, lines: [{ medicineId: m.id, qty: 3 }], ...extra });
+
+    const paid = await sale({ payments: [{ mode: 'upi', amountPaise: 600, reference: 'UPI-77' }] });
+    expect(paid.status, JSON.stringify(paid.body)).toBe(201);
+    expect(paid.body.invoice).toMatchObject({ billId: null, paidPaise: 600, balancePaise: 0 });
+    // Short payment is refused, as for a walk-in
+    expect((await sale({ payments: [{ mode: 'cash', amountPaise: 100 }] })).status).toBe(400);
+
+    const onBill = await sale({ onHospitalBill: true });
+    expect(onBill.status).toBe(201);
+    expect(onBill.body.invoice.billId).toBeTruthy();
+    expect(onBill.body.invoice.paidPaise).toBeNull();
+
+    expect((await sale({ onHospitalBill: true, payment: { mode: 'cash' } })).status).toBe(400);
+    expect((await ph('post', '/invoices', walkIn(m, { onHospitalBill: true }))).status).toBe(400);
+
+    // A return of the bill paid here gives the money back here: how is asked
+    const line = paid.body.invoice.lines[0];
+    expect((await ph('post', `/invoices/${paid.body.invoice.id}/returns`, { items: [{ lineId: line.id, qty: 1 }], reason: 'Not needed' })).status).toBe(400);
+    const back = await ph('post', `/invoices/${paid.body.invoice.id}/returns`, { items: [{ lineId: line.id, qty: 1 }], reason: 'Not needed', refund: { mode: 'cash' } });
+    expect(back.status, JSON.stringify(back.body)).toBe(200);
   });
 });

@@ -82,6 +82,9 @@ function RegisterTables({ reg }) {
 
 // The reports, one at a time (owner, 26 Oct 2026: simpler to read): stock alerts, sales and GST, purchases, the
 // registers and – for the hospital admin – the export.
+// The reports that read the period above them (Report list has its own dates; Day closing its own day)
+const PERIOD_VIEWS = ['sales', 'purchases', 'registers', 'figures', 'by-doctor', 'export'];
+
 const VIEWS = [
   ['alerts', 'Stock alerts'],
   ['list', 'Report list'], // 13 Nov 2026: every report of the earlier software, printable (MisReports.jsx)
@@ -504,6 +507,24 @@ export function ReportsPage() {
     <>
       <PharmacyHeader title="Pharmacy reports" crumb="Reports" subtitle="Choose the period, then the report you need." />
       <div className="pf-content bill-page">
+        {/* The reports as tabs at the top (13 Nov 2026); a report opened takes the whole page – the summary panel is
+            the Stock alerts tab's, the others get the period alone */}
+        <div className="segmented ph-rep-tabs" role="group" aria-label="Report">
+          {views.map(([k, label]) => (
+            <button key={k} type="button" aria-pressed={view === k} onClick={() => go(k)}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {view !== 'alerts' && PERIOD_VIEWS.includes(view) && (
+          <section className="card ph-rep-periodbar" aria-label="Period">
+            <Period from={from} to={to} setFrom={setFrom} setTo={setTo} />
+          </section>
+        )}
+
+        {view === 'alerts' && (
+        <>
         {/* One summary panel (7 Nov 2026): the period on top, then this period's money and the stock as it is now, as
             even cells that rearrange with the width – never one card left alone on a row */}
         <section className="card ph-glance" aria-label="Pharmacy at a glance">
@@ -544,14 +565,8 @@ export function ReportsPage() {
             </div>
           </div>
         </section>
-
-        <div className="segmented ph-rep-tabs" role="group" aria-label="Report">
-          {views.map(([k, label]) => (
-            <button key={k} type="button" aria-pressed={view === k} onClick={() => go(k)}>
-              {label}
-            </button>
-          ))}
-        </div>
+        </>
+        )}
 
         {view === 'alerts' && (alerts.error ? <Alert type="error">{alerts.error}</Alert> : a && <StockAlerts a={a} />)}
         {view === 'sales' && (sales.error ? <Alert type="error">{sales.error}</Alert> : s && <SalesReport s={s} />)}
@@ -560,7 +575,7 @@ export function ReportsPage() {
         {view === 'figures' && <FiguresReport from={from} to={to} />}
         {view === 'day' && <DayClosing />}
         {view === 'by-doctor' && pharmacist && <SalesByDoctorReport from={from} to={to} />}
-        {view === 'list' && <MisReports from={from} to={to} admin={admin} pharmacist={pharmacist} openDoctorSales={() => go('by-doctor')} />}
+        {view === 'list' && <MisReports from={from} to={to} setFrom={setFrom} setTo={setTo} admin={admin} pharmacist={pharmacist} openDoctorSales={() => go('by-doctor')} />}
 
         {view === 'registers' && (
           <section className="card bill-section" aria-labelledby="rep-reg">

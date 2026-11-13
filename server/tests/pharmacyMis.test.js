@@ -8,6 +8,7 @@ import { AuditLog } from '../src/models/AuditLog.js';
 import { StockBatch } from '../src/models/Pharmacy.js';
 import { User } from '../src/models/User.js';
 import { MIS_KEYS, isAntiTb } from '../src/pharmacy/misReports.js';
+import { INVENTORY_KEYS } from '../src/pharmacy/inventoryReports.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js'; // samplePatient: later tests
 
 const NOW = new Date('2026-11-11T06:00:00Z');
@@ -108,5 +109,48 @@ describe('pharmacy MIS reports', () => {
     expect(isAntiTb({ name: 'R-Cin 450', generic: 'Rifampicin' })).toBe(true);
     expect(isAntiTb({ name: 'Sample Ethambutol 800', generic: '' })).toBe(true);
     expect(isAntiTb({ name: 'Sample Paracetamol', generic: 'Paracetamol' })).toBe(false);
+  });
+});
+
+const inv = (report, extra = '', who = 'pharm') => ph('get', `/reports/inventory?report=${report}&from=2026-11-01&to=2026-11-30${extra}`, undefined, who);
+
+describe('inventory MIS reports', () => {
+  it('GRN, item- and supplier-wise lists, current stock, stock date-wise and non-moving items, with the filters', async () => {
+    const supA = ok(await ph('post', '/suppliers', { name: 'Sample Inv Supplier A' }), 201).supplier;
+    const supB = ok(await ph('post', '/suppliers', { name: 'Sample Inv Supplier B' }), 201).supplier;
+    const sold = await medicine({ name: 'Sample Inv Sold Tab' });
+    const idle = await medicine({ name: 'Sample Inv Idle Tab' });
+    await bill(supA, sold, { qty: 100, batch: 'SOLD-1' });
+    await bill(supB, idle, { qty: 50, batch: 'IDLE-1' });
+    ok(await ph('post', '/invoices', { kind: 'sale', customer: { name: 'Sample Walk In' }, lines: [{ medicineId: sold.id, qty: 10 }], payments: [{ mode: 'cash', amountPaise: 15000 }] }), 201);
+
+    const grn = ok(await inv('grn'));
+    expect(grn.rows.map((r) => [r.supplier, r.qty, r.net])).toEqual([
+      ['Sample Inv Supplier A', 100, 105000],
+      ['Sample Inv Supplier B', 50, 52500],
+    ]);
+    expect(ok(await inv('grn', `&supplierId=${supB.id}`)).rows).toHaveLength(1);
+    expect(ok(await inv('grn', '&detail=1&batch=sold')).rows.map((r) => [r.medicine, r.batch, r.expiry])).toEqual([['Sample Inv Sold Tab', 'SOLD-1', '2028-06']]);
+    expect(ok(await inv('item-grn')).rows.map((r) => [r.medicine, r.qty, r.avgRate])).toEqual([
+      ['Sample Inv Idle Tab', 50, 1000],
+      ['Sample Inv Sold Tab', 100, 1000],
+    ]);
+    expect(ok(await inv('supplier-grn')).total).toMatchObject({ bills: 2, net: 157500 });
+
+    const stock = ok(await inv('current-stock'));
+    expect(stock.rows.map((r) => [r.medicine, r.qty, r.costValue])).toEqual([
+      ['Sample Inv Idle Tab', 50, 50000],
+      ['Sample Inv Sold Tab', 90, 90000],
+    ]);
+    expect(ok(await inv('current-stock', `&detail=1&medicineId=${sold.id}`)).rows.map((r) => [r.batch, r.qty, r.place])).toEqual([['SOLD-1', 90, 'Pharmacy']]);
+    expect(ok(await inv('current-stock', '&expiryBy=2027-12')).rows).toEqual([]); // both expire in June 2028
+    expect(ok(await inv('stock-datewise')).rows.find((r) => r.medicine === 'Sample Inv Sold Tab')).toMatchObject({ opening: 0, in: 100, out: 10, closing: 90 });
+    expect(ok(await inv('non-moving', '&days=30')).rows.map((r) => [r.medicine, r.idle])).toEqual([['Sample Inv Idle Tab', 'Never sold']]);
+
+    for (const k of INVENTORY_KEYS) ok(await inv(k));
+    for (const k of INVENTORY_KEYS) ok(await inv(k, '&detail=1'));
+    ok(await inv('grn', '', 'admin'));
+    expect((await inv('grn', '', 'drA')).status).toBe(403);
+    expect((await inv('current-stock', '&expiryBy=2027-13')).status).toBe(400);
   });
 });

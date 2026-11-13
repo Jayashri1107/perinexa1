@@ -25,3 +25,13 @@ describe('the pharmacy report list', () => {
     expect(csv.split('\r\n')).toEqual(['﻿Date,Customer,Amount', '13 Nov 2026,"Sample, Walk In",1234.50', "13 Nov 2026,'=SUM(A1),0.50", '2 bills,,1235.00', '']);
   });
 });
+
+describe('the report form', () => {
+  it('reads the expiry month as typed on the pack', async () => {
+    const { typedMonth } = await import('./MisReports.jsx');
+    expect(typedMonth('08/27')).toBe('2027-08');
+    expect(typedMonth('8/2028')).toBe('2028-08');
+    expect(typedMonth('13/27')).toBeNull();
+    expect(typedMonth('aug')).toBeNull();
+  });
+});

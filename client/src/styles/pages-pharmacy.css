@@ -275,6 +275,7 @@
 /* 13 Nov 2026: the invoice across the top in four columns and the items full width below – the narrow invoice column
    cut the dates off and left the items card half empty */
 .ph-grn-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.ph-grn-dense .ph-grn-layout { grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-3); align-items: stretch; }
 .ph-grn-layout > .card { margin: 0; }
 .ph-grn-invoice .form-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); }
 .ph-grn-invoice .form-grid > :is(:nth-child(1), :nth-child(2)) { grid-column: span 2; }
@@ -693,3 +694,67 @@
   .ph-mis { grid-template-columns: minmax(0, 1fr); }
   .ph-mis-list { position: static; }
 }
+
+/* New GRN, dense like the pharmacy's earlier software (13 Nov 2026): small fields and labels, the invoice in a 340px
+   column, the items beside it, the amounts as four columns of label-beside-field */
+.ph-grn-dense .card.bill-section { padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); }
+.ph-grn-dense .card.bill-section h2 { font-size: 0.9375rem; margin: 0 0 var(--space-2); }
+.ph-grn-dense :is(input, select, textarea), .ph-gl-inputs :is(input, select) { min-height: 0; height: 30px; padding-block: 3px; font-size: 0.8125rem; border-radius: var(--radius-sm); }
+.ph-grn-dense :is(input:not([type='search']):not([type='checkbox']):not(.bill-search input), select), .ph-gl-inputs :is(input, select) { padding-inline: 8px; }
+.ph-grn-dense .field > label, .ph-grn-dense .field-label, .ph-gl-inputs .field > label { font-size: 0.75rem; margin-bottom: 2px; }
+.ph-grn-dense .field { margin: 0; }
+.ph-grn-dense .ph-grn-invoice .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
+.ph-grn-dense .ph-grn-invoice .form-grid > :is(:nth-child(1), :nth-child(2), .ph-grn-supplier) { grid-column: 1 / -1; }
+.ph-grn-dense .ph-grn-invoice .ph-grn-choices { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); margin-top: var(--space-3); padding-top: var(--space-3); }
+.ph-grn-dense .ph-choice { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.ph-grn-dense .ph-choice .segmented button { padding: 3px 10px; font-size: 0.8125rem; min-height: 0; }
+.ph-grn-dense .ph-grn-tabs { margin-bottom: var(--space-3); }
+.ph-grn-dense .ph-grn-tabs a { padding: 4px 14px; font-size: 0.8125rem; }
+.ph-grn-dense .ph-grn-items .btn { min-height: 0; padding: 4px 12px; font-size: 0.8125rem; }
+.ph-grn-dense .ph-grn-items p.row { margin: var(--space-2) 0; }
+.ph-grn-dense .bill-lines.ph-grn-lines { font-size: 0.8125rem; }
+.ph-grn-dense .bill-lines.ph-grn-lines :is(th, td) { padding-block: 5px; }
+.ph-amt-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2) var(--space-6); }
+.ph-amt-col { display: grid; gap: 6px; align-content: start; }
+.ph-amt { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: var(--space-2); }
+.ph-amt label { font-size: 0.75rem; color: var(--slate-600); text-align: right; line-height: 1.2; }
+.ph-amt input { width: 100%; text-align: right; font-variant-numeric: tabular-nums; }
+.ph-amt-col:nth-child(2) .ph-amt:nth-child(n + 4) input { text-align: left; }
+.ph-amt .ph-ro { background: var(--mist-50); }
+.ph-amt.is-strong label { color: var(--indigo-800); font-weight: 700; }
+.ph-amt.is-strong input { font-weight: 700; color: var(--indigo-800); background: var(--indigo-100); }
+.ph-amt-note { margin: 0; font-size: 0.75rem; }
+.ph-grn-dense .ph-grn-actions { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+@media (max-width: 1100px) {
+  .ph-grn-dense .ph-grn-layout { grid-template-columns: minmax(0, 1fr); }
+  .ph-amt-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) { .ph-amt-cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* Report list as two trees with the report's form beside it (13 Nov 2026, like the earlier software's MIS) */
+.ph-mis-tree + .ph-mis-tree { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.ph-mis-root { display: flex; align-items: center; gap: var(--space-1); width: 100%; padding: 4px var(--space-1); border: 0; background: none; color: var(--indigo-800); font: inherit; font-weight: 700; font-size: 0.875rem; text-align: left; cursor: pointer; }
+.ph-mis-root svg { width: 16px; height: 16px; }
+.ph-mis-tree .ph-mis-group { margin: var(--space-2) 0 0 var(--space-3); padding-left: var(--space-2); border-left: 1px dashed var(--slate-300); }
+.ph-mis-tree .ph-mis-group + .ph-mis-group { border-top: 0; padding-top: 0; }
+.ph-mis-item { padding: 4px var(--space-2); font-size: 0.8125rem; }
+.ph-mis-main { display: grid; gap: var(--space-3); min-width: 0; }
+.ph-mis-main > .card { margin: 0; }
+.ph-mis-form { padding: var(--space-3) var(--space-4); }
+.ph-mis-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--space-2) var(--space-3); }
+.ph-mis-f { display: grid; gap: 2px; min-width: 0; }
+.ph-mis-f > span { font-size: 0.75rem; font-weight: 600; color: var(--slate-600); }
+.ph-mis-f :is(input, select) { height: 30px; min-height: 0; padding: 3px 8px; font-size: 0.8125rem; }
+.ph-mis-f .segmented button { padding: 3px 12px; font-size: 0.8125rem; min-height: 0; }
+.ph-mis-period { margin: 0 0 var(--space-2); }
+
+/* The Payment window (13 Nov 2026): a registered patient's bill also needs a choice – the hospital bill, or paid here */
+.ph-pay-way.ph-pay-hospital-way { grid-template-columns: 150px minmax(0, 1fr); align-items: center; margin-bottom: var(--space-2); }
+.ph-pay-hospital-way .hint { margin: 0; }
+.ph-pay-choose { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--status-watch-bg); color: var(--status-watch-fg); font-size: 0.875rem; }
+.ph-pay-choose svg { width: 16px; height: 16px; flex: none; }
+
+/* Reports (13 Nov 2026): the tabs first, a report then fills the page; the period in a slim bar where a report needs it */
+.ph-rep-tabs { overflow-x: auto; flex-wrap: nowrap; max-width: 100%; }
+.ph-rep-tabs button { white-space: nowrap; }
+.ph-rep-periodbar { padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); }

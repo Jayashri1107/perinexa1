@@ -462,6 +462,21 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
   );
 }
 
+/** One amount of the bill, label beside a small field; without onChange it is a worked-out figure (read only). */
+function Amt({ label, id, value, onChange, text = false, strong = false, maxLength }) {
+  const own = id ?? `pu-amt-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`;
+  return (
+    <div className={strong ? 'ph-amt is-strong' : 'ph-amt'}>
+      <label htmlFor={own}>{label}</label>
+      {onChange ? (
+        <input id={own} inputMode={text ? undefined : 'decimal'} value={value} maxLength={maxLength} onChange={onChange} />
+      ) : (
+        <input id={own} value={value} readOnly tabIndex={-1} className="ph-ro" />
+      )}
+    </div>
+  );
+}
+
 /**
  * Pharmacy → Purchase bills → New GRN, laid out like the pharmacy's earlier software (owner, 26 Oct 2026; the pop-up
  * per medicine, 28 Oct 2026): the supplier's invoice on the left (store, supplier, invoice and gate entry numbers,
@@ -577,7 +592,7 @@ export function NewPurchasePage() {
   return (
     <>
       <PharmacyHeader title={order ? `Receive order ${order.number}` : 'Add a purchase bill'} crumb={order ? `Receive ${order.number}` : 'New GRN'} buying />
-      <div className="pf-content bill-page">
+      <div className="pf-content bill-page ph-grn-dense">
         <GrnTabs desk />
         <Alert type="error" onClose={() => s.setError(null)}>
           {s.error}
@@ -787,45 +802,48 @@ export function NewPurchasePage() {
             )}
           </section>
         </div>
-        <section className="card bill-section" aria-labelledby="pu-amounts">
-          <h2 id="pu-amounts">Bill amounts</h2>
-          <div className="ph-grn-foot">
-            <div className="form-grid">
-              <Field label="Scheme discount ₹" id="pu-scheme">
-                <input id="pu-scheme" inputMode="decimal" value={extra.scheme} onChange={setX('scheme')} />
-              </Field>
-              <Field label="Discount %" id="pu-discp" hint={sums.discPaise ? `Discount amount ${money(sums.discPaise)}` : undefined}>
-                <input id="pu-discp" inputMode="decimal" value={extra.discPercent} onChange={setX('discPercent')} />
-              </Field>
-              <Field label="Credit note adjusted ₹" id="pu-crn">
-                <input id="pu-crn" inputMode="decimal" value={extra.crnAdj} onChange={setX('crnAdj')} />
-              </Field>
-              <Field label="Other charges ₹" id="pu-other">
-                <input id="pu-other" inputMode="decimal" value={extra.other} onChange={setX('other')} />
-              </Field>
-              <Field label="Surcharge ₹" id="pu-surcharge">
-                <input id="pu-surcharge" inputMode="decimal" value={extra.surcharge} onChange={setX('surcharge')} />
-              </Field>
-              <Field label="Freight ₹" id="pu-freight">
-                <input id="pu-freight" inputMode="decimal" value={extra.freight} onChange={setX('freight')} />
-              </Field>
-              <Field label="Received by" id="pu-recv">
-                <input id="pu-recv" value={extra.receivedBy} maxLength={100} onChange={setX('receivedBy')} />
-              </Field>
-              <Field label="Remark" id="pu-remark">
-                <input id="pu-remark" value={extra.remark} maxLength={300} onChange={setX('remark')} />
-              </Field>
-              <Field
-                label="Bill total as printed ₹"
-                id="pu-printed"
-                hint={printedGap == null ? 'Type the supplier’s total to check the sums.' : Math.abs(printedGap) <= 100 ? 'Matches the sums (within ₹1).' : undefined}
-                error={printedGap != null && Math.abs(printedGap) > 100 ? `The lines add up to ${money(sums.netPaise)} – ${money(Math.abs(printedGap))} ${printedGap > 0 ? 'less' : 'more'} than the bill. Check the rates, discounts and GST.` : undefined}
-                keepHint
-              >
-                <input id="pu-printed" inputMode="decimal" value={extra.printed} onChange={setX('printed')} />
-              </Field>
+        {/* The bill's amounts as on the earlier software (13 Nov 2026): four columns of small fields, label beside field –
+            discounts, charges, the GST split, and the totals down to the net to pay */}
+        <section className="card bill-section ph-grn-amounts" aria-labelledby="pu-amounts">
+          <h2 id="pu-amounts" className="sr-only">
+            Bill amounts
+          </h2>
+          <div className="ph-amt-cols">
+            <div className="ph-amt-col">
+              <Amt label="Item disc" value={money(sums.itemDiscPaise)} />
+              <Amt label="Scheme disc ₹" id="pu-scheme" value={extra.scheme} onChange={setX('scheme')} />
+              <Amt label="Disc amount" value={money(sums.discPaise)} />
+              <Amt label="Disc %" id="pu-discp" value={extra.discPercent} onChange={setX('discPercent')} />
+              <Amt label="CRN adj. ₹" id="pu-crn" value={extra.crnAdj} onChange={setX('crnAdj')} />
             </div>
-            <GrnSummary sums={sums} taxType={taxType} />
+            <div className="ph-amt-col">
+              <Amt label="Other charges ₹" id="pu-other" value={extra.other} onChange={setX('other')} />
+              <Amt label="Surcharge ₹" id="pu-surcharge" value={extra.surcharge} onChange={setX('surcharge')} />
+              <Amt label="Freight ₹" id="pu-freight" value={extra.freight} onChange={setX('freight')} />
+              <Amt label="Received by" id="pu-recv" text value={extra.receivedBy} maxLength={100} onChange={setX('receivedBy')} />
+              <Amt label="Remark" id="pu-remark" text value={extra.remark} maxLength={300} onChange={setX('remark')} />
+            </div>
+            <div className="ph-amt-col">
+              <Amt label="IGST amt" value={money(sums.igstPaise)} />
+              <Amt label="CGST amt" value={money(sums.cgstPaise)} />
+              <Amt label="SGST amt" value={money(sums.sgstPaise)} />
+              <Amt label="Bill total as printed ₹" id="pu-printed" value={extra.printed} onChange={setX('printed')} />
+              {printedGap != null && (
+                <p className={Math.abs(printedGap) > 100 ? 'field-error ph-amt-note' : 'hint ph-amt-note'}>
+                  {Math.abs(printedGap) <= 100
+                    ? 'Matches the sums (within ₹1).'
+                    : `The lines add up to ${money(sums.netPaise)} – ${money(Math.abs(printedGap))} ${printedGap > 0 ? 'less' : 'more'} than the bill. Check the rates, discounts and GST.`}
+                </p>
+              )}
+            </div>
+            <div className="ph-amt-col ph-amt-totals">
+              <Amt label="Total amount" value={money(sums.totalPaise)} />
+              <Amt label="Less amount" value={money(sums.lessPaise)} />
+              <Amt label="Add amount" value={money(sums.addPaise)} />
+              <Amt label="GST amount" value={money(sums.gstPaise)} />
+              <Amt label="Net pay amt" value={money(sums.netPaise)} strong />
+              <Amt label="Rounding amt" value={money(sums.roundingPaise)} />
+            </div>
           </div>
           {!amountsOk && <p className="field-error">Write the amounts in rupees (for example 125.50) and the discount as 0 to 100 %.</p>}
           {amountsOk && sums.netPaise < 0 && <p className="field-error">The discounts are more than the bill.</p>}

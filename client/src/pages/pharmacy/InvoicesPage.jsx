@@ -516,7 +516,7 @@ export function BillPaper({ invoice: v, settings }) {
             <span>−{plain(v.returnedPaise)}</span>
           </div>
         )}
-        {v.patient ? (
+        {v.billId ? (
           <div>Payable at the billing desk with the hospital bill</div>
         ) : (
           <div>
@@ -622,7 +622,7 @@ function InvoicePrint({ invoice: v, settings, stay, creditNote = null, onClose }
               <strong>{amountInWords(due)}</strong>
             </div>
             <div className="pdoc-small">
-              {creditNote ? 'Credited against the bill above.' : v.patient ? 'Payable at the billing desk with the hospital bill.' : v.payments.map((p) => `${p.kind === 'refund' ? 'Refunded' : 'Paid'} ${paper(p.amountPaise)} by ${MODE_LABELS[p.mode]}`).join('; ')}
+              {creditNote ? 'Credited against the bill above.' : v.billId ? 'Payable at the billing desk with the hospital bill.' : v.payments.map((p) => `${p.kind === 'refund' ? 'Refunded' : 'Paid'} ${paper(p.amountPaise)} by ${MODE_LABELS[p.mode]}`).join('; ')}
             </div>
           </div>
           <table className="ph-bill-sums">
@@ -720,7 +720,7 @@ function ReturnDialog({ invoice: v, onClose, onDone }) {
         <Field label="Reason" id="ph-ret-reason" error={s.fields.reason}>
           <input id="ph-ret-reason" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} />
         </Field>
-        {!v.patient && (
+        {!v.billId && (
           <Field label="Money given back by" id="ph-ret-mode">
             <select id="ph-ret-mode" value={mode} onChange={(e) => setMode(e.target.value)}>
               {Object.entries(MODE_LABELS).map(([k, label]) => (
@@ -733,7 +733,7 @@ function ReturnDialog({ invoice: v, onClose, onDone }) {
         )}
       </div>
       <div className="row">
-        <button type="button" className="btn btn-primary" disabled={!ok || s.busy} onClick={() => s.send(`/pharmacy/invoices/${v.id}/returns`, { items: chosen.map((x) => ({ lineId: x.l.id, qty: x.n })), reason: reason.trim(), ...(v.patient ? {} : { refund: { mode } }) })}>
+        <button type="button" className="btn btn-primary" disabled={!ok || s.busy} onClick={() => s.send(`/pharmacy/invoices/${v.id}/returns`, { items: chosen.map((x) => ({ lineId: x.l.id, qty: x.n })), reason: reason.trim(), ...(v.billId ? {} : { refund: { mode } }) })}>
           <RotateCcw aria-hidden="true" /> {s.busy ? 'Saving…' : 'Take back'}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>

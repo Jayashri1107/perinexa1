@@ -31,10 +31,14 @@ describe('the pharmacy bill', () => {
     expect(text).toContain('Pharmacist Sample Pharmacist');
   });
 
-  it('never says a patient’s bill was paid here: it goes on the hospital bill', () => {
-    const text = paper(invoice);
+  it('a patient’s bill on the hospital bill is payable at the billing desk; one paid here shows what was paid', () => {
+    const text = paper({ ...invoice, billId: 'b1' });
     expect(text).not.toContain('Paid Amount');
     expect(text).toContain('Payable at the billing desk');
+    // 13 Nov 2026: a registered patient may pay at the counter – then the bill is not on the hospital bill
+    const paidHere = paper({ ...invoice, billId: null, paidPaise: 66500 });
+    expect(paidHere).toContain('Paid Amount 665.00');
+    expect(paidHere).not.toContain('Payable at the billing desk');
   });
 
   it('shows what a walk-in paid, an IPD issue’s type, and no jurisdiction line without a city', () => {

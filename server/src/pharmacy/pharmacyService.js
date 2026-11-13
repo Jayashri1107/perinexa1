@@ -358,7 +358,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     // Paid in parts at the Payment window: the parts make up the bill exactly (else nothing is sold)
     const owed = sum(lines).amountPaise;
     const paid = (body.payments ?? []).reduce((n, p) => n + p.amountPaise, 0);
-    if (!dryRun && !patient && body.payments && paid !== owed) {
+    if (!dryRun && body.payments && paid !== owed) {
       throw bad(`The bill comes to ${rupeesOf(owed)}, and the amounts paid add up to ${rupeesOf(paid)}. Make them the same.`, { payments: 'The amounts paid must make up the bill.' });
     }
   } catch (err) {
@@ -397,8 +397,8 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     lines,
     discountPercent: pct,
     discountReason: pct ? (body.discountReason ?? '') : '',
-    payments: patient ? [] : counterPaid,
-    paymentRemarks: patient ? '' : (body.paymentRemarks ?? ''),
+    payments: counterPaid, // a registered patient may pay here too (13 Nov 2026)
+    paymentRemarks: counterPaid.length ? (body.paymentRemarks ?? '') : '',
     created: stampOf(req),
   });
 
@@ -412,8 +412,8 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     await wardRequest.save();
   }
 
-  // A registered patient: the invoice goes on her hospital bill (her stay's while she is admitted)
-  if (patient) {
+  // A registered patient not paid here: the invoice goes on her hospital bill (her stay's while she is admitted)
+  if (patient && !counterPaid.length) {
     const bill = stay ? await openStayBill(req, stay) : await openBillFor(req, patient._id);
     await pushLines(req, bill._id, [{ name: `Pharmacy – invoice ${number}`, group: 'medicine', ratePaise: total, source: 'auto', ref: { kind: 'pharmacy', id: invoice._id } }]);
     invoice.billId = bill._id;
@@ -437,7 +437,7 @@ export async function returnItems(req, invoice, items, reason, refund) {
     if (isExpired(line, today)) throw conflict(`${line.name}, batch ${line.batch}, has expired: it can't be taken back.`, 'EXPIRED');
     parts.push({ line, qty: it.qty, money: partOf(line, it.qty) });
   }
-  if (!invoice.patientId && !refund?.mode) throw bad('Choose how the money is given back.');
+  if (!invoice.billId && !refund?.mode) throw bad('Choose how the money is given back.');
   const number = padded('CN', await nextNumber(req.tenantId, 'pharmacy-credit'));
   const meta = { kind: 'return', ref: { kind: 'invoice', id: invoice._id, number: invoice.number }, patientId: invoice.patientId, customer: invoice.customer?.name ?? '', doctorName: invoice.doctor?.name ?? '', doctorReg: invoice.doctor?.reg ?? '', reason };
   for (const p of parts) {
@@ -446,7 +446,7 @@ export async function returnItems(req, invoice, items, reason, refund) {
   }
   const credit = sum(parts.map((p) => p.money));
   invoice.returns.push({ number, lines: parts.map((p) => ({ lineId: p.line._id, qty: p.qty, ...p.money })), reason, ...stampOf(req) });
-  if (!invoice.patientId) invoice.payments.push({ kind: 'refund', mode: refund.mode, amountPaise: credit.amountPaise, reference: refund.reference ?? '', ...stampOf(req) });
+  if (!invoice.billId) invoice.payments.push({ kind: 'refund', mode: refund.mode, amountPaise: credit.amountPaise, reference: refund.reference ?? '', ...stampOf(req) });
   await invoice.save();
 
   // Her bill: the invoice line now shows what is still charged
@@ -490,8 +490,9 @@ export function invoiceTotals(inv) {
     taxablePaise: sold.taxablePaise - returned.taxablePaise,
     cgstPaise: sold.cgstPaise - returned.cgstPaise,
     sgstPaise: sold.sgstPaise - returned.sgstPaise,
-    paidPaise: inv.patientId ? null : paid,
-    balancePaise: inv.patientId ? null : net - paid,
+    // Paid at the counter: a walk-in, or a patient who paid here (13 Nov 2026); null when it went on her hospital bill
+    paidPaise: inv.billId ? null : paid,
+    balancePaise: inv.billId ? null : net - paid,
   };
 }
 
