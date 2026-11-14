@@ -8,6 +8,8 @@
   longer has a Bill list button (`NewBillPage.jsx`, `InvoicesPage` pick mode).
 - Show sits right under Patient type. The bill's header is light like the rest of the page: "Sales bill" and the time
   on one row, Net amount with the amount in a small box beside it (no large dark block).
+- The bill's grid, totals and note, and the Expiry list and Save buttons, appear once the first medicine is added; an
+  empty bill shows only the item row and Close.
 
 ## Sales bill: one page, no New bill / Bill list tabs (14 Nov 2026, branch `pharmacy-mis`)
 - As on the earlier software, the bill's buttons are Expiry list · **Bill list** · Save · Close; the Bill list page has
