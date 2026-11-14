@@ -6,6 +6,8 @@
   and New walk-in customer. A name clicked starts that person's bill here (someone admitted: Issue to ward); Bills shows
   their bills. Close on a bill goes back to the list; a bill saved comes back to it with its print preview. The bill no
   longer has a Bill list button (`NewBillPage.jsx`, `InvoicesPage` pick mode).
+- Show sits right under Patient type. The bill's header is light like the rest of the page: "Sales bill" and the time
+  on one row, Net amount with the amount in a small box beside it (no large dark block).
 
 ## Sales bill: one page, no New bill / Bill list tabs (14 Nov 2026, branch `pharmacy-mis`)
 - As on the earlier software, the bill's buttons are Expiry list · **Bill list** · Save · Close; the Bill list page has
