@@ -12,9 +12,12 @@ import { rateLimitStore } from './utils/sharedState.js';
 import { forgetWorklists } from './utils/worklistCache.js';
 import { authRouter } from './routes/auth.js';
 import { platformTenantsRouter } from './routes/platformTenants.js';
+import { userGroupsRouter } from './routes/userGroups.js';
+import { PAGE_HEADER, pageAccessGuard } from './middleware/pageAccess.js';
 import { platformUsersRouter } from './routes/platformUsers.js';
 import { platformStatsRouter } from './routes/platformStats.js';
 import { platformPatientsRouter } from './routes/platformPatients.js';
+import { platformHospitalViewRouter } from './routes/platformHospitalView.js';
 import { membersRouter } from './routes/members.js';
 import { auditLogsRouter } from './routes/auditLogs.js';
 import { doctorsRouter, patientsRouter } from './routes/patients.js';
@@ -156,7 +159,7 @@ export function createApp({
   // this browser from a chosen file be shown (an Aadhaar card photo, a profile photo or signature).
   app.use(helmet({ contentSecurityPolicy: { directives: { 'script-src': ["'self'", "'wasm-unsafe-eval'"], 'img-src': ["'self'", 'data:', 'blob:'] } } }));
   if (config.SLOW_REQUEST_MS) app.use(logSlowRequests(config.SLOW_REQUEST_MS));
-  app.use(cors({ origin: config.CLIENT_URL, credentials: true, allowedHeaders: ['Content-Type', 'X-Tenant-Id'] }));
+  app.use(cors({ origin: config.CLIENT_URL, credentials: true, allowedHeaders: ['Content-Type', 'X-Tenant-Id', PAGE_HEADER] }));
   // A photo or PDF of a report read by AI (Smart features) is larger than any other request.
   app.use(/^\/api\/patients\/[^/]+\/ai\/read-report$/, express.json({ limit: '10mb' }));
   app.use(/^\/api\/patients\/[^/]+\/ai\/ask$/, express.json({ limit: '200kb' })); // Ask AI: the conversation so far
@@ -258,15 +261,22 @@ export function createApp({
   app.use('/api/platform/stats', ...platform(null), platformStatsRouter);
   app.use('/api/platform/tenants', ...platform(staffOr('hospitals')), platformTenantsRouter);
   app.use('/api/platform/users', ...platform('users'), platformUsersRouter);
+  // User groups (docs/USER_GROUPS_PLAN.md Part B): made and changed by the super admin; platform admins read them
+  app.use('/api/platform/user-groups', ...platform(null), userGroupsRouter);
   app.use('/api/platform/audit-logs', ...platform(null), auditLogsRouter({ scope: 'platform' }));
   // Analytics totals per hospital and for all hospitals: numbers only, never a patient (analytics/platformTotals.js).
   app.use('/api/platform/analytics', ...platform(null), platformAnalyticsRouter);
   // Patients of every hospital, identity only, for super admins (routes/platformPatients.js; owner, 24 Oct 2026)
   app.use('/api/platform/patients', ...platform(null), platformPatientsRouter);
+  // One hospital, everything: departments' numbers, staff by department, patients by department (super admins only for
+  // the patients) – routes/platformHospitalView.js; docs/USER_GROUPS_PLAN.md Part A
+  app.use('/api/platform/hospital-view', ...platform(null), platformHospitalViewRouter);
 
   // Hospital data: always limited to the hospital selected in the session.
   // A super admin or platform admin in a hospital reaches its setup only (platformHospitalGuard).
-  const inTenant = [...loggedIn, requireTenant, platformHospitalGuard];
+  // pageAccessGuard: a request from a menu item that is None for the person is refused, a change from a View one too
+  // (middleware/pageAccess.js; docs/USER_GROUPS_PLAN.md Part B)
+  const inTenant = [...loggedIn, requireTenant, platformHospitalGuard, pageAccessGuard];
   const tenantAdmin = [...inTenant, requireTenantRole('admin')];
   app.use('/api/tenant/members', ...tenantAdmin, membersRouter({ resolveTenantId: (req) => req.tenantId, allowAccountChanges: true }));
   app.use('/api/tenant/audit-logs', ...tenantAdmin, auditLogsRouter({ scope: 'tenant' }));

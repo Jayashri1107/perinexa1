@@ -9,8 +9,8 @@ import { DepartmentPicker, departmentsMissing } from './DepartmentPicker.jsx';
 import { useFetch } from '../hooks/useFetch.js';
 import { useListParams } from '../hooks/useListParams.js';
 import { ClearFilters, DataTable, FilterSelect, SearchInput, TablePagination } from './DataTable.jsx';
-import { RolesDialog } from './RolesDialog.jsx';
-import { Alert, Avatar, Field, FieldError, ROLE_LABELS, RoleBadges, RolePicker, StatusPill, TemporaryPassword, formatDateTime, rolesLabel, useConfirm } from './ui.jsx';
+import { GroupDialog, GroupSelect, groupChoices } from './GroupDialog.jsx';
+import { Alert, Avatar, Field, FieldError, ROLE_LABELS, RoleBadges, StatusPill, TemporaryPassword, formatDateTime, rolesLabel, useConfirm } from './ui.jsx';
 import { asName } from '../personName.js';
 
 const ROLES = Object.keys(ROLE_LABELS);
@@ -22,8 +22,14 @@ const ACCESS_OPTIONS = [
   { value: 'inactive', label: 'Removed' },
 ];
 
-function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel, noAdmin = false }) {
-  const [form, setForm] = useState({ email: '', name: '', roles: noAdmin ? defaultRoles.filter((r) => r !== 'admin') : defaultRoles, departments: [] });
+// A person is added with a user group (docs/USER_GROUPS_PLAN.md Part B): their roles here are the group's. The group with
+// exactly the default roles is chosen first.
+function AddMemberForm({ basePath, defaultRoles, groups, onAdded, onCancel, noAdmin = false }) {
+  const wanted = noAdmin ? defaultRoles.filter((r) => r !== 'admin') : defaultRoles;
+  const first = groupChoices(groups, noAdmin).find((g) => g.roles.length === wanted.length && g.roles.every((r) => wanted.includes(r)));
+  const [form, setForm] = useState({ email: '', name: '', groupId: first?.id ?? '', departments: [] });
+  const group = groups.find((g) => g.id === form.groupId);
+  const roles = group?.roles ?? [];
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -33,7 +39,11 @@ function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel, noAdmin = fa
     e.preventDefault();
     setError(null);
     setFieldErrors({});
-    const missing = departmentsMissing(form.roles, form.departments);
+    if (!group) {
+      setFieldErrors({ groupId: 'Choose a user group' });
+      return;
+    }
+    const missing = departmentsMissing(roles, form.departments);
     if (missing) {
       setError(missing);
       setFieldErrors({ departments: missing });
@@ -41,7 +51,7 @@ function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel, noAdmin = fa
     }
     setSubmitting(true);
     try {
-      const doctor = form.roles.includes('doctor');
+      const doctor = roles.includes('doctor');
       const res = await api(basePath, { method: 'POST', body: { ...form, name: form.name || undefined, departments: doctor ? form.departments : [] } });
       onAdded(res);
     } catch (err) {
@@ -73,13 +83,10 @@ function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel, noAdmin = fa
           <input id="member-name" value={form.name} onChange={asName(update('name'))} maxLength={100} />
         </Field>
       </div>
-      <fieldset className="fieldset">
-        <legend>Roles in this hospital</legend>
-        <RolePicker value={form.roles} onChange={(roles) => setForm({ ...form, roles })} idPrefix="member-role" without={noAdmin ? ['admin'] : []} />
-        {noAdmin && <p className="hint">Only the super admin makes someone a hospital admin.</p>}
-        <FieldError>{fieldErrors.roles}</FieldError>
-      </fieldset>
-      {form.roles.includes('doctor') && (
+      <GroupSelect id="member-group" groups={groups} value={form.groupId} onChange={(groupId) => setForm({ ...form, groupId })} error={fieldErrors.groupId} noAdmin={noAdmin} />
+      {noAdmin && <p className="hint">Only the super admin makes someone a hospital admin.</p>}
+      <FieldError>{fieldErrors.roles}</FieldError>
+      {roles.includes('doctor') && (
         <DepartmentPicker value={form.departments} onChange={(departments) => setForm({ ...form, departments })} idPrefix="member-dept" error={fieldErrors.departments} />
       )}
       <div className="row add-form-actions">
@@ -128,6 +135,10 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
   const canAdd = canEditArea(platform, 'users') || hospitalAdderOnly;
   const [params, setParams, reset] = useListParams(DEFAULTS);
   const { data, error: loadError, loading, reload } = useFetch(basePath, params);
+  // The user groups to choose from (made by the super admin; docs/USER_GROUPS_PLAN.md Part B)
+  const groupsList = useFetch(`${basePath}/groups`);
+  const groups = groupsList.data?.groups ?? [];
+  const groupName = (id) => groups.find((g) => g.id === id)?.name ?? '';
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [tempPassword, setTempPassword] = useState(null);
@@ -156,14 +167,19 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
     }
   };
 
-  const saveRoles = async (m, roles, departments = []) => {
+  // The person's group, a doctor's departments and their own page access – each saved only when changed
+  const saveAccess = async (m, { groupId, departments = [], pages = {} }) => {
+    const group = groups.find((g) => g.id === groupId);
+    const roles = group?.roles ?? m.roles;
     const before = m.departments?.length ? m.departments : m.department ? [m.department] : [];
-    if (roles.join() !== m.roles.join()) await api(`${basePath}/${m.id}/roles`, { method: 'PATCH', body: { roles } });
-    // A doctor's departments (owner, 9 Nov 2026), after the roles: only a doctor has them
+    if (groupId !== m.groupId) await api(`${basePath}/${m.id}/group`, { method: 'PATCH', body: { groupId } });
+    // A doctor's departments (owner, 9 Nov 2026), after the group: only a doctor has them
     if (roles.includes('doctor') && departments.join() !== before.join()) await api(`${basePath}/${m.id}/department`, { method: 'PATCH', body: { departments } });
+    const changed = Object.fromEntries(Object.entries(pages).filter(([k, v]) => (m.pageOverrides?.[k] ?? 'group') !== v));
+    if (Object.keys(changed).length) await api(`${basePath}/${m.id}/pages`, { method: 'PATCH', body: { pages: changed } });
     setEditing(null);
     clearMessages();
-    setSuccess(`${m.user.name}'s roles here are now: ${rolesLabel(roles)}${roles.includes('doctor') && departments.length ? ` (${departments.join(', ')})` : ''}.`);
+    setSuccess(`${m.user.name} is now in ${group?.name ?? 'the group'} (${rolesLabel(roles)})${roles.includes('doctor') && departments.length ? `, ${departments.join(', ')}` : ''}.`);
     reload();
     onChanged?.();
   };
@@ -233,18 +249,20 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
     },
     {
       key: 'roles',
-      header: 'Roles here',
+      header: 'Group and roles here',
       render: (m) => (
         <span className="roles-cell">
+          {m.groupId && groupName(m.groupId) && <strong className="member-group">{groupName(m.groupId)}</strong>}
           <RoleBadges roles={m.roles} />
+          {Object.keys(m.pageOverrides ?? {}).length > 0 && <span className="muted">Own page access</span>}
           <button
             type="button"
             className="btn btn-link btn-sm"
             disabled={m.user.id === me.id || busyId === m.id}
             onClick={() => setEditing(m)}
-            title={m.user.id === me.id ? "You can't change your own roles" : undefined}
+            title={m.user.id === me.id ? "You can't change your own group" : undefined}
           >
-            Edit<span className="sr-only"> roles for {m.user.name}</span>
+            Edit<span className="sr-only"> group and access for {m.user.name}</span>
           </button>
           {/* A doctor's departments (owner, 27 Oct 2026; more than one from 29 Oct 2026): registration and admission offer a
               department's doctors */}
@@ -315,16 +333,10 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
         {success}
       </Alert>
       {tempPassword && <TemporaryPassword {...tempPassword} onClose={() => setTempPassword(null)} />}
-      {showAdd && <AddMemberForm basePath={basePath} defaultRoles={defaultRoles} onAdded={onAdded} onCancel={() => setShowAdd(false)} noAdmin={hospitalAdderOnly} />}
-      {editing && (
-        <RolesDialog
-          title={`Roles for ${editing.user.name}`}
-          initialRoles={editing.roles}
-          initialDepartments={editing.departments?.length ? editing.departments : editing.department ? [editing.department] : []}
-          onSave={(roles, departments) => saveRoles(editing, roles, departments)}
-          onCancel={() => setEditing(null)}
-        />
+      {showAdd && groupsList.data && (
+        <AddMemberForm basePath={basePath} defaultRoles={defaultRoles} groups={groups} onAdded={onAdded} onCancel={() => setShowAdd(false)} noAdmin={hospitalAdderOnly} />
       )}
+      {editing && <GroupDialog member={editing} groups={groups} noAdmin={!platform} onSave={(access) => saveAccess(editing, access)} onCancel={() => setEditing(null)} />}
 
       <DataTable
         caption={title}
