@@ -25,6 +25,9 @@
   boxes beside the net amount; OPD / IPD / External always shown (the chosen one marked); Patient information as rows –
   UHID, Patient name, Doctor name; the medicines in a box of fixed height that scrolls inside, always shown; totals,
   "Total items added", Expiry list · Save · Close always shown. The bills list has a Doctor column.
+- The medicine list as a dense table: small text, thin cell lines, one short line per medicine (a long name cut, in full
+  on pointing), small Qty and Dose boxes, and a taller box (about 15 rows on a laptop) that scrolls inside. Notes that
+  matter (a substitute, Other brands, a pack that can't be split, allergy or look-alike warnings) still show on their row.
 
 ## Sales bill: one page, no New bill / Bill list tabs (14 Nov 2026, branch `pharmacy-mis`)
 - As on the earlier software, the bill's buttons are Expiry list · **Bill list** · Save · Close; the Bill list page has
