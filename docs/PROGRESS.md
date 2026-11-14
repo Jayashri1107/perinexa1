@@ -10,6 +10,13 @@
   on one row, Net amount with the amount in a small box beside it (no large dark block).
 - The bill's grid, totals and note, and the Expiry list and Save buttons, appear once the first medicine is added; an
   empty bill shows only the item row and Close.
+- Compact bill (Sales bill and Issue to ward): the item entry (Item name, Batch no, Qty, MRP, GST %, Amount, Dose, Add) on
+  one line with small fields from a 1366 screen up, the left panel narrower (270–300px), the medicine rows tighter (expiry
+  on one line, small Qty and Dose boxes, columns rebalanced) so more of the list shows.
+- **The bill as the earlier Sales Bill** (14 Nov 2026, replaces "grid only once a medicine is added"): Date and Time in
+  boxes beside the net amount; OPD / IPD / External always shown (the chosen one marked); Patient information as rows –
+  UHID, Patient name, Doctor name; the medicines in a box of fixed height that scrolls inside, always shown; totals,
+  "Total items added", Expiry list · Save · Close always shown. The bills list has a Doctor column.
 
 ## Sales bill: one page, no New bill / Bill list tabs (14 Nov 2026, branch `pharmacy-mis`)
 - As on the earlier software, the bill's buttons are Expiry list · **Bill list** · Save · Close; the Bill list page has

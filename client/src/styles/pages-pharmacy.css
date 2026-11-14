@@ -956,3 +956,64 @@
 .ph-counter-left .ph-bill-net-label { color: var(--slate-600); opacity: 1; font-weight: 600; }
 .ph-counter-left .ph-bill-net { padding: 4px 12px; border: 1px solid var(--indigo-200); border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-800); font-size: 1.25rem; line-height: 1.3; font-weight: 700; font-variant-numeric: tabular-nums; }
 .ph-counter-left .ph-bill-count { grid-column: 1 / -1; margin: 0; padding: 0; border: 0; color: var(--slate-600); opacity: 1; }
+
+/* Sales bill / Issue to ward, compact (14 Nov 2026): the item entry on one line with small fields, a narrower left panel,
+   and tighter medicine rows so more of the list shows */
+@media (min-width: 1100px) { .ph-counter-main { grid-template-columns: minmax(270px, 300px) minmax(0, 1fr); gap: var(--space-3); } }
+.ph-counter-right { padding: var(--space-3) var(--space-4); gap: var(--space-2); }
+.ph-item-row :is(input, select), .ph-item-row .ph-finder input { height: 32px; min-height: 0; padding-block: 3px; font-size: 0.8125rem; }
+.ph-item-row .ph-item-label { font-size: 0.75rem; }
+.ph-item-row .ph-item-add { height: 32px; min-height: 0; padding: 0 12px; }
+@container phbill (min-width: 640px) {
+  .ph-item-row { grid-template-columns: minmax(150px, 3fr) minmax(76px, 1fr) 48px 62px 46px 68px minmax(96px, 1.2fr) auto; gap: var(--space-2); }
+  .ph-item-name, .ph-item-dose { grid-column: auto; }
+  .ph-item-row .ph-item-chosen { height: 32px; display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; font-size: 0.8125rem; }
+  .ph-item-row .ph-item-chosen strong { overflow: hidden; text-overflow: ellipsis; }
+}
+.ph-grid-wrap { min-height: 0; }
+.ph-grid { font-size: 0.8125rem; }
+.ph-grid th { padding: 6px; font-size: 0.75rem; }
+.ph-grid td { padding: 3px 6px; }
+.ph-grid th:nth-child(1) { width: 26%; }
+.ph-grid th:nth-child(2) { width: 14%; }
+.ph-grid th:nth-child(3) { width: 9%; }
+.ph-grid th:nth-child(4) { width: 7%; }
+.ph-grid th:nth-child(5) { width: 14%; }
+.ph-grid th:nth-child(6) { width: 6%; }
+.ph-grid th:nth-child(7) { width: 8%; }
+.ph-grid th:nth-child(8) { width: 9%; }
+.ph-grid th:nth-child(9) { width: 7%; }
+.ph-grid td[data-label='Exp. date'] { white-space: nowrap; }
+.ph-grid .ph-grid-name strong { font-weight: 600; }
+.ph-grid :is(.bill-price-input, .ph-dose-input, select) { height: 28px; min-height: 0; padding: 2px 6px; font-size: 0.8125rem; }
+.ph-grid .icon-btn { width: 28px; height: 28px; }
+.ph-grid .icon-btn svg { width: 15px; height: 15px; }
+.ph-totals :is(input) { height: 32px; min-height: 0; padding-block: 3px; font-size: 0.8125rem; }
+.ph-totals .ph-total-field > span { font-size: 0.75rem; }
+/* the grid's columns rebalanced so expiry, quantity and GST stay readable on a 1366 screen */
+.ph-grid th:nth-child(1) { width: 22%; }
+.ph-grid th:nth-child(2) { width: 13%; }
+.ph-grid th:nth-child(3) { width: 10%; }
+.ph-grid th:nth-child(4) { width: 8%; }
+.ph-grid th:nth-child(5) { width: 14%; }
+.ph-grid th:nth-child(6) { width: 7%; }
+.ph-grid th:nth-child(7) { width: 8%; }
+.ph-grid th:nth-child(8) { width: 10%; }
+.ph-grid th:nth-child(9) { width: 6%; }
+.ph-grid :is(th, td) { padding-inline: 5px; }
+.ph-grid .bill-price-input { padding-inline: 4px; text-align: center; }
+.ph-grid td[data-label='Exp. date'] { font-size: 0.75rem; }
+
+/* The bill exactly as the earlier Sales Bill (14 Nov 2026): Date and Time in boxes beside the net amount; OPD / IPD /
+   External always shown; Patient information as label-and-box rows; the medicines in a fixed box that scrolls inside */
+.ph-counter-left .ph-bill-dt { display: grid; gap: 4px; min-width: 0; }
+.ph-counter-left .ph-bill-dt .ph-pi-row { grid-template-columns: 44px minmax(0, 1fr); }
+.ph-counter-left .ph-bill-dt input { height: 28px; min-height: 0; padding: 2px 6px; font-size: 0.8125rem; }
+.ph-counter-left .ph-bill-net { align-self: stretch; display: grid; place-items: center; min-width: 120px; font-size: 1.375rem; }
+.ph-type-tabs.is-fixed button:disabled { opacity: 0.45; cursor: default; }
+.ph-pi-chosen { margin-top: 0; }
+.ph-pi-chosen input { height: 30px; min-height: 0; padding: 3px 8px; font-size: 0.875rem; }
+.ph-grid-wrap.ph-grid-box { height: 300px; overflow: auto; }
+.ph-grid-box .ph-grid th { z-index: 1; }
+.ph-grid-box .ph-grid-empty { padding: var(--space-4) var(--space-3); }
+.ph-items-added { margin-right: auto; align-self: center; font-size: 0.875rem; font-weight: 600; color: var(--indigo-700); }
