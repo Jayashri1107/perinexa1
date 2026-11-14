@@ -1,8 +1,13 @@
 # Super admin hospital view, user groups and page access – plan (14 Nov 2026)
 
-**Status: PLAN ONLY – nothing built.** Branch `user-groups`. Asked for by the developer on 14 Nov 2026. The feature
-freeze (CLAUDE.md) is in force until the health check, so building needs the developer's go-ahead. Part B also needs the
-**owner's approval** before it is built (see "Needs the owner" below).
+**Status: Part A built (14 Nov 2026, branch `user-groups`), at the developer's go-ahead.** Part B is built on branch
+`user-groups-b` (see its status note there). Part B needs the **owner's approval** before it goes to main (see "Needs
+the owner" below).
+
+Part A as built: Platform → Hospitals → one hospital has the tabs Departments, Staff by department, Patients (super
+admins only) and Activity (with Department and Role filters). Staff without a department are grouped by their role
+(Pharmacist, Receptionist …), as only doctors have departments. Server: `server/src/routes/platformHospitalView.js`,
+the `department` / `role` filters in `routes/auditLogs.js`; tests: `server/tests/platform-hospital-view.test.js`.
 
 ## What was asked
 

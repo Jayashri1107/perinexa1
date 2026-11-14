@@ -110,6 +110,10 @@ export function HospitalWorkspace() {
         }
         tabs={[
           { label: 'Hospital and staff', to: base, end: true },
+          // One hospital, everything (docs/USER_GROUPS_PLAN.md Part A): its patients for super admins only
+          { label: 'Departments', to: `${base}/departments`, end: true },
+          { label: 'Staff by department', to: `${base}/teams`, end: true },
+          ...(platform?.role === 'superadmin' ? [{ label: 'Patients', to: `${base}/patients`, end: true }] : []),
           { label: 'Activity', to: `${base}/activity`, end: true },
         ]}
       />
@@ -170,7 +174,7 @@ export function HospitalOverviewTab() {
         </span>
         <p>
           <strong>Patient records are only visible to this hospital's staff</strong>
-          <span className="muted">Super admins see numbers only – whole months, never a patient.</span>
+          <span className="muted">Super admins see names and patient numbers only (Patients tab) – never phone, address or medical details. Every list and record opened is in this hospital's activity log.</span>
         </p>
         <div className="hw-privacy-links">
           <Link to={`/platform/analytics?hospital=${tenant.id}`} className="btn btn-secondary btn-sm">
@@ -303,5 +307,5 @@ export function HospitalStaffTab() {
 
 export function HospitalActivityTab() {
   const { tenant } = useOutletContext();
-  return <AuditLogView endpoint="/platform/audit-logs" tenantId={tenant.id} />;
+  return <AuditLogView endpoint="/platform/audit-logs" tenantId={tenant.id} teamFilters />;
 }

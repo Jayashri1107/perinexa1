@@ -135,3 +135,7 @@
 .ap-who-row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
 .ap-add-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
 .ap-add-row .field { flex: 1 1 280px; margin: 0; }
+
+/* One hospital, staff by department (docs/USER_GROUPS_PLAN.md Part A): a heading and a table per department */
+.hv-group + .hv-group { margin-top: var(--space-6); }
+.hv-group h2 { margin-bottom: var(--space-3); }
