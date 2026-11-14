@@ -20,6 +20,9 @@
 - The medicine list as a dense table: small text, thin cell lines, one short line per medicine (a long name cut, in full
   on pointing), small Qty and Dose boxes, and a taller box (about 15 rows on a laptop) that scrolls inside. Notes that
   matter (a substitute, Other brands, a pack that can't be split, allergy or look-alike warnings) still show on their row.
+- The people found on the Sales bill page are a table like the day's bills (Patient / customer, UHID, Type, Doctor,
+  Bills, Last bill, Bills link); `/api/pharmacy/invoices/people` gives a billed person's doctor – the latest pharmacy
+  bill's. Someone never billed here stays name and number only ("–" for the doctor).
 
 ## Sales bill: one page, no New bill / Bill list tabs (14 Nov 2026, branch `pharmacy-mis`)
 - As on the earlier software, the bill's buttons are Expiry list · **Bill list** · Save · Close; the Bill list page has

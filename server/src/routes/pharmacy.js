@@ -1224,13 +1224,14 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
         // A walk-in has no record: the same name and phone count as one person
         _id: { patientId: '$patientId', name: { $cond: ['$patientId', null, { $toLower: { $ifNull: ['$customer.name', ''] } }] }, phone: { $cond: ['$patientId', null, '$customer.phone'] } },
         customer: { $first: '$customer' },
+        doctor: { $first: '$doctor.name' }, // the latest bill's doctor (14 Nov 2026)
         lastAt: { $first: '$created.at' },
         bills: { $push: { id: '$_id', number: '$number', kind: '$kind', at: '$created.at' } },
       },
     },
     { $sort: { lastAt: -1, '_id.name': 1 } },
     { $limit: PEOPLE_LIMIT + 1 },
-    { $project: { customer: 1, lastAt: 1, billCount: { $size: '$bills' }, bills: { $slice: ['$bills', PERSON_BILLS] } } },
+    { $project: { customer: 1, doctor: 1, lastAt: 1, billCount: { $size: '$bills' }, bills: { $slice: ['$bills', PERSON_BILLS] } } },
   ]);
   const shown = groups.slice(0, PEOPLE_LIMIT);
   const ids = shown.map((g) => g._id.patientId).filter(Boolean);
@@ -1245,6 +1246,7 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
         name: p ? p.fullName : (g.customer?.name ?? ''),
         mrn: p?.mrn ?? '',
         phone: p ? (p.phone ?? '') : (g.customer?.phone ?? ''),
+        doctor: g.doctor ?? '',
         lastAt: g.lastAt,
         billCount: g.billCount,
         bills: g.bills.map((b) => ({ id: String(b.id), number: b.number, at: b.at })),
@@ -1289,6 +1291,8 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
   await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', {
     details: search || mrn || byPerson ? { by: search || parts.length ? 'name' : phoneRx ? 'phone' : 'number', patientIds: people.filter((x) => x.mrn).map((x) => x.key), walkInBills: people.filter((x) => !x.mrn).length, withoutBill: Math.min(unbilled.length, Math.max(room, 0)) } : { by: 'list', type: type ?? 'all', people: people.length, ...(browsing ? { wholeList: fullCount, pages } : {}) },
   });
+  // The doctor of a person with pharmacy bills is their latest bill's (14 Nov 2026). Someone never billed here stays name
+  // and number only – nothing else of their record (not their own doctor) is sent.
   res.json({ people, more: browsing ? fullMore : groups.length > PEOPLE_LIMIT || unbilled.length > room, ...(browsing ? { pages } : {}) });
 });
 

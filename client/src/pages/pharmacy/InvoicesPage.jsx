@@ -373,26 +373,43 @@ export function PeopleFound({ found, people, onPick, onBills = null, onMore = nu
       {found.error && <Alert type="error">{found.error}</Alert>}
       {found.data && !people.length && <p className="muted">Nobody matches.</p>}
       {people.length > 0 && <p className="hint">Click a name to make a new bill for them. Those to bill today and those with bills come first.</p>}
-      <ul>
-        {people.map((x) => (
-          <li key={x.key} className="ph-found-item">
-            <button type="button" className="ph-found-row" disabled={Boolean(opening)} aria-busy={opening === x.key} onClick={() => onPick(x)}>
-              <strong>{x.name}</strong>
-              <span className="tabular">{x.mrn}</span>
-              {x.type ? <TypePill type={x.type} /> : <span />}
-              <span>{x.billCount > 0 ? `${x.billCount} bill${x.billCount === 1 ? '' : 's'}` : 'No pharmacy bill yet'}</span>
-              <span className="tabular">{x.lastAt ? slipDate(x.lastAt) : ''}</span>
-            </button>
-            <span className="ph-found-bills">
-              {x.billCount > 0 && onBills && (
-                <button type="button" className="btn btn-link btn-sm" aria-label={`Bills of ${x.name}`} onClick={() => onBills(x)}>
-                  <History aria-hidden="true" /> Bills
-                </button>
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {/* 14 Nov 2026: a table like the day's bills – the same headings, text and rows, with the doctor */}
+      {people.length > 0 && (
+        <DataTable
+          caption="People found"
+          rows={people}
+          rowKey="key"
+          onRowClick={(x) => !opening && onPick(x)}
+          rowClassName={(x) => (opening === x.key ? 'is-opening' : undefined)}
+          columns={[
+            { key: 'name', header: 'Patient / customer', render: (x) => <strong className="ph-found-name">{x.name}</strong> },
+            { key: 'mrn', header: 'UHID', render: (x) => <span className="tabular">{x.mrn || '–'}</span> },
+            { key: 'type', header: 'Type', render: (x) => (x.type ? <TypePill type={x.type} /> : '–') },
+            { key: 'doctor', header: 'Doctor', render: (x) => x.doctor || '–' },
+            { key: 'bills', header: 'Bills', render: (x) => (x.billCount > 0 ? `${x.billCount} bill${x.billCount === 1 ? '' : 's'}` : 'No pharmacy bill yet') },
+            { key: 'last', header: 'Last bill', render: (x) => <span className="tabular">{x.lastAt ? slipDate(x.lastAt) : '–'}</span> },
+            {
+              key: 'open',
+              header: <span className="sr-only">Their bills</span>,
+              align: 'right',
+              render: (x) =>
+                x.billCount > 0 && onBills ? (
+                  <button
+                    type="button"
+                    className="btn btn-link btn-sm"
+                    aria-label={`Bills of ${x.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onBills(x);
+                    }}
+                  >
+                    <History aria-hidden="true" /> Bills
+                  </button>
+                ) : null,
+            },
+          ]}
+        />
+      )}
       {found.data && people.length > 0 && <p className="hint ph-found-count">{people.length} {people.length === 1 ? 'person' : 'people'} listed{found.data.more ? ' so far' : ''}.</p>}
       {found.data?.more &&
         (onMore ? (
