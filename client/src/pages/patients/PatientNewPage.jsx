@@ -179,6 +179,10 @@ export function PatientNewPage() {
   const pediatricPage = chosen === 'pediatric';
   const pediatric = chosen === 'newborn' ? pediatricChoice(params.get('for')) : null;
   const babyFollowUp = Boolean(pediatric);
+  // The form starts afresh (with the older baby's prefill) when Pediatric is opened from the menu; not when the baby's
+  // own choice changes on the form (Newborn ↔ Pediatric – Follow-up ↔ – Vaccination): what was typed stays.
+  const [olderBabyForm, setOlderBabyForm] = useState(babyFollowUp);
+  if (!location.state?.keepForm && olderBabyForm !== babyFollowUp) setOlderBabyForm(babyFollowUp);
   const canCharge = ['receptionist', 'billing', 'admin'].some((r) => roles.includes(r));
   const [charges, setCharges] = useState(NO_CHARGES);
   const clinical = roles.includes('doctor') || roles.includes('rmo');
@@ -226,7 +230,7 @@ export function PatientNewPage() {
       setMatches({ list: err.matches ?? [], total: err.total ?? 0, payload, another });
       return;
     }
-    await afterRegistered(patient, another);
+    await afterRegistered(patient, another, payload);
   };
 
   // "Register as a new patient anyway": the same details again, with the explicit confirmation.
@@ -235,7 +239,7 @@ export function PatientNewPage() {
     setMatchError(null);
     try {
       const { patient } = await api('/patients', { method: 'POST', body: { ...matches.payload, registerAnyway: true } });
-      await afterRegistered(patient, matches.another);
+      await afterRegistered(patient, matches.another, matches.payload);
     } catch (err) {
       setMatchError(err.fields && Object.keys(err.fields).length ? `${err.message} Go back to the form to correct them.` : err.message);
       setChoosing(null);
@@ -272,7 +276,7 @@ export function PatientNewPage() {
   };
 
   // After she is saved: her ABHA or quick booking joins the new record, then page 2 (or her record).
-  const afterRegistered = async (patient, another = false) => {
+  const afterRegistered = async (patient, another = false, payload = null) => {
     openedAt.current = Date.now(); // "Save and register another": the next registration starts now
     let registered = `${patient.fullName} was registered in ${activeMembership.tenantName} as ${patient.mrn}.`;
     if (fromAbha) {
@@ -326,7 +330,8 @@ export function PatientNewPage() {
     }
     // Pediatric department, OPD, saved by reception (14 Nov 2026): the Follow-ups or Vaccinations list opens with the
     // baby on it – Follow-ups opens Add follow-up for her, Vaccinations shows her with Book.
-    if (pediatric && setting === 'opd' && !another && roles.some((r) => FOLLOW_UP_ROLES.includes(r))) {
+    // Only while the form is still for an older baby (Newborn chosen on the form instead: the usual path).
+    if (pediatric && payload?.newborn?.birthTimeKnown === false && setting === 'opd' && !another && roles.some((r) => FOLLOW_UP_ROLES.includes(r))) {
       const lost = dictatedClinical.current ? ' The clinical details that were said were not kept.' : '';
       const baby = { id: patient.id, fullName: patient.fullName, mrn: patient.mrn, phone: patient.phone ?? null, doctorName: patient.assignedDoctorName ?? null };
       navigate(pediatric.after, { replace: true, state: { flash: `${registered}${lost}`, registeredBaby: baby } });
@@ -462,7 +467,7 @@ export function PatientNewPage() {
               {setting !== 'opd' && <p className="hint">After she is registered, choose her bed: the admission opens as {setting === 'ipd' ? 'an inpatient stay' : 'day care'}.</p>}
             </div>
             <PatientForm
-              key={booking?.id ?? fromAbha?.id ?? fromSignup?.id ?? `new-${round}${babyFollowUp ? '-followup' : ''}`}
+              key={booking?.id ?? fromAbha?.id ?? fromSignup?.id ?? `new-${round}${olderBabyForm ? '-followup' : ''}`}
               spoken={round === 0 ? spoken.text : ''}
               prefill={
                 booking
@@ -477,13 +482,14 @@ export function PatientNewPage() {
               }
               careType={careType}
               beforeActions={canCharge && careType ? <RegistrationCharges charges={charges} onCharges={setCharges} /> : null}
-              onCareTypeChange={(type, { followUp = false } = {}) => {
-                // Pediatric chosen from another type of care keeps ?for=followup or ?for=vaccination (11, 14 Nov 2026)
+              pediatricFor={pediatric?.key ?? null}
+              onCareTypeChange={(type, { followUp = false, pediatricFor = null, keepForm = false } = {}) => {
+                // Pediatric – Follow-up or – Vaccination chosen on the form: ?for=followup or ?for=vaccination (11, 14 Nov 2026)
                 const search = new URLSearchParams(location.search);
-                if (followUp) search.set('for', pediatric?.key ?? 'followup');
+                if (followUp) search.set('for', pediatricFor ?? pediatric?.key ?? 'followup');
                 else search.delete('for');
                 const text = search.toString();
-                navigate({ pathname: `/patients/new/${type}`, search: text ? `?${text}` : '' }, { replace: true, state: location.state });
+                navigate({ pathname: `/patients/new/${type}`, search: text ? `?${text}` : '' }, { replace: true, state: keepForm ? { ...location.state, keepForm: true } : location.state });
               }}
               part="info"
               onSubmit={save}
