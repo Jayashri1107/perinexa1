@@ -1,6 +1,6 @@
 // The Patients list in plain words (fake sample data).
 import { describe, expect, it } from 'vitest';
-import { CARE_TYPE_LABELS, NEW_PATIENT_LINKS, careNowText, sinceText } from './patientFormat.js';
+import { CARE_TYPE_LABELS, NEW_PATIENT_LINKS, PEDIATRIC_CHOICES, careNowText, sinceText } from './patientFormat.js';
 
 describe('the Patients list in plain words', () => {
   it('says what care she is under now', () => {
@@ -27,7 +27,8 @@ describe('the Patients list in plain words', () => {
 
 describe('the New patient menu', () => {
   it('lists Abortion (pregnancy loss) between Gynaecology and Newborn', () => {
-    expect(NEW_PATIENT_LINKS.map((l) => l.to.split('/').pop())).toEqual(['antenatal', 'postnatal', 'infertility', 'gynaecology', 'abortion', 'newborn', 'newborn?for=followup']); // the older baby's card (11 Nov 2026)
+    expect(NEW_PATIENT_LINKS.map((l) => l.to.split('/').pop())).toEqual(['antenatal', 'postnatal', 'infertility', 'gynaecology', 'abortion', 'newborn', 'pediatric']); // the Pediatric department card (14 Nov 2026)
+    expect(PEDIATRIC_CHOICES.map((c) => [c.to, c.after])).toEqual([['/patients/new/newborn?for=followup', '/follow-ups'], ['/patients/new/newborn?for=vaccination', '/follow-ups/vaccinations']]);
     expect(CARE_TYPE_LABELS.abortion).toBe('Abortion (pregnancy loss)');
     expect(JSON.stringify(NEW_PATIENT_LINKS)).not.toMatch(/MTP|terminat/i);
   });

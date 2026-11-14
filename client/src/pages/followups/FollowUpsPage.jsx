@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Baby, CalendarClock, CalendarPlus, CalendarX2, Check, ClipboardList, Phone, PhoneCall, Search, TriangleAlert, UserCheck } from 'lucide-react';
 import { api } from '../../api.js';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { DataTable } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, KpiCard, StatusPill, formatDate } from '../../components/ui.jsx';
@@ -189,12 +189,28 @@ function AddedFollowUps({ added, filterText, onCancelled, onBook }) {
   );
 }
 
+/**
+ * A baby just registered from New patient → Pediatric department (14 Nov 2026): { flash, baby } from the navigation
+ * state, taken once; the state is then cleared so a reload does not open it again.
+ */
+function useRegisteredBaby() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [taken] = useState(() => ({ flash: location.state?.flash ?? null, baby: location.state?.registeredBaby ?? null }));
+  useEffect(() => {
+    if (location.state?.registeredBaby) navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+  }, [location, navigate]);
+  return taken;
+}
+
 export function FollowUpsPage() {
   const res = useFetch('/follow-ups');
   const added = useFetch('/added-follow-ups');
-  const [adding, setAdding] = useState(false);
+  const registered = useRegisteredBaby();
+  // Add follow-up: true (find the patient in the dialog), or the baby just registered (Pediatric → Follow-up)
+  const [adding, setAdding] = useState(registered.baby ?? false);
   const [booking, setBooking] = useState(null); // { patient, doctorId?, purpose?, note?, from? }
-  const [note, setNote] = useState(null);
+  const [note, setNote] = useState(registered.baby ? `${registered.flash ?? ''} Add the baby’s follow-up below.`.trim() : null);
   const filter = useFilter();
   const data = filterFollowUps(res.data, filter);
   const calls = data ? callRows(data, formatDate) : null;
@@ -240,6 +256,7 @@ export function FollowUpsPage() {
         )}
         {adding && (
           <AddFollowUpDialog
+            patient={adding === true ? null : adding}
             today={data?.today}
             onClose={() => setAdding(false)}
             onAdded={(f) => {
@@ -358,7 +375,11 @@ export function VaccinationFollowUpsPage() {
   const withId = (rows) => rows?.map((r) => ({ ...r, id: r.patient.id }));
   const draft = [...(data?.babiesDue ?? []), ...(data?.babiesSoon ?? [])].some((r) => r.draft);
   const [booking, setBooking] = useState(null);
-  const [note, setNote] = useState(null);
+  // A baby just registered from New patient → Pediatric department → Vaccination (14 Nov 2026): shown first, with
+  // Book, until booked. She is also on the lists below once a vaccination falls due.
+  const registered = useRegisteredBaby();
+  const [newBaby, setNewBaby] = useState(registered.baby);
+  const [note, setNote] = useState(registered.baby ? `${registered.flash ?? ''} Book the baby’s vaccination visit below.`.trim() : null);
   const book = (r) => setBooking({ patient: r.patient });
   return (
     <>
@@ -375,10 +396,25 @@ export function VaccinationFollowUpsPage() {
             onClose={() => setBooking(null)}
             onDone={({ appointment, bill }) => {
               setBooking(null);
+              if (booking.patient.id === newBaby?.id) setNewBaby(null);
               setNote(`${booking.patient.fullName}: follow-up booked for ${dayLabel(appointment.date)}${appointment.start ? `, ${timeLabel(appointment.start)}` : ''}${bill ? `, bill ${bill.number} made` : ''}.`);
               res.reload();
             }}
           />
+        )}
+        {newBaby && (
+          <Panel id="fu-babies-new" icon={Baby} title="Just registered – not booked" count={1} hint="The baby registered from Pediatric department → Vaccination. Book the visit now.">
+            <DataTable
+              caption="Baby just registered"
+              rows={[{ id: newBaby.id, patient: newBaby }]}
+              columns={[
+                { key: 'patient', header: 'Baby', render: patientCell },
+                { key: 'phone', header: 'Phone', render: (r) => phoneLink(r.patient.phone) },
+                { key: 'doctor', header: 'Doctor', render: (r) => r.patient.doctorName ?? <span className="muted">Not assigned</span> },
+                { key: 'book', header: <span className="sr-only">Book</span>, render: bookButton(book) },
+              ]}
+            />
+          </Panel>
         )}
         <FilterBar filter={filter} />
         {data && <Counts data={data} />}

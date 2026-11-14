@@ -118,3 +118,29 @@ describe('follow-ups: the filter', () => {
     expect(renderToStaticMarkup(<MemoryRouter initialEntries={['/follow-ups?type=ipd']}><FollowUpsPage /></MemoryRouter>)).toContain('aria-pressed="true">IPD');
   });
 });
+
+describe('follow-ups: a baby just registered from New patient → Pediatric department (14 Nov 2026)', () => {
+  const baby = { id: '9', fullName: 'Baby Pediatric Sample', mrn: 'P-000009', phone: '90000 22222', doctorName: 'Sample Doctor' };
+  const arrive = (el, pathname) => renderToStaticMarkup(<MemoryRouter initialEntries={[{ pathname, state: { flash: 'Baby Pediatric Sample was registered as P-000009.', registeredBaby: baby } }]}>{el}</MemoryRouter>).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+
+  it('Follow-up: the Follow-ups page opens Add follow-up for the baby, with the saved note', () => {
+    vi.stubGlobal('document', { activeElement: null }); // the dialog remembers where focus was (no browser here)
+    const shown = arrive(<FollowUpsPage />, '/follow-ups');
+    expect(shown).toContain('Add a follow-up – Baby Pediatric Sample');
+    expect(shown).toContain('was registered as P-000009. Add the baby’s follow-up below.');
+    vi.unstubAllGlobals();
+  });
+
+  it('Vaccination: the Vaccinations page shows the baby first, with Book', () => {
+    const shown = arrive(<VaccinationFollowUpsPage />, '/follow-ups/vaccinations');
+    expect(shown).toContain('Just registered – not booked (1)');
+    expect(shown).toContain('Baby Pediatric Sample');
+    expect(shown).toContain('Book the baby’s vaccination visit below.');
+    expect(shown.indexOf('Just registered')).toBeLessThan(shown.indexOf('Overdue – not booked'));
+  });
+
+  it('opened without a registration, neither page shows it', () => {
+    expect(text(<FollowUpsPage />)).not.toContain('Add a follow-up –');
+    expect(text(<VaccinationFollowUpsPage />, '/follow-ups/vaccinations')).not.toContain('Just registered');
+  });
+});
