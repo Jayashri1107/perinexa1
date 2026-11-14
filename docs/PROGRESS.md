@@ -1,5 +1,13 @@
 # Progress
 
+## Calendar: deliveries stand out (14 Nov 2026, branch `edd-mark-highlight`)
+- The owner asked for the delivery mark to be easier to spot. The EDD mark (Baby icon + "EDD (scan)" / "EDD (LMP)")
+  is now solid deep violet with white bold text, also the EDD count in each month cell; the visit marks stay light.
+- Month view: a day with an EDD gets a light violet wash and a violet frame, so delivery days show at a glance (also on
+  phones, where the counts are hidden). Colours from the existing tokens only; `docs/BRAND.md` updated.
+- **How to test:** sign in as a doctor → Calendar → Month → › to next month → untick everything but EDD in Show: the
+  days with deliveries are framed violet; click one to see the patients.
+
 ## Sales bill: search, bills and new bills on one screen (14 Nov 2026, branch `pharmacy-mis`)
 - Pharmacy → Sales bill (`/pharmacy`) is the Bill list's screen: the Search patient panel on the left (patient type,
   first, middle and last name, Mob. no., UHID, Date from–to, Show), the day's bills or the people found on the right,

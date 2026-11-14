@@ -32,7 +32,8 @@
 /* ---------- Event marks: types, not statuses (colour + icon + word) ---------- */
 .cal-mark-booked { background: var(--teal-100); color: var(--teal-700); }
 .cal-mark-plan { background: var(--surface); color: var(--teal-700); box-shadow: inset 0 0 0 1px var(--teal-700); }
-.cal-mark-edd { background: var(--status-admitted-bg); color: var(--status-admitted-fg); }
+/* EDD stands out from the visits (owner, 14 Nov 2026): solid deep violet, white bold word, 8.6:1 */
+.cal-mark-edd { background: var(--status-admitted-fg); color: var(--on-solid); font-weight: 600; }
 .cal-mark-lmp { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--slate-600); }
 .cal-mark-compact { padding: var(--space-1); }
 
@@ -67,7 +68,7 @@
 }
 .cal-count svg.lucide { width: 14px; height: 14px; }
 .cal-count-booked, .cal-count-plan { color: var(--teal-700); }
-.cal-count-edd { color: var(--status-admitted-fg); }
+.cal-count-edd { padding: 0 var(--space-1); border-radius: var(--radius-pill); background: var(--status-admitted-fg); color: var(--on-solid); font-weight: 600; }
 .cal-count-lmp { color: var(--ink); }
 .cal-total { display: none; align-items: center; gap: var(--space-1); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; font-variant-numeric: tabular-nums; }
 .cal-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--teal-500); }
@@ -78,6 +79,10 @@
 .cal-cell-out .cal-daynum { color: var(--slate-600); }
 .cal-cell-chosen, .cal-cell-chosen .cal-cell-btn:hover { background: var(--selected-bg); }
 .cal-cell-chosen { box-shadow: var(--selected-edge); }
+/* A day with a delivery (EDD): violet wash and a 2 px violet frame, drawn on top so it sits with the today line and
+   the chosen edge. Still shown on phones, where the counts are hidden. The chosen day keeps its own wash. */
+.cal-cell-edd:not(.cal-cell-chosen) { background: var(--status-admitted-bg); }
+.cal-cell-edd::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 2px var(--status-admitted-fg); pointer-events: none; }
 
 .cal-grid-loading { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--border); }
 .cal-cell-skeleton { display: block; height: var(--row-height); background: var(--mist-50); animation: pulse 1.2s ease-in-out infinite; }
