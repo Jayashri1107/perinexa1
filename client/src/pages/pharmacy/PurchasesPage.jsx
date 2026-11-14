@@ -3,7 +3,7 @@ import { CircleAlert, CircleCheck, CircleSlash, FileUp, PackagePlus, Plus, Save,
 import { Link, NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { SearchInput, usePagedRows } from '../../components/DataTable.jsx';
-import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
+import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { toPaise } from '../billing/billingFormat.js';
@@ -383,45 +383,50 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
     return onDone(l);
   };
   const higher = lastPrice && x.rate && lastPrice.conv === x.conv && x.rate > lastPrice.ratePaise;
-  const figures = [
-    ['Total amount', money(fig.totalPaise)],
-    ['Disc amount', money(fig.discPaise)],
-    ['GST amount', money(fig.gstPaise)],
-    ['Net amount', money(fig.netPaise), true],
-    [`Total qty (${unit}s)`, fig.units || '—'],
-    [`Sale rate / ${unit}`, money(fig.saleRatePaise)],
-    [`Landed rate / ${unit}`, money(fig.landedPaise)],
-    ['Profit %', fig.profitPercent == null ? '—' : `${fig.profitPercent} %`],
-  ];
+  const ro = (id, value) => <input id={id} value={value} readOnly tabIndex={-1} className="ph-ro" />;
+  // 14 Nov 2026, as the earlier software's GRN: the panel opens over the items grid (not in the middle of the page),
+  // the medicine's name highlighted, the fields in its rows – Escape or Cancel closes it
   return (
-    <Modal id="ph-grn-line" title={medicineLabel(m)} onClose={onClose} wide>
-      <p className="hint ph-gl-meta">
-        <span>UOM {unit}</span>
-        <span>HSN {m.hsn || '—'}</span>
-        {lastPrice && (
-          <span className={higher ? 'ph-gl-last is-higher' : 'ph-gl-last'}>
-            Last paid {money(lastPrice.ratePaise)} a pack of {lastPrice.conv} on {dayLabel(lastPrice.date)}
-            {lastPrice.supplier ? ` from ${lastPrice.supplier}` : ''}
-            {higher ? ' – today’s rate is higher' : ''}
-          </span>
-        )}
-      </p>
+    <div className="ph-gl-pop" role="dialog" aria-modal="false" aria-labelledby="ph-gl-title" onKeyDown={(e) => e.key === 'Escape' && onClose()}>
+      <div className="ph-gl-pop-head">
+        <strong id="ph-gl-title">{medicineLabel(m)}</strong>
+        <span className="ph-gl-pop-meta">
+          UOM {unit} · HSN {m.hsn || '—'}
+          {lastPrice && (
+            <span className={higher ? 'ph-gl-last is-higher' : 'ph-gl-last'}>
+              {' '}
+              · Last paid {money(lastPrice.ratePaise)} a pack of {lastPrice.conv} on {dayLabel(lastPrice.date)}
+              {lastPrice.supplier ? ` from ${lastPrice.supplier}` : ''}
+              {higher ? ' – today’s rate is higher' : ''}
+            </span>
+          )}
+        </span>
+        <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+          <X aria-hidden="true" />
+        </button>
+      </div>
       <form onSubmit={submit} noValidate>
-        <div className="ph-gl-inputs">
-          <Field label="Batch no." id="gl-batch" error={err('batch')}>
+        <div className="ph-gl-grid">
+          <Field label="Batch No" id="gl-batch" error={err('batch')}>
             <input id="gl-batch" value={l.batch} maxLength={40} onChange={f('batch')} autoFocus />
           </Field>
-          <Field label="Exp. (MM/YY)" id="gl-exp" error={err('expiry')}>
+          <Field label="Exp. Date (MM/YY)" id="gl-exp" error={err('expiry')}>
             <input id="gl-exp" inputMode="numeric" placeholder="08/27" autoComplete="off" value={expText} onChange={typeExpiry} />
           </Field>
           <Field label="Qty (packs)" id="gl-qty" error={err('qty')}>
             <input id="gl-qty" inputMode="numeric" value={l.qty} onChange={f('qty')} />
           </Field>
-          <Field label="Free (packs)" id="gl-free" error={err('freeQty')}>
+          <Field label="Free Qty" id="gl-free" error={err('freeQty')}>
             <input id="gl-free" inputMode="numeric" value={l.freeQty} onChange={f('freeQty')} />
           </Field>
-          <Field label={`${unit[0].toUpperCase()}${unit.slice(1)}s in a pack`} id="gl-conv" error={err('conv')}>
-            <input id="gl-conv" inputMode="numeric" value={l.conv} onChange={f('conv')} />
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+
+          <Field label="Disc Per" id="gl-disc" error={err('disc')}>
+            <input id="gl-disc" inputMode="decimal" value={l.disc} onChange={f('disc')} />
+          </Field>
+          <Field label="Disc Amt" id="gl-discamt">
+            {ro('gl-discamt', money(fig.discPaise))}
           </Field>
           <Field label="Rate ₹ / pack" id="gl-rate" error={err('rate')}>
             <input id="gl-rate" inputMode="decimal" value={l.rate} onChange={f('rate')} />
@@ -429,8 +434,18 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
           <Field label="MRP ₹ / pack" id="gl-mrp" error={err('mrp')}>
             <input id="gl-mrp" inputMode="decimal" value={l.mrp} onChange={f('mrp')} />
           </Field>
-          <Field label="Disc %" id="gl-disc" error={err('disc')}>
-            <input id="gl-disc" inputMode="decimal" value={l.disc} onChange={f('disc')} />
+          <Field label={`Sales Rate / ${unit}`} id="gl-sale">
+            {ro('gl-sale', money(fig.saleRatePaise))}
+          </Field>
+          <Field label={`Conv. Factor (${unit}s in a pack)`} id="gl-conv" error={err('conv')}>
+            <input id="gl-conv" inputMode="numeric" value={l.conv} onChange={f('conv')} />
+          </Field>
+
+          <Field label="Total Amount" id="gl-total">
+            {ro('gl-total', money(fig.totalPaise))}
+          </Field>
+          <Field label={`Total Qty (${unit}s)`} id="gl-units">
+            {ro('gl-units', fig.units || '')}
           </Field>
           <Field label="GST %" id="gl-gst">
             <select id="gl-gst" value={l.gst} onChange={f('gst')}>
@@ -441,25 +456,33 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
               ))}
             </select>
           </Field>
-        </div>
-        <dl className="ph-gl-figures" aria-label="What the line comes to">
-          {figures.map(([label, value, strong]) => (
-            <div key={label} className={strong ? 'is-net' : undefined}>
-              <dt>{label}</dt>
-              <dd className="tabular">{value}</dd>
-            </div>
-          ))}
-        </dl>
-        <div className="ph-gl-actions">
-          <button type="button" className="btn btn-link" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="btn btn-primary">
-            {isNew ? 'Add to the bill' : 'Save the line'}
-          </button>
+          <Field label="GST Amount" id="gl-gstamt">
+            {ro('gl-gstamt', money(fig.gstPaise))}
+          </Field>
+          <Field label="Net Amount" id="gl-net">
+            {ro('gl-net', money(fig.netPaise))}
+          </Field>
+          <Field label="HSN Code" id="gl-hsn">
+            {ro('gl-hsn', m.hsn || '—')}
+          </Field>
+
+          <Field label={`Landed Rate / ${unit}`} id="gl-landed">
+            {ro('gl-landed', money(fig.landedPaise))}
+          </Field>
+          <Field label="Profit Per" id="gl-profit">
+            {ro('gl-profit', fig.profitPercent == null ? '' : `${fig.profitPercent} %`)}
+          </Field>
+          <div className="ph-gl-pop-actions">
+            <button type="button" className="btn btn-link" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary">
+              {isNew ? 'Add to the bill' : 'Save the line'}
+            </button>
+          </div>
         </div>
       </form>
-    </Modal>
+    </div>
   );
 }
 
@@ -504,12 +527,22 @@ export function NewPurchasePage() {
   const [invoiceNo, setInvoiceNo] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [gateEntryNo, setGateEntryNo] = useState('');
-  // 13 Nov 2026: the tax and credit or cash come from the supplier (set when it is added – Suppliers); a supplier
-  // without a tax choice: CGST + SGST from the pharmacy's state, IGST from another state (read from the two GSTINs)
-  const payment = supplier?.payment ?? 'credit';
+  // The tax and credit or cash come filled in from the supplier (set when it is added – Suppliers, 13 Nov 2026) and can
+  // be changed on this bill (14 Nov 2026, as the earlier software shows them); a supplier without a tax choice: CGST +
+  // SGST from the pharmacy's state, IGST from another state (read from the two GSTINs)
+  const [choice, setChoice] = useState({ supplierId: null, taxType: null, payment: null });
+  const mine = choice.supplierId === supplierId ? choice : { taxType: null, payment: null };
   const ours = gstinState(settings.data?.settings.gstin ?? '');
   const theirs = gstinState(supplier?.gstin ?? '');
-  const taxType = supplier?.taxType || (ours && theirs && ours.code !== theirs.code ? 'igst' : 'cgst_sgst');
+  const taxType = mine.taxType ?? (supplier?.taxType || (ours && theirs && ours.code !== theirs.code ? 'igst' : 'cgst_sgst'));
+  const payment = mine.payment ?? supplier?.payment ?? 'credit';
+  const choose = (k) => (v) => setChoice({ ...mine, supplierId, [k]: v });
+  // The store it is received into: the pharmacy's name, which can be corrected on this bill (kept on the GRN)
+  const [storeName, setStoreName] = useState(null);
+  const store = storeName ?? settings.data?.settings.name ?? '';
+  const [againstOrder, setAgainstOrder] = useState(false);
+  const orders = useFetch(againstOrder && !order ? '/pharmacy/orders' : null);
+  const openOrders = (orders.data?.orders ?? []).filter((o) => o.supplier?.id === supplierId && (o.status === 'sent' || o.status === 'part_received'));
   const [extra, setExtra] = useState({ scheme: '', discPercent: '', crnAdj: '', other: '', surcharge: '', freight: '', receivedBy: '', remark: '', printed: '' });
   // PH3: the server's "the bill says ₹… but the lines add up to ₹…" – answered with Save as it is
   const [differs, setDiffers] = useState(null);
@@ -585,7 +618,7 @@ export function NewPurchasePage() {
       invoiceDate,
       ...(order ? { orderId: order.id } : {}),
       lines: parsed.map((x) => ({ medicineId: x.l.medicine.id, batch: x.l.batch.trim(), expiry: x.l.expiry, conv: x.conv, qty: x.qty, freeQty: x.free, ratePaise: x.rate, mrpPaise: x.mrp, discPercent: x.disc, gstRate: x.gst })),
-      grn: { ...bill, gateEntryNo: gateEntryNo.trim(), payment, receivedBy: extra.receivedBy.trim(), remark: extra.remark.trim(), printedTotalPaise: printedPaise != null && !Number.isNaN(printedPaise) ? printedPaise : null, totalConfirmed },
+      grn: { ...bill, gateEntryNo: gateEntryNo.trim(), storeName: store.trim(), payment, receivedBy: extra.receivedBy.trim(), remark: extra.remark.trim(), printedTotalPaise: printedPaise != null && !Number.isNaN(printedPaise) ? printedPaise : null, totalConfirmed },
     });
   return (
     <>
@@ -611,11 +644,14 @@ export function NewPurchasePage() {
           <section className="card bill-section ph-grn-invoice" aria-labelledby="pu-head">
             <h2 id="pu-head">Supplier invoice</h2>
             {suppliers.data && !suppliers.data.suppliers.length && <Alert type="warning">Add a supplier first (Suppliers in the menu).</Alert>}
-            <div className="form-grid">
-              <Field label="Store name" id="pu-store">
-                <input id="pu-store" value={settings.data?.settings.name || 'Pharmacy store'} readOnly />
-              </Field>
-              <Field label="Supplier name" id="pu-sup" hint={order ? `The supplier of order ${order.number}.` : undefined}>
+            {/* 14 Nov 2026, as the earlier software's New GRN: label beside each field, the supplier's details in boxes */}
+            <div className="ph-gi">
+              <label className="ph-gi-row" htmlFor="pu-store">
+                <span>Store Name</span>
+                <input id="pu-store" value={store} maxLength={150} placeholder="Pharmacy store" onChange={(e) => setStoreName(e.target.value)} />
+              </label>
+              <label className="ph-gi-row" htmlFor="pu-sup">
+                <span>Supplier Name</span>
                 <select id="pu-sup" value={supplierId} disabled={Boolean(order)} onChange={(e) => setSupplierId(e.target.value)}>
                   <option value="">Choose…</option>
                   {(suppliers.data?.suppliers ?? [])
@@ -626,36 +662,114 @@ export function NewPurchasePage() {
                       </option>
                     ))}
                 </select>
-              </Field>
-              {supplier && (
-                <p className="hint ph-grn-supplier">
-                  {[supplier.address, supplier.phone && `Phone ${supplier.phone}`, supplier.gstin && `GSTIN ${supplier.gstin}`, supplier.drugLicence && `DL ${supplier.drugLicence}`].filter(Boolean).join(' · ') || 'No address or GSTIN saved for this supplier.'}
-                </p>
+              </label>
+              <input className="ph-gi-full ph-ro" aria-label="Supplier address" value={supplier?.address ?? ''} placeholder="Address" readOnly tabIndex={-1} />
+              <div className="ph-gi-pair">
+                <input className="ph-ro" aria-label="Supplier phone" value={supplier?.phone ?? ''} placeholder="Phone" readOnly tabIndex={-1} />
+                <input className="ph-ro" aria-label="Supplier GSTIN" value={supplier?.gstin ?? ''} placeholder="GSTIN" readOnly tabIndex={-1} />
+              </div>
+              <div className="ph-gi-pair ph-gi-labelled">
+                <label htmlFor="pu-no">
+                  <span>Invoice No</span>
+                  <input id="pu-no" value={invoiceNo} maxLength={60} onChange={(e) => setInvoiceNo(e.target.value)} />
+                </label>
+                <label htmlFor="pu-gate">
+                  <span>Gate Entry No</span>
+                  <input id="pu-gate" value={gateEntryNo} maxLength={40} onChange={(e) => setGateEntryNo(e.target.value)} />
+                </label>
+              </div>
+              <div className="ph-gi-pair ph-gi-labelled">
+                <div>
+                  <span>Invoice Date</span>
+                  <DateText id="pu-date" aria-label="Invoice date" value={invoiceDate} onChange={(v) => setInvoiceDate(v)} />
+                </div>
+                <label htmlFor="pu-tax">
+                  <span>Tax Name</span>
+                  <select id="pu-tax" value={taxType} onChange={(e) => choose('taxType')(e.target.value)}>
+                    {Object.entries(TAX_LABELS).map(([k, label]) => (
+                      <option key={k} value={k}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="ph-gi-pair ph-gi-labelled">
+                <label htmlFor="pu-at">
+                  <span>Date</span>
+                  <input id="pu-at" value={formatDate(enteredAt.toISOString())} readOnly className="ph-ro" />
+                </label>
+                <label htmlFor="pu-time">
+                  <span>Time</span>
+                  <input id="pu-time" value={enteredAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} readOnly className="ph-ro" />
+                </label>
+              </div>
+              <div className="ph-gi-radios" role="radiogroup" aria-label="Purchase">
+                <label>
+                  <input
+                    type="radio"
+                    name="pu-kind"
+                    checked={!order && !againstOrder}
+                    onChange={() => {
+                      setAgainstOrder(false);
+                      if (order) navigate(`/pharmacy/purchases/new${supplierId ? `?supplier=${supplierId}` : ''}`);
+                    }}
+                  />{' '}
+                  Direct Purchase
+                </label>
+                <label>
+                  <input type="radio" name="pu-kind" checked={Boolean(order) || againstOrder} onChange={() => setAgainstOrder(true)} /> Purchase Orders
+                </label>
+              </div>
+              {againstOrder && !order && (
+                <label className="ph-gi-row" htmlFor="pu-order">
+                  <span>Order</span>
+                  <select id="pu-order" value="" disabled={!supplierId} onChange={(e) => e.target.value && navigate(`/pharmacy/purchases/new?order=${e.target.value}`)}>
+                    <option value="">{!supplierId ? 'Choose the supplier first' : orders.data && !openOrders.length ? 'No order waiting' : 'Choose…'}</option>
+                    {openOrders.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.number}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               )}
-              <Field label="Invoice no." id="pu-no">
-                <input id="pu-no" value={invoiceNo} maxLength={60} onChange={(e) => setInvoiceNo(e.target.value)} />
-              </Field>
-              <Field label="Gate entry no. (optional)" id="pu-gate">
-                <input id="pu-gate" value={gateEntryNo} maxLength={40} onChange={(e) => setGateEntryNo(e.target.value)} />
-              </Field>
-              <Field label="Invoice date" id="pu-date">
-                <DateText id="pu-date" value={invoiceDate} onChange={(v) => setInvoiceDate(v)} />
-              </Field>
-              <Field label="Date and time entered" id="pu-at">
-                <input id="pu-at" value={formatDateTime(enteredAt)} readOnly />
-              </Field>
+              <div className="ph-gi-radios" role="radiogroup" aria-label="Payment">
+                <label>
+                  <input type="radio" name="pu-pay" checked={payment === 'credit'} onChange={() => choose('payment')('credit')} /> Credit
+                </label>
+                <label>
+                  <input type="radio" name="pu-pay" checked={payment === 'cash'} onChange={() => choose('payment')('cash')} /> Cash
+                </label>
+              </div>
+              {supplier && (supplier.taxType || supplier.payment === 'cash') && <p className="hint ph-gi-note">Filled in from the supplier; change them here for this bill only.</p>}
             </div>
-            {supplier && (
-              <p className="hint ph-grn-terms">
-                {TAX_LABELS[taxType]} · {payment === 'cash' ? 'Cash' : 'Credit'}
-                {order ? ` · against order ${order.number}` : ''} – as set for this supplier.{' '}
-                <Link to={`/pharmacy/suppliers/${supplier.id}`}>Change</Link>
-              </p>
-            )}
           </section>
           <section className="card bill-section ph-grn-items" aria-labelledby="pu-lines">
+            {editing && (
+              <GrnLineDialog
+                key={editing.line.key}
+                line={editing.line}
+                isNew={editing.isNew}
+                onClose={() => setEditing(null)}
+                onDone={(l) => {
+                  put(l);
+                  setEditing(null);
+                }}
+              />
+            )}
             <h2 id="pu-lines">Items</h2>
-            <FindMedicine label="Item name" onPick={(m) => setEditing({ line: emptyLine(m), isNew: true })} onScan={scan} />
+            <div className="ph-gi-item">
+              <FindMedicine label="Item name" onPick={(m) => setEditing({ line: emptyLine(m), isNew: true })} onScan={scan} />
+              <label className="ph-gi-small">
+                <span>UOM</span>
+                <input value={editing?.line.medicine.unit ?? ''} readOnly tabIndex={-1} className="ph-ro" />
+              </label>
+              <label className="ph-gi-small">
+                <span>HSN Code</span>
+                <input value={editing?.line.medicine.hsn ?? ''} readOnly tabIndex={-1} className="ph-ro" />
+              </label>
+            </div>
             <p className="row">
               <button type="button" className="btn btn-secondary" disabled={!supplier} onClick={() => setBillFile(true)}>
                 <FileUp aria-hidden="true" /> Bill from a file
@@ -710,7 +824,7 @@ export function NewPurchasePage() {
                       const l = x.l;
                       const line = sums.lines[i];
                       return (
-                        <tr key={l.key}>
+                        <tr key={l.key} className={editing?.line.key === l.key ? 'ph-grn-row-on' : undefined}>
                           <td data-label="Item name">{medicineLabel(l.medicine)}</td>
                           <td data-label="UOM">{l.medicine.unit || '—'}</td>
                           <td data-label="Batch no.">{l.batch.trim() || '—'}</td>
@@ -851,17 +965,6 @@ export function NewPurchasePage() {
             setLines((ls) => [...ls, ...filled.map((l) => ({ ...l, key: `${l.medicine.id}-${(lineSeq += 1)}` }))]);
             setBillFile(false);
             setFromFile(`${filled.length} line${filled.length === 1 ? '' : 's'} filled from the file${left ? `; ${left} left out` : ''}. Open each line to check its batch, expiry and prices before saving.`);
-          }}
-        />
-      )}
-      {editing && (
-        <GrnLineDialog
-          line={editing.line}
-          isNew={editing.isNew}
-          onClose={() => setEditing(null)}
-          onDone={(l) => {
-            put(l);
-            setEditing(null);
           }}
         />
       )}
