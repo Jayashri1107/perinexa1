@@ -248,14 +248,6 @@ function HospitalDetails({ tenant, reload }) {
           <dt>Created</dt>
           <dd className="tabular">{formatDateTime(tenant.createdAt)}</dd>
         </div>
-        <div>
-          <dt>Active staff</dt>
-          <dd className="tabular">{formatNumber(tenant.members)}</dd>
-        </div>
-        <div>
-          <dt>Admins</dt>
-          <dd className="tabular">{formatNumber(tenant.admins)}</dd>
-        </div>
         <div className="hw-facts-wide">
           <dt>Hospital ID</dt>
           <dd className="mono muted">{tenant.id}</dd>

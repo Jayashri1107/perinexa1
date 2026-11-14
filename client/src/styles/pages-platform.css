@@ -164,7 +164,7 @@
   .pf-dense .dt .name-cell-text { align-items: flex-start; line-height: 1.3; }
   .pf-dense .dt .plat-name-pill { margin-top: 0; padding: 1px var(--space-2); font-size: 12px; white-space: nowrap; max-width: none; }
   .pf-dense .dt .plat-name-pill svg.lucide { width: 14px; height: 14px; }
-  .pf-dense .dt .cell-sub { display: inline; margin: 0 0 0 var(--space-2); }
+  .pf-dense .dt td > .cell-sub { display: inline; margin: 0 0 0 var(--space-2); }
   .pf-dense .dt td.plat-access-cell { white-space: nowrap; min-width: 0; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
   .pf-dense .dt td.plat-access-cell .chip { max-width: 150px; }
   /* Long emails end in "…" (the whole email is in the title) so a list fits the page without scrolling sideways */
@@ -194,3 +194,8 @@
 .role-picker.is-compact .role-option small { display: none; }
 .role-picker.is-compact .role-option input { margin-top: 0; }
 @media (max-width: 1000px) { .ug-form { grid-template-columns: minmax(0, 1fr); } }
+
+/* One hospital's page (developer, 14 Nov 2026): role tiles with their whole name, three to a row on wide screens */
+@media (min-width: 1281px) { .hw-roles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.hw-role-label { white-space: normal; overflow-wrap: anywhere; }
+.hw-privacy { margin-bottom: var(--space-4); }

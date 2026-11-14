@@ -77,3 +77,17 @@
   .lh { flex-wrap: wrap; }
   .lh-reg { white-space: normal; }
 }
+
+/* The staff list (developer, 14 Nov 2026): the email on one line ending in "…", the group above the role badges */
+.member-email { display: inline-block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.roles-cell .member-group { font-weight: 500; }
+.member-own-pages { font-size: var(--fs-label); color: var(--slate-600); }
+/* The row's buttons side by side (Edit access, Reset password, Remove access) on wider screens */
+@media (min-width: 768px) { .members-panel .row-actions { flex-wrap: nowrap; justify-content: flex-end; } .members-panel .member-email { max-width: 220px; } }
+/* Email and its notes on one line under the name; the email gives way first */
+@media (min-width: 768px) {
+  .members-panel .member-notes { flex-wrap: nowrap; min-width: 0; max-width: 300px; overflow: hidden; white-space: nowrap; }
+  .members-panel .member-notes .member-email { flex: 0 1 auto; min-width: 80px; }
+  .members-panel .member-notes > span:not(.member-email) { flex-shrink: 0; }
+  .members-panel .name-cell, .members-panel .name-cell-text { min-width: 0; max-width: 100%; }
+}

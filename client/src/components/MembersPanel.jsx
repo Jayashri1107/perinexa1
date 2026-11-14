@@ -238,7 +238,9 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
               {m.user.id === me.id && <span className="muted"> (you)</span>}
             </span>
             <span className="cell-sub member-notes">
-              <span>{m.user.email}</span>
+              <span className="member-email" title={m.user.email}>
+                {m.user.email}
+              </span>
               {m.user.mustChangePassword && <span>Must change password</span>}
               {m.sharedAccount && <span>Also at another hospital</span>}
               {!m.user.isActive && <StatusPill tone="inactive">Account disabled by platform</StatusPill>}
@@ -252,18 +254,10 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
       header: 'Group and roles here',
       render: (m) => (
         <span className="roles-cell">
-          {m.groupId && groupName(m.groupId) && <strong className="member-group">{groupName(m.groupId)}</strong>}
-          <RoleBadges roles={m.roles} />
-          {Object.keys(m.pageOverrides ?? {}).length > 0 && <span className="muted">Own page access</span>}
-          <button
-            type="button"
-            className="btn btn-link btn-sm"
-            disabled={m.user.id === me.id || busyId === m.id}
-            onClick={() => setEditing(m)}
-            title={m.user.id === me.id ? "You can't change your own group" : undefined}
-          >
-            Edit<span className="sr-only"> group and access for {m.user.name}</span>
-          </button>
+          {m.groupId && groupName(m.groupId) && <span className="member-group">{groupName(m.groupId)}</span>}
+          {/* The role badges only when they say more than the group's name (a group named after its role says it already) */}
+          {(!groupName(m.groupId) || groupName(m.groupId) !== rolesLabel(m.roles)) && <RoleBadges roles={m.roles} />}
+          {Object.keys(m.pageOverrides ?? {}).length > 0 && <span className="member-own-pages">· own page access</span>}
           {/* A doctor's departments (owner, 27 Oct 2026; more than one from 29 Oct 2026): registration and admission offer a
               department's doctors */}
           {m.roles.includes('doctor') && <DoctorDepartments m={m} busy={busyId === m.id} onChange={(next) => run(m, async () => {
@@ -283,13 +277,17 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
     {
       key: 'actions',
       header: <span className="sr-only">Actions</span>,
-      width: allowAccountChanges ? 300 : 170,
+      width: allowAccountChanges ? 400 : 270,
       className: 'actions',
       render: (m) => {
         const self = m.user.id === me.id;
         const busy = busyId === m.id;
         return (
           <div className="row-actions">
+            {/* The person's group, a doctor's departments and their own page access (GroupDialog) */}
+            <button type="button" className="btn btn-secondary btn-sm" disabled={self || busy} onClick={() => setEditing(m)} title={self ? "You can't change your own group" : undefined}>
+              Edit access<span className="sr-only"> for {m.user.name}</span>
+            </button>
             {allowAccountChanges && (
               <button
                 type="button"
