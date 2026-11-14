@@ -400,6 +400,7 @@ export function PatientForm({
   prefill = null, // a new patient's details already known (a quick booking: name, phone, doctor)
   anotherLabel = null,
   beforeActions = null,
+  pediatricFor = null, // registering an older baby: 'followup' or 'vaccination' (New patient → Pediatric department)
 }) {
   const another = useRef(false); // which save button was pressed
   const isEdit = Boolean(patient);
@@ -483,12 +484,16 @@ export function PatientForm({
   // (lmpCarryOver): Antenatal → Abortion (the same pregnancy), and back only for an old threatened miscarriage. Judged
   // from the stored type, so passing through another type first changes nothing. An LMP copied into the pregnancy
   // says so under the field until it is changed by hand or the type changes again.
-  // "Baby – vaccination or follow-up" in the Type of care list (11 Nov 2026): still a baby's record; the choice only
-  // sets the birth details for an older baby (date of birth only) and, registering, the Pediatric department
+  // Pediatric department in the Type of care list (11, 14 Nov 2026): still a baby's record; the choice only sets the
+  // birth details for an older baby (date of birth only) and, registering, the Pediatric department. Registering, it
+  // is two choices – Pediatric – Follow-up and Pediatric – Vaccination (what was chosen on the New patient page, and
+  // which list opens after saving); editing a record, one (Pediatric department).
   const FOLLOW_UP = 'newborn:followup';
+  const VACCINATION = 'newborn:vaccination';
+  const pediatricOf = (value) => (value === FOLLOW_UP ? 'followup' : value === VACCINATION ? 'vaccination' : null);
   const babyChoice = (next) => {
     if (!isNewborn || !next.startsWith('newborn')) return false;
-    const followUp = next === FOLLOW_UP;
+    const followUp = Boolean(pediatricOf(next));
     setV({ ...v, newborn: { ...v.newborn, birthTimeKnown: !followUp, birthDate: v.newborn.birthDate || (v.newborn.birthAt ?? '').slice(0, 10) }, ...(followUp && !isEdit && !v.department ? { department: 'Pediatric' } : {}) });
     return true;
   };
@@ -498,11 +503,20 @@ export function PatientForm({
         {CARE_TYPE_LABELS[t]}
       </option>,
       ...(t === 'newborn'
-        ? [
-            <option key={FOLLOW_UP} value={FOLLOW_UP} disabled={disabledFor?.(t)}>
-              Pediatric department (follow-up or vaccination)
-            </option>,
-          ]
+        ? isEdit
+          ? [
+              <option key={FOLLOW_UP} value={FOLLOW_UP} disabled={disabledFor?.(t)}>
+                Pediatric department
+              </option>,
+            ]
+          : [
+              <option key={FOLLOW_UP} value={FOLLOW_UP} disabled={disabledFor?.(t)}>
+                Pediatric – Follow-up
+              </option>,
+              <option key={VACCINATION} value={VACCINATION} disabled={disabledFor?.(t)}>
+                Pediatric – Vaccination
+              </option>,
+            ]
         : []),
     ]);
   const setCareType = (e) => {
@@ -582,8 +596,8 @@ export function PatientForm({
 
   const type = isEdit ? v.careType : (careType ?? v.careType);
   const isNewborn = type === 'newborn';
-  const typeValue = isNewborn && !v.newborn.birthTimeKnown ? FOLLOW_UP : type;
-  const typeHint = typeValue === FOLLOW_UP ? 'Older baby: date of birth only, Pediatric' : CARE_TYPE_HINTS[type];
+  const typeValue = isNewborn && !v.newborn.birthTimeKnown ? (!isEdit && pediatricFor === 'vaccination' ? VACCINATION : FOLLOW_UP) : type;
+  const typeHint = pediatricOf(typeValue) ? 'Older baby: date of birth only, Pediatric' : CARE_TYPE_HINTS[type];
   const clinical = access.canEditClinical;
   const firstPregnancy = isFirstPregnancy(type, v.obstetric);
   const fe = (path) => fieldErrors[path];
@@ -787,8 +801,13 @@ export function PatientForm({
                           id="careType"
                           value={typeValue}
                           onChange={(e) => {
-                            if (babyChoice(e.target.value)) return;
-                            onCareTypeChange(e.target.value === FOLLOW_UP ? 'newborn' : e.target.value, { followUp: e.target.value === FOLLOW_UP });
+                            const ped = pediatricOf(e.target.value);
+                            // Between Follow-up and Vaccination: the page is told too (which list opens after saving)
+                            if (babyChoice(e.target.value)) {
+                              onCareTypeChange('newborn', { followUp: Boolean(ped), pediatricFor: ped, keepForm: true });
+                              return;
+                            }
+                            onCareTypeChange(ped ? 'newborn' : e.target.value, { followUp: Boolean(ped), pediatricFor: ped });
                           }}
                         >
                           {typeOptions()}
