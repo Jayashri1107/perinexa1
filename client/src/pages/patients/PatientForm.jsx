@@ -500,7 +500,7 @@ export function PatientForm({
       ...(t === 'newborn'
         ? [
             <option key={FOLLOW_UP} value={FOLLOW_UP} disabled={disabledFor?.(t)}>
-              Baby – vaccination or follow-up
+              Pediatric department (follow-up or vaccination)
             </option>,
           ]
         : []),
