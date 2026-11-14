@@ -256,6 +256,19 @@ export function InvoicesPage({ pick = null }) {
                   ))}
                 </div>
               </div>
+              <button
+                type="button"
+                className="btn btn-primary ph-search-btn"
+                onClick={() => {
+                  setSearched(true);
+                  setPages(1);
+                  setBlank(false);
+                  setPerson(null);
+                  setMade(null);
+                }}
+              >
+                <Search aria-hidden="true" /> Show
+              </button>
               <div className="ph-filter-row ph-find-form">
                 <h3 className="ph-find-head">Patient name</h3>
                 <label className="ph-filter">
@@ -307,19 +320,6 @@ export function InvoicesPage({ pick = null }) {
                   />
                 </div>
               </div>
-              <button
-                type="button"
-                className="btn btn-primary ph-search-btn"
-                onClick={() => {
-                  setSearched(true);
-                  setPages(1);
-                  setBlank(false);
-                  setPerson(null);
-                  setMade(null);
-                }}
-              >
-                <Search aria-hidden="true" /> Show
-              </button>
             </section>
             <div className="ph-sold-results">
               {made && (
