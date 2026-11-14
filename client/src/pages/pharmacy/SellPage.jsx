@@ -832,7 +832,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                         <Fragment key={l.key}>
                           <tr>
                             <td data-label="Item name" className="ph-grid-name">
-                              <strong>{l.medicine.name}</strong> <ScheduleMark schedule={l.medicine.schedule} /> <HighAlertPill medicine={l.medicine} />
+                              <strong title={l.medicine.name}>{l.medicine.name}</strong> <ScheduleMark schedule={l.medicine.schedule} /> <HighAlertPill medicine={l.medicine} />
                               {/* PH10: given in place of the brand the doctor wrote, with the doctor who agreed */}
                               {l.substitution && <span className="ph-line-note">In place of {l.prescribedName}, agreed by {l.substitution.agreedByName}</span>}
                               {visitId && l.rxItemId && !l.substitution && (
