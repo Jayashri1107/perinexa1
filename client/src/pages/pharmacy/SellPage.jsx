@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { BedDouble, TriangleAlert, CalendarClock, CalendarDays, CircleCheck, CircleX, ClipboardList, Minus, PackageX, Plus, Receipt, Stethoscope, Trash2, UserPlus, UserRound } from 'lucide-react';
+import { BedDouble, TriangleAlert, CalendarClock, CalendarDays, CircleCheck, CircleX, ClipboardList, Minus, PackageX, Plus, Receipt, Stethoscope, Trash2, UserPlus } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -12,7 +12,7 @@ import { OtherBrandsDialog } from './Substitutes.jsx';
 import { BatchGrid, PaymentWindow } from './CounterParts.jsx';
 import { BarcodeBox, MedicineFinder, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { KitPicker, kitShortfall } from './Kits.jsx';
-import { FindElsewhere, TypePill, billsPlace, useClickOrDouble } from './RegisterPage.jsx';
+import { FindElsewhere, billsPlace, useClickOrDouble } from './RegisterPage.jsx';
 import { PatientInfoBox } from './PatientInfoBox.jsx';
 
 // Pharmacy → New bill (counter) and → Issue to ward (kind 'issue', admitted patients only): choose OPD, IPD or External
@@ -45,15 +45,6 @@ const nowStamp = () => {
   const time = d.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
   return { date, time };
 };
-
-// The patient's initials for the round badge on the bill: "Madhavi Patil" → "MP"
-const initialsOf = (name = '') =>
-  name
-    .split(/\s+/)
-    .filter((w) => /^[A-Za-z]/.test(w))
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join('') || '·';
 
 const OWN = '__own';
 /**
@@ -568,11 +559,18 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                 <span className="ph-bill-tag">
                   <Receipt aria-hidden="true" /> {issue ? 'Issue to ward' : 'Sales bill'}
                 </span>
-                <span className="ph-bill-when tabular">
-                  {nowStamp().date} · {nowStamp().time}
-                </span>
               </div>
-              <span className="ph-bill-net-label">Net amount</span>
+              {/* 14 Nov 2026, as the earlier Sales Bill: Date and Time in boxes, the net amount beside them */}
+              <div className="ph-bill-dt">
+                <label className="ph-pi-row">
+                  <span>Date</span>
+                  <input readOnly tabIndex={-1} className="ph-ro tabular" value={nowStamp().date} />
+                </label>
+                <label className="ph-pi-row">
+                  <span>Time</span>
+                  <input readOnly tabIndex={-1} className="ph-ro tabular" value={nowStamp().time} />
+                </label>
+              </div>
               <strong className="ph-bill-net tabular" aria-label="Net amount">
                 ₹{(totalPaise / 100).toFixed(2)}
               </strong>
@@ -582,18 +580,19 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
             </header>
 
             <div className="ph-counter-body">
-              {!patient && !embedded && !fromList && (
-                <div className="ph-type-tabs" role="radiogroup" aria-label="Type of patient">
-                  <button type="button" role="radio" aria-checked={who === 'patient'} onClick={() => (issue ? navigate('/pharmacy') : setWho('patient'))}>
+              {!embedded && (
+                <div className={`ph-type-tabs${patient || fromList ? ' is-fixed' : ''}`} role="radiogroup" aria-label="Type of patient">
+                  <button type="button" role="radio" aria-checked={who === 'patient'} disabled={Boolean(patient || fromList) && who !== 'patient'} onClick={() => (issue ? navigate('/pharmacy') : setWho('patient'))}>
                     <Stethoscope aria-hidden="true" /> OPD
                   </button>
-                  <button type="button" role="radio" aria-checked={who === 'inpatient'} onClick={() => !issue && navigate('/pharmacy/issue')}>
+                  <button type="button" role="radio" aria-checked={who === 'inpatient'} disabled={Boolean(patient || fromList) && who !== 'inpatient'} onClick={() => !issue && navigate('/pharmacy/issue')}>
                     <BedDouble aria-hidden="true" /> IPD
                   </button>
                   <button
                     type="button"
                     role="radio"
                     aria-checked={who === 'walkin'}
+                    disabled={Boolean(patient || fromList) && who !== 'walkin'}
                     onClick={() => {
                       if (issue) return navigate('/pharmacy', { state: { type: 'external' } });
                       setWho('walkin');
@@ -607,7 +606,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
 
               <div className="ph-section-row">
                 <h2 id="ph-who" className="ph-section-label">
-                  Patient
+                  Patient information
                 </h2>
                 {(patient || (fromList && who === 'walkin')) && (
                   <button type="button" className="btn btn-link btn-sm ph-person-change" onClick={(embedded || fromList) && onCancel ? onCancel : reset}>
@@ -618,20 +617,21 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
               {/* 13 Nov 2026: Patient information as on the earlier Sales Bill – UHID with Search, the name with its drop-down */}
               {(who === 'patient' || who === 'inpatient') && !patient && <PatientInfoBox who={who} onPick={setPatient} />}
               {patient && (
-                <div className="ph-person">
-                  <span className="ph-person-avatar" aria-hidden="true">
-                    {initialsOf(patient.fullName)}
-                  </span>
-                  <div className="ph-person-main">
-                    <strong className="ph-person-name">{patient.fullName}</strong>
-                    <span className="ph-person-meta">
-                      <TypePill type={issue ? 'ipd' : 'opd'} /> <span className="tabular">{patient.mrn}</span>
-                    </span>
-                    {patient.phone && <span className="ph-person-doc tabular">{patient.phone}</span>}
-                    <span className="ph-person-doc">
-                      <UserRound aria-hidden="true" /> {doctor.name ? `${doctor.name}${doctor.reg ? ` · Reg. ${doctor.reg}` : ''}` : 'No doctor yet'}
-                    </span>
-                  </div>
+                <div className="ph-pi ph-pi-chosen">
+                  <label className="ph-pi-row">
+                    <span>UHID</span>
+                    <input readOnly tabIndex={-1} className="ph-ro tabular" value={patient.mrn} />
+                  </label>
+                  <label className="ph-pi-row">
+                    <span>Patient name</span>
+                    <input readOnly tabIndex={-1} className="ph-ro" value={patient.fullName} />
+                  </label>
+                  {patient.phone && (
+                    <label className="ph-pi-row">
+                      <span>Mobile</span>
+                      <input readOnly tabIndex={-1} className="ph-ro tabular" value={patient.phone} />
+                    </label>
+                  )}
                 </div>
               )}
               {who === 'walkin' && (
@@ -802,10 +802,8 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                   <BarcodeBox onPick={scan} />
                 </details>
 
-                {/* 14 Nov 2026: the grid, the totals and the note appear once the first medicine is added */}
-                {lines.length > 0 && (
-                <>
-                <div className="ph-grid-wrap">
+                {/* 14 Nov 2026, as the earlier Sales Bill: the medicines in a box of fixed height that scrolls, always shown */}
+                <div className="ph-grid-wrap ph-grid-box">
                   <table className="ph-grid">
                     <thead>
                       <tr>
@@ -823,6 +821,13 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                       </tr>
                     </thead>
                     <tbody>
+                      {!lines.length && (
+                        <tr>
+                          <td colSpan={9} className="muted ph-grid-empty">
+                            No medicine on the bill yet – type the item name above.
+                          </td>
+                        </tr>
+                      )}
                       {lines.map((l) => (
                         <Fragment key={l.key}>
                           <tr>
@@ -964,21 +969,16 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                 <p className="hint">
                   {who === 'walkin' ? 'Save opens the Payment window: the customer pays here, by cash, cheque, card, NEFT / RTGS or online, or in parts.' : issue ? 'The invoice goes on her stay’s bill.' : 'The invoice goes on her hospital bill; she pays at the billing desk.'} Prices are the batch MRP (GST included).
                 </p>
-                </>
-                )}
               </>
             )}
             <div className="ph-counter-actions">
-              {lines.length > 0 && (
-                <>
-                  <Link className="btn btn-secondary" to="/pharmacy/reports">
-                    <CalendarClock aria-hidden="true" /> Expiry list
-                  </Link>
-                  <button type="button" className="btn btn-primary" disabled={!ready || s.busy} onClick={save}>
-                    <Receipt aria-hidden="true" /> {issue ? 'Save the issue' : 'Save'}
-                  </button>
-                </>
-              )}
+              <span className="ph-items-added">Total items added: {lines.length}</span>
+              <Link className="btn btn-secondary" to="/pharmacy/reports">
+                <CalendarClock aria-hidden="true" /> Expiry list
+              </Link>
+              <button type="button" className="btn btn-primary" disabled={!ready || s.busy} onClick={save}>
+                <Receipt aria-hidden="true" /> {issue ? 'Save the issue' : 'Save'}
+              </button>
               <button type="button" className="btn btn-secondary" onClick={close}>
                 <CircleX aria-hidden="true" /> Close
               </button>

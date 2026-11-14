@@ -209,6 +209,7 @@ export function InvoicesPage({ pick = null }) {
           { key: 'date', header: 'Time', render: (v) => formatDateTime(v.date) },
           { key: 'kind', header: 'Kind', render: (v) => (v.kind === 'issue' ? 'Inpatient issue' : 'Counter sale') },
           { key: 'who', header: 'Patient / customer', render: whoOf },
+          { key: 'doctor', header: 'Doctor', render: (v) => v.doctor?.name || '–' }, // 14 Nov 2026
           { key: 'items', header: 'Medicines sold', render: (v) => soldItems(v.lines) },
           { key: 'net', header: 'Amount', align: 'right', render: (v) => <span className="tabular">{paper(v.netPaise)}</span> },
         ]}
