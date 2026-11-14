@@ -7,7 +7,7 @@ import { FullPageSpinner } from '../../auth/guards.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
-import { canRegisterPatients, patientTabs } from '../../platform/modules.js';
+import { FOLLOW_UP_ROLES, canRegisterPatients, patientTabs } from '../../platform/modules.js';
 import { AdmitDialog } from '../beds/BedBoardPage.jsx';
 import { NO_CHARGES, RegistrationCharges, billCharges, billedText, chargesOk } from '../billing/ServiceChargeDialog.jsx';
 import { PatientForm } from './PatientForm.jsx';
@@ -16,7 +16,7 @@ import { VoiceEntry } from './VoiceEntry.jsx';
 import { careTypeFromSpeech, withoutCareTypeWords } from './careTypeSpeech.js';
 import { hearingPhrases } from './obgyTerms.js';
 import { PossibleMatchesDialog } from './PossibleMatchesDialog.jsx';
-import { CARE_TYPE_HINTS, CARE_TYPE_LABELS, CARE_TYPE_SHORT, CARE_TYPES, NEW_PATIENT_LINKS, ageText, arrivesOnRegistration, hiddenRegistrationNote } from './patientFormat.js';
+import { CARE_TYPE_HINTS, CARE_TYPE_LABELS, CARE_TYPE_SHORT, CARE_TYPES, NEW_PATIENT_LINKS, PEDIATRIC_CHOICES, ageText, arrivesOnRegistration, hiddenRegistrationNote, pediatricChoice } from './patientFormat.js';
 
 // An icon for each type of care on the chooser
 const CARE_TYPE_ICONS = { antenatal: HeartPulse, postnatal: Users, infertility: Flower2, gynaecology: Stethoscope, abortion: HeartHandshake, newborn: Baby };
@@ -173,8 +173,12 @@ export function PatientNewPage() {
   // in the form; once saved (or an existing record chosen) her sign-up is approved for that record.
   const fromSignup = location.state?.fromSignup ?? null;
   const roles = activeMembership.roles;
-  // "Baby – vaccination or follow-up" (11 Nov 2026): the baby form with the date of birth only and Pediatric chosen
-  const babyFollowUp = chosen === 'newborn' && params.get('for') === 'followup';
+  // Pediatric department (14 Nov 2026): /patients/new/pediatric asks Follow-up or Vaccination; either opens the baby
+  // form with the date of birth only and Pediatric chosen. Saved by reception, that list opens (Follow-ups or
+  // Follow-ups → Vaccinations) with the baby on it.
+  const pediatricPage = chosen === 'pediatric';
+  const pediatric = chosen === 'newborn' ? pediatricChoice(params.get('for')) : null;
+  const babyFollowUp = Boolean(pediatric);
   const canCharge = ['receptionist', 'billing', 'admin'].some((r) => roles.includes(r));
   const [charges, setCharges] = useState(NO_CHARGES);
   const clinical = roles.includes('doctor') || roles.includes('rmo');
@@ -320,6 +324,14 @@ export function PatientNewPage() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+    // Pediatric department, OPD, saved by reception (14 Nov 2026): the Follow-ups or Vaccinations list opens with the
+    // baby on it – Follow-ups opens Add follow-up for her, Vaccinations shows her with Book.
+    if (pediatric && setting === 'opd' && !another && roles.some((r) => FOLLOW_UP_ROLES.includes(r))) {
+      const lost = dictatedClinical.current ? ' The clinical details that were said were not kept.' : '';
+      const baby = { id: patient.id, fullName: patient.fullName, mrn: patient.mrn, phone: patient.phone ?? null, doctorName: patient.assignedDoctorName ?? null };
+      navigate(pediatric.after, { replace: true, state: { flash: `${registered}${lost}`, registeredBaby: baby } });
+      return;
+    }
     if (setting !== 'opd') {
       const go = (note, stayId = null) => {
         setAdmitting(null);
@@ -353,13 +365,41 @@ export function PatientNewPage() {
       <PageHeader
         breadcrumbs={[{ label: 'Patients', to: '/patients' }, { label: 'New patient' }]}
         title="New patient"
-        badges={careType && <StatusPill tone="neutral">{CARE_TYPE_LABELS[careType]}</StatusPill>}
-        subtitle={careType ? undefined : 'Choose the type of care first; the form then shows only what is needed.'}
+        badges={careType && <StatusPill tone="neutral">{pediatric ? `Pediatric – ${pediatric.label}` : CARE_TYPE_LABELS[careType]}</StatusPill>}
+        subtitle={careType ? undefined : pediatricPage ? 'Choose Follow-up or Vaccination; the baby’s form opens next.' : 'Choose the type of care first; the form then shows only what is needed.'}
         tabs={patientTabs(roles)}
       />
       <div className="pf-content form-page form-page-voice">
         {!allowed && <div className="card narrow">Only reception, doctors and RMOs can register patients.</div>}
-        {allowed && !careType && (
+        {allowed && pediatricPage && (
+          // Pediatric department (14 Nov 2026): Follow-up or Vaccination, then the baby's form
+          <section aria-labelledby="pediatric-title">
+            <h2 id="pediatric-title">Pediatric department – what is the baby coming for</h2>
+            <ul className="care-type-cards">
+              {PEDIATRIC_CHOICES.map((c) => {
+                const Icon = c.key === 'vaccination' ? Syringe : Baby;
+                return (
+                  <li key={c.key}>
+                    <Link to={c.to} className="care-type-card" state={linkState}>
+                      <span className="care-type-icon" aria-hidden="true">
+                        <Icon />
+                      </span>
+                      <span className="care-type-text">
+                        <strong>{c.label}</strong>
+                        <span>{c.hint}</span>
+                      </span>
+                      <ChevronRight className="care-type-go" aria-hidden="true" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="hint">
+              <Link to="/patients/new">Back to all types of care</Link>
+            </p>
+          </section>
+        )}
+        {allowed && !careType && !pediatricPage && (
           // Cards, each with an icon and a line on what it is for (owner, 13 Oct 2026)
           <section aria-labelledby="care-type-title">
             <h2 id="care-type-title">Choose the type of care</h2>
@@ -438,9 +478,9 @@ export function PatientNewPage() {
               careType={careType}
               beforeActions={canCharge && careType ? <RegistrationCharges charges={charges} onCharges={setCharges} /> : null}
               onCareTypeChange={(type, { followUp = false } = {}) => {
-                // "Baby – vaccination or follow-up" chosen from another type of care keeps ?for=followup (11 Nov 2026)
+                // Pediatric chosen from another type of care keeps ?for=followup or ?for=vaccination (11, 14 Nov 2026)
                 const search = new URLSearchParams(location.search);
-                if (followUp) search.set('for', 'followup');
+                if (followUp) search.set('for', pediatric?.key ?? 'followup');
                 else search.delete('for');
                 const text = search.toString();
                 navigate({ pathname: `/patients/new/${type}`, search: text ? `?${text}` : '' }, { replace: true, state: location.state });
