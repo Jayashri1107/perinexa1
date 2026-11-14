@@ -185,12 +185,16 @@ describe('Search patient, as the earlier software (13 Nov 2026)', () => {
     const reg = async (fullName, phone) => (await (await as('reception')).post('/api/patients').send(samplePatient({ fullName, phone, assignedDoctor: people.drA._id.toString() }))).body.patient;
     const asha = await reg('Sample Asha Rani Kale', '9876500011');
     await reg('Sample Asha Patil', '9876500022');
-    ok(await ph('post', '/invoices', { kind: 'sale', patientId: asha.id, onHospitalBill: true, lines: [{ medicineId: m.id, qty: 1 }] }), 201);
+    ok(await ph('post', '/invoices', { kind: 'sale', patientId: asha.id, onHospitalBill: true, doctor: { name: 'Dr Sample Bill', reg: '' }, rxSeen: true, lines: [{ medicineId: m.id, qty: 1 }] }), 201);
     const find = async (q) => ok(await ph('get', `/invoices/people?${new URLSearchParams(q)}`)).people.filter((x) => x.mrn).map((x) => x.name);
     expect(await find({ first: 'asha', last: 'kale' })).toEqual(['Sample Asha Rani Kale']);
     expect((await find({ first: 'asha' })).sort()).toEqual(['Sample Asha Patil', 'Sample Asha Rani Kale']);
     expect(await find({ middle: 'rani' })).toEqual(['Sample Asha Rani Kale']);
     expect(await find({ phone: '98765 00022' })).toEqual(['Sample Asha Patil']);
+    // 14 Nov 2026: someone billed carries the latest bill's doctor; someone never billed only name and number
+    const found = ok(await ph('get', `/invoices/people?${new URLSearchParams({ first: 'asha' })}`)).people;
+    expect(found.find((x) => x.name === 'Sample Asha Rani Kale').doctor).toBe('Dr Sample Bill');
+    expect(found.find((x) => x.name === 'Sample Asha Patil')).not.toHaveProperty('doctor');
     // The dates narrow to people with bills on those days
     expect(await find({ first: 'asha', from: '2026-09-28', to: '2026-09-28' })).toEqual(['Sample Asha Rani Kale']);
     expect(await find({ first: 'asha', from: '2026-09-01', to: '2026-09-02' })).toEqual([]);
