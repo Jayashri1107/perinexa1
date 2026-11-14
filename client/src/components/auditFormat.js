@@ -158,6 +158,13 @@ export const AUDIT_LABELS = {
   TENANT_SWITCHED: 'Switched hospital',
   MEMBER_ADDED: 'Added to hospital',
   MEMBER_ROLE_CHANGED: 'Role changed',
+  // User groups (docs/USER_GROUPS_PLAN.md Part B)
+  USER_GROUP_CREATED: 'User group made',
+  USER_GROUP_CHANGED: 'User group changed',
+  USER_GROUP_DEACTIVATED: 'User group deactivated',
+  USER_GROUP_REACTIVATED: 'User group reactivated',
+  MEMBER_GROUP_CHANGED: 'Moved to another user group',
+  MEMBER_PAGES_CHANGED: 'Own page access changed',
   MEMBER_ACTIVATED: 'Hospital access restored',
   MEMBER_DEACTIVATED: 'Hospital access removed',
   PATIENT_CREATED: 'Patient added',
@@ -649,6 +656,10 @@ export const AUDIT_TONES = {
   SUPER_ADMIN_REVOKED: 'info',
   PLATFORM_ADMIN_CHANGED: 'info',
   MEMBER_ROLE_CHANGED: 'info',
+  USER_GROUP_CHANGED: 'info',
+  USER_GROUP_DEACTIVATED: 'warn',
+  MEMBER_GROUP_CHANGED: 'info',
+  MEMBER_PAGES_CHANGED: 'info',
   PASSWORD_RESET: 'info',
   PATIENT_VIEWED: 'patient',
   PATIENT_RECORD_COPIED: 'patient',
@@ -1236,6 +1247,17 @@ export function describeAudit(entry) {
     case 'ROLE_CHANGED':
     case 'MEMBER_ROLE_CHANGED':
       return `was ${rolesLabel(d.from)}; now ${rolesLabel(d.to)}`;
+    case 'MEMBER_GROUP_CHANGED':
+      return [d.from ? `was ${d.from}` : '', `now ${d.to}`, d.roles ? `roles: ${rolesLabel(d.roles.to)}` : ''].filter(Boolean).join('; ');
+    case 'USER_GROUP_CREATED':
+      return [d.name, d.roles ? rolesLabel(d.roles) : ''].filter(Boolean).join(' · ');
+    case 'USER_GROUP_CHANGED':
+      return [d.name, d.changes ? `changed: ${Object.keys(d.changes).join(', ')}` : ''].filter(Boolean).join(' · ');
+    case 'USER_GROUP_DEACTIVATED':
+    case 'USER_GROUP_REACTIVATED':
+      return d.name ?? '';
+    case 'MEMBER_PAGES_CHANGED':
+      return Object.entries(d.pages ?? {}).map(([k, v]) => `${k}: ${v.from} → ${v.to}`).join('; ');
     case 'MEMBER_ADDED':
       return `Roles: ${rolesLabel(d.roles ?? d.role)}`;
     case 'USER_UPDATED':

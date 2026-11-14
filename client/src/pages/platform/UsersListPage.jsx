@@ -1,3 +1,4 @@
+import { GroupSelect } from '../../components/GroupDialog.jsx';
 import { useState } from 'react';
 import { ArrowRight, KeyRound, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -5,7 +6,7 @@ import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { ClearFilters, DataTable, FilterSelect, SearchInput, TablePagination } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { Alert, Avatar, Field, ROLE_LABELS, RolePicker, StatusPill, TemporaryPassword, formatDateTime, rolesLabel } from '../../components/ui.jsx';
+import { Alert, Avatar, Field, ROLE_LABELS, StatusPill, TemporaryPassword, formatDateTime, rolesLabel } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { useListParams } from '../../hooks/useListParams.js';
 import { STAFF_ROLE_PAGES, canEditArea, platformTabs } from '../../platform/modules.js';
@@ -70,7 +71,7 @@ export function UsersListPage({ variant = 'all', role = null }) {
     : VARIANTS[variant];
   const navigate = useNavigate();
   const { user: me, platform } = useAuth();
-  const defaults = { search: '', status: '', type: '', role: '', tenantId: '', sort: '-createdAt', page: 1, limit: 25 };
+  const defaults = { search: '', status: '', type: '', role: '', tenantId: '', sort: '-createdAt', page: 1, limit: 10 };
   // Role and hospital filters (Staff by role opens this list with them): hospital staff only
   const staffFilters = variant === 'all' || variant === 'staff' || Boolean(rolePage);
   const hospitals = useFetch(staffFilters ? '/platform/tenants' : null, { status: 'active', limit: 100, sort: 'name' });
@@ -99,7 +100,7 @@ export function UsersListPage({ variant = 'all', role = null }) {
         </span>
       ),
     },
-    { key: 'email', header: 'Email', sortKey: 'email', render: (u) => u.email },
+    { key: 'email', header: 'Email', sortKey: 'email', render: (u) => <span title={u.email}>{u.email}</span> },
     { key: 'hospitals', header: 'Access', className: 'plat-access-cell', render: (u) => <HospitalsCell user={u} /> },
     {
       key: 'status',
@@ -213,9 +214,12 @@ export function UsersListPage({ variant = 'all', role = null }) {
 export function UserNewPage() {
   const { platform } = useAuth();
   const isSuper = platform?.role === 'superadmin';
-  const empty = { accountType: 'staff', name: '', email: '', tenantId: '', roles: [] };
+  const empty = { accountType: 'staff', name: '', email: '', tenantId: '', groupId: '' };
   const [form, setForm] = useState(empty);
   const hospitals = useFetch('/platform/tenants', { status: 'active', limit: 100, sort: 'name' });
+  // The person's user group in that hospital (docs/USER_GROUPS_PLAN.md Part B): their roles there are the group's
+  const groups = useFetch('/platform/user-groups');
+  const activeGroups = (groups.data?.groups ?? []).filter((g) => g.isActive);
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -229,7 +233,7 @@ export function UserNewPage() {
     setError(null);
     setFieldErrors({});
     if (staff && !form.tenantId) return setFieldErrors({ tenantId: 'Choose the hospital' });
-    if (staff && !form.roles.length) return setFieldErrors({ roles: 'Choose at least one role' });
+    if (staff && !form.groupId) return setFieldErrors({ groupId: 'Choose a user group' });
     setSubmitting(true);
     try {
       const body = staff ? form : { accountType: form.accountType, name: form.name, email: form.email };
@@ -282,6 +286,7 @@ export function UserNewPage() {
           </div>
           {staff && (
             <>
+              <div className="form-grid">
               <Field label="Hospital" id="new-hospital" error={fieldErrors.tenantId}>
                 <select id="new-hospital" value={form.tenantId} onChange={(e) => setForm({ ...form, tenantId: e.target.value })}>
                   <option value="">Choose the hospital…</option>
@@ -292,11 +297,8 @@ export function UserNewPage() {
                   ))}
                 </select>
               </Field>
-              <fieldset className="fieldset">
-                <legend>Roles in this hospital</legend>
-                {fieldErrors.roles && <p className="field-error">{fieldErrors.roles}</p>}
-                <RolePicker value={form.roles} onChange={(roles) => setForm({ ...form, roles })} idPrefix="new-role" without={without} />
-              </fieldset>
+              <GroupSelect id="new-group" groups={activeGroups} value={form.groupId} onChange={(groupId) => setForm({ ...form, groupId })} error={fieldErrors.groupId} noAdmin={without.includes('admin')} />
+              </div>
               <p className="hint">Someone who works at several hospitals: add the other hospitals later on their account (Hospital access).</p>
             </>
           )}

@@ -159,6 +159,7 @@ export function UserGroupEditPage() {
         {!editable && <Alert type="info">Only a super admin changes user groups. You can look.</Alert>}
         {form && (
           <form className="ug-form" onSubmit={save} noValidate>
+            <div className="ug-side">
             <section className="card ug-card">
               <h2>Group</h2>
               <Field label="Name" id="ug-name" error={errors.name}>
@@ -175,8 +176,9 @@ export function UserGroupEditPage() {
                 {group?.system ? ' This group was made from a role, so its roles stay.' : group?.members ? ' People are in this group, so its roles stay; make a new group to change them.' : ''}
               </p>
               {errors.roles && <p className="field-error">{errors.roles}</p>}
-              <RolePicker value={form.roles} onChange={(roles) => setForm({ ...form, roles })} idPrefix="ug-role" disabled={rolesLocked} />
+              <RolePicker value={form.roles} onChange={(roles) => setForm({ ...form, roles })} idPrefix="ug-role" disabled={rolesLocked} compact />
             </section>
+            </div>
             <section className="card ug-card">
               <h2>Menu items</h2>
               <p className="help">None hides the item and its pages. View shows them without letting anything be saved. Each item also needs a role that uses it.</p>

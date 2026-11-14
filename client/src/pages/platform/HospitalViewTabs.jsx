@@ -111,7 +111,7 @@ export function HospitalTeamsTab() {
   );
 }
 
-const PATIENT_DEFAULTS = { department: '', search: '', careType: '', sort: '-createdAt', page: 1, limit: 25 };
+const PATIENT_DEFAULTS = { department: '', search: '', careType: '', sort: '-createdAt', page: 1, limit: 10 };
 
 export function HospitalPatientsTab() {
   const { tenant } = useOutletContext();

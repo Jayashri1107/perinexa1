@@ -15,7 +15,7 @@ import { asName } from '../personName.js';
 
 const ROLES = Object.keys(ROLE_LABELS);
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }));
-const DEFAULTS = { search: '', role: '', status: '', page: 1, limit: 25 };
+const DEFAULTS = { search: '', role: '', status: '', page: 1, limit: 10 }; // 10 a page: a list fits the screen (14 Nov 2026)
 const ACCESS_OPTIONS = [
   { value: '', label: 'All' },
   { value: 'active', label: 'Active' },

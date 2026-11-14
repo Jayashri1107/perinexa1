@@ -1,3 +1,4 @@
+import { GroupSelect } from '../../components/GroupDialog.jsx';
 import { useState } from 'react';
 import { ArrowLeft, Info } from 'lucide-react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
@@ -10,7 +11,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { RolesDialog } from '../../components/RolesDialog.jsx';
 import { DepartmentPicker, departmentsMissing } from '../../components/DepartmentPicker.jsx';
 import { DoctorDepartments } from '../../components/MembersPanel.jsx';
-import { Alert, Avatar, Field, RoleBadges, RolePicker, StatusPill, TemporaryPassword, formatDateTime, rolesLabel, useConfirm } from '../../components/ui.jsx';
+import { Alert, Avatar, Field, RoleBadges, StatusPill, TemporaryPassword, formatDateTime, rolesLabel, useConfirm } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PLATFORM_AREA_LABELS, canEditArea } from '../../platform/modules.js';
 import { asName } from '../../personName.js';
@@ -272,7 +273,10 @@ export function UserProfileTab() {
 export function UserHospitalsTab() {
   const { user, reload } = useOutletContext();
   const hospitals = useFetch(user.isSuperAdmin || user.isPlatformAdmin ? null : '/platform/tenants', { status: 'active', limit: 100, sort: 'name' });
-  const [tag, setTag] = useState({ tenantId: '', roles: ['doctor'], departments: [] });
+  const [tag, setTag] = useState({ tenantId: '', groupId: '', roles: [], departments: [] });
+  // The person's user group in the new hospital (docs/USER_GROUPS_PLAN.md Part B)
+  const groupList = useFetch('/platform/user-groups');
+  const tagGroups = (groupList.data?.groups ?? []).filter((g) => g.isActive);
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -326,10 +330,10 @@ export function UserHospitalsTab() {
     e.preventDefault();
     run(async () => {
       const departments = tag.roles.includes('doctor') ? tag.departments : [];
-      await api(`/platform/tenants/${tag.tenantId}/members`, { method: 'POST', body: { email: user.email, roles: tag.roles, departments } });
+      await api(`/platform/tenants/${tag.tenantId}/members`, { method: 'POST', body: { email: user.email, groupId: tag.groupId, departments } });
       const h = hospitals.data?.tenants.find((x) => x.id === tag.tenantId);
       setSuccess(`${user.name} was added to ${h?.name ?? 'the hospital'} as ${rolesLabel(tag.roles)}.`);
-      setTag({ tenantId: '', roles: ['doctor'], departments: [] });
+      setTag({ tenantId: '', groupId: '', roles: [], departments: [] });
     });
   };
 
@@ -423,10 +427,12 @@ export function UserHospitalsTab() {
             </Field>
           </div>
         </div>
-        <fieldset className="fieldset">
-          <legend>Roles in this hospital</legend>
-          <RolePicker value={tag.roles} onChange={(roles) => setTag({ ...tag, roles })} idPrefix="tag-role" />
-        </fieldset>
+        <GroupSelect
+          id="tag-group"
+          groups={tagGroups}
+          value={tag.groupId ?? ''}
+          onChange={(groupId) => setTag({ ...tag, groupId, roles: tagGroups.find((g) => g.id === groupId)?.roles ?? [] })}
+        />
         {tag.roles.includes('doctor') && <DepartmentPicker value={tag.departments} onChange={(departments) => setTag({ ...tag, departments })} idPrefix="tag-dept" />}
         <button type="submit" className="btn btn-primary" disabled={busy || !tag.tenantId || tag.roles.length === 0 || Boolean(departmentsMissing(tag.roles, tag.departments))}>
           Add to hospital

@@ -556,7 +556,8 @@ export function AppLayout() {
             </button>
           </div>
         </header>
-        <main className="pf-main" id="main">
+        {/* pf-dense: the super admin's platform pages in compact rows (developer, 14 Nov 2026 – pages-platform.css) */}
+        <main className={`pf-main ${isPlatform && !inSetup ? 'pf-dense' : ''}`.trim()} id="main">
           {sheet && (
             <div className="pf-sheet-bar">
               <span className="pf-sheet-grip" aria-hidden="true" />
