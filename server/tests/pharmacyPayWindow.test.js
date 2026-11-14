@@ -174,3 +174,26 @@ describe('a bill with no payment chosen goes on credit (13 Nov 2026)', () => {
     expect((await ph('post', `/invoices/${onBill.id}/payments`, { payments: [{ mode: 'cash', amountPaise: 100 }] })).status).toBe(400);
   });
 });
+
+describe('Search patient, as the earlier software (13 Nov 2026)', () => {
+  it('finds by first, middle and last name, by mobile, and narrows the bills to the dates', async () => {
+    const ok = (res, status = 200) => {
+      expect(res.status, JSON.stringify(res.body)).toBe(status);
+      return res.body;
+    };
+    const m = await inStock();
+    const reg = async (fullName, phone) => (await (await as('reception')).post('/api/patients').send(samplePatient({ fullName, phone, assignedDoctor: people.drA._id.toString() }))).body.patient;
+    const asha = await reg('Sample Asha Rani Kale', '9876500011');
+    await reg('Sample Asha Patil', '9876500022');
+    ok(await ph('post', '/invoices', { kind: 'sale', patientId: asha.id, onHospitalBill: true, lines: [{ medicineId: m.id, qty: 1 }] }), 201);
+    const find = async (q) => ok(await ph('get', `/invoices/people?${new URLSearchParams(q)}`)).people.filter((x) => x.mrn).map((x) => x.name);
+    expect(await find({ first: 'asha', last: 'kale' })).toEqual(['Sample Asha Rani Kale']);
+    expect((await find({ first: 'asha' })).sort()).toEqual(['Sample Asha Patil', 'Sample Asha Rani Kale']);
+    expect(await find({ middle: 'rani' })).toEqual(['Sample Asha Rani Kale']);
+    expect(await find({ phone: '98765 00022' })).toEqual(['Sample Asha Patil']);
+    // The dates narrow to people with bills on those days
+    expect(await find({ first: 'asha', from: '2026-09-28', to: '2026-09-28' })).toEqual(['Sample Asha Rani Kale']);
+    expect(await find({ first: 'asha', from: '2026-09-01', to: '2026-09-02' })).toEqual([]);
+    expect((await ph('get', '/invoices/people?from=2026-09-28&to=2026-09-01')).status).toBe(400);
+  });
+});

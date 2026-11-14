@@ -13,6 +13,7 @@ import { BatchGrid, PaymentWindow } from './CounterParts.jsx';
 import { BarcodeBox, MedicineFinder, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { KitPicker, kitShortfall } from './Kits.jsx';
 import { FindElsewhere, TypePill, billsPlace, useClickOrDouble } from './RegisterPage.jsx';
+import { PatientInfoBox } from './PatientInfoBox.jsx';
 
 // Pharmacy → New bill (counter) and → Issue to ward (kind 'issue', admitted patients only): choose OPD, IPD or External
 // (owner, 26 Oct 2026) – an OPD patient from today's register (or found by her number or phone), an admitted patient,
@@ -405,6 +406,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   // PH10: the prescription line whose other brands are being looked at
   const [otherBrands, setOtherBrands] = useState(null);
   const [doctor, setDoctor] = useState({ name: '', reg: '' });
+  const doctors = useFetch('/pharmacy/doctors'); // the hospital's doctors for the Doctor name drop-down
   const [rxSeen, setRxSeen] = useState(false);
   const [lines, setLines] = useState(() =>
     issue && start.wardRequest
@@ -425,7 +427,8 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
     onMade
       ? onMade(res.invoice)
       : navigate('/pharmacy/invoices', {
-          state: { made: { invoice: { id: res.invoice.id, number: res.invoice.number }, name: who === 'walkin' ? res.invoice.customer?.name || customer.name.trim() : (patient?.fullName ?? ''), mrn: who === 'walkin' ? '' : (patient?.mrn ?? ''), type: who === 'walkin' ? 'external' : issue ? 'ipd' : 'opd' } },
+          // how it was settled, for the message "Bill saved – on credit" (13 Nov 2026)
+          state: { made: { invoice: { id: res.invoice.id, number: res.invoice.number }, settled: res.invoice.billId ? 'hospital' : (res.invoice.balancePaise ?? 0) > 0 ? 'credit' : 'paid', duePaise: res.invoice.balancePaise ?? 0, name: who === 'walkin' ? res.invoice.customer?.name || customer.name.trim() : (patient?.fullName ?? ''), mrn: who === 'walkin' ? '' : (patient?.mrn ?? ''), type: who === 'walkin' ? 'external' : issue ? 'ipd' : 'opd' } },
         }),
   );
 
@@ -611,8 +614,8 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                   </button>
                 )}
               </div>
-              {who === 'patient' && !patient && <TodayOpdPicker slim onPick={setPatient} />}
-              {who === 'inpatient' && !patient && <InpatientPicker onPick={setPatient} />}
+              {/* 13 Nov 2026: Patient information as on the earlier Sales Bill – UHID with Search, the name with its drop-down */}
+              {(who === 'patient' || who === 'inpatient') && !patient && <PatientInfoBox who={who} onPick={setPatient} />}
               {patient && (
                 <div className="ph-person">
                   <span className="ph-person-avatar" aria-hidden="true">
@@ -642,6 +645,21 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                 </div>
               )}
 
+              {(patient || who === 'walkin') && (
+                <div className="ph-pi-row ph-pi-doctor">
+                  <label htmlFor="ph-pi-doctor">Doctor name</label>
+                  <ChoiceBox
+                    className="ph-pi-doctor-box"
+                    label="Doctor name"
+                    value={doctor.name}
+                    choices={(doctors.data?.doctors ?? []).map((d) => d.name)}
+                    placeholder="Choose the doctor…"
+                    ownLabel="Outside doctor – type the name…"
+                    maxLength={150}
+                    onChange={(v) => setDoctor({ ...doctor, name: v })}
+                  />
+                </div>
+              )}
               {patient && (
                 <div className="ph-counter-rx">
                   <h2 id="ph-rx" className="ph-section-label">
@@ -656,9 +674,6 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                 <div className="ph-rx-seen">
                   <h2 className="ph-section-label">Outside prescription</h2>
                   <p className="hint">{controlled ? 'A narcotic or Schedule X medicine: the doctor’s registration number is required, and it is given only to a registered patient.' : needsRx ? 'A prescription medicine: write the doctor’s name and tick that you saw the prescription.' : 'If there is a prescription, write the doctor’s name.'}</p>
-                  <Field label="Doctor name" id="ph-doc-name">
-                    <input id="ph-doc-name" value={doctor.name} maxLength={150} onChange={(e) => setDoctor({ ...doctor, name: e.target.value })} />
-                  </Field>
                   <Field label="Registration number" id="ph-doc-reg">
                     <input id="ph-doc-reg" value={doctor.reg} maxLength={60} onChange={(e) => setDoctor({ ...doctor, reg: e.target.value })} />
                   </Field>

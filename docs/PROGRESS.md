@@ -1,5 +1,20 @@
 # Progress
 
+## Sales bill opens straight on the bill, with the earlier software's patient fields (13 Nov 2026, branch `pharmacy-mis`)
+- Pharmacy → Sales bill → **New bill** no longer starts with a people list: it opens the bill itself. On the left,
+  OPD / IPD / External, then **UHID** with **Search** (exact patient number; someone admitted opens Issue to ward) and
+  **Patient name** with a drop-down of matches while typing (OPD: every OPD patient by name or number; IPD: those
+  admitted now) – `PatientInfoBox.jsx`. Under the patient, **Doctor name** is a drop-down of the hospital's doctors with
+  "Outside doctor – type the name…". The people list is still under **Bill list**. The left panel is wider (320–360px).
+- **Search patient**, as the earlier software's window: on the bill, Search with no UHID typed opens it – patient type
+  OP / IP, first, middle and last name, Mob. no., UHID, a Date tick with From / To, Show, and the people found beside
+  (UHID, name, mobile, last bill); a click picks them. The **Bill list** search panel has the same fields (Doctor,
+  Amount, Paid by and Bill or medicine removed). Server: `/api/pharmacy/invoices/people` takes `first`, `middle`,
+  `last`, `phone`, `from`, `to`.
+- **Credit asked first**, as the earlier software: Save with no payment ticked asks "Save this bill as credit?" (Yes / No);
+  after saving the message says how the bill was settled – "Bill PH-000011 saved – on credit – ₹3 to be paid later", on
+  the hospital bill, or paid.
+
 ## Credit when no payment is chosen; typed dates in the pharmacy (13 Nov 2026, branch `pharmacy-mis`)
 - **Payment window**: with nothing ticked, Save puts the bill on credit – a registered patient's on her hospital bill,
   a walk-in's owed (`onCredit`, no hospital bill). The bill shows Payment due and prints Balance Due; **Receive payment**

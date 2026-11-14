@@ -68,15 +68,18 @@ export function InvoicesPage({ pick = null }) {
   const res = useFetch('/pharmacy/invoices', search.length >= 2 ? { search } : { date });
   const day = date ?? res.data?.today;
 
-  // The pharmacist's filters, in a panel at the side like the store's earlier software (5 Nov 2026), with no button to
-  // press: every change narrows the list beside them at once. Type, doctor and day narrow the bills; typing a patient's
-  // name or number lists the people found from the first letter, with their bills of every date, old and new.
+  // The pharmacist's search, as the store's earlier software's Search patient window (13 Nov 2026): patient type, first,
+  // middle and last name, mobile number, UHID, and the bills' dates from–to (ticked to use them); Show lists the people
+  // found, with their bills of every date. The day's bills show below when nothing is searched.
   const [type, setType] = useState('all');
-  const [doctor, setDoctor] = useState('');
-  const [nameText, setNameText] = useState('');
+  const [firstText, setFirstText] = useState('');
+  const [middleText, setMiddleText] = useState('');
+  const [lastText, setLastText] = useState('');
+  const [phoneText, setPhoneText] = useState('');
   const [mrnText, setMrnText] = useState(start ?? '');
-  const [amountText, setAmountText] = useState('');
-  const [paidBy, setPaidBy] = useState('');
+  const [dateOn, setDateOn] = useState(false);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [person, setPerson] = useState(() =>
     madeNow ? { key: madeNow.invoice.id, name: madeNow.name, mrn: madeNow.mrn ?? '', type: madeNow.type, billCount: 1, bills: [{ id: madeNow.invoice.id, number: madeNow.invoice.number, at: new Date().toISOString() }], printNow: true } : null,
   );
@@ -85,9 +88,14 @@ export function InvoicesPage({ pick = null }) {
     setPerson(null);
     setBlank(false); // a day chosen: that day's bills
   };
-  const name = useDebounced(nameText.trim(), 300);
+  const first = useDebounced(firstText.trim(), 300);
+  const middle = useDebounced(middleText.trim(), 300);
+  const last = useDebounced(lastText.trim(), 300);
+  const phone = useDebounced(phoneText.replace(/[^\d]/g, ''), 300);
   const mrn = useDebounced(mrnText.trim(), 300);
-  const amount = useDebounced(amountText.replace(/[^\d.]/g, ''), 300).replace(/^\./, '');
+  const name = first || middle || last || (phone.length >= 3 ? phone : '');
+  const from = dateOn ? fromDate || day : '';
+  const to = dateOn ? toDate || day : '';
   // Search (6 Nov 2026, as the store's earlier software): with a type chosen, that type's people – nothing typed needed
   const [searched, setSearched] = useState(false);
   // The whole list (owner's approval, 9 Nov 2026): how many pages of it are shown – "Show more" adds one
@@ -95,10 +103,11 @@ export function InvoicesPage({ pick = null }) {
   // A type just chosen (All, OPD, IPD or External, 7 Nov 2026): the list stays empty until Search is pressed
   const [blank, setBlank] = useState(Boolean(pick));
   const looking = desk && Boolean(name || mrn || searched);
-  const doctors = useFetch(desk ? '/pharmacy/invoices/doctors' : null);
   const found = useFetch(
     looking ? '/pharmacy/invoices/people' : null,
-    looking ? { ...(name ? { search: name } : {}), ...(mrn ? { mrn } : {}), ...(type !== 'all' ? { type } : {}), ...(doctor ? { doctor } : {}), ...(amount ? { amount } : {}), ...(paidBy ? { paidBy } : {}), ...(pages > 1 ? { pages } : {}) } : undefined,
+    looking
+      ? { ...(first ? { first } : {}), ...(middle ? { middle } : {}), ...(last ? { last } : {}), ...(phone.length >= 3 ? { phone } : {}), ...(mrn ? { mrn } : {}), ...(type !== 'all' ? { type } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), ...(pages > 1 ? { pages } : {}) }
+      : undefined,
   );
   const people = looking ? (found.data?.people ?? []) : [];
   // Came with a patient's number: open their bills as soon as they are found
@@ -112,7 +121,12 @@ export function InvoicesPage({ pick = null }) {
   }, [start, people]);
   // A name clicked in the list (9 Nov 2026): the New bill tab opens with that person chosen – an issue to the ward for
   // someone admitted now, a walk-in bill with the name and phone for an External customer
-  const [made, setMade] = useState(madeNow ? `Invoice ${madeNow.invoice.number} made.` : null);
+  // "Bill saved – on credit", as the earlier software's "Bill generated successfully [Credit]" (13 Nov 2026)
+  const [made, setMade] = useState(() => {
+    if (!madeNow) return null;
+    const how = { credit: `on credit – ${money(madeNow.duePaise ?? 0)} to be paid later`, hospital: 'on the patient’s hospital bill', paid: 'paid' }[madeNow.settled];
+    return `Bill ${madeNow.invoice.number} saved${how ? ` – ${how}` : ''}.`;
+  });
   const [opening, setOpening] = useState(null);
   const typed = (set) => (e) => {
     set(e.target.value);
@@ -130,18 +144,24 @@ export function InvoicesPage({ pick = null }) {
       navigate('/pharmacy', { state: { patient: { id: x.key, fullName: x.name, mrn: x.mrn } } });
     }
   };
+  const clearPerson = () => {
+    setFirstText('');
+    setMiddleText('');
+    setLastText('');
+    setPhoneText('');
+    setMrnText('');
+  };
   const closePerson = () => {
     setBlank(false);
     setPerson(null);
-    setNameText('');
-    setMrnText('');
+    clearPerson();
     setSearched(false);
   };
 
   // Phones, as in the app design (2 Nov 2026): how many bills and their total above the list
   const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
-  const bills = res.data?.invoices?.filter((v) => !desk || billFits(v, { type, doctor, amount, paidBy }));
-  const filtering = desk && (type !== 'all' || doctor || amountText || paidBy || nameText || mrnText || text);
+  const bills = res.data?.invoices?.filter((v) => !desk || billFits(v, { type }));
+  const filtering = desk && (type !== 'all' || text);
   const billSearch = <input type="search" className="bill-search-plain" aria-label="Find a bill" placeholder="Bill number or a medicine" value={text} onChange={(e) => setText(e.target.value)} />;
   const dayNav = day && (
     <div className="appt-daynav" role="group" aria-label="Day">
@@ -202,29 +222,82 @@ export function InvoicesPage({ pick = null }) {
         {desk ? (
           <div className="ph-sold-split">
             <section className="card ph-filters" aria-label="Find bills">
-              <div className="segmented" role="group" aria-label="Type of patient">
-                {TYPE_CHOICES.map(([k, label, Icon]) => (
-                  <button
-                    key={k}
-                    type="button"
-                    aria-pressed={type === k}
-                    onClick={() => {
-                      setType(k);
+              <div className="ph-filter">
+                <span>Patient type</span>
+                <div className="segmented" role="group" aria-label="Type of patient">
+                  {TYPE_CHOICES.map(([k, label, Icon]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      aria-pressed={type === k}
+                      onClick={() => {
+                        setType(k);
+                        setPerson(null);
+                        setMade(null);
+                        setSearched(false);
+                        clearPerson();
+                        setBlank(true);
+                      }}
+                    >
+                      <Icon aria-hidden="true" /> {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="ph-filter-row ph-find-form">
+                <h3 className="ph-find-head">Patient name</h3>
+                <label className="ph-filter">
+                  <span>First name</span>
+                  <input type="search" value={firstText} maxLength={50} onChange={typed(setFirstText)} />
+                </label>
+                <label className="ph-filter">
+                  <span>Middle name</span>
+                  <input type="search" value={middleText} maxLength={50} onChange={typed(setMiddleText)} />
+                </label>
+                <label className="ph-filter">
+                  <span>Last name</span>
+                  <input type="search" value={lastText} maxLength={50} onChange={typed(setLastText)} />
+                </label>
+                <label className="ph-filter">
+                  <span>Mob. no.</span>
+                  <input type="search" inputMode="tel" value={phoneText} maxLength={20} onChange={typed(setPhoneText)} />
+                </label>
+                <label className="ph-filter">
+                  <span>UHID</span>
+                  <input type="search" value={mrnText} maxLength={40} placeholder="Patient number" onChange={typed(setMrnText)} />
+                </label>
+                <label className="ph-find-tick">
+                  <input
+                    type="checkbox"
+                    checked={dateOn}
+                    onChange={(e) => {
+                      setDateOn(e.target.checked);
                       setPerson(null);
-                      setMade(null);
-                      setSearched(false);
-                      setNameText('');
-                      setMrnText('');
-                      setBlank(true);
                     }}
-                  >
-                    <Icon aria-hidden="true" /> {label}
-                  </button>
-                ))}
+                  />{' '}
+                  Date
+                </label>
+                <div className="ph-filter">
+                  <span>From date</span>
+                  <DateText aria-label="From date" value={fromDate || day || ''} max={toDate || day} disabled={!dateOn} onChange={(v) => setFromDate(v)} />
+                </div>
+                <div className="ph-filter">
+                  <span>To date</span>
+                  <DateText
+                    aria-label="To date"
+                    value={toDate || day || ''}
+                    min={fromDate || undefined}
+                    disabled={!dateOn}
+                    onChange={(v) => {
+                      setToDate(v);
+                      go(v);
+                    }}
+                  />
+                </div>
               </div>
               <button
                 type="button"
-                className="btn btn-secondary ph-search-btn"
+                className="btn btn-primary ph-search-btn"
                 onClick={() => {
                   setSearched(true);
                   setPages(1);
@@ -233,53 +306,8 @@ export function InvoicesPage({ pick = null }) {
                   setMade(null);
                 }}
               >
-                <Search aria-hidden="true" /> Search {type === 'all' ? 'all' : TYPE_CHOICES.find(([k]) => k === type)?.[1]} patients
+                <Search aria-hidden="true" /> Show
               </button>
-              <div className="ph-filter-row">
-                <div className="ph-filter">
-                  <span>Date</span>
-                  {dayNav}
-                </div>
-                <label className="ph-filter">
-                  <span>Patient number</span>
-                  <input type="search" value={mrnText} maxLength={40} placeholder="UHID" onChange={typed(setMrnText)} />
-                </label>
-                <label className="ph-filter">
-                  <span>Patient name</span>
-                  <input type="search" value={nameText} maxLength={100} placeholder="Name or phone" onChange={typed(setNameText)} />
-                </label>
-                <label className="ph-filter">
-                  <span>Doctor name</span>
-                  <select value={doctor} onChange={typed(setDoctor)}>
-                    <option value="">All doctors</option>
-                    {(doctors.data?.doctors ?? []).map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="ph-filter">
-                  <span>Amount ₹</span>
-                  <input inputMode="decimal" value={amountText} maxLength={12} placeholder="e.g. 1200" onChange={typed(setAmountText)} />
-                </label>
-                <label className="ph-filter">
-                  <span>Paid by</span>
-                  <select value={paidBy} onChange={typed(setPaidBy)}>
-                    <option value="">All</option>
-                    <option value="hospital">On the hospital bill</option>
-                    {Object.entries(MODE_LABELS).map(([k, label]) => (
-                      <option key={k} value={k}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="ph-filter">
-                  <span>Bill or medicine</span>
-                  {billSearch}
-                </label>
-              </div>
             </section>
             <div className="ph-sold-results">
               {made && (
