@@ -973,6 +973,10 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
               <Link className="btn btn-secondary" to="/pharmacy/reports">
                 <CalendarClock aria-hidden="true" /> Expiry list
               </Link>
+              {/* 13 Nov 2026: one Sales bill page – the bills made are a button here, as on the earlier software */}
+              <Link className="btn btn-secondary" to="/pharmacy/invoices">
+                <ClipboardList aria-hidden="true" /> Bill list
+              </Link>
               <button type="button" className="btn btn-primary" disabled={!ready || s.busy} onClick={save}>
                 <Receipt aria-hidden="true" /> {issue ? 'Save the issue' : 'Save'}
               </button>

@@ -46,11 +46,6 @@ export const BUYING_PATHS = ['/pharmacy/purchases', '/pharmacy/orders', '/pharma
  * One "Sales bill" page with two tabs (owner's developer, 9 Nov 2026): making a bill, and the list of bills (Sold) –
  * as the store's earlier Sales Bill screen with its Bill List. Issue to ward is the New bill tab's IPD.
  */
-export const salesBillSections = () => [
-  { label: 'New bill', to: '/pharmacy', end: true, activeFor: '/pharmacy/issue' },
-  { label: 'Bill list', to: '/pharmacy/invoices', end: false },
-];
-
 export const buyingSections = () => [
   { label: 'Purchase bills', to: '/pharmacy/purchases', end: false },
   { label: 'Orders', to: '/pharmacy/orders', end: false },

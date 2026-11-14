@@ -125,6 +125,7 @@ const purchaseLineSchema = new mongoose.Schema({
 const grnSchema = new mongoose.Schema(
   {
     gateEntryNo: { type: String, default: '' },
+    storeName: { type: String, default: '' }, // 14 Nov 2026: the store it was received into (filled with the pharmacy's name, editable)
     taxType: { type: String, enum: ['cgst_sgst', 'igst'], default: 'cgst_sgst' },
     payment: { type: String, enum: ['credit', 'cash'], default: 'credit' },
     receivedBy: { type: String, default: '' },

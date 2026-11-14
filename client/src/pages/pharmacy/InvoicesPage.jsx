@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BedDouble, Building2, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, FileJson, History, Printer, RotateCcw, Search, Stethoscope, UserPlus, Users } from 'lucide-react';
+import { BedDouble, Building2, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, FileJson, History, Plus, Printer, RotateCcw, Search, Stethoscope, UserPlus, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -217,7 +217,19 @@ export function InvoicesPage({ pick = null }) {
   );
   return (
     <>
-      <PharmacyHeader className="ph-fab" title={desk ? 'Sales bill' : 'Sold'} crumb={pick ? 'New bill' : desk ? 'Bill list' : 'Sold'} sales />
+      <PharmacyHeader
+        className="ph-fab"
+        title={desk ? 'Bill list' : 'Sold'}
+        crumb={desk ? 'Bill list' : 'Sold'}
+        sales
+        actions={
+          desk ? (
+            <Link className="btn btn-secondary" to="/pharmacy">
+              <Plus aria-hidden="true" /> New bill
+            </Link>
+          ) : undefined
+        }
+      />
       <div className="pf-content bill-page ph-sold">
         {desk ? (
           <div className="ph-sold-split">

@@ -911,3 +911,35 @@
 .ph-credit-ask-title svg { width: 22px; height: 22px; color: var(--indigo-700); flex: none; }
 .ph-credit-ask p { margin: 0 0 var(--space-4); font-size: 0.875rem; color: var(--slate-600); }
 .ph-credit-ask-actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+
+/* New GRN exactly as the earlier software (14 Nov 2026): the invoice panel with label beside each field and the
+   supplier's details in boxes; Item Name with UOM and HSN beside it; the medicine's panel over the items grid */
+.ph-gi { display: grid; gap: 6px; }
+.ph-gi-row { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: var(--space-2); }
+.ph-gi-row > span, .ph-gi-labelled span { font-size: 0.8125rem; font-weight: 600; color: var(--ink); }
+.ph-gi-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.ph-gi-labelled > * { display: grid; gap: 2px; min-width: 0; }
+.ph-gi :is(input, select) { width: 100%; min-width: 0; }
+.ph-gi .ph-ro { background: var(--mist-50); color: var(--slate-600); }
+.ph-gi-radios { display: flex; gap: var(--space-6); padding: 4px 2px; font-size: 0.875rem; }
+.ph-gi-radios label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.ph-gi-radios input { height: auto; width: auto; }
+.ph-gi-note { margin: 0; font-size: 0.75rem; }
+.ph-gi-item { display: grid; grid-template-columns: minmax(0, 1fr) 110px 120px; gap: var(--space-2); align-items: end; }
+.ph-gi-small { display: grid; gap: 2px; }
+.ph-gi-small span { font-size: 0.75rem; color: var(--slate-600); }
+.ph-gi-small input { width: 100%; }
+.card.ph-grn-items { position: relative; }
+.ph-gl-pop { position: absolute; z-index: 40; left: var(--space-4); right: var(--space-4); top: 92px; background: var(--surface); border: 1px solid var(--indigo-200); border-radius: var(--radius-md); box-shadow: var(--shadow-pop); padding: var(--space-3) var(--space-4) var(--space-3); }
+.ph-gl-pop-head { display: flex; align-items: center; gap: var(--space-3); margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-4)) var(--space-3); padding: 6px var(--space-4); border-bottom: 1px solid var(--border); border-radius: var(--radius-md) var(--radius-md) 0 0; background: var(--status-watch-bg); }
+.ph-gl-pop-head strong { color: var(--ink); font-size: 0.9375rem; }
+.ph-gl-pop-meta { flex: 1 1 auto; min-width: 0; font-size: 0.75rem; color: var(--slate-600); }
+.ph-gl-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); align-items: start; }
+.ph-gl-grid .field { margin: 0; }
+.ph-gl-grid .field > label { font-size: 0.75rem; margin-bottom: 2px; }
+.ph-gl-grid :is(input, select) { height: 30px; min-height: 0; padding: 3px 8px; font-size: 0.8125rem; width: 100%; }
+.ph-gl-grid .ph-ro { text-align: right; font-variant-numeric: tabular-nums; background: var(--mist-50); }
+.ph-gl-pop-actions { grid-column: 3 / -1; display: flex; justify-content: flex-end; align-items: end; gap: var(--space-2); height: 100%; }
+.bill-lines.ph-grn-lines tr.ph-grn-row-on td { background: var(--status-watch-bg); }
+@media (max-width: 1000px) { .ph-gl-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ph-gl-pop-actions { grid-column: 1 / -1; } }
+.ph-gi-item .ph-find p.hint { display: none; } .ph-gi-item .ph-find { min-width: 0; }

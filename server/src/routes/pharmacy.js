@@ -507,6 +507,7 @@ const purchaseSchema = z
     grn: z
       .object({
         gateEntryNo: z.string().trim().max(40).default(''),
+        storeName: z.string().trim().max(150).default(''), // 14 Nov 2026: the store it was received into, as typed
         taxType: z.enum(TAX_TYPES).default('cgst_sgst'),
         payment: z.enum(PAYMENT_MODES).default('credit'),
         receivedBy: z.string().trim().max(100).default(''),

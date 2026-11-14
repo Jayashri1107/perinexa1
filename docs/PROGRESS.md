@@ -1,5 +1,16 @@
 # Progress
 
+## Sales bill: one page, no New bill / Bill list tabs (14 Nov 2026, branch `pharmacy-mis`)
+- As on the earlier software, the bill's buttons are Expiry list · **Bill list** · Save · Close; the Bill list page has
+  a **New bill** button at the top. `salesBillSections` (the two tabs) is gone.
+- **New GRN exactly as the earlier software**: the invoice panel with the label beside each field – Store Name (the
+  pharmacy's name, editable, kept on the GRN as `grn.storeName`), Supplier Name, the supplier's address, phone and GSTIN
+  in boxes, Invoice No / Gate Entry No, Invoice Date / Tax Name, Date / Time, Direct Purchase / Purchase Orders, Credit /
+  Cash (tax and credit or cash filled in from the supplier, changeable for this bill). Item Name with UOM and HSN Code
+  beside it. The medicine's panel opens over the items grid with its name highlighted: Batch No, Exp. Date, Qty, Free
+  Qty / Disc Per, Disc Amt, Rate, MRP, Sales Rate, Conv. Factor / Total Amount, Total Qty, GST %, GST Amount, Net
+  Amount, HSN Code / Landed Rate, Profit Per; the line being changed is highlighted in the grid.
+
 ## Sales bill opens straight on the bill, with the earlier software's patient fields (13 Nov 2026, branch `pharmacy-mis`)
 - Pharmacy → Sales bill → **New bill** no longer starts with a people list: it opens the bill itself. On the left,
   OPD / IPD / External, then **UHID** with **Search** (exact patient number; someone admitted opens Issue to ward) and
