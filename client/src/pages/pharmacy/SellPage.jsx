@@ -426,7 +426,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const s = useSend((res) =>
     onMade
       ? onMade(res.invoice)
-      : navigate('/pharmacy/invoices', {
+      : navigate('/pharmacy', {
           // how it was settled, for the message "Bill saved – on credit" (13 Nov 2026)
           state: { made: { invoice: { id: res.invoice.id, number: res.invoice.number }, settled: res.invoice.billId ? 'hospital' : (res.invoice.balancePaise ?? 0) > 0 ? 'credit' : 'paid', duePaise: res.invoice.balancePaise ?? 0, name: who === 'walkin' ? res.invoice.customer?.name || customer.name.trim() : (patient?.fullName ?? ''), mrn: who === 'walkin' ? '' : (patient?.mrn ?? ''), type: who === 'walkin' ? 'external' : issue ? 'ipd' : 'opd' } },
         }),
@@ -543,7 +543,8 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   // The GST inside the prices (MRP includes GST), after the discount
   const gstPaise = Math.round(lines.reduce((n, l) => n + ((rowPaise(l) ?? 0) * (1 - (Number.isFinite(pct) ? pct : 0) / 100) * l.medicine.gstRate) / (100 + l.medicine.gstRate), 0));
   const entryAmount = entry?.batch && /^\d+$/.test(entry.qty) ? priceOf(entry.batch, Number(entry.qty)) : null;
-  const close = embedded && onCancel ? onCancel : () => navigate('/pharmacy/invoices');
+  // Close: back to the Sales bill page's list (14 Nov 2026: search, bills and new bills on one screen)
+  const close = (embedded || fromList) && onCancel ? onCancel : () => navigate('/pharmacy');
   // Medicines added or changed after a discount was given: the % stays, the amount follows it
   useEffect(() => {
     const n = Number(discount);
@@ -972,10 +973,6 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
             <div className="ph-counter-actions">
               <Link className="btn btn-secondary" to="/pharmacy/reports">
                 <CalendarClock aria-hidden="true" /> Expiry list
-              </Link>
-              {/* 13 Nov 2026: one Sales bill page – the bills made are a button here, as on the earlier software */}
-              <Link className="btn btn-secondary" to="/pharmacy/invoices">
-                <ClipboardList aria-hidden="true" /> Bill list
               </Link>
               <button type="button" className="btn btn-primary" disabled={!ready || s.busy} onClick={save}>
                 <Receipt aria-hidden="true" /> {issue ? 'Save the issue' : 'Save'}

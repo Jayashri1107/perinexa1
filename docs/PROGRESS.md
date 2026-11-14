@@ -1,5 +1,12 @@
 # Progress
 
+## Sales bill: search, bills and new bills on one screen (14 Nov 2026, branch `pharmacy-mis`)
+- Pharmacy → Sales bill (`/pharmacy`) is the Bill list's screen: the Search patient panel on the left (patient type,
+  first, middle and last name, Mob. no., UHID, Date from–to, Show), the day's bills or the people found on the right,
+  and New walk-in customer. A name clicked starts that person's bill here (someone admitted: Issue to ward); Bills shows
+  their bills. Close on a bill goes back to the list; a bill saved comes back to it with its print preview. The bill no
+  longer has a Bill list button (`NewBillPage.jsx`, `InvoicesPage` pick mode).
+
 ## Sales bill: one page, no New bill / Bill list tabs (14 Nov 2026, branch `pharmacy-mis`)
 - As on the earlier software, the bill's buttons are Expiry list · **Bill list** · Save · Close; the Bill list page has
   a **New bill** button at the top. `salesBillSections` (the two tabs) is gone.

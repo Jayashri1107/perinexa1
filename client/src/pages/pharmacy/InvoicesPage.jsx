@@ -101,7 +101,7 @@ export function InvoicesPage({ pick = null }) {
   // The whole list (owner's approval, 9 Nov 2026): how many pages of it are shown – "Show more" adds one
   const [pages, setPages] = useState(1);
   // A type just chosen (All, OPD, IPD or External, 7 Nov 2026): the list stays empty until Search is pressed
-  const [blank, setBlank] = useState(Boolean(pick));
+  const [blank, setBlank] = useState(false);
   const looking = desk && Boolean(name || mrn || searched);
   const found = useFetch(
     looking ? '/pharmacy/invoices/people' : null,
@@ -219,11 +219,11 @@ export function InvoicesPage({ pick = null }) {
     <>
       <PharmacyHeader
         className="ph-fab"
-        title={desk ? 'Bill list' : 'Sold'}
-        crumb={desk ? 'Bill list' : 'Sold'}
+        title={pick ? 'Sales bill' : desk ? 'Bill list' : 'Sold'}
+        crumb={pick ? 'Sales bill' : desk ? 'Bill list' : 'Sold'}
         sales
         actions={
-          desk ? (
+          desk && !pick ? (
             <Link className="btn btn-secondary" to="/pharmacy">
               <Plus aria-hidden="true" /> New bill
             </Link>
@@ -329,13 +329,13 @@ export function InvoicesPage({ pick = null }) {
               )}
               {pick && (
                 <div className="ph-pick-bar">
-                  <span className="muted">Choose who the bill is for: search on the left and click a name.</span>
+                  <span className="muted">Search on the left and click a name to make their bill – or a walk-in customer:</span>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={pick.onWalkIn}>
                     <UserPlus aria-hidden="true" /> New walk-in customer
                   </button>
                 </div>
               )}
-              {person && !pick ? (
+              {person ? (
                 <PersonBills key={person.key} person={person} onClose={closePerson} />
               ) : looking ? (
                 <PeopleFound
@@ -343,10 +343,10 @@ export function InvoicesPage({ pick = null }) {
                   people={people}
                   onPick={pick ? pick.onPick : openBill}
                   opening={opening}
-                  onBills={pick ? (x) => x.mrn && navigate(...billsPlace({ mrn: x.mrn })) : setPerson}
+                  onBills={setPerson}
                   onMore={found.data?.pages ? () => setPages((n) => n + 1) : null}
                 />
-              ) : blank || pick ? (
+              ) : blank ? (
                 <section className="card ph-found ph-blank" aria-label="People found">
                   <p className="muted">
                     Press Search to list {type === 'all' ? 'all' : TYPE_CHOICES.find(([k]) => k === type)?.[1]} patients, or type a patient’s name or number.
