@@ -1,8 +1,18 @@
 # Super admin hospital view, user groups and page access – plan (14 Nov 2026)
 
-**Status: Part A built (14 Nov 2026, branch `user-groups`), at the developer's go-ahead.** Part B is built on branch
-`user-groups-b` (see its status note there). Part B needs the **owner's approval** before it goes to main (see "Needs
-the owner" below).
+**Status: Part A and Part B built (14 Nov 2026, branches `user-groups` and `user-groups-b`), at the developer's
+go-ahead, and merged into master for the development app.** Part B needs the **owner's approval** before it goes to
+main (see "Needs the owner" below).
+
+Part B as built differs from the plan in one way (developer's agreement, 14 Nov 2026): the ~300 role checks were **not**
+rewritten. A group holds roles (which keep deciding what is allowed and which records open) and None / View / Edit per
+menu item (one per left-menu item, 23). The website sends the menu item each request comes from (`X-Perinexa-Page`);
+the server refuses a request from a None item and a change from a View item (`server/src/middleware/pageAccess.js`).
+Page access therefore only takes away. Group roles: never changed on the 13 role groups, nor on a group people are in.
+Admin rights stay on the person (as before). Files: `server/src/access/pages.js`, `models/UserGroup.js`,
+`routes/userGroups.js`, `users/userGroups.js` (the move at start), `routes/members.js` (group, own pages);
+`client/src/platform/pageAccess.js`, `pages/platform/UserGroupsPage.jsx`, `components/GroupDialog.jsx`. Tests:
+`server/tests/user-groups.test.js`.
 
 Part A as built: Platform → Hospitals → one hospital has the tabs Departments, Staff by department, Patients (super
 admins only) and Activity (with Department and Role filters). Staff without a department are grouped by their role
