@@ -32,10 +32,18 @@ export const CARE_TYPES = Object.keys(CARE_TYPE_LABELS);
 // The "New patient" menu: registering starts by choosing the type of care.
 export const NEW_PATIENT_LINKS = CARE_TYPES.flatMap((t) => [
   { type: t, label: CARE_TYPE_LABELS[t], to: `/patients/new/${t}` },
-  // An older baby for vaccination or follow-up (11 Nov 2026): still a baby's record (the vaccination dates are worked
-  // out from the date of birth), opened with "time of birth not known" and the Pediatric department chosen
-  ...(t === 'newborn' ? [{ type: t, followUp: true, label: 'Baby – vaccination or follow-up', hint: 'Older baby: date of birth only, Pediatric', to: `/patients/new/${t}?for=followup` }] : []),
+  // Pediatric department (14 Nov 2026, was "Baby – vaccination or follow-up" of 11 Nov): an older baby, still a baby's
+  // record (the vaccination dates are worked out from the date of birth). It opens a choice of Follow-up or
+  // Vaccination (PEDIATRIC_CHOICES); the form then has "time of birth not known" and the Pediatric department chosen.
+  ...(t === 'newborn' ? [{ type: t, followUp: true, label: 'Pediatric department', hint: 'Baby: follow-up or vaccination', to: '/patients/new/pediatric' }] : []),
 ]);
+// The two choices of the Pediatric department page. After saving, reception goes to that list: Follow-ups (with
+// Add follow-up open for the baby) or Follow-ups → Vaccinations.
+export const PEDIATRIC_CHOICES = [
+  { key: 'followup', label: 'Follow-up', hint: 'Baby coming back to the doctor', to: '/patients/new/newborn?for=followup', after: '/follow-ups' },
+  { key: 'vaccination', label: 'Vaccination', hint: 'Baby coming for vaccination', to: '/patients/new/newborn?for=vaccination', after: '/follow-ups/vaccinations' },
+];
+export const pediatricChoice = (key) => PEDIATRIC_CHOICES.find((c) => c.key === key) ?? null;
 
 export const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 

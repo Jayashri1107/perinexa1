@@ -86,7 +86,7 @@ describe('the left menu by role', () => {
     expect(menu(['quality'])).toEqual(['Today', 'Clinical audit', 'Incidents', 'Privileges']); // never Patients (Group A item 6)
     expect(menu(['referral_desk'])).toEqual(['Today', 'Patients', 'Appointments', 'Referrals', 'Incidents']);
     expect(patientTabs(['referral_desk']).find((t) => t.label === 'New patient').menu.map((l) => l.to)).not.toContain('/patients/new/newborn'); // never a baby
-    expect(patientTabs(['referral_desk']).find((t) => t.label === 'New patient').menu.map((l) => l.to)).not.toContain('/patients/new/newborn?for=followup'); // nor the vaccination card (11 Nov 2026)
+    expect(patientTabs(['referral_desk']).find((t) => t.label === 'New patient').menu.map((l) => l.to)).not.toContain('/patients/new/pediatric'); // nor the Pediatric department card (14 Nov 2026)
     for (const roles of [['receptionist'], ['doctor'], ['rmo'], ['referral_desk', 'receptionist']]) expect(newPatientLinks(roles).map((l) => l.to), roles.join()).toContain('/patients/new/newborn');
     for (const roles of [['nurse'], ['receptionist'], ['lab'], ['pharmacist'], ['admin']]) expect(menu(roles), roles[0]).not.toContain('Referrals');
     expect(moduleByKey('referrals').tabs.map((t) => t.to)).toEqual(['/referrals', '/referrals/doctors', '/referrals/review', '/referrals/slip']);
