@@ -11,7 +11,10 @@ function Cell({ day, chosen, tabbable, today, level, onChoose, onKey }) {
   const { pieces, total, label } = countWords(day, level);
   const isChosen = day.date === chosen;
   const isToday = day.date === today;
-  const cls = ['cal-cell', isToday ? 'cal-cell-today' : '', isChosen ? 'cal-cell-chosen' : '', day.inMonth ? '' : 'cal-cell-out'].filter(Boolean).join(' ');
+  const hasEdd = pieces.some((p) => p.type === 'edd');
+  const cls = ['cal-cell', isToday ? 'cal-cell-today' : '', isChosen ? 'cal-cell-chosen' : '', day.inMonth ? '' : 'cal-cell-out', hasEdd ? 'cal-cell-edd' : '']
+    .filter(Boolean)
+    .join(' ');
   return (
     <div role="gridcell" aria-selected={isChosen} className={cls}>
       <button

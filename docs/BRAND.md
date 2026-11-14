@@ -161,7 +161,7 @@ statuses**: colour + icon + word on the pill base (`.pill`, 13 px / 500), existi
 | --- | --- | --- | --- | --- | --- |
 | Booked next visit | `.cal-mark-booked` | Teal Wash `--teal-100` fill, Deep Teal `--teal-700` text | `CalendarCheck` | Booked visit | Booked visit |
 | Care-plan visit | `.cal-mark-plan` | `--surface` fill, 1 px `--teal-700` border, `--teal-700` text | `Stethoscope` | Plan visit | Visit due |
-| EDD | `.cal-mark-edd` | `--status-admitted-bg` / `--status-admitted-fg` (violet) | `Baby` | EDD (scan) / EDD (LMP) | – |
+| EDD | `.cal-mark-edd` | solid `--status-admitted-fg` (deep violet) fill, `--on-solid` white text, 600 weight (8.6:1) | `Baby` | EDD (scan) / EDD (LMP) | – |
 | LMP | `.cal-mark-lmp` | `--surface` fill, 1 px `--slate-600` border, `--ink` text | `Droplet` | LMP | – |
 
 - **An exception to rule 4, on purpose.** Rule 4 keeps types as neutral tags; calendar marks are the one stated
@@ -169,6 +169,8 @@ statuses**: colour + icon + word on the pill base (`.pill`, 13 px / 500), existi
   so it never relies on colour.
 - **EDD borrows the Admitted violet.** EDD marks always carry the Baby icon and the word "EDD", never appear in a
   status column, and Admitted pills never appear on the calendar, so the two cannot be confused.
+- **EDD is the one solid mark** (owner, 14 Nov 2026): deliveries are what a doctor looks for first, so the EDD mark
+  and the month cell's EDD count are filled deep violet with white text; the visit marks stay light.
 - **Teal only for visits** (rule 5: teal marks what is scheduled): booked and care-plan visits. No white text on teal.
 - **LMP is an outline**, so it stays visible on white and on Mist in every personal colour theme (checked in each theme).
 - The status of a care-plan visit is shown next to the mark with the usual `StatusPill` (Due now, Upcoming, Overdue,
@@ -189,6 +191,8 @@ statuses**: colour + icon + word on the pill base (`.pill`, 13 px / 500), existi
   2026: 5 booked visits, 3 visit windows open, 1 EDD").
 - **Cell states**: today – a 2 px Nexa Teal top line and a small "Today" label in Deep Teal (teal marks "now", as
   in the Today divider row); chosen – Teal Wash fill; days outside the month – Mist Light fill and a Slate day number.
+  A day with an EDD (owner, 14 Nov 2026) gets the Admitted violet wash and a 2 px deep violet frame, on top of the
+  other states (the chosen day keeps its Teal Wash fill inside the frame); the frame also shows on phones.
 - **Chosen day**: a white card beside the grid (360 px) when the calendar's own width is 980 px or more, otherwise
   below it; it lists the day's entries.
 - **Phone** (calendar narrower than 560 px): a cell shows the day number and the total only, with a small
