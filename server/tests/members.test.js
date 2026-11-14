@@ -202,7 +202,7 @@ describe('several roles per person', () => {
     expect(both.status).toBe(201);
     expect(both.body.member.roles).toEqual(['receptionist', 'referral_desk']);
     const entry = await AuditLog.findOne({ action: 'MEMBER_ADDED', targetEmail: 'desk@example.com' });
-    expect(entry.details).toEqual({ roles: ['referral_desk'] });
+    expect(entry.details).toEqual({ roles: ['referral_desk'], group: 'Referral desk' }); // the group made for that role (user groups)
     // The admin's role picker offers it, and the list filters by it
     const list = await s.get('/api/tenant/members?role=referral_desk');
     expect(list.body.roles).toContain('referral_desk');

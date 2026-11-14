@@ -135,3 +135,16 @@
 .ap-who-row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
 .ap-add-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
 .ap-add-row .field { flex: 1 1 280px; margin: 0; }
+
+/* User groups (docs/USER_GROUPS_PLAN.md Part B): the group's name, its roles, and None / View / Edit per menu item */
+.ug-form { display: grid; gap: var(--space-4); max-width: 900px; }
+.ug-card { padding: var(--space-6); }
+.ug-card h2 { margin-bottom: var(--space-3); }
+.ug-pages { width: 100%; border-collapse: collapse; }
+.ug-pages th, .ug-pages td { padding: var(--space-2); border-bottom: 1px solid var(--border); text-align: center; }
+.ug-pages th[scope="row"], .ug-pages thead th:first-child { text-align: left; font-weight: 500; }
+.ug-pages thead th { color: var(--slate-600); font-size: var(--fs-label); }
+.ug-pages input[type="radio"] { width: 20px; height: 20px; }
+.ug-actions { display: flex; gap: var(--space-2); }
+/* A person's own page access (Hospital → staff → change access): the group's level beside their own */
+.ug-own select { min-width: 160px; }

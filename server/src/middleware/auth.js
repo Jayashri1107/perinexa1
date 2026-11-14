@@ -1,3 +1,5 @@
+import { effectivePages } from '../access/pages.js';
+import { UserGroup } from '../models/UserGroup.js';
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
 import { Membership, TENANT_ROLES, departmentsOf, hasRole } from '../models/Membership.js';
@@ -85,12 +87,22 @@ export async function listActiveMemberships(user, mode = null) {
   const tenants = await Tenant.find({ _id: { $in: memberships.map((m) => m.tenantId) }, isActive: true })
     .sort({ name: 1 })
     .lean();
-  return tenants.map((t) => ({
-    tenantId: t._id.toString(),
-    tenantName: t.name,
-    ...placeView(memberships.find((m) => m.tenantId.equals(t._id)), mode),
-    joinedAt: memberships.find((m) => m.tenantId.equals(t._id)).createdAt ?? null, // shown on My profile
-  }));
+  // Each place's user group and its None / View menu items (docs/USER_GROUPS_PLAN.md Part B; access/pages.js)
+  const groups = new Map(
+    (await UserGroup.find({ _id: { $in: memberships.map((m) => m.groupId).filter(Boolean) } }, { name: 1, pages: 1 }).lean()).map((g) => [String(g._id), g]),
+  );
+  return tenants.map((t) => {
+    const m = memberships.find((x) => x.tenantId.equals(t._id));
+    const group = m.groupId ? groups.get(String(m.groupId)) : null;
+    return {
+      tenantId: t._id.toString(),
+      tenantName: t.name,
+      ...placeView(m, mode),
+      groupName: group?.name ?? '',
+      pages: effectivePages(group, m),
+      joinedAt: m.createdAt ?? null, // shown on My profile
+    };
+  });
 }
 
 /** One hospital's roles for the website: those worked with now, the switch, the clinical roles, an admin's rights. */
