@@ -1168,33 +1168,52 @@ async function fullListFilter(req, type) {
 }
 pharmacyRouter.get('/invoices/people', async (req, res) => {
   desk(req);
-  const { search, mrn, type, doctor, date, amount, paidBy, pages } = parse(
-    z.object({ search: z.string().trim().min(1).max(100).optional(), mrn: z.string().trim().min(1).max(40).optional(), type: z.enum(Object.keys(BILL_TYPES)).optional(), doctor: z.string().trim().max(150).optional(), date: requiredDateOnly('Date').optional(), amount: z.string().trim().regex(/^\d+(\.\d*)?$/).optional(), paidBy: z.enum([...COUNTER_MODES, 'hospital']).optional(), pages: z.coerce.number().int().min(1).max(50).default(1) }).strict(),
+  // 13 Nov 2026, the earlier software's Search patient window: first, middle and last name, mobile number, and the bills'
+  // dates from–to (with the patient number, as before)
+  const namePart = z.string().trim().min(1).max(50).optional();
+  const { search, mrn, type, doctor, date, amount, paidBy, pages, first, middle, last, phone, from: fromDay, to: toDay } = parse(
+    z.object({ search: z.string().trim().min(1).max(100).optional(), mrn: z.string().trim().min(1).max(40).optional(), type: z.enum(Object.keys(BILL_TYPES)).optional(), doctor: z.string().trim().max(150).optional(), date: requiredDateOnly('Date').optional(), amount: z.string().trim().regex(/^\d+(\.\d*)?$/).optional(), paidBy: z.enum([...COUNTER_MODES, 'hospital']).optional(), pages: z.coerce.number().int().min(1).max(50).default(1), first: namePart, middle: namePart, last: namePart, phone: z.string().trim().regex(/^[\d\s+-]{3,20}$/, 'Write the mobile number in digits.').optional(), from: requiredDateOnly('From date').optional(), to: requiredDateOnly('To date').optional() }).strict(),
     req.query,
   );
+  if (fromDay && toDay && toDay < fromDay) throw new HttpError(400, 'The To date is before the From date.', 'VALIDATION');
+  const parts = [first, middle, last].filter(Boolean).map((x) => new RegExp(escapeRegex(x), 'i'));
+  const phoneDigits = (phone ?? '').replace(/\D/g, '');
+  const phoneRx = phoneDigits ? new RegExp(phoneDigits.split('').join('\\D*')) : null;
+  const byPerson = parts.length > 0 || Boolean(phoneRx);
+  const ranged = Boolean(fromDay || toDay);
+  const dateMatch = date ? { $gte: hospitalDayStart(date), $lt: hospitalDayStart(addDays(date, 1)) } : ranged ? { ...(fromDay ? { $gte: hospitalDayStart(fromDay) } : {}), ...(toDay ? { $lt: hospitalDayStart(addDays(toDay, 1)) } : {}) } : null;
   let unbilledFilter = null;
-  const match = { tenantId: new mongoose.Types.ObjectId(String(req.tenantId)), ...(type ? BILL_TYPES[type] : {}), ...(doctor ? { 'doctor.name': doctor } : {}), ...(date ? { 'created.at': { $gte: hospitalDayStart(date), $lt: hospitalDayStart(addDays(date, 1)) } } : {}) };
+  const match = { tenantId: new mongoose.Types.ObjectId(String(req.tenantId)), ...(type ? BILL_TYPES[type] : {}), ...(doctor ? { 'doctor.name': doctor } : {}), ...(dateMatch ? { 'created.at': dateMatch } : {}) };
   // An amount by its first digits (12 finds 12, 120 and 1,200); "hospital": a patient's bill, paid at the billing desk
   const also = [
     ...(amount ? [{ $expr: { $regexMatch: { input: { $toString: { $divide: [{ $sum: '$lines.amountPaise' }, 100] } }, regex: `^${escapeRegex(amount)}` } } }] : []),
     ...(paidBy === 'hospital' ? [{ patientId: { $ne: null } }] : paidBy ? [{ 'payments.mode': paidBy }] : []),
   ];
   if (also.length) match.$and = also;
-  if (search || mrn) {
+  if (search || mrn || byPerson) {
     const rx = search ? new RegExp(escapeRegex(search), 'i') : null;
     // Among the patients with a bill, so that many who match without one never push out those who have one
     const billed = await PharmacyInvoice.distinct('patientId', { tenantId: req.tenantId, patientId: { $ne: null } });
-    const who = { tenantId: req.tenantId, ...(rx ? { $or: [{ fullName: rx }, { mrn: rx }, { phone: rx }] } : {}), ...(mrn ? { mrn: new RegExp(escapeRegex(mrn), 'i') } : {}) };
+    const who = {
+      tenantId: req.tenantId,
+      ...(rx ? { $or: [{ fullName: rx }, { mrn: rx }, { phone: rx }] } : {}),
+      ...(mrn ? { mrn: new RegExp(escapeRegex(mrn), 'i') } : {}),
+      // each name part typed is in the name (first, middle, last – in any order, as names are written differently)
+      ...(parts.length ? { $and: parts.map((x) => ({ fullName: x })) } : {}),
+      ...(phoneRx ? { phone: phoneRx } : {}),
+    };
     const pids = (await Patient.find({ ...who, _id: { $in: billed } }, { _id: 1 }).lean()).map((p) => p._id);
-    const typedEnough = (search ?? '').length >= 2 || (mrn ?? '').length >= 2;
+    const typedEnough = (search ?? '').length >= 2 || (mrn ?? '').length >= 2 || byPerson;
     // Registered patients without a bill (5 Nov 2026) – with OPD or IPD chosen too (9 Nov 2026), among that type's
     // patients, so the counts are those of the other screens. The bill filters (doctor, day, amount, paid by) find bills only.
-    if (typedEnough && type !== 'external' && !doctor && !date && !amount && !paidBy) {
+    if (typedEnough && type !== 'external' && !doctor && !date && !ranged && !amount && !paidBy) {
       const ofType = type ? (await fullListFilter(req, type)).filter : { sensitive: { $ne: true }, 'duplicateOf.patient': null };
       unbilledFilter = { ...ofType, ...who, _id: { $nin: billed, ...(ofType._id ?? {}) } };
     }
     // A walk-in has no patient number: a number finds only patients
-    match.$or = [{ patientId: { $in: pids } }, ...(rx && !mrn ? [{ patientId: null, 'customer.name': rx }, { patientId: null, 'customer.phone': rx }, { patientId: null, 'buyer.name': rx }] : [])];
+    const walkIn = !mrn && (rx || byPerson);
+    const walkInWho = rx ? [{ patientId: null, 'customer.name': rx }, { patientId: null, 'customer.phone': rx }, { patientId: null, 'buyer.name': rx }] : [{ patientId: null, ...(parts.length ? { $and: parts.map((x) => ({ 'customer.name': x })) } : {}), ...(phoneRx ? { 'customer.phone': phoneRx } : {}) }];
+    match.$or = [{ patientId: { $in: pids } }, ...(walkIn ? walkInWho : [])];
   }
   const groups = await PharmacyInvoice.aggregate([
     { $match: match },
@@ -1232,7 +1251,7 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
     });
   // Search with nothing typed (6 Nov 2026): first the people to bill now, as the pharmacist's register lists them –
   // those admitted (IPD) and those who arrived today (OPD) – then everyone billed, newest first. Never other records.
-  if (!search && !mrn && !doctor && !date && !amount && !paidBy && type !== 'external') {
+  if (!search && !mrn && !byPerson && !doctor && !date && !ranged && !amount && !paidBy && type !== 'external') {
     const listed = new Set(people.map((x) => x.key));
     const [stays, arrivals] = await Promise.all([
       type === 'opd' ? [] : Admission.find({ tenantId: req.tenantId, status: 'admitted' }, { patientId: 1 }).sort({ admittedAt: -1 }).limit(PEOPLE_LIMIT).lean(),
@@ -1253,7 +1272,7 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
   // of the type from the first registration to today, newest registration first, a page at a time ("Show more")
   let fullMore = false;
   let fullCount = 0;
-  const browsing = !search && !mrn && !doctor && !date && !amount && !paidBy && type !== 'external';
+  const browsing = !search && !mrn && !byPerson && !doctor && !date && !ranged && !amount && !paidBy && type !== 'external';
   if (browsing) {
     const { filter, ipd, opd } = await fullListFilter(req, type);
     const listed = people.map((x) => x.key).filter((k) => !k.startsWith('walkin-'));
@@ -1267,7 +1286,7 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
     fullCount = Math.min(rest.length, want);
   }
   await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', {
-    details: search || mrn ? { by: search ? 'name' : 'number', patientIds: people.filter((x) => x.mrn).map((x) => x.key), walkInBills: people.filter((x) => !x.mrn).length, withoutBill: Math.min(unbilled.length, Math.max(room, 0)) } : { by: 'list', type: type ?? 'all', people: people.length, ...(browsing ? { wholeList: fullCount, pages } : {}) },
+    details: search || mrn || byPerson ? { by: search || parts.length ? 'name' : phoneRx ? 'phone' : 'number', patientIds: people.filter((x) => x.mrn).map((x) => x.key), walkInBills: people.filter((x) => !x.mrn).length, withoutBill: Math.min(unbilled.length, Math.max(room, 0)) } : { by: 'list', type: type ?? 'all', people: people.length, ...(browsing ? { wholeList: fullCount, pages } : {}) },
   });
   res.json({ people, more: browsing ? fullMore : groups.length > PEOPLE_LIMIT || unbilled.length > room, ...(browsing ? { pages } : {}) });
 });

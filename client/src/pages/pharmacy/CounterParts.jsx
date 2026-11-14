@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { CircleAlert, CircleCheck, CircleX } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { CircleAlert, CircleCheck, CircleHelp, CircleX } from 'lucide-react';
 import { api } from '../../api.js';
 import { Alert, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -144,6 +145,7 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
   const paysHere = chosen.length > 0 && amounts.every((a) => a && a > 0) && balance === 0 && cardOk;
   // Nothing ticked (13 Nov 2026): the bill goes on credit – a patient's on her hospital bill, a walk-in's to be paid later
   const onCredit = !hospital && chosen.length === 0;
+  const [askCredit, setAskCredit] = useState(false); // "Save this bill as credit?" is open
   const ready = Boolean(quote) && !saving && (onCredit || (!walkIn && hospital) || paysHere);
   const set = (mode, change) => setWays((all) => ({ ...all, [mode]: { ...all[mode], ...change } }));
   // Ticking a way fills in what is still to pay; unticking clears it. Paying here and the hospital bill exclude each other.
@@ -290,7 +292,8 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
             </div>
           )}
           <div className="ph-pay-actions">
-            <button type="button" className="btn btn-primary" disabled={!ready} onClick={save}>
+            {/* Nothing ticked (13 Nov 2026, as the earlier software): Save first asks "Save this bill as credit?" */}
+            <button type="button" className="btn btn-primary" disabled={!ready} onClick={() => (onCredit ? setAskCredit(true) : save())}>
               <CircleCheck aria-hidden="true" /> {saving ? 'Saving…' : 'Save'}
             </button>
             <button type="button" className="btn btn-secondary" onClick={onClose}>
@@ -299,7 +302,46 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
           </div>
         </div>
         {quote && balance !== 0 && chosen.length > 0 && <p className="hint">{balance > 0 ? `₹${two(balance)} is still to be paid.` : `₹${two(-balance)} more than the bill: lower an amount.`}</p>}
+        {askCredit && (
+          <CreditQuestion
+            amount={quote ? two(net) : ''}
+            walkIn={walkIn}
+            onNo={() => setAskCredit(false)}
+            onYes={() => {
+              setAskCredit(false);
+              save();
+            }}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+/** "Do you want to save this bill as credit?" – Yes saves it on credit, No goes back to choose how it is paid. */
+function CreditQuestion({ amount, walkIn, onYes, onNo }) {
+  const ref = useDialogFocus(onNo);
+  // On top of the page, not inside the Payment window (which would clip it)
+  return createPortal(
+    <div className="modal-backdrop ph-credit-ask-backdrop" onClick={(e) => e.target === e.currentTarget && onNo()}>
+      <div ref={ref} tabIndex={-1} className="modal ph-credit-ask" role="alertdialog" aria-modal="true" aria-labelledby="ph-credit-ask-title" aria-describedby="ph-credit-ask-text">
+        <h2 id="ph-credit-ask-title" className="ph-credit-ask-title">
+          <CircleHelp aria-hidden="true" /> Save this bill as credit?
+        </h2>
+        <p id="ph-credit-ask-text">
+          No payment is chosen. {amount ? `₹${amount} ` : 'The bill '}
+          {walkIn ? 'will be owed by the customer and can be paid later with Receive payment on the bill.' : 'will go on the patient’s hospital bill, paid at the billing desk.'}
+        </p>
+        <div className="ph-credit-ask-actions">
+          <button type="button" className="btn btn-primary" autoFocus onClick={onYes}>
+            Yes, save as credit
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={onNo}>
+            No
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }

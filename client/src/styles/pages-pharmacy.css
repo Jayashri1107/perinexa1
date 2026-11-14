@@ -854,3 +854,60 @@
 @media (max-width: 1250px) { .ph-glance .is-money .ph-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .ph-glance .ph-stat-label { min-height: 2.6em; align-items: flex-start; } .ph-glance .ph-stat-label svg.lucide { margin-top: 1px; }
 .ph-inv-receive { margin-top: var(--space-3); width: 100%; justify-content: center; }
+
+/* Sales bill – Patient information as on the earlier software (13 Nov 2026): label beside each field, UHID with Search,
+   the name with a drop-down of matches, the doctor as a drop-down */
+.ph-pi { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+.ph-pi-title { margin: 0 0 2px; font-size: 0.8125rem; font-weight: 700; color: var(--ink); }
+.ph-pi-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: var(--space-2); }
+.ph-pi-row > label { font-size: 0.8125rem; color: var(--slate-600); }
+.ph-pi-row :is(input, select) { height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; width: 100%; }
+.ph-pi-uhid { display: flex; gap: var(--space-1); min-width: 0; }
+.ph-pi-uhid input { flex: 1 1 auto; min-width: 0; }
+.ph-pi-uhid .btn { flex: none; min-height: 0; height: 32px; padding: 0 10px; }
+.ph-pi-combo { position: relative; min-width: 0; }
+.ph-pi-list { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 2px); max-height: 280px; overflow-y: auto; margin: 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-pop); }
+.ph-pi-list button { display: grid; gap: 1px; width: 100%; padding: 6px 8px; border: 0; border-radius: var(--radius-sm); background: none; text-align: left; font: inherit; cursor: pointer; }
+.ph-pi-list button:hover, .ph-pi-list button:focus-visible { background: var(--selected-bg); outline: none; }
+.ph-pi-list strong { display: inline-flex; align-items: center; gap: 4px; font-size: 0.875rem; color: var(--ink); }
+.ph-pi-list strong svg { width: 14px; height: 14px; }
+.ph-pi-list span { font-size: 0.75rem; color: var(--slate-600); }
+.ph-pi-none { padding: 8px; font-size: 0.8125rem; color: var(--slate-600); }
+.ph-pi-msg { margin: 0; }
+.ph-pi-doctor { margin-top: var(--space-2); }
+.ph-pi-doctor .ph-choice-own { display: flex; gap: var(--space-1); }
+/* The left panel as wide as the earlier software's, so UHID, name and doctor sit on one line each */
+@media (min-width: 1100px) { .ph-counter-main { grid-template-columns: minmax(320px, 360px) minmax(0, 1fr); } }
+.card.ph-counter-left { overflow: visible; } .ph-counter-left .ph-bill-head { border-top-left-radius: inherit; border-top-right-radius: inherit; }
+
+/* Search patient (13 Nov 2026), as the earlier software's window: the fields on the left, label beside each, the people
+   found on the right; the Bill list's search panel uses the same fields */
+.modal:has(.ph-fp) { max-width: 980px; }
+.ph-fp { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.ph-fp-form { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--mist-50); }
+.ph-fp-row { display: grid; grid-template-columns: 100px minmax(0, 1fr); align-items: center; gap: var(--space-2); }
+.ph-fp-label { font-size: 0.8125rem; color: var(--slate-600); }
+.ph-fp-row :is(input, select) { height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
+.ph-find-head { margin: var(--space-1) 0 0; font-size: 0.8125rem; font-weight: 700; color: var(--ink); }
+.ph-find-tick { display: inline-flex; align-items: center; gap: 6px; margin-top: var(--space-1); font-size: 0.8125rem; font-weight: 700; color: var(--ink); }
+.ph-fp-show { margin-top: var(--space-2); justify-content: center; }
+.ph-fp-results { min-height: 320px; max-height: 60vh; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-2); }
+.ph-fp-table { font-size: 0.875rem; }
+.ph-fp-pick { cursor: pointer; }
+.ph-fp-pick:hover, .ph-fp-pick:focus-visible { background: var(--selected-bg); outline: none; }
+.ph-find-form .ph-find-head { grid-column: 1 / -1; }
+.ph-find-form .ph-find-tick { grid-column: 1 / -1; }
+@media (max-width: 760px) { .ph-fp { grid-template-columns: minmax(0, 1fr); } }
+.ph-filters .ph-filter > .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; border-radius: var(--radius-md); }
+.ph-filters .ph-filter > .segmented button { justify-content: center; border-radius: var(--radius-sm); }
+.ph-find-form .ph-filter { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: var(--space-2); }
+.ph-find-form .ph-filter > span { font-size: 0.8125rem; color: var(--slate-600); }
+.ph-find-form .ph-filter :is(input, select) { height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
+
+/* "Save this bill as credit?" (13 Nov 2026): a small question over the Payment window */
+.ph-credit-ask-backdrop { z-index: 1200; }
+.modal.ph-credit-ask { max-width: 420px; padding: var(--space-6); }
+.ph-credit-ask-title { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); font-size: 1.0625rem; }
+.ph-credit-ask-title svg { width: 22px; height: 22px; color: var(--indigo-700); flex: none; }
+.ph-credit-ask p { margin: 0 0 var(--space-4); font-size: 0.875rem; color: var(--slate-600); }
+.ph-credit-ask-actions { display: flex; justify-content: flex-end; gap: var(--space-2); }

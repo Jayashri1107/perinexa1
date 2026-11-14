@@ -85,13 +85,14 @@ describe('Sold’s filters', () => {
     answers['/pharmacy/invoices'] = { today: '2026-10-17', invoices: [] };
   });
 
-  it('shows the filters at the side with the day’s bills beside them, no filter button, and no patient until a search', () => {
+  // 13 Nov 2026: the search panel as the earlier software's Search patient window – Doctor, Amount and Paid by removed
+  it('shows the Search patient fields at the side with the day’s bills beside them, and no patient until a search', () => {
     const html = page();
     expect(html).toContain('ph-sold-split');
     expect(html.indexOf('Find bills')).toBeLessThan(html.indexOf('ph-sold-results'));
-    expect(html).not.toMatch(/>\s*(Filter|Apply|Search)\s*</);
     expect(html).not.toContain('Clear the filters');
-    for (const part of ['Patient number', 'Patient name', 'Doctor name', 'Dr Sample Rao', 'External', 'Amount ₹', 'Paid by', 'On the hospital bill', 'Pharmacy invoices']) expect(html).toContain(part);
+    for (const part of ['Patient type', 'External', 'Patient name', 'First name', 'Middle name', 'Last name', 'Mob. no.', 'UHID', 'Date', 'From date', 'To date', 'Show', 'Pharmacy invoices']) expect(html).toContain(part);
+    for (const gone of ['Doctor name', 'Amount ₹', 'Paid by', 'Bill or medicine']) expect(html).not.toContain(gone);
     expect(html).not.toContain('Sample Asha Kale');
   });
 
