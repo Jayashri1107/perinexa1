@@ -802,6 +802,9 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                   <BarcodeBox onPick={scan} />
                 </details>
 
+                {/* 14 Nov 2026: the grid, the totals and the note appear once the first medicine is added */}
+                {lines.length > 0 && (
+                <>
                 <div className="ph-grid-wrap">
                   <table className="ph-grid">
                     <thead>
@@ -820,13 +823,6 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                       </tr>
                     </thead>
                     <tbody>
-                      {!lines.length && (
-                        <tr>
-                          <td colSpan={9} className="muted ph-grid-empty">
-                            No medicine on the bill yet.
-                          </td>
-                        </tr>
-                      )}
                       {lines.map((l) => (
                         <Fragment key={l.key}>
                           <tr>
@@ -968,15 +964,21 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                 <p className="hint">
                   {who === 'walkin' ? 'Save opens the Payment window: the customer pays here, by cash, cheque, card, NEFT / RTGS or online, or in parts.' : issue ? 'The invoice goes on her stay’s bill.' : 'The invoice goes on her hospital bill; she pays at the billing desk.'} Prices are the batch MRP (GST included).
                 </p>
+                </>
+                )}
               </>
             )}
             <div className="ph-counter-actions">
-              <Link className="btn btn-secondary" to="/pharmacy/reports">
-                <CalendarClock aria-hidden="true" /> Expiry list
-              </Link>
-              <button type="button" className="btn btn-primary" disabled={!ready || s.busy} onClick={save}>
-                <Receipt aria-hidden="true" /> {issue ? 'Save the issue' : 'Save'}
-              </button>
+              {lines.length > 0 && (
+                <>
+                  <Link className="btn btn-secondary" to="/pharmacy/reports">
+                    <CalendarClock aria-hidden="true" /> Expiry list
+                  </Link>
+                  <button type="button" className="btn btn-primary" disabled={!ready || s.busy} onClick={save}>
+                    <Receipt aria-hidden="true" /> {issue ? 'Save the issue' : 'Save'}
+                  </button>
+                </>
+              )}
               <button type="button" className="btn btn-secondary" onClick={close}>
                 <CircleX aria-hidden="true" /> Close
               </button>
