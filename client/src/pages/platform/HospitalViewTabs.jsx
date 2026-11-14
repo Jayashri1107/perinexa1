@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { BedDouble, CalendarCheck, FlaskConical, Pill, Receipt, Stethoscope, TestTube, UserPlus } from 'lucide-react';
+import { FlaskConical, Receipt, Stethoscope, UserPlus } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { ClearFilters, DataTable, FilterSelect, SearchInput, TablePagination, formatNumber } from '../../components/DataTable.jsx';
-import { Alert, StatusPill, formatDateTime, roleLabel, rolesLabel } from '../../components/ui.jsx';
+import { Alert, StatusPill, formatDate, formatDateTime, roleLabel, rolesLabel } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { useListParams } from '../../hooks/useListParams.js';
 import { DEPARTMENTS } from '../../platform/departments.js';
@@ -16,60 +16,105 @@ import { CARE_TYPE_LABELS } from '../patients/patientFormat.js';
 const rupees = (paise) => `₹${((paise ?? 0) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const DEPARTMENT_OPTIONS = [...DEPARTMENTS.map((d) => ({ value: d, label: d })), { value: 'none', label: 'No department' }];
 
+// The day's numbers in four cards, two related figures in each (developer, 14 Nov 2026)
+const SERVICE_CARDS = [
+  { key: 'desk', title: 'Front desk', icon: UserPlus, figures: [['registrationsToday', 'Registered'], ['appointmentsToday', 'Appointments']] },
+  { key: 'opd', title: 'OPD and wards', icon: Stethoscope, figures: [['visitsToday', 'Visits'], ['inpatientsNow', 'In-patients now']] },
+  { key: 'lab', title: 'Lab', icon: FlaskConical, figures: [['labOrdersToday', 'Orders'], ['labReportedToday', 'Reports']] },
+  { key: 'money', title: 'Pharmacy and billing', icon: Receipt, figures: [['pharmacySalesToday', 'Pharmacy sales'], ['collectedTodayPaise', 'Collected', 'money']] },
+];
+const DEPT_FIGURES = [
+  ['newToday', 'New today'],
+  ['appointmentsToday', 'Appointments'],
+  ['visitsToday', 'Visits'],
+  ['inpatientsNow', 'In-patients'],
+  ['labOrdersToday', 'Lab orders'],
+];
+
+/** The departments with a total row ("All departments") at the end. PURE. */
+export const withTotal = (departments = []) => {
+  const keys = ['patients', ...DEPT_FIGURES.map(([k]) => k)];
+  const total = Object.fromEntries(keys.map((k) => [k, departments.reduce((sum, d) => sum + (d[k] ?? 0), 0)]));
+  return [...departments, { key: 'total', label: 'All departments', total: true, ...total }];
+};
+
 export function HospitalDepartmentsTab() {
   const { tenant } = useOutletContext();
   const { platform } = useAuth();
   const navigate = useNavigate();
   const { data, error, loading } = useFetch(`/platform/hospital-view/${tenant.id}/departments`);
   const s = data?.services;
-  const n = (v) => (s ? formatNumber(v) : '—');
-  const tiles = [
-    ['new', UserPlus, 'Registered today', n(s?.registrationsToday)],
-    ['appts', CalendarCheck, 'Appointments today', n(s?.appointmentsToday)],
-    ['visits', Stethoscope, 'Visits today', n(s?.visitsToday)],
-    ['ipd', BedDouble, 'In-patients now', n(s?.inpatientsNow)],
-    ['lab', FlaskConical, 'Lab orders today', n(s?.labOrdersToday)],
-    ['reported', TestTube, 'Lab reports today', n(s?.labReportedToday)],
-    ['pharmacy', Pill, 'Pharmacy sales today', n(s?.pharmacySalesToday)],
-    ['billing', Receipt, 'Collected today', s ? rupees(s.collectedTodayPaise) : '—'],
-  ];
-  const num = (key) => (d) => <span className="tabular">{formatNumber(d[key])}</span>;
-  const columns = [
-    { key: 'label', header: 'Department', render: (d) => <span className="strong-name">{d.label}</span> },
-    { key: 'patients', header: 'Patients', width: 110, render: num('patients') },
-    { key: 'newToday', header: 'New today', width: 110, render: num('newToday') },
-    { key: 'appointmentsToday', header: 'Appointments today', width: 170, render: num('appointmentsToday') },
-    { key: 'visitsToday', header: 'Visits today', width: 120, render: num('visitsToday') },
-    { key: 'inpatientsNow', header: 'In-patients now', width: 150, render: num('inpatientsNow') },
-    { key: 'labOrdersToday', header: 'Lab orders today', width: 150, render: num('labOrdersToday') },
-  ];
   const superAdmin = platform?.role === 'superadmin';
+  const rows = data ? withTotal(data.departments) : null;
+  const allPatients = rows?.at(-1)?.patients ?? 0;
+  // A zero is grey, so the departments with work today stand out
+  const count = (v) => <span className={`tabular ${v ? 'hv-num' : 'hv-zero'}`}>{formatNumber(v ?? 0)}</span>;
+  const columns = [
+    {
+      key: 'label',
+      header: 'Department',
+      render: (d) => (d.total ? <strong>{d.label}</strong> : <span className="strong-name">{d.label}</span>),
+    },
+    {
+      key: 'patients',
+      header: 'Patients',
+      width: 200,
+      render: (d) => (
+        <span className="hv-share">
+          {count(d.patients)}
+          {!d.total && (
+            <span className="hv-bar" aria-hidden="true">
+              <span style={{ width: `${allPatients ? Math.round((d.patients / allPatients) * 100) : 0}%` }} />
+            </span>
+          )}
+        </span>
+      ),
+    },
+    ...DEPT_FIGURES.map(([key, header]) => ({ key, header, align: 'right', width: 120, render: (d) => count(d[key]) })),
+  ];
   return (
     <>
       <Alert type="error">{error}</Alert>
-      <div className="hw-stats" role="list" aria-label="This hospital today">
-        {tiles.map(([key, Icon, label, value]) => (
-          <div key={key} className="card hw-stat" role="listitem">
-            <span className="hw-stat-icon" aria-hidden="true">
-              <Icon />
-            </span>
-            <span className="hw-stat-text">
-              <span>{label}</span>
-              <strong className="tabular">{value}</strong>
-            </span>
-          </div>
+      <div className="hv-head">
+        <h2>Today{data?.today ? ` · ${formatDate(data.today)}` : ''}</h2>
+        <span className="muted">Numbers only – no patient is named on this page.</span>
+      </div>
+      <div className="hv-cards" role="list" aria-label="This hospital today">
+        {SERVICE_CARDS.map(({ key, title, icon: Icon, figures }) => (
+          <section key={key} className={`card hv-card is-${key}`} role="listitem" aria-label={title}>
+            <h3>
+              <span className="hv-card-icon" aria-hidden="true">
+                <Icon />
+              </span>
+              {title}
+            </h3>
+            <dl>
+              {figures.map(([field, label, kind]) => (
+                <div key={field}>
+                  <dt>{label}</dt>
+                  <dd className="tabular">{s ? (kind === 'money' ? rupees(s[field]) : formatNumber(s[field])) : '—'}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
         ))}
+      </div>
+      <div className="hv-head">
+        <h2>By department</h2>
+        <span className="muted">
+          {superAdmin ? 'Choose a department to see its patients. ' : ''}In-patients count by the department on the admission form.
+        </span>
       </div>
       <DataTable
         caption="Departments today"
         columns={columns}
-        rows={data?.departments}
+        rows={rows}
         rowKey="key"
         loading={loading}
-        onRowClick={superAdmin ? (d) => navigate(`/platform/hospitals/${tenant.id}/patients?department=${encodeURIComponent(d.key)}`) : undefined}
+        rowClassName={(d) => (d.total ? 'hv-total' : '')}
+        onRowClick={superAdmin ? (d) => navigate(`/platform/hospitals/${tenant.id}/patients${d.total ? '' : `?department=${encodeURIComponent(d.key)}`}`) : undefined}
         emptyText="No departments."
       />
-      <p className="help">Numbers only. {superAdmin ? 'Choose a department to see its patients.' : ''} In-patients count by the department on the admission form.</p>
     </>
   );
 }

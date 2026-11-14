@@ -199,3 +199,31 @@
 @media (min-width: 1281px) { .hw-roles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .hw-role-label { white-space: normal; overflow-wrap: anywhere; }
 .hw-privacy { margin-bottom: var(--space-4); }
+
+/* One hospital's Departments tab (developer, 14 Nov 2026): a heading per part, today in four cards of two figures,
+   then the departments with grey zeros, a share-of-patients bar and a total row */
+.hv-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); margin: 0 0 var(--space-3); }
+.hv-head h2 { margin: 0; font-size: var(--fs-h2); line-height: var(--lh-h2); }
+.hv-head .muted { font-size: var(--fs-label); }
+.hv-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); margin-bottom: var(--space-6); }
+.hv-card { padding: var(--space-3) var(--space-4); }
+.hv-card h3 { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-3); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.hv-card-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--indigo-100); color: var(--indigo-700); }
+.hv-card-icon svg.lucide { width: 16px; height: 16px; }
+.hv-card.is-opd .hv-card-icon { background: var(--status-stable-bg); color: var(--status-stable-fg); }
+.hv-card.is-lab .hv-card-icon { background: var(--status-admitted-bg); color: var(--status-admitted-fg); }
+.hv-card.is-money .hv-card-icon { background: var(--teal-100); color: var(--teal-700); }
+.hv-card dl { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin: 0; }
+.hv-card dt { color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.hv-card dd { margin: 2px 0 0; color: var(--ink); font-size: var(--fs-h1); line-height: var(--lh-h1); font-weight: 600; }
+.hv-card dl > div + div { padding-left: var(--space-3); border-left: 1px solid var(--border); }
+.hv-num { color: var(--ink); font-weight: 500; }
+.hv-zero { color: var(--slate-300); }
+.hv-share { display: inline-flex; align-items: center; gap: var(--space-3); width: 100%; }
+.hv-share > .tabular { min-width: 2.5ch; text-align: right; }
+.hv-bar { flex: 1; max-width: 120px; height: 6px; border-radius: var(--radius-pill); background: var(--mist-100); overflow: hidden; }
+.hv-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--indigo-600); }
+.dt tr.hv-total td { background: var(--mist-50); border-top: 2px solid var(--border); font-weight: 600; }
+.dt tr.hv-total .hv-zero { color: var(--slate-600); }
+@media (max-width: 1100px) { .hv-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .hv-cards { grid-template-columns: minmax(0, 1fr); } }
