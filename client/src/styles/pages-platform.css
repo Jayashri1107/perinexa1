@@ -148,3 +148,6 @@
 .ug-actions { display: flex; gap: var(--space-2); }
 /* A person's own page access (Hospital → staff → change access): the group's level beside their own */
 .ug-own select { min-width: 160px; }
+/* One hospital, staff by department (docs/USER_GROUPS_PLAN.md Part A): a heading and a table per department */
+.hv-group + .hv-group { margin-top: var(--space-6); }
+.hv-group h2 { margin-bottom: var(--space-3); }

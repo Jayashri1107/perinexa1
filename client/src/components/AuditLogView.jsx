@@ -2,9 +2,13 @@ import { useFetch } from '../hooks/useFetch.js';
 import { useListParams } from '../hooks/useListParams.js';
 import { AUDIT_LABELS, auditPill, describeAudit, doneBy } from './auditFormat.js';
 import { ClearFilters, DataTable, DateFilter, FilterSelect, SearchInput, TablePagination } from './DataTable.jsx';
-import { Alert, StatusPill, formatDateTime } from './ui.jsx';
+import { Alert, ROLE_LABELS, StatusPill, formatDateTime } from './ui.jsx';
+import { DEPARTMENTS } from '../platform/departments.js';
 
-const DEFAULTS = { search: '', category: '', action: '', tenant: '', from: '', to: '', page: 1, limit: 25 };
+const DEFAULTS = { search: '', category: '', action: '', tenant: '', department: '', role: '', from: '', to: '', page: 1, limit: 25 };
+// Done by one department's or one role's staff (one hospital only – docs/USER_GROUPS_PLAN.md Part A)
+const DEPARTMENT_OPTIONS = [...DEPARTMENTS.map((d) => ({ value: d, label: d })), { value: 'none', label: 'No department' }];
+const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }));
 const today = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -20,8 +24,9 @@ const endOfDay = (d) => (d ? new Date(`${d}T23:59:59.999`).toISOString() : undef
  * - categories: [{ value, label }] – instead of a fixed one, a "Type" filter to choose the group (the audit log pages)
  * - tenantId / userId: fixed filters (e.g. on a hospital's or a person's Activity tab)
  * - showHospital: show the Hospital column and filter
+ * - teamFilters: Department and Role filters (with a fixed tenantId)
  */
-export function AuditLogView({ endpoint, category: fixedCategory = '', categories = null, tenantId = '', userId = '', showHospital = false }) {
+export function AuditLogView({ endpoint, category: fixedCategory = '', categories = null, tenantId = '', userId = '', showHospital = false, teamFilters = false }) {
   const [params, setParams, reset] = useListParams(DEFAULTS);
   const category = fixedCategory || (categories?.some((c) => c.value === params.category) ? params.category : '');
   const hospitals = useFetch(showHospital && !tenantId ? '/platform/tenants' : null, { limit: 100, sort: 'name' });
@@ -31,6 +36,8 @@ export function AuditLogView({ endpoint, category: fixedCategory = '', categorie
     userId,
     tenantId: tenantId || params.tenant,
     action: params.action,
+    department: teamFilters ? params.department : '',
+    role: teamFilters ? params.role : '',
     search: params.search,
     from: startOfDay(params.from),
     to: endOfDay(params.to),
@@ -54,7 +61,7 @@ export function AuditLogView({ endpoint, category: fixedCategory = '', categorie
     { key: 'ip', header: 'IP address', render: (e) => <span className="muted tabular">{e.ip ?? '—'}</span> },
   ];
 
-  const filtered = params.search || category !== fixedCategory || params.action || params.tenant || params.from || params.to;
+  const filtered = params.search || category !== fixedCategory || params.action || params.tenant || (teamFilters && (params.department || params.role)) || params.from || params.to;
 
   return (
     <>
@@ -86,6 +93,12 @@ export function AuditLogView({ endpoint, category: fixedCategory = '', categorie
                 allLabel="All hospitals"
                 options={(hospitals.data?.tenants ?? []).map((t) => ({ value: t.id, label: t.name }))}
               />
+            )}
+            {teamFilters && (
+              <>
+                <FilterSelect label="Department" value={params.department} onChange={(department) => setParams({ department })} allLabel="All departments" options={DEPARTMENT_OPTIONS} />
+                <FilterSelect label="Role" value={params.role} onChange={(role) => setParams({ role })} allLabel="All roles" options={ROLE_OPTIONS} />
+              </>
             )}
             <DateFilter label="From" value={params.from} max={params.to || today()} onChange={(from) => setParams({ from })} />
             <DateFilter label="To" value={params.to} min={params.from} max={today()} onChange={(to) => setParams({ to })} />

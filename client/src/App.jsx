@@ -175,6 +175,10 @@ const HospitalActivityTab = screen(load52, 'HospitalActivityTab');
 const HospitalOverviewTab = screen(load52, 'HospitalOverviewTab');
 const HospitalStaffTab = screen(load52, 'HospitalStaffTab');
 const HospitalWorkspace = screen(load52, 'HospitalWorkspace');
+const loadHospitalView = () => import('./pages/platform/HospitalViewTabs.jsx');
+const HospitalDepartmentsTab = screen(loadHospitalView, 'HospitalDepartmentsTab');
+const HospitalTeamsTab = screen(loadHospitalView, 'HospitalTeamsTab');
+const HospitalPatientsTab = screen(loadHospitalView, 'HospitalPatientsTab');
 const load53 = () => import('./pages/platform/UsersListPage.jsx');
 const UserNewPage = screen(load53, 'UserNewPage');
 const UsersListPage = screen(load53, 'UsersListPage');
@@ -447,6 +451,9 @@ export function App() {
                 <Route path="hospitals/:id" element={<HospitalWorkspace />}>
                   <Route index element={<HospitalOverviewTab />} />
                   <Route path="staff" element={<HospitalStaffTab />} />
+                  <Route path="departments" element={<HospitalDepartmentsTab />} />
+                  <Route path="teams" element={<HospitalTeamsTab />} />
+                  <Route path="patients" element={<HospitalPatientsTab />} />
                   <Route path="activity" element={<HospitalActivityTab />} />
                 </Route>
 

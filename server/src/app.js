@@ -17,6 +17,7 @@ import { PAGE_HEADER, pageAccessGuard } from './middleware/pageAccess.js';
 import { platformUsersRouter } from './routes/platformUsers.js';
 import { platformStatsRouter } from './routes/platformStats.js';
 import { platformPatientsRouter } from './routes/platformPatients.js';
+import { platformHospitalViewRouter } from './routes/platformHospitalView.js';
 import { membersRouter } from './routes/members.js';
 import { auditLogsRouter } from './routes/auditLogs.js';
 import { doctorsRouter, patientsRouter } from './routes/patients.js';
@@ -267,6 +268,9 @@ export function createApp({
   app.use('/api/platform/analytics', ...platform(null), platformAnalyticsRouter);
   // Patients of every hospital, identity only, for super admins (routes/platformPatients.js; owner, 24 Oct 2026)
   app.use('/api/platform/patients', ...platform(null), platformPatientsRouter);
+  // One hospital, everything: departments' numbers, staff by department, patients by department (super admins only for
+  // the patients) – routes/platformHospitalView.js; docs/USER_GROUPS_PLAN.md Part A
+  app.use('/api/platform/hospital-view', ...platform(null), platformHospitalViewRouter);
 
   // Hospital data: always limited to the hospital selected in the session.
   // A super admin or platform admin in a hospital reaches its setup only (platformHospitalGuard).
