@@ -1,8 +1,9 @@
 # Super admin hospital view, user groups and page access – plan (14 Nov 2026)
 
 **Status: Part A and Part B built (14 Nov 2026, branches `user-groups` and `user-groups-b`), at the developer's
-go-ahead, and merged into master for the development app.** Part B needs the **owner's approval** before it goes to
-main (see "Needs the owner" below).
+go-ahead, and merged into master for the development app.** **The owner approved Part B on 15 Nov 2026** (relayed by
+the developer: "Owner approved"), as built: groups replace ticking roles, patient-record access stays with the roles'
+need-to-know rules, and the groups are shared by every hospital.
 
 Part B as built differs from the plan in one way (developer's agreement, 14 Nov 2026): the ~300 role checks were **not**
 rewritten. A group holds roles (which keep deciding what is allowed and which records open) and None / View / Edit per
@@ -159,7 +160,7 @@ On the first start after the change (like `patients/moveDepartments.js`), once:
 Each step on its own branch, merged into master only after `npm test` and `npm run build` pass and the developer has
 read it.
 
-## Needs the owner (before Part B is built)
+## Needs the owner (before Part B is built) – approved 15 Nov 2026, as built
 
 1. **Groups replace roles.** Who sees which page and which patient record is then set on a screen, not in the code.
    That is the most important safety setting in the app; a wrong tick on a shared group reaches every hospital at once.

@@ -1,8 +1,8 @@
 # Progress
 
 ## Super admin's hospital view; user groups and page access (14 Nov 2026, branches `user-groups`, `user-groups-b`)
-- Plan and decisions: `docs/USER_GROUPS_PLAN.md`. Merged into master for the development app; **Part B needs the
-  owner's approval before main**.
+- Plan and decisions: `docs/USER_GROUPS_PLAN.md`. Merged into master for the development app. **The owner approved
+  Part B on 15 Nov 2026.**
 - **Part A:** Platform → Hospitals → one hospital: Departments (today's numbers per department and service), Staff by
   department (others by role), Patients (identity only, super admins only, audited), Activity filtered by department
   or role.
