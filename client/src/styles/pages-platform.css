@@ -135,3 +135,95 @@
 .ap-who-row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
 .ap-add-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
 .ap-add-row .field { flex: 1 1 280px; margin: 0; }
+
+/* User groups (docs/USER_GROUPS_PLAN.md Part B): the group's name, its roles, and None / View / Edit per menu item */
+.ug-form { display: grid; gap: var(--space-4); max-width: 900px; }
+.ug-card { padding: var(--space-6); }
+.ug-card h2 { margin-bottom: var(--space-3); }
+.ug-pages { width: 100%; border-collapse: collapse; }
+.ug-pages th, .ug-pages td { padding: var(--space-2); border-bottom: 1px solid var(--border); text-align: center; }
+.ug-pages th[scope="row"], .ug-pages thead th:first-child { text-align: left; font-weight: 500; }
+.ug-pages thead th { color: var(--slate-600); font-size: var(--fs-label); }
+.ug-pages input[type="radio"] { width: 20px; height: 20px; }
+.ug-actions { display: flex; gap: var(--space-2); }
+/* A person's own page access (Hospital → staff → change access): the group's level beside their own */
+.ug-own select { min-width: 160px; }
+/* One hospital, staff by department (docs/USER_GROUPS_PLAN.md Part A): a heading and a table per department */
+.hv-group + .hv-group { margin-top: var(--space-6); }
+.hv-group h2 { margin-bottom: var(--space-3); }
+
+/* ---------- Compact platform pages (developer, 14 Nov 2026): less white space on the super admin's lists and forms ----------
+   Desktop and tablet only; phones keep their own layout (mobile.css). */
+@media (min-width: 768px) {
+  .pf-dense .pf-content { padding-top: var(--space-4); padding-bottom: var(--space-4); }
+  /* Rows: one line each – no fixed row height, smaller initials, a time beside its day */
+  .pf-dense .dt th, .pf-dense .dt td { padding: var(--space-2); }
+  .pf-dense .dt td { height: auto; }
+  .pf-dense .dt .avatar { width: 28px; height: 28px; font-size: 11px; }
+  .pf-dense .dt .name-cell { gap: var(--space-2); }
+  .pf-dense .dt .name-cell-text { align-items: flex-start; line-height: 1.3; }
+  .pf-dense .dt .plat-name-pill { margin-top: 0; padding: 1px var(--space-2); font-size: 12px; white-space: nowrap; max-width: none; }
+  .pf-dense .dt .plat-name-pill svg.lucide { width: 14px; height: 14px; }
+  .pf-dense .dt td > .cell-sub { display: inline; margin: 0 0 0 var(--space-2); }
+  .pf-dense .dt td.plat-access-cell { white-space: nowrap; min-width: 0; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+  .pf-dense .dt td.plat-access-cell .chip { max-width: 150px; }
+  /* Long emails end in "…" (the whole email is in the title) so a list fits the page without scrolling sideways */
+  .pf-dense .dt td[data-label='Email'] { max-width: 230px; overflow: hidden; text-overflow: ellipsis; }
+  /* Filters: one row where they fit, narrower boxes */
+  .pf-dense .dt-toolbar { padding: var(--space-3) var(--space-4); gap: var(--space-2) var(--space-3); }
+  .pf-dense .dt-search { flex: 1 1 220px; max-width: 320px; }
+  .pf-dense .dt-filter select { min-width: 0; width: auto; max-width: 200px; }
+  /* Forms: two columns where there is room */
+  .pf-dense .form-card { max-width: 980px; }
+  .pf-dense .form-card .field { margin-bottom: var(--space-3); }
+}
+
+/* User groups editor: details and roles on the left, menu items on the right */
+.ug-form { max-width: none; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: start; }
+.ug-form > .ug-side { display: grid; gap: var(--space-4); }
+.ug-form > .ug-actions { grid-column: 1 / -1; }
+.ug-card { padding: var(--space-4) var(--space-6); }
+.ug-card h2 { margin-bottom: var(--space-2); }
+.ug-card .help { margin: 0 0 var(--space-2); }
+.ug-form .ug-pages th, .ug-form .ug-pages td { padding: 3px var(--space-2); height: auto; }
+.ug-pages tbody tr:hover { background: var(--mist-50); }
+.ug-pages input[type="radio"] { width: 18px; height: 18px; }
+/* Roles as small ticks without their long hints (the hint shows on hover) */
+.role-picker.is-compact { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--space-1); }
+.role-picker.is-compact .role-option { padding: var(--space-1) var(--space-2); align-items: center; }
+.role-picker.is-compact .role-option small { display: none; }
+.role-picker.is-compact .role-option input { margin-top: 0; }
+@media (max-width: 1000px) { .ug-form { grid-template-columns: minmax(0, 1fr); } }
+
+/* One hospital's page (developer, 14 Nov 2026): role tiles with their whole name, three to a row on wide screens */
+@media (min-width: 1281px) { .hw-roles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.hw-role-label { white-space: normal; overflow-wrap: anywhere; }
+.hw-privacy { margin-bottom: var(--space-4); }
+
+/* One hospital's Departments tab (developer, 14 Nov 2026): a heading per part, today in four cards of two figures,
+   then the departments with grey zeros, a share-of-patients bar and a total row */
+.hv-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); margin: 0 0 var(--space-3); }
+.hv-head h2 { margin: 0; font-size: var(--fs-h2); line-height: var(--lh-h2); }
+.hv-head .muted { font-size: var(--fs-label); }
+.hv-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); margin-bottom: var(--space-6); }
+.hv-card { padding: var(--space-3) var(--space-4); }
+.hv-card h3 { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-3); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.hv-card-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--indigo-100); color: var(--indigo-700); }
+.hv-card-icon svg.lucide { width: 16px; height: 16px; }
+.hv-card.is-opd .hv-card-icon { background: var(--status-stable-bg); color: var(--status-stable-fg); }
+.hv-card.is-lab .hv-card-icon { background: var(--status-admitted-bg); color: var(--status-admitted-fg); }
+.hv-card.is-money .hv-card-icon { background: var(--teal-100); color: var(--teal-700); }
+.hv-card dl { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin: 0; }
+.hv-card dt { color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.hv-card dd { margin: 2px 0 0; color: var(--ink); font-size: var(--fs-h1); line-height: var(--lh-h1); font-weight: 600; }
+.hv-card dl > div + div { padding-left: var(--space-3); border-left: 1px solid var(--border); }
+.hv-num { color: var(--ink); font-weight: 500; }
+.hv-zero { color: var(--slate-300); }
+.hv-share { display: inline-flex; align-items: center; gap: var(--space-3); width: 100%; }
+.hv-share > .tabular { min-width: 2.5ch; text-align: right; }
+.hv-bar { flex: 1; max-width: 120px; height: 6px; border-radius: var(--radius-pill); background: var(--mist-100); overflow: hidden; }
+.hv-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--indigo-600); }
+.dt tr.hv-total td { background: var(--mist-50); border-top: 2px solid var(--border); font-weight: 600; }
+.dt tr.hv-total .hv-zero { color: var(--slate-600); }
+@media (max-width: 1100px) { .hv-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .hv-cards { grid-template-columns: minmax(0, 1fr); } }

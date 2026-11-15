@@ -17,6 +17,7 @@ import { takeTurn } from './utils/sharedState.js';
 import { runNicuAutomationsAll } from './clinical/nicuData.js';
 import { moveDepartments } from './patients/moveDepartments.js';
 import { addDoctorTitles } from './users/doctorTitles.js';
+import { moveToUserGroups } from './users/userGroups.js';
 
 // A hosted database with its own CA certificate (docs/DEPLOY.md): the certificate is written to a private temporary
 // file, which the database driver reads.
@@ -87,6 +88,15 @@ try {
   if (titled) console.log(`Doctors: ${titled} name(s) given "Dr." in front.`);
 } catch (err) {
   console.error('\n⚠️  WARNING: could not add "Dr." to the doctors\' names at startup. Details:', err.message, '\n');
+}
+
+// User groups (14 Nov 2026): the 13 groups made from the old roles, and every member moved into a group – once; running
+// again finds nothing to do (users/userGroups.js).
+try {
+  const groups = await moveToUserGroups();
+  if (groups.groupsMade || groups.membersMoved) console.log(`User groups: ${groups.groupsMade} group(s) made, ${groups.membersMoved} member(s) moved into a group.`);
+} catch (err) {
+  console.error('\n⚠️  WARNING: could not move the staff into user groups at startup. Details:', err.message, '\n');
 }
 
 const server = createApp().listen(config.API_PORT, () => {

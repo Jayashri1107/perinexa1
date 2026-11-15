@@ -1,3 +1,5 @@
+import { UserGroup } from '../models/UserGroup.js';
+import { groupForRoles } from '../users/userGroups.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { Membership, TENANT_ROLES, departmentsOf, giveDoctorTitle } from '../models/Membership.js';
@@ -34,9 +36,11 @@ const createSchema = z
     accountType: z.enum(['staff', 'superAdmin', 'platformAdmin']).optional(),
     tenantId: objectId.optional(),
     roles: z.array(z.enum(TENANT_ROLES)).max(TENANT_ROLES.length).optional(),
+    // A user group instead of roles (docs/USER_GROUPS_PLAN.md Part B): the roles are the group's
+    groupId: objectId.optional(),
   })
   .transform((d) => ({ ...d, accountType: d.accountType ?? (d.isSuperAdmin ? 'superAdmin' : 'staff') }))
-  .refine((d) => d.accountType !== 'staff' || !d.tenantId || d.roles?.length, { path: ['roles'], message: 'Choose at least one role' });
+  .refine((d) => d.accountType !== 'staff' || !d.tenantId || d.roles?.length || d.groupId, { path: ['groupId'], message: 'Choose a user group' });
 const professional = z.object({
   qualification: z.string().trim().max(150).default(''),
   registrationNumber: z.string().trim().max(60).default(''),
@@ -141,7 +145,12 @@ platformUsersRouter.post('/', async (req, res) => {
   if (data.accountType !== 'staff') assertSuperAdmin(req);
   // Staff with a hospital: check the hospital and the rights first, so nothing is made half-way
   let tenant = null;
-  const roles = data.accountType === 'staff' && data.tenantId ? TENANT_ROLES.filter((r) => data.roles.includes(r)) : [];
+  let group = null;
+  if (data.accountType === 'staff' && data.tenantId && data.groupId) {
+    group = await UserGroup.findOne({ _id: data.groupId, isActive: true });
+    if (!group) throw Object.assign(new HttpError(400, 'Please check the highlighted fields.', 'VALIDATION'), { fields: { groupId: 'Choose a user group from the list' } });
+  }
+  const roles = data.accountType === 'staff' && data.tenantId ? TENANT_ROLES.filter((r) => (group ? group.roles : data.roles).includes(r)) : [];
   if (roles.length) {
     tenant = await Tenant.findOne({ _id: data.tenantId, isActive: true });
     if (!tenant) throw new HttpError(404, 'This hospital does not exist or is deactivated.', 'NOT_FOUND');
@@ -161,9 +170,10 @@ platformUsersRouter.post('/', async (req, res) => {
   });
   await audit(req, 'USER_CREATED', { target: user, details: { name: user.name, superAdmin: user.isSuperAdmin, platformAdmin: user.isPlatformAdmin } });
   if (tenant) {
-    await giveDoctorTitle(await Membership.create({ tenantId: tenant._id, userId: user._id, roles, createdBy: req.user._id }));
+    group ??= (await groupForRoles(roles, { createdBy: req.user._id })).group; // the group with exactly these roles
+    await giveDoctorTitle(await Membership.create({ tenantId: tenant._id, userId: user._id, roles, groupId: group._id, createdBy: req.user._id }));
     if (roles.includes('doctor')) user.name = withDoctorTitle(user.name); // as giveDoctorTitle saved it
-    await audit(req, 'MEMBER_ADDED', { target: user, tenantId: tenant._id, details: { roles } });
+    await audit(req, 'MEMBER_ADDED', { target: user, tenantId: tenant._id, details: { roles, group: group.name } });
   }
   const hospitals = await hospitalsFor([user._id]);
   // The temporary password is shown once and is never stored in readable form.

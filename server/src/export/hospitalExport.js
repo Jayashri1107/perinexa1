@@ -242,6 +242,7 @@ export const LEFT_OUT = {
   Membership: 'Written as staff.json (name and roles).',
   Tenant: 'Written as hospital.json, field by field (never the waiting-room screen key).',
   StoredFile: 'Written as stored-files.json and the "files" folder.',
+  UserGroup: "The super admin's user groups are shared by every hospital (roles and menu items, no patient data) – each person's roles are in staff.json.",
   LoginLock: 'Wrong sign-in tries by email (the 2-minute lock): not hospital data, deleted a day later.',
   MachineStudy: 'What the ultrasound machine sent through the scan bridge, waiting to be used: kept SCAN_BRIDGE_KEEP_DAYS, then deleted; the readings and pictures used are in the scan orders (imaging).',
   MachineImage: 'The pictures of those machine studies, deleted with them; the ones used are copied into the scan pictures (stored files).',

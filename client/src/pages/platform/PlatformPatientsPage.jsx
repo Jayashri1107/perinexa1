@@ -13,7 +13,7 @@ import { CARE_TYPE_LABELS } from '../patients/patientFormat.js';
 // added her and when. Opening one opens her hospital first, so her record is seen and audited there as before.
 // Super admins only (server: routes/platformPatients.js).
 
-const DEFAULTS = { search: '', tenantId: '', careType: '', sort: '-createdAt', page: 1, limit: 25 };
+const DEFAULTS = { search: '', tenantId: '', careType: '', sort: '-createdAt', page: 1, limit: 10 };
 
 export function PlatformPatientsPage() {
   const { platform, openHospital } = useAuth();

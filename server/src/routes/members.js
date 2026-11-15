@@ -5,6 +5,9 @@ import { User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, parse } from '../utils/validate.js';
+import { PAGE_KEYS, PAGE_LEVELS, cleanPages } from '../access/pages.js';
+import { UserGroup } from '../models/UserGroup.js';
+import { groupForRoles } from '../users/userGroups.js';
 import { generateTemporaryPassword, hashPassword } from '../utils/password.js';
 import { capitalizeName } from '../utils/personName.js';
 import { withDoctorTitle } from '../utils/doctorTitle.js';
@@ -30,18 +33,30 @@ const listSchema = z.object({
 const addSchema = z.object({
   email,
   name: z.string().trim().max(100).transform(capitalizeName).optional(),
-  roles,
+  // A user group (docs/USER_GROUPS_PLAN.md Part B): the person's roles here are the group's. Roles alone still work (the
+  // group with exactly those roles is used, or made).
+  roles: roles.optional(),
+  groupId: objectId.optional(),
   departments: z.array(z.enum(DEPARTMENTS, 'Choose a department from the list')).max(DEPARTMENTS.length).default([]),
-});
+}).refine((d) => d.roles || d.groupId, { path: ['groupId'], message: 'Choose a user group' });
 const editSchema = z
   .object({ name: name.optional(), email: email.optional() })
   .refine((d) => d.name !== undefined || d.email !== undefined, 'Nothing to update');
 const memberParams = z.object({ memberId: objectId });
 
+// A person's own page access (None, View or Edit per menu item; access/pages.js)
+const ownPages = (m) => {
+  const raw = m.pageOverrides instanceof Map ? Object.fromEntries(m.pageOverrides) : (m.pageOverrides ?? {});
+  return Object.fromEntries(Object.entries(raw).filter(([k, v]) => PAGE_KEYS.includes(k) && PAGE_LEVELS.includes(v)));
+};
+
 // Turns a membership (with its user loaded) into what the website shows.
 const toMember = (m, sharedUserIds = new Set()) => ({
   id: m._id.toString(),
   roles: m.roles,
+  groupId: m.groupId ? String(m.groupId) : null,
+  // This person's own None / View per menu item, on top of the group's (access/pages.js)
+  pageOverrides: ownPages(m),
   isActive: m.isActive,
   adminRights: m.roles.includes('admin') ? [...(m.adminRights ?? [])] : [],
   department: m.roles.includes('doctor') ? (departmentsOf(m)[0] ?? '') : '',
@@ -132,6 +147,21 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
     }
   }
 
+  // The active user group chosen on a form, or 400
+  async function chosenGroup(groupId) {
+    const group = await UserGroup.findOne({ _id: groupId, isActive: true });
+    if (!group) throw Object.assign(new HttpError(400, 'Please check the highlighted fields.', 'VALIDATION'), { fields: { groupId: 'Choose a user group from the list' } });
+    return group;
+  }
+
+  // The user groups to choose from when adding a person or changing their group (made by the super admin)
+  router.get('/groups', async (_req, res) => {
+    const groups = await UserGroup.find({ isActive: true }).sort({ system: -1, name: 1 }).lean();
+    res.json({
+      groups: groups.map((g) => ({ id: String(g._id), name: g.name, description: g.description ?? '', roles: g.roles, pages: cleanPages(g.pages ?? {}), system: Boolean(g.system) })),
+    });
+  });
+
   // How many people have each role here (active places), for the hospital admin's dashboard
   router.get('/role-counts', async (req, res) => {
     const counts = {};
@@ -190,6 +220,8 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
   // temporary password. If they already have one (e.g. from another hospital), it is simply linked.
   router.post('/', async (req, res) => {
     const data = parse(addSchema, req.body);
+    const group = data.groupId ? await chosenGroup(data.groupId) : (await groupForRoles(data.roles, { createdBy: req.user._id })).group;
+    data.roles = [...group.roles];
     // The super admin, a platform admin given "User accounts", or (22 Oct 2026) a hospital admin given "Add people"
     if (isPlatformUser(req.user)) {
       if (!canEditPlatform(req.user, 'users')) throw new HttpError(403, 'New people are added by the super admin (or an admin given "User accounts"). Ask the super admin.', 'ADD_PEOPLE_RIGHT');
@@ -232,13 +264,14 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
       tenantId: req.scopeTenantId,
       userId: user._id,
       roles: data.roles,
+      groupId: group._id,
       departments,
       department: departments[0] ?? '',
       createdBy: req.user._id,
     });
     await giveDoctorTitle(membership);
     if (data.roles.includes('doctor')) user.name = withDoctorTitle(user.name); // as giveDoctorTitle saved it
-    await audit(req, 'MEMBER_ADDED', { target: user, tenantId: req.scopeTenantId, details: { roles: data.roles } });
+    await audit(req, 'MEMBER_ADDED', { target: user, tenantId: req.scopeTenantId, details: { roles: data.roles, group: group.name } });
     if (departments.length) {
       await audit(req, 'MEMBER_ROLE_CHANGED', { target: user, tenantId: req.scopeTenantId, details: { department: { from: '', to: departments.join(', ') } } });
     }
@@ -260,9 +293,65 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
     if (from.includes('admin') && !newRoles.includes('admin') && m.isActive) await assertAnotherActiveAdmin(req, m);
 
     m.roles = newRoles;
+    m.groupId = (await groupForRoles(newRoles, { createdBy: req.user._id })).group._id; // the group with exactly these roles
     await m.save();
     await giveDoctorTitle(m);
     await audit(req, 'MEMBER_ROLE_CHANGED', { target: m.userId, tenantId: req.scopeTenantId, details: { from, to: newRoles } });
+    res.json({ member: toMember(m) });
+  });
+
+  // Move the person to another user group (docs/USER_GROUPS_PLAN.md Part B): their roles here become the group's. The
+  // same rules as changing roles – the "Change roles" right, never one's own, only the super admin gives or takes the
+  // hospital admin role, and a hospital always keeps an active admin.
+  router.patch('/:memberId/group', async (req, res) => {
+    const { groupId } = parse(z.object({ groupId: objectId }), req.body);
+    const m = await findMember(req);
+    if (isSelf(req, m)) throw new HttpError(400, "You can't change your own group.", 'SELF_ACTION');
+    assertAdminRight(req, 'roles');
+    const group = await chosenGroup(groupId);
+    const from = [...m.roles];
+    const newRoles = [...group.roles];
+    assertHospitalAdminRight(req, from, newRoles);
+    if (from.includes('admin') !== newRoles.includes('admin')) assertNotAdminRole(req, ['admin']);
+    if (String(m.groupId) === String(group._id) && from.join() === newRoles.join()) return res.json({ member: toMember(m) });
+    if (from.includes('admin') && !newRoles.includes('admin') && m.isActive) await assertAnotherActiveAdmin(req, m);
+    const before = m.groupId ? await UserGroup.findById(m.groupId, { name: 1 }).lean() : null;
+    m.roles = newRoles;
+    m.groupId = group._id;
+    await m.save();
+    await giveDoctorTitle(m);
+    await audit(req, 'MEMBER_GROUP_CHANGED', {
+      target: m.userId,
+      tenantId: req.scopeTenantId,
+      details: { from: before?.name ?? '', to: group.name, ...(from.join() !== newRoles.join() ? { roles: { from, to: newRoles } } : {}) },
+    });
+    res.json({ member: toMember(m) });
+  });
+
+  // This person's own page access here: None / View / Edit per menu item, on top of their group's (Edit = as the group).
+  // Those who may change roles may change it; never one's own.
+  router.patch('/:memberId/pages', async (req, res) => {
+    const { pages } = parse(z.object({ pages: z.partialRecord(z.enum(PAGE_KEYS, 'Unknown menu item'), z.enum([...PAGE_LEVELS, 'group'])) }), req.body);
+    const m = await findMember(req);
+    if (isSelf(req, m)) throw new HttpError(400, "You can't change your own page access.", 'SELF_ACTION');
+    assertAdminRight(req, 'roles');
+    assertHospitalAdminRight(req, m.roles);
+    const before = Object.fromEntries(m.pageOverrides ?? new Map());
+    // 'group' (or leaving a menu item out) = as the group; none / view / edit = this person's own
+    const to = {};
+    for (const key of PAGE_KEYS) {
+      const level = pages[key] ?? before[key];
+      if (level && level !== 'group') to[key] = level;
+    }
+    const changed = PAGE_KEYS.filter((k) => (before[k] ?? 'group') !== (to[k] ?? 'group'));
+    if (!changed.length) return res.json({ member: toMember(m) });
+    m.pageOverrides = new Map(Object.entries(to));
+    await m.save();
+    await audit(req, 'MEMBER_PAGES_CHANGED', {
+      target: m.userId,
+      tenantId: req.scopeTenantId,
+      details: { pages: Object.fromEntries(changed.map((k) => [k, { from: before[k] ?? 'group', to: to[k] ?? 'group' }])) },
+    });
     res.json({ member: toMember(m) });
   });
 

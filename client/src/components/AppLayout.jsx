@@ -17,6 +17,8 @@ import { NotificationBell } from './NotificationBell.jsx';
 import { PasswordInput } from './PasswordInput.jsx';
 import { Alert, Avatar, Field, rolesLabel, useDialogFocus } from './ui.jsx';
 import { LoadingOutlet } from './PageLoading.jsx';
+import { setPageResolver } from '../api.js';
+import { pageForPath, pageLevel, visibleModules } from '../platform/pageAccess.js';
 import { useShortHints } from './shortHints.js';
 import { TitleSlotContext } from './PageHeader.jsx';
 
@@ -444,7 +446,15 @@ export function AppLayout() {
   const searchable = !locked && seesPatientList(activeMembership?.roles ?? []);
   // Super admins and platform admins: the platform menu, or – with a hospital's setup open – its Hospital admin pages only
   const inSetup = Boolean(activeMembership?.platform);
-  const modules = locked ? [] : isPlatform && !inSetup ? platformModules(platform) : hospitalModules(activeMembership?.roles);
+  // Hospital staff: the menu of their roles, without the items their user group (or their own page access) sets to None
+  // (docs/USER_GROUPS_PLAN.md Part B); each request names the menu item it comes from (api.js), for the server to check.
+  const staffMenu = !locked && !isPlatform ? hospitalModules(activeMembership?.roles) : [];
+  const pages = isPlatform ? {} : (activeMembership?.pages ?? {});
+  const modules = locked ? [] : isPlatform && !inSetup ? platformModules(platform) : isPlatform ? hospitalModules(activeMembership?.roles) : visibleModules(staffMenu, pages);
+  const currentLevel = isPlatform ? 'edit' : pageLevel(pages, pageForPath(location.pathname, staffMenu));
+  useEffect(() => {
+    setPageResolver(isPlatform ? null : (path) => pageForPath(path, staffMenu));
+  });
   // Typing shortcuts in every text box (doctor ideas #3) – hospital staff
   useTextShortcuts(!isPlatform && !locked && Boolean(activeMembership));
   const closeMobile = () => setMobileOpen(false);
@@ -546,7 +556,8 @@ export function AppLayout() {
             </button>
           </div>
         </header>
-        <main className="pf-main" id="main">
+        {/* pf-dense: the super admin's platform pages in compact rows (developer, 14 Nov 2026 – pages-platform.css) */}
+        <main className={`pf-main ${isPlatform && !inSetup ? 'pf-dense' : ''}`.trim()} id="main">
           {sheet && (
             <div className="pf-sheet-bar">
               <span className="pf-sheet-grip" aria-hidden="true" />
@@ -585,7 +596,18 @@ export function AppLayout() {
           {/* On paper only: the letterhead when a screen is printed with Ctrl+P */}
           <PagePrintHead key={`print-${activeTenantId ?? 'platform'}`} />
           <TitleSlotContext.Provider value={phone && !sheet ? titleSlot : null}>
-            <LoadingOutlet key={activeTenantId ?? 'platform'} />
+            {currentLevel === 'view' && (
+              <div className="pf-notice">
+                <Alert type="info">View only: you may look at this page but not change anything on it. Ask your hospital admin if you need to.</Alert>
+              </div>
+            )}
+            {currentLevel === 'none' ? (
+              <div className="pf-notice">
+                <Alert type="warning">You do not have access to this page. Ask your hospital admin if you need it.</Alert>
+              </div>
+            ) : (
+              <LoadingOutlet key={activeTenantId ?? 'platform'} />
+            )}
           </TitleSlotContext.Provider>
         </main>
       </div>

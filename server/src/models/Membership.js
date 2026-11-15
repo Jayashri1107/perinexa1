@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { PAGE_LEVELS } from '../access/pages.js';
 import { hasDoctorTitle, withDoctorTitle } from '../utils/doctorTitle.js';
 
 // Roles a person can have inside one hospital. Only "admin" can manage that hospital's users.
@@ -80,6 +81,10 @@ const membershipSchema = new mongoose.Schema(
     // A doctor's departments here (DEPARTMENTS); department: the first of them ('' = not set)
     department: { type: String, enum: ['', ...DEPARTMENTS], default: '' },
     departments: { type: [{ type: String, enum: DEPARTMENTS }], default: [] },
+    // The person's user group (models/UserGroup.js; docs/USER_GROUPS_PLAN.md Part B): their roles here are the group's.
+    // pageOverrides: this person's own None / View / Edit per menu item, on top of the group's (access/pages.js).
+    groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'UserGroup', default: null },
+    pageOverrides: { type: Map, of: { type: String, enum: PAGE_LEVELS }, default: {} },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true },

@@ -10,7 +10,7 @@ import { useListParams } from '../../hooks/useListParams.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { canEditArea, platformTabs } from '../../platform/modules.js';
 
-const DEFAULTS = { search: '', status: '', sort: 'name', page: 1, limit: 25 };
+const DEFAULTS = { search: '', status: '', sort: 'name', page: 1, limit: 10 };
 const crumbs = [{ label: 'Hospitals', to: '/platform/hospitals' }];
 
 export function HospitalsListPage() {

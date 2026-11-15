@@ -21,6 +21,13 @@ let onSessionEnded = null;
 let onTenantMismatch = null;
 let activeTenantId = null;
 
+// The menu item the page on screen belongs to (platform/pageAccess.js), sent with every request so the server can refuse
+// one from a menu item the person may not use, or a change from one they may only view (user groups).
+let pageResolver = null;
+export const setPageResolver = (fn) => {
+  pageResolver = fn;
+};
+
 export const setSessionEndedHandler = (fn) => {
   onSessionEnded = fn;
 };
@@ -55,6 +62,8 @@ export async function api(path, { method = 'GET', body, query } = {}) {
   const headers = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (activeTenantId) headers['X-Tenant-Id'] = activeTenantId;
+  const page = activeTenantId && pageResolver ? pageResolver(window.location.pathname) : null;
+  if (page) headers['X-Perinexa-Page'] = page;
 
   // Reading (GET) tries again a few times while a server copy restarts or is briefly busy (a new version being put
   // online): the person sees a short wait instead of an error. Saving never tries again by itself.
@@ -112,7 +121,8 @@ export async function apiFile(path, { query } = {}) {
   for (const [key, value] of Object.entries(query || {})) if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, value);
   let res;
   try {
-    res = await fetch(url, { credentials: 'same-origin', headers: activeTenantId ? { 'X-Tenant-Id': activeTenantId } : {} });
+    const page = activeTenantId && pageResolver ? pageResolver(window.location.pathname) : null;
+    res = await fetch(url, { credentials: 'same-origin', headers: activeTenantId ? { 'X-Tenant-Id': activeTenantId, ...(page ? { 'X-Perinexa-Page': page } : {}) } : {} });
   } catch {
     throw new ApiError(0, { message: "Can't reach the server. Please check that the app is running." });
   }

@@ -175,6 +175,10 @@ const HospitalActivityTab = screen(load52, 'HospitalActivityTab');
 const HospitalOverviewTab = screen(load52, 'HospitalOverviewTab');
 const HospitalStaffTab = screen(load52, 'HospitalStaffTab');
 const HospitalWorkspace = screen(load52, 'HospitalWorkspace');
+const loadHospitalView = () => import('./pages/platform/HospitalViewTabs.jsx');
+const HospitalDepartmentsTab = screen(loadHospitalView, 'HospitalDepartmentsTab');
+const HospitalTeamsTab = screen(loadHospitalView, 'HospitalTeamsTab');
+const HospitalPatientsTab = screen(loadHospitalView, 'HospitalPatientsTab');
 const load53 = () => import('./pages/platform/UsersListPage.jsx');
 const UserNewPage = screen(load53, 'UserNewPage');
 const UsersListPage = screen(load53, 'UsersListPage');
@@ -183,6 +187,9 @@ const StaffByRolePage = screen(load54, 'StaffByRolePage');
 const load55 = () => import('./pages/platform/UserPermissionsPage.jsx');
 const AdminPermissionsPage = screen(load55, 'AdminPermissionsPage');
 const UserPermissionsPage = screen(load55, 'UserPermissionsPage');
+const loadUserGroups = () => import('./pages/platform/UserGroupsPage.jsx');
+const UserGroupsPage = screen(loadUserGroups, 'UserGroupsPage');
+const UserGroupEditPage = screen(loadUserGroups, 'UserGroupEditPage');
 const load56 = () => import('./pages/platform/UserWorkspace.jsx');
 const UserActivityTab = screen(load56, 'UserActivityTab');
 const UserHospitalsTab = screen(load56, 'UserHospitalsTab');
@@ -444,6 +451,9 @@ export function App() {
                 <Route path="hospitals/:id" element={<HospitalWorkspace />}>
                   <Route index element={<HospitalOverviewTab />} />
                   <Route path="staff" element={<HospitalStaffTab />} />
+                  <Route path="departments" element={<HospitalDepartmentsTab />} />
+                  <Route path="teams" element={<HospitalTeamsTab />} />
+                  <Route path="patients" element={<HospitalPatientsTab />} />
                   <Route path="activity" element={<HospitalActivityTab />} />
                 </Route>
 
@@ -455,6 +465,8 @@ export function App() {
                   <Route key={r.role} path={`staff/${r.role}`} element={<UsersListPage key={`role-${r.role}`} variant="role" role={r.role} />} />
                 ))}
                 <Route path="users/permissions" element={<UserPermissionsPage />} />
+                <Route path="users/groups" element={<UserGroupsPage />} />
+                <Route path="users/groups/:id" element={<UserGroupEditPage />} />
                 <Route path="users/admin-permissions" element={<AdminPermissionsPage />} />
                 <Route path="users/super-admins" element={<UsersListPage key="superadmins" variant="superadmins" />} />
                 <Route path="users/platform-admins" element={<UsersListPage key="platformadmins" variant="platformadmins" />} />

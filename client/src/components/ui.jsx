@@ -387,12 +387,13 @@ export function RoleBadges({ roles }) {
 }
 
 // Tick one or more roles.
-export function RolePicker({ value, onChange, idPrefix = 'role', disabled = false, without = [] }) {
+// compact: small ticks without the hints (the hint shows on hover) – the user group editor
+export function RolePicker({ value, onChange, idPrefix = 'role', disabled = false, without = [], compact = false }) {
   const toggle = (r) => onChange(value.includes(r) ? value.filter((x) => x !== r) : ROLES.filter((x) => x === r || value.includes(x)));
   return (
-    <div className="role-picker" role="group">
+    <div className={`role-picker ${compact ? 'is-compact' : ''}`.trim()} role="group">
       {ROLES.filter((r) => !without.includes(r)).map((r) => (
-        <label key={r} className={`role-option ${value.includes(r) ? 'checked' : ''}`} htmlFor={`${idPrefix}-${r}`}>
+        <label key={r} className={`role-option ${value.includes(r) ? 'checked' : ''}`} htmlFor={`${idPrefix}-${r}`} title={compact ? ROLE_HINTS[r] : undefined}>
           <input id={`${idPrefix}-${r}`} type="checkbox" checked={value.includes(r)} onChange={() => toggle(r)} disabled={disabled} />
           <span>
             <strong>{ROLE_LABELS[r]}</strong>

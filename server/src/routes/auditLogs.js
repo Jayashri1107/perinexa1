@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { AUDIT_ACTIONS, AUDIT_CATEGORIES, AuditLog, RETIRED_AUDIT_ACTIONS } from '../models/AuditLog.js';
+import { DEPARTMENTS, Membership, TENANT_ROLES } from '../models/Membership.js';
 import { Tenant } from '../models/Tenant.js';
 import { auditEntryJSON } from '../utils/auditDetails.js';
+import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, pageParams, paged, parse } from '../utils/validate.js';
 
 const listSchema = z
@@ -11,6 +13,9 @@ const listSchema = z
     action: z.enum(AUDIT_ACTIONS).optional(),
     tenantId: objectId.optional(),
     userId: objectId.optional(), // entries done BY or TO this person
+    // Entries done by one department's or one role's staff of the hospital (docs/USER_GROUPS_PLAN.md Part A)
+    department: z.enum([...DEPARTMENTS, 'none']).optional(),
+    role: z.enum(TENANT_ROLES).optional(),
     search: z.string().trim().max(100).default(''),
     from: z.iso.datetime('Invalid start date').optional(),
     to: z.iso.datetime('Invalid end date').optional(),
@@ -35,6 +40,15 @@ export function auditLogsRouter({ scope }) {
     if (q.action) and.push({ action: q.action });
     if (q.category) and.push({ action: { $in: AUDIT_CATEGORIES[q.category] } });
     if (q.userId) and.push({ $or: [{ actor: q.userId }, { target: q.userId }] });
+    if (q.department || q.role) {
+      const tenantId = scope === 'tenant' ? req.tenantId : q.tenantId;
+      if (!tenantId) throw new HttpError(400, 'Choose a hospital to filter by department or role.', 'VALIDATION');
+      const m = { tenantId };
+      if (q.role) m.roles = q.role;
+      if (q.department === 'none') m.$and = [{ department: { $in: ['', null] } }, { $or: [{ departments: { $size: 0 } }, { departments: null }] }];
+      else if (q.department) m.$or = [{ departments: q.department }, { department: q.department }];
+      and.push({ actor: { $in: await Membership.distinct('userId', m) } });
+    }
     if (q.from || q.to) {
       const createdAt = {};
       if (q.from) createdAt.$gte = new Date(q.from);

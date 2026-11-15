@@ -85,6 +85,7 @@ export const PLATFORM_MODULES = [
       { label: 'All users', to: '/platform/users', end: true },
       { label: 'Super admins', to: '/platform/users/super-admins', end: true },
       { label: 'Platform admins', to: '/platform/users/platform-admins', end: true },
+      { label: 'User groups', to: '/platform/users/groups', end: false }, // docs/USER_GROUPS_PLAN.md Part B
       { label: 'User permissions', to: '/platform/users/permissions', end: true },
       { label: 'Admin permissions', to: '/platform/users/admin-permissions', end: true },
       { label: 'Hospital staff', to: '/platform/users/staff', end: true },

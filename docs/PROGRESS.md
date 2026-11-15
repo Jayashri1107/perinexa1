@@ -1,5 +1,22 @@
 # Progress
 
+## Super admin's hospital view; user groups and page access (14 Nov 2026, branches `user-groups`, `user-groups-b`)
+- Plan and decisions: `docs/USER_GROUPS_PLAN.md`. Merged into master for the development app; **Part B needs the
+  owner's approval before main**.
+- **Part A:** Platform → Hospitals → one hospital: Departments (today's numbers per department and service), Staff by
+  department (others by role), Patients (identity only, super admins only, audited), Activity filtered by department
+  or role.
+- **Part B:** Platform → Users & access → User groups. A group = roles (what its people may do and which records they
+  open – the same need-to-know rules) + None / View / Edit per menu item (23 items). One group per person; a person's
+  own page access on top. At start the 13 roles became 13 groups and each mix of roles one more group (dev data: 14
+  groups, all 37 staff moved). The website hides None items and marks View pages; the server refuses requests from a
+  None item and changes from a View one (`X-Perinexa-Page`, `middleware/pageAccess.js`). Page access only takes away –
+  roles still decide what is allowed. Platform → Users → one person still changes roles directly (the matching group is
+  chosen for them).
+- **How to test:** as super admin → Users & access → User groups → Receptionist → Billing: None → Save. Sign in as the
+  receptionist: Billing is gone from the menu. Hospitals → a hospital → staff list → Edit (group and access) to move a
+  person or set their own page access.
+
 ## Calendar: deliveries stand out (14 Nov 2026, branch `edd-mark-highlight`)
 - The owner asked for the delivery mark to be easier to spot. The EDD mark (Baby icon + "EDD (scan)" / "EDD (LMP)")
   is now solid deep violet with white bold text, also the EDD count in each month cell; the visit marks stay light.
