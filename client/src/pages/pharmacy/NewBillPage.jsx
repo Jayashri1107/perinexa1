@@ -42,7 +42,7 @@ export function NewBillPage() {
   };
   const onPick = async (x) => {
     if (!x.mrn) return choose({ type: 'external', customer: { name: x.name, phone: x.phone ?? '' } });
-    const patient = { id: x.key, fullName: x.name, mrn: x.mrn };
+    const patient = { id: x.key, fullName: x.name, mrn: x.mrn, doctor: x.doctor ?? '' };
     try {
       const { inpatients } = await api('/pharmacy/inpatients');
       if (inpatients.some((s) => s.patient.id === x.key)) return navigate('/pharmacy/issue', { state: { patient } });

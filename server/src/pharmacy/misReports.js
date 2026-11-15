@@ -171,7 +171,7 @@ export function misReport(key, data, { from, to }) {
     const onCredit = (b) => !b.m.counter || b.m.due > 0;
     const owed = (b) => (b.m.counter ? b.m.due : b.m.net);
     if (key === 'credit') {
-      const rows = bills.filter(onCredit).map((b) => ({ date: day(b.inv.created.at), bill: b.inv.number, type: b.inv.kind === 'issue' ? 'Ward issue' : 'Sale', name: b.who.name, ref: b.who.ref, where: b.m.counter ? 'Walk-in, not paid' : 'On the hospital bill', net: b.m.net, paid: b.m.paid, due: owed(b) }));
+      const rows = bills.filter(onCredit).map((b) => ({ date: day(b.inv.created.at), bill: b.inv.number, type: b.inv.kind === 'issue' ? 'Ward issue' : 'Sale', name: b.who.name, ref: b.who.ref, where: b.m.counter ? (b.inv.patientId ? 'Pharmacy credit' : 'Walk-in, not paid') : 'On the hospital bill', net: b.m.net, paid: b.m.paid, due: owed(b) }));
       return {
         ...base,
         columns: [col('date', 'Date', 'date'), col('bill', 'Bill no.'), col('type', 'Type'), col('name', 'Patient / customer'), col('ref', 'Number / phone'), col('where', 'To be paid'), col('net', 'Net', 'money'), col('paid', 'Paid at the counter', 'money'), col('due', 'Credit', 'money')],

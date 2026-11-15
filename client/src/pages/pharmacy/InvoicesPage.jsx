@@ -137,7 +137,7 @@ export function InvoicesPage({ pick = null }) {
     setOpening(x.key);
     try {
       const { inpatients } = await api('/pharmacy/inpatients');
-      const patient = { id: x.key, fullName: x.name, mrn: x.mrn };
+      const patient = { id: x.key, fullName: x.name, mrn: x.mrn, doctor: x.doctor ?? '' };
       navigate(inpatients.some((s) => s.patient.id === x.key) ? '/pharmacy/issue' : '/pharmacy', { state: { patient } });
     } catch {
       setOpening(null);
@@ -382,7 +382,7 @@ export function PeopleFound({ found, people, onPick, onBills = null, onMore = nu
           onRowClick={(x) => !opening && onPick(x)}
           rowClassName={(x) => (opening === x.key ? 'is-opening' : undefined)}
           columns={[
-            { key: 'name', header: 'Patient / customer', render: (x) => <strong className="ph-found-name">{x.name}</strong> },
+            { key: 'name', header: 'Patient / customer', render: (x) => <strong className="ph-found-name" title={x.name}>{x.name}</strong> },
             { key: 'mrn', header: 'UHID', render: (x) => <span className="tabular">{x.mrn || '–'}</span> },
             { key: 'type', header: 'Type', render: (x) => (x.type ? <TypePill type={x.type} /> : '–') },
             { key: 'doctor', header: 'Doctor', render: (x) => x.doctor || '–' },
@@ -487,6 +487,7 @@ export function BillPaper({ invoice: v, settings }) {
   const licences = [settings.licence20, settings.licence21].filter(Boolean).join(' ');
   const signed = settings.pharmacistName || v.byName;
   const doses = v.lines.some((l) => l.dose);
+  const gross = v.grossPaise ?? v.lines.reduce((n, l) => n + Math.round(l.qty * l.mrpPaise), 0); // at MRP, before the discount
   return (
     <div className="ph-slip">
       <header className="ph-slip-head">
@@ -564,9 +565,18 @@ export function BillPaper({ invoice: v, settings }) {
           ))}
         </tbody>
       </table>
+      {/* 15 Nov 2026, as the earlier bill: Gross (at MRP), Disc, Net, then Paid Amount and Bal. Amt */}
       <div className="ph-slip-sums">
         <div>
           <span>Gross</span>
+          <span>{plain(gross)}</span>
+        </div>
+        <div>
+          <span>Disc</span>
+          <span>{plain(Math.max(0, gross - v.totalPaise))}</span>
+        </div>
+        <div>
+          <span>Net</span>
           <span>{plain(v.totalPaise)}</span>
         </div>
         {v.returnedPaise > 0 && (
@@ -583,12 +593,10 @@ export function BillPaper({ invoice: v, settings }) {
               <span>Paid Amount</span>
               <span>{plain(v.paidPaise ?? 0)}</span>
             </div>
-            {(v.balancePaise ?? 0) > 0 && (
-              <div>
-                <span>Balance Due (credit)</span>
-                <span>{plain(v.balancePaise)}</span>
-              </div>
-            )}
+            <div>
+              <span>Bal. Amt</span>
+              <span>{plain(Math.max(0, v.balancePaise ?? 0))}</span>
+            </div>
           </>
         )}
       </div>
