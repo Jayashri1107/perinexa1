@@ -6,7 +6,7 @@ import { createApp } from '../src/app.js';
 import { AuditLog } from '../src/models/AuditLog.js';
 import { Membership } from '../src/models/Membership.js';
 import { UserGroup } from '../src/models/UserGroup.js';
-import { moveToUserGroups } from '../src/users/userGroups.js';
+import { moveToUserGroups, nameForRoles } from '../src/users/userGroups.js';
 import { addMember, connectTestDb, createSuperAdmin, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const app = createApp();
@@ -39,6 +39,22 @@ describe('moving the old roles into groups', () => {
     expect(String((await Membership.findById(both._id)).groupId)).toBe(String(mix._id));
     expect(await moveToUserGroups()).toEqual({ groupsMade: 0, membersMoved: 0 });
     expect(await AuditLog.countDocuments({ action: 'MEMBER_GROUP_CHANGED' })).toBe(2);
+  });
+
+  it('a member with many roles gets a shortened group name, and everyone is still moved (live server, 15 Nov 2026)', async () => {
+    const many = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'records', 'admin'];
+    const fewer = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'admin'];
+    const a = await addMember(await createUser({ name: 'Sample Many Roles' }), tenant, many);
+    const b = await addMember(await createUser({ name: 'Sample Fewer Roles' }), tenant, fewer);
+    const c = await addMember(await createUser({ name: 'Sample Nurse' }), tenant, 'nurse');
+    expect(nameForRoles(many).length).toBeLessThanOrEqual(62);
+    expect(nameForRoles(many)).toMatch(/^Doctor \+ .* \+ \d+ more$/);
+    expect(await moveToUserGroups()).toMatchObject({ membersMoved: 3 });
+    for (const m of [a, b, c]) expect((await Membership.findById(m._id)).groupId).not.toBeNull();
+    const made = await UserGroup.find({ system: false }).lean();
+    expect(made).toHaveLength(2);
+    expect(new Set(made.map((g) => g.name)).size).toBe(2);
+    for (const g of made) expect(g.name.length).toBeLessThanOrEqual(80);
   });
 });
 
