@@ -1200,7 +1200,7 @@ function checkWithPlan(plan, it, intent, today) {
     else if (intent.on < addDays(dayZero(E), -DONE_EARLIEST_DAYS)) fields.on = 'This date is more than a year before this pregnancy – please check it.';
     if (intent.result && !['investigation', 'scan'].includes(it.kind)) fields.result = 'Results are recorded for lab tests and scans only.';
     // PH8: a vaccine given here is marked done only with the vial's batch (given elsewhere: if she has it)
-    if (it.kind === 'vaccination' && !intent.elsewhere && !intent.vaccine?.batch) fields['vaccine.batch'] = `Write the batch number of the ${it.name} vial given.`;
+    if (it.kind === 'vaccination' && !intent.elsewhere && !intent.vaccine?.batch && !intent.vaccine?.stickerInFile) fields['vaccine.batch'] = `Write the batch number of the ${it.name} vial given, or tick "Sticker pasted in the file".`;
     if (intent.vaccine && it.kind !== 'vaccination') fields['vaccine.batch'] = 'A vaccine batch is recorded for vaccinations only.';
   }
   // A new due window for an item a doctor added: the same rules as when it was added (an unchanged window is not
@@ -1255,7 +1255,7 @@ function applyIntent(ctx, plan, it, intent) {
         via: intent.via ?? 'manual', // 'visit' from Feature 8, 'lab' from a reviewed lab result (Version 2)
         visitId: intent.visitId ?? null,
         labOrderId: intent.labOrderId ?? null,
-        vaccine: intent.vaccine ? { batch: intent.vaccine.batch, expiry: intent.vaccine.expiry ?? '', manufacturer: intent.vaccine.manufacturer ?? '', stockBatchId: intent.vaccine.stockBatchId ?? null } : null, // PH8
+        vaccine: intent.vaccine ? { batch: intent.vaccine.batch ?? '', stickerInFile: Boolean(intent.vaccine.stickerInFile), expiry: intent.vaccine.expiry ?? '', manufacturer: intent.vaccine.manufacturer ?? '', stockBatchId: intent.vaccine.stockBatchId ?? null } : null, // PH8
         ...by,
       };
       it.notNeeded = null;

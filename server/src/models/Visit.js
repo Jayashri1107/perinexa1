@@ -120,6 +120,9 @@ const visitSchema = new mongoose.Schema(
     prescription: {
       items: { type: [rxItemSchema], default: [], validate: [(v) => v.length <= 40, 'A prescription can have at most 40 medicines.'] },
       notes: text(1000), // general instructions printed under the medicines
+      // Written after the visit was signed (doctor's request, 15 Nov 2026): allowed once, only when the visit was
+      // signed with no medicines; from then on it is locked like the rest of the signed visit.
+      addedAfterSigning: { type: Boolean, default: false },
       // The doctor went ahead despite an Avoid or Allergy warning of the medicine safety check: the warning as shown
       // and the doctor's reason (medico-legal record; never printed).
       warningReasons: {

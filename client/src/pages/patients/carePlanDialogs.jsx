@@ -213,15 +213,19 @@ export function VaccineFields({ value, onChange, optional = false, error, itemNa
         <ul className="plain-list">
           {stock.data.batches.slice(0, 6).map((b) => (
             <li key={b.stockBatchId}>
-              <button type="button" className="btn btn-link btn-sm" onClick={() => { onChange({ batch: b.batch, expiry: b.expiry, manufacturer: b.manufacturer, stockBatchId: b.stockBatchId }); setFind(''); }}>
+              <button type="button" className="btn btn-link btn-sm" onClick={() => { onChange({ ...value, batch: b.batch, expiry: b.expiry, manufacturer: b.manufacturer, stockBatchId: b.stockBatchId }); setFind(''); }}>
                 {b.name} · batch {b.batch} · expiry {b.expiry.slice(5)}/{b.expiry.slice(0, 4)}
               </button>
             </li>
           ))}
         </ul>
       )}
+      <label className="checkbox">
+        <input type="checkbox" checked={Boolean(value.stickerInFile)} onChange={(e) => onChange({ ...value, stickerInFile: e.target.checked })} />
+        <span>Sticker pasted in the file (no need to type the batch)</span>
+      </label>
       <div className="form-grid">
-        <Field label={optional ? 'Batch number (optional)' : 'Batch number'} id={`${idPrefix}-batch`} error={error}>
+        <Field label={optional || value.stickerInFile ? 'Batch number (optional)' : 'Batch number'} id={`${idPrefix}-batch`} error={error}>
           <input id={`${idPrefix}-batch`} value={value.batch} maxLength={40} onChange={set('batch')} />
         </Field>
         <Field label="Expiry (optional)" id={`${idPrefix}-exp`}>
@@ -244,7 +248,7 @@ export function MarkDoneDialog({ patient, plan, item, elsewhere: startElsewhere 
   const takesResult = item.kind === 'investigation' || item.kind === 'scan';
   // PH8: a vaccination given here – the vial's batch (required), expiry month and maker
   const isVaccine = item.kind === 'vaccination';
-  const [vaccine, setVaccine] = useState({ batch: '', expiry: '', manufacturer: '', stockBatchId: null });
+  const [vaccine, setVaccine] = useState({ batch: '', stickerInFile: false, expiry: '', manufacturer: '', stockBatchId: null });
   const wasOpen = itemState(item) === 'open';
   const save = useSave((res) => onSaved(res, `${item.name} marked done (${formatDate(on)}).`, { undoItemId: wasOpen ? item.id : null }), onConflict);
   const warning = afterItemWarning(item, plan, on);
@@ -252,9 +256,9 @@ export function MarkDoneDialog({ patient, plan, item, elsewhere: startElsewhere 
   const isDatingScan = item.key === 'scan_dating' || (item.kind === 'scan' && /dating/i.test(item.name));
 
   const submit = () => {
-    const needsBatch = isVaccine && !elsewhere && !vaccine.batch.trim();
-    const errors = { ...pcpndtErrors({ result, note }), ...(on ? {} : { on: 'Please enter the date it was done.' }), ...(needsBatch ? { 'vaccine.batch': 'Write the batch number on the vial.' } : {}) };
-    const given = isVaccine && vaccine.batch.trim() ? { batch: vaccine.batch.trim(), expiry: vaccine.expiry, manufacturer: vaccine.manufacturer.trim(), ...(vaccine.stockBatchId ? { stockBatchId: vaccine.stockBatchId } : {}) } : null;
+    const needsBatch = isVaccine && !elsewhere && !vaccine.batch.trim() && !vaccine.stickerInFile;
+    const errors = { ...pcpndtErrors({ result, note }), ...(on ? {} : { on: 'Please enter the date it was done.' }), ...(needsBatch ? { 'vaccine.batch': 'Write the batch number on the vial, or tick "Sticker pasted in the file".' } : {}) };
+    const given = isVaccine && (vaccine.batch.trim() || vaccine.stickerInFile) ? { batch: vaccine.batch.trim(), stickerInFile: Boolean(vaccine.stickerInFile), expiry: vaccine.expiry, manufacturer: vaccine.manufacturer.trim(), ...(vaccine.stockBatchId ? { stockBatchId: vaccine.stockBatchId } : {}) } : null;
     save.submit(() => changeItem(patient.id, item, { action: 'done', on, elsewhere, result: takesResult ? result.trim() : '', note: note.trim(), vaccine: given }), errors);
   };
 

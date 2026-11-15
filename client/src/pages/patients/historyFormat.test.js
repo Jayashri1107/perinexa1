@@ -1,6 +1,6 @@
 // The history-taking sheet: a dictated sentence read into the five blanks, and what is sent (fake sample data).
 import { describe, expect, it } from 'vitest';
-import { EMPTY_PREGNANCY, historyEmpty, historyLines, historyPayload, historyPrintLines, historyValues, readCareLine, readSentence, withHistorySheet } from './historyFormat.js';
+import { EMPTY_PREGNANCY, historyEmpty, historyLines, historyPayload, historyPrintLines, historyValues, bornChildSpans, readCareLine, readSentence, withHistorySheet } from './historyFormat.js';
 import { extractPatientDetails, mergeDictated, readDate } from './dictation.js';
 
 describe('reading the sentence as written on the paper template', () => {
@@ -140,5 +140,20 @@ describe('the history on the printed page', () => {
     ]);
     expect(historyPrintLines(null)).toEqual([]);
     expect(historyPrintLines({ complaint: ' ' })).toEqual([]);
+  });
+});
+
+describe("doctor's feedback of 15 Nov 2026", () => {
+  const said = 'Obstetric history married since 7 years, consanguinity yes. Previous deliveries 1. FT LSCS male child five years, alive and well. No major personal medical, operative and family history';
+  it('"No major personal, medical, operative and family history" goes to Any other history, not to Previous deliveries', () => {
+    const out = readSentence(said, { careType: 'antenatal' });
+    expect(out.previousDeliveries).toBe('1. FT LSCS male child five years, alive and well');
+    expect(out.otherHistory).toBe('No major personal medical, operative and family history');
+    expect(readSentence('any other personal, medical, operative and family history nil').otherHistory).toBe('nil');
+  });
+  it('finds where Previous deliveries is said, so a child already born keeps the sex said', () => {
+    const [span] = bornChildSpans(said, 'antenatal');
+    expect(said.slice(span.start, span.end).trim()).toBe('Previous deliveries 1. FT LSCS male child five years, alive and well.');
+    expect(bornChildSpans('complaints of pain', 'antenatal')).toEqual([]);
   });
 });

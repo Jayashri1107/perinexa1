@@ -528,7 +528,7 @@ function applyMeaning(f, meaning, data = {}, learned = false, at = Infinity) {
 }
 
 // Patient-information fields (page 1) – everything else is a clinical detail (page 2).
-export const isInfoPath = (path) => /^(?:fullName|ageYears|phone|address|motherName|newborn\.)/.test(path);
+export const isInfoPath = (path) => /^(?:fullName|ageYears|phone|address|pinCode|motherName|newborn\.)/.test(path);
 
 // What to show the person, in the form's order.
 function finish(f) {
@@ -561,6 +561,7 @@ function finish(f) {
   show('ageYears', 'Age', v.ageYears);
   show('phone', newborn ? "Parent's phone" : 'Phone', v.phone);
   show('address', 'Address', v.address);
+  show('pinCode', 'PIN code', v.pinCode);
   show('newborn.birthAt', 'Date and time of birth', v.newborn?.birthAt && showDateTime(v.newborn.birthAt));
   show('newborn.birthWeightGrams', 'Birth weight', `${v.newborn?.birthWeightGrams} g`);
   show('newborn.sex', 'Sex', NEWBORN_SEX_LABELS[v.newborn?.sex]);
@@ -790,6 +791,18 @@ function findAddress(s, phone) {
     .join(' ');
   if (address.length < 3) return null;
   return { address: address.slice(0, 300), start: m.index, end: from + raw.length };
+}
+
+// A 6-digit Indian PIN code in an address – after "pin code", "pincode" or "pin", or as the address's last word; perhaps
+// said as 3 + 3 digits. { pin, rest } (the address without it), or null.
+export function pinInAddress(address) {
+  const a = String(address ?? '');
+  const m =
+    a.match(/[\s,.-]*\b(?:pin\s*code|pincode|pin|postal\s+code|zip(?:\s*code)?)\s*(?:is|:|-|no\.?|number)?\s*([1-9]\d{2})\s?(\d{3})\b[\s,.]*/i) ??
+    a.match(/[\s,.-]*\b([1-9]\d{2})\s?(\d{3})[\s,.]*$/);
+  if (!m) return null;
+  const rest = `${a.slice(0, m.index)} ${a.slice(m.index + m[0].length)}`.replace(/\s+/g, ' ').replace(/^[\s,.-]+|[\s,.-]+$/g, '');
+  return { pin: m[1] + m[2], rest };
 }
 
 // Also "last MC", "last menstrual cycle", "last date" and "periods came on" (a date must follow, owner decision 5)
@@ -1828,8 +1841,18 @@ export function extractPatientDetails(text, { careType, now = new Date(), words 
   }
   const address = findAddress(s, phone);
   if (address) {
-    put(f, 'address', address.address);
+    // The PIN code said in the address goes to its own box (which fills the city and state – doctor's request,
+    // 15 Nov 2026): "Wakad Pune pin code 411057", "… pincode 411 057", "… Pune 411057"
+    const pin = pinInAddress(address.address);
+    if (pin) put(f, 'pinCode', pin.pin);
+    if (!pin || pin.rest.length >= 3) put(f, 'address', pin ? pin.rest : address.address);
     use(address.start, address.end);
+  } else {
+    const pin = s.match(/\b(?:pin\s*code|pincode|pin|postal\s+code|zip(?:\s*code)?)\s*(?:is|:|-|no\.?|number)?\s*([1-9]\d{2})\s?(\d{3})\b/i);
+    if (pin) {
+      put(f, 'pinCode', pin[1] + pin[2]);
+      use(pin.index, pin.index + pin[0].length);
+    }
   }
 
   // Allergies first, so a medicine named in them isn't read as a condition

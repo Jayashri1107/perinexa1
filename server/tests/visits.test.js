@@ -521,6 +521,31 @@ describe('signing and finishing a visit', () => {
     expect((await add('drA', p, v, 'The baby is a boy')).status).toBe(400); // PCPNDT
   });
 
+  it('a visit signed with no medicines takes its prescription once afterwards, marked as added after signing', async () => {
+    const p = await register();
+    const v = await newVisit('nurse', p);
+    const notes = await patch('drA', p, v, { details: { rev: 0, ...DETAILS } });
+    const nv = notes.body.visit;
+    expect((await sign('drA', p, nv, revsOf(nv))).status).toBe(200);
+    const page = (await (await as('drA')).get(url(p, `/${v.id}`))).body;
+    expect(page.access).toMatchObject({ canEdit: false, canAddPrescription: true });
+
+    expect((await putRx('drA', p, v, { rev: 0, items: [], notes: '' })).status).toBe(400); // nothing to add
+    expect((await putRx('nurse', p, v, { rev: 0, items: [FOLIC], notes: '' })).status).toBe(403);
+    const added = await putRx('drA', p, v, { rev: 0, items: [FOLIC], notes: '' });
+    expect(added.status, JSON.stringify(added.body)).toBe(200);
+    expect(added.body.visit.prescription).toMatchObject({ addedAfterSigning: true, byName: 'Sample drA' });
+    expect(added.body.access.canAddPrescription).toBe(false);
+
+    // once only: from then on it is locked like the rest of the signed visit
+    const again = await putRx('drA', p, v, { rev: 1, items: [FOLIC, FOLIC], notes: '' });
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('VISIT_SIGNED');
+    const saved = await Visit.findOne({ _id: v.id, tenantId: hospital._id });
+    expect(saved.prescription.items).toHaveLength(1);
+    expect(saved.details.diagnosis).toBe('Normal pregnancy');
+  });
+
   it('a signed visit can still be printed and marked entered in error', async () => {
     const { p, v } = await writtenVisit();
     await sign('drA', p, v, revsOf(v));

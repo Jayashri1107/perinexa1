@@ -36,6 +36,7 @@ export function visitView(visit, { notes }) {
       items: (p.items ?? []).map(rxItemView),
       notes: text(p.notes),
       warningReasons: (p.warningReasons ?? []).map((w) => ({ key: w.key, level: w.level, title: w.title, medicines: [...(w.medicines ?? [])], reason: w.reason })),
+      addedAfterSigning: Boolean(p.addedAfterSigning),
       ...who(p),
     },
     createdByName: visit.createdByName,

@@ -34,12 +34,15 @@ const customTiming = z.discriminatedUnion('type', [
 /** PH8: the vaccine given (asked when a vaccination is marked done here; optional when it was given elsewhere). */
 export const vaccineSchema = z
   .object({
-    batch: safeText('Batch', 40).min(1, 'Write the batch number on the vial.'),
+    batch: safeText('Batch', 40).default(''),
+    // the vial's sticker pasted in the paper file instead of the batch typed here (doctor's request, 15 Nov 2026)
+    stickerInFile: z.boolean().default(false),
     expiry: z.union([z.literal(''), z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Choose the expiry month.')]).default(''),
     manufacturer: safeText('Manufacturer', 120).default(''),
     stockBatchId: objectId.optional(),
   })
-  .strict();
+  .strict()
+  .refine((v) => v.batch || v.stickerInFile, { path: ['batch'], message: 'Write the batch number on the vial, or tick "Sticker pasted in the file".' });
 
 export const itemActionSchema = z.discriminatedUnion('action', [
   item('done', {

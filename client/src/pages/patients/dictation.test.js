@@ -9,6 +9,7 @@ import {
   isInfoPath,
   keepForLater,
   mergeDictated,
+  pinInAddress,
   newFillMemory,
   noteHandEdit,
   noteTick,
@@ -758,5 +759,18 @@ describe('findings in this pregnancy said aloud (16 Oct 2026)', () => {
     const out = mergeDictated(v, r.values, r.paths, { unticked: ['pregnancy.findings.gdm'] });
     expect(out.pregnancy.findings).toEqual(['bleeding', 'multiple']);
     expect(dictatedFields(r.values, ['pregnancy.findings'], { unticked: ['pregnancy.findings.gdm'] })).toEqual(['pregnancy.findings.multiple']);
+  });
+});
+
+describe('the PIN code said in an address (doctor’s request, 15 Nov 2026)', () => {
+  it('goes to its own box, out of the address', () => {
+    for (const t of ['Seema Sample 28 years address Wakad Pune pin code 411057 phone 9876543210', 'Seema Sample 28 years address Wakad Pune 411 057', 'Seema Sample 28 years address Wakad Pune pincode 4 1 1 0 5 7']) {
+      const r = extractPatientDetails(t, { careType: 'antenatal', voice: true });
+      expect(r.values.pinCode, t).toBe('411057');
+      expect(r.values.address, t).toBe('Wakad Pune');
+    }
+  });
+  it('leaves a flat number alone', () => {
+    expect(pinInAddress('Flat 302, Sample Society, Wakad')).toBeNull();
   });
 });

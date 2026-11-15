@@ -281,6 +281,24 @@ export function DictateButton({ onOpen }) {
   );
 }
 
+// withoutFetalSex, except in the parts that describe children already born (the history sheet's "Previous deliveries")
+function withoutFetalSexOutside(text, keep) {
+  if (!keep.length) return withoutFetalSex(text);
+  let removed = false;
+  let out = '';
+  let at = 0;
+  for (const { start, end } of keep) {
+    const cut = withoutFetalSex(text.slice(at, start));
+    removed ||= cut.removed;
+    out += `${cut.removed ? `${cut.text} ` : text.slice(at, start)}${text.slice(start, end)}`;
+    at = end;
+  }
+  const last = withoutFetalSex(text.slice(at));
+  removed ||= last.removed;
+  out += last.removed ? ` ${last.text}` : text.slice(at);
+  return { text: removed ? out.replace(/[ \t]+/g, ' ').trim() : text, removed };
+}
+
 export function VoiceEntry({
   careType,
   onDetails,
@@ -302,6 +320,7 @@ export function VoiceEntry({
   aiForm = 'patient', // "Ask AI where these belong": which form's fields
   aiMeaning = suggestionMeaning, // an AI suggestion → an answer for this form
   onHide = null, // folds the card back into the Dictate button (not while recording)
+  bornChildSpans = null, // (text) => [{ start, end }]: where children already born are described – their sex stays in
 }) {
   const [env] = useState(() => speechEnvironment(typeof window === 'undefined' ? undefined : window));
   const [Recognition] = useState(() => (env.ok ? window.SpeechRecognition : undefined)); // never webkitSpeechRecognition
@@ -351,7 +370,7 @@ export function VoiceEntry({
   const fill = (source, keep = kept, { ai = false } = {}) => {
     let said = source;
     if (careType === 'antenatal' || careType === 'abortion') {
-      const cut = withoutFetalSex(source);
+      const cut = withoutFetalSexOutside(source, bornChildSpans ? bornChildSpans(source) : []);
       if (cut.removed) {
         said = cut.text;
         setText(said);

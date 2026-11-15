@@ -43,7 +43,7 @@ import { asName } from '../../personName.js';
 import { lookupPin } from './pinLookup.js';
 import { useUnsavedWarning } from '../../hooks/useUnsavedWarning.js';
 import { HistorySheet } from './HistorySheet.jsx';
-import { SEX_CHECKED_TEXTS, historyEmpty, historyPayload, historyValues, withHistorySheet } from './historyFormat.js';
+import { SEX_CHECKED_TEXTS, bornChildSpans, historyEmpty, historyPayload, historyValues, withHistorySheet } from './historyFormat.js';
 import { DEPARTMENTS, doctorsOffered, inDepartment } from '../../platform/departments.js';
 import { FertilitySection } from './FertilitySection.jsx';
 import { fertilityNumberErrors, fertilityPayload, fertilityValues } from './fertilityFormat.js';
@@ -539,7 +539,12 @@ export function PatientForm({
     const pin = e.target.value.replace(/\D/g, '').slice(0, 6);
     unmark('pinCode');
     setV((cur) => ({ ...cur, pinCode: pin }));
-    if (pin.length !== 6) return;
+  };
+  // Typed or dictated (doctor's request, 15 Nov 2026): a whole PIN fills the city and state
+  const pinNow = v.pinCode;
+  useEffect(() => {
+    const pin = pinNow;
+    if (!/^\d{6}$/.test(pin ?? '')) return;
     lookupPin(pin).then((place) => {
       if (!place) return;
       setV((cur) => {
@@ -550,7 +555,7 @@ export function PatientForm({
         return next;
       });
     });
-  };
+  }, [pinNow]);
   const setFertility = (key, value) => {
     unmark(`fertility.${key}`);
     setV((cur) => ({ ...cur, fertility: { ...cur.fertility, [key]: value } }));
@@ -775,6 +780,7 @@ export function PatientForm({
                 canNote={clinical}
                 example={sheetShown ? (SHEET_EXAMPLE[type] ?? SHEET_EXAMPLE.other) : voiceExample(part, type, clinical)}
                 read={sheetShown ? readWithSheet : undefined}
+                bornChildSpans={sheetShown ? (t) => bornChildSpans(t, type) : null}
                 initial={dictated ? { here: dictated.found, later: [], notes: [], carried: true } : null}
                 initialText={spoken}
               />

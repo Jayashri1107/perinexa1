@@ -159,7 +159,9 @@ const ANCHORS = [
   ['menstrual', /\bmenstrual history\b|\bL\.?\s?M\.?\s?P\b/i],
   ['married', /\bmarried (?:since|for)\b|\bobstetric history\b/i],
   ['deliveries', anyOf(DELIVERY_WORDS)],
-  ['other', /\bany other\b|\bother (?:personal|medical|history)\b/i],
+  // "No major personal, medical, operative and family history" / "nil significant past history": the words themselves are
+  // the answer, so this anchor takes no words (doctor's request, 15 Nov 2026)
+  ['other', /\bany other\b|\bother (?:personal|medical|history)\b|(?=\b(?:no|nil|not any)\s+(?:(?:major|significant|relevant|other|known|any)\s+)?(?:past|personal|medical|operative|surgical|family)\b)/i],
 ];
 // The one more line of a type of care (decision 7): infertility and postnatal care only, so the words end a blank there
 const CARE_ANCHORS = {
@@ -197,6 +199,22 @@ function parts(text, careType) {
 }
 
 /**
+ * Where "Previous deliveries" is said in `text`: [{ start, end }] – the one blank about children already born, where
+ * their sex may be said (owner's decision 4 of 27 Oct 2026), so a pregnancy's Dictate leaves those words in.
+ */
+export function bornChildSpans(text, careType) {
+  const s = String(text ?? '');
+  const found = [...ANCHORS, ...(CARE_ANCHORS[careType] ?? [])]
+    .map(([key, rx]) => {
+      const m = rx.exec(s);
+      return m ? { key, start: m.index, end: m.index + m[0].length } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.start - b.start);
+  return found.flatMap((f, i) => (f.key === 'deliveries' ? [{ start: f.start, end: i + 1 < found.length ? found[i + 1].start : s.length }] : []));
+}
+
+/**
  * The blanks a sentence fills: { complaint, cycle, marriedSinceYears, consanguinity, previousDeliveries, otherHistory }
  * – only those it is sure of (anything else is left as it is in the form). `careType`: its own line's words end a blank.
  */
@@ -224,7 +242,7 @@ export function readSentence(text, { careType } = {}) {
       if (d) out.previousDeliveries = d;
     }
     if (f.key === 'other') {
-      const o = clean(t.replace(/^\s*(?:personal|medical|operative|or|family|,|\s)*history\b/i, ''));
+      const o = clean(t.replace(/^\s*(?:personal|medical|operative|surgical|or|and|family|,|\s)*history\b/i, ''));
       if (o) out.otherHistory = o;
     }
   }

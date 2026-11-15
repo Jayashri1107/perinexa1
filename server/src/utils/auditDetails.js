@@ -121,7 +121,7 @@ const AI_ACTIONS = new Set(['AI_USED', 'AI_QUESTION_ASKED', 'AI_CHECK_PRINTED_AN
 const AI_DETAIL_FIELDS = ['patientId', 'mrn', 'visitId', 'feature', 'model', 'inputTokens', 'outputTokens', 'results', 'issues', 'patientIds'];
 
 // via: 'whatsapp' for a PDF saved to send on WhatsApp (never the number); practice: sent in practice mode (nothing left)
-const VISIT_DETAIL_FIELDS = ['patientId', 'mrn', 'visitId', 'sections', 'access', 'via', 'warningsOverridden', 'practice'];
+const VISIT_DETAIL_FIELDS = ['patientId', 'mrn', 'visitId', 'sections', 'access', 'via', 'warningsOverridden', 'afterSigning', 'practice'];
 
 // Analytics (Feature 11): which page was opened, and for a patient list the ids of the patients on the page
 // (sorted by id), how many and which page – never the number, cell, label or period they came from. The

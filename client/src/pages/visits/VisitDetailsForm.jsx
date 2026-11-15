@@ -298,7 +298,7 @@ export function VisitDetailsForm({ patient, page, onSaved, onConflict, onPlanCon
       for (const k of TEXT_KEYS) if (canEdit && mentionsFetalSex(details[k])) local[`details.${k}`] = PCPNDT_MESSAGE;
     }
     if (canVitals && Boolean(vitals.bpSystolic) !== Boolean(vitals.bpDiastolic)) local[`vitals.${vitals.bpSystolic ? 'bpDiastolic' : 'bpSystolic'}`] = 'Enter both numbers of the blood pressure';
-    if (canEdit) for (const id of ticked) if (isVaccination(id) && !(vaccines[id]?.batch ?? '').trim()) local[`vaccine.${id}`] = 'Write the batch number on the vial.';
+    if (canEdit) for (const id of ticked) if (isVaccination(id) && !(vaccines[id]?.batch ?? '').trim() && !vaccines[id]?.stickerInFile) local[`vaccine.${id}`] = 'Write the batch number on the vial, or tick "Sticker pasted in the file".';
     if (Object.keys(local).length) {
       setFields(local);
       setError('Please check the highlighted fields.');
@@ -312,7 +312,7 @@ export function VisitDetailsForm({ patient, page, onSaved, onConflict, onPlanCon
     }
     const vaccineOf = (id) => {
       const v = vaccines[id];
-      return isVaccination(id) && v?.batch?.trim() ? { batch: v.batch.trim(), expiry: v.expiry ?? '', manufacturer: (v.manufacturer ?? '').trim(), ...(v.stockBatchId ? { stockBatchId: v.stockBatchId } : {}) } : null;
+      return isVaccination(id) && (v?.batch?.trim() || v?.stickerInFile) ? { batch: (v.batch ?? '').trim(), stickerInFile: Boolean(v.stickerInFile), expiry: v.expiry ?? '', manufacturer: (v.manufacturer ?? '').trim(), ...(v.stockBatchId ? { stockBatchId: v.stockBatchId } : {}) } : null;
     };
     if (canEdit && ticked.length) body.doneItems = ticked.map((id) => ({ id, rev: plan.dueNow.find((i) => i.id === id)?.rev ?? 0, vaccine: vaccineOf(id) }));
     if (!Object.keys(body).length) return null;

@@ -377,12 +377,12 @@ describe('fillers, trailing words, months and masked words (plan 2.3 steps 4 and
     expect(voice('address 12 Palm Tree Colony').values.address).toBe('12 Palm Tree Colony');
     // in an address "tree", "van" or "hero" is a number only straight after its keyword, or in a pincode not yet whole
     expect(voice('address ward no tree, Tree Park Road').values.address).toBe('Ward no 3, Tree Park Road');
-    expect(voice('address pin code four six two zero tree won').values.address).toBe('Pin Code 462031');
+    expect(voice('address pin code four six two zero tree won').values.pinCode).toBe('462031'); // its own box (15 Nov 2026)
     for (const [text, address] of [
       ['address Plot 7 Van Vihar Colony Bhopal', 'Plot 7 Van Vihar Colony Bhopal'],
       ['address house no 12 Tree Park Road', 'House no 12 Tree Park Road'],
       ['address flat 3 hero complex', 'Flat 3 Hero Complex'],
-      ['address pin 462016 Van Vihar Bhopal', 'Pin 462016 Van Vihar Bhopal'],
+      ['address pin 462016 Van Vihar Bhopal', 'Van Vihar Bhopal'], // the PIN goes to its own box (15 Nov 2026)
     ]) {
       const r = voice(text);
       expect(r.values.address, text).toBe(address);

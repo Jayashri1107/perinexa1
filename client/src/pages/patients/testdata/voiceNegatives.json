@@ -63,7 +63,7 @@
   { "id": "N55", "careType": "antenatal", "text": "address flat 3 hero complex", "expected": { "values": { "address": "Flat 3 Hero Complex" } } },
   { "id": "N56", "careType": "antenatal", "text": "address ward number 4 Won Tower", "expected": { "values": { "address": "Ward Number 4 Won Tower" } } },
   { "id": "N57", "careType": "antenatal", "text": "address sector 5 Hero Honda Chowk Gurgaon", "expected": { "values": { "address": "Sector 5 Hero Honda Chowk Gurgaon" } } },
-  { "id": "N58", "careType": "antenatal", "text": "address pin 462016 Van Vihar Bhopal", "expected": { "values": { "address": "Pin 462016 Van Vihar Bhopal" } } },
+  { "id": "N58", "careType": "antenatal", "text": "address pin 462016 Van Vihar Bhopal", "expected": { "values": { "address": "Van Vihar Bhopal", "pinCode": "462016" } } },
   { "id": "N59", "careType": "antenatal", "text": "address Plot 7 Tan Nagar", "expected": { "values": { "address": "Plot 7 Tan Nagar" } } },
   { "id": "N60", "careType": "antenatal", "text": "BP 110 to 70", "expected": { "values": {} } },
   { "id": "N61", "careType": "antenatal", "text": "BP 120 to 80", "expected": { "values": {} } },

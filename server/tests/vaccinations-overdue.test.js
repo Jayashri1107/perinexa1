@@ -248,12 +248,22 @@ describe('PH8 – the vaccine batch when a vaccination is marked done', () => {
     expect((await patch(here, { action: 'done', on: '2026-10-02', vaccine: { batch: '', expiry: '2027-03' } })).status).toBe(400);
     expect((await patch(here, { action: 'done', on: '2026-10-02', vaccine: { batch: 'BCG-2611A', expiry: '2027-13' } })).status).toBe(400);
     expect((await patch(here, { action: 'done', on: '2026-10-02', vaccine: { batch: 'BCG-2611A', expiry: '2027-03', manufacturer: 'Sample Vaccines Ltd' } })).status).toBe(200);
-    expect((await itemOf(here)).done.vaccine).toEqual({ batch: 'BCG-2611A', expiry: '2027-03', manufacturer: 'Sample Vaccines Ltd' });
+    expect((await itemOf(here)).done.vaccine).toEqual({ batch: 'BCG-2611A', stickerInFile: false, expiry: '2027-03', manufacturer: 'Sample Vaccines Ltd' });
     expect((await patch(away, { action: 'done', on: '2026-10-02', elsewhere: true })).status).toBe(200);
     expect((await itemOf(away)).done.vaccine).toBeNull();
     // Not a vaccination: no batch accepted
     const other = (await plan(here)).items.find((i) => i.kind !== 'vaccination' && i.state === 'open');
     const agent = await as('rmo');
     if (other) expect((await agent.patch(`/api/patients/${here.id}/care-plan/items/${other.id}`).send({ rev: other.rev, action: 'done', on: '2026-10-02', vaccine: { batch: 'X1' } })).status).toBe(400);
+  });
+
+  it('given here with the vial’s sticker pasted in the file: no batch needed (doctor’s request, 15 Nov 2026)', async () => {
+    const p = await baby('Baby Sticker', { phone: '90000 00013' });
+    on('2026-10-03');
+    const it = (await plan(p)).items.find((i) => i.key === 'nb_vacc_birth');
+    const agent = await as('rmo');
+    const res = await agent.patch(`/api/patients/${p.id}/care-plan/items/${it.id}`).send({ rev: it.rev, action: 'done', on: '2026-10-02', vaccine: { batch: '', stickerInFile: true } });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect((await plan(p)).items.find((i) => i.key === 'nb_vacc_birth').done.vaccine).toEqual({ batch: '', stickerInFile: true, expiry: '', manufacturer: '' });
   });
 });

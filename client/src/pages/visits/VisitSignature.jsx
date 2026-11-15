@@ -52,6 +52,9 @@ export function SignDialog({ patient, page, onDone, onCancel }) {
           You sign as <strong>{user?.name}</strong>. After signing, nothing in this visit can be changed: vital signs, notes, prescription and care-plan
           ticks. A correction can still be added below it, with your name and the time.
         </p>
+        {v.prescription.items.length === 0 && (
+          <Alert type="warning">No medicines are written for this visit yet. You can still add the prescription once after signing; it is then marked as added after signing.</Alert>
+        )}
         <Alert type="error">{error}</Alert>
         <div className="row">
           <button type="button" className="btn btn-positive" onClick={sign} disabled={saving}>

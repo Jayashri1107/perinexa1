@@ -89,10 +89,12 @@ export function PrescriptionForm({
 }) {
   const { visit, access, previousPrescription: prev } = page;
   const rx = visit.prescription;
-  const canEdit = visit.status === 'active' && access.canEdit;
+  // afterSigning: the visit was signed with no medicines – the prescription can still be written, once
+  const afterSigning = visit.status === 'active' && Boolean(access.canAddPrescription);
+  const canEdit = (visit.status === 'active' && access.canEdit) || afterSigning;
   // A prescription with no medicines yet starts with one empty row to type into (an empty row is never saved)
   // draft: the person's own unsaved typing, put back (doctor ideas #4 – visitDraft.js)
-  const [rows, setRows] = useState(() => (Array.isArray(draft?.rows) && draft.rows.length ? draft.rows : rx.items.length || !(visit.status === 'active' && access.canEdit) ? rx.items.map(toRow) : [emptyRow()]));
+  const [rows, setRows] = useState(() => (Array.isArray(draft?.rows) && draft.rows.length ? draft.rows : rx.items.length || !canEdit ? rx.items.map(toRow) : [emptyRow()]));
   const filled = rows.filter((r) => !isBlankRow(r));
   const [notes, setNotes] = useState(typeof draft?.notes === 'string' ? draft.notes : rx.notes);
   const [saving, setSaving] = useState(false);
@@ -313,6 +315,7 @@ export function PrescriptionForm({
         {rx.byName && (
           <p className="hint vs-byline">
             By {rx.byName} · {formatDateTime(rx.at)}
+            {rx.addedAfterSigning ? ' · added after the visit was signed' : ''}
           </p>
         )}
         {rx.items.length ? (
@@ -367,6 +370,9 @@ export function PrescriptionForm({
           <div className="vs-section-head">
             <div>
               <h2>Prescription</h2>
+              {afterSigning && (
+                <Alert type="info">This visit is signed. The prescription can still be added once: it is marked as added after signing, with your name and the time, and can't be changed after you save it.</Alert>
+              )}
               <p className="hint vs-byline">{rx.byName ? `Last saved by ${rx.byName} · ${formatDateTime(rx.at)}` : 'Not saved yet.'}</p>
             </div>
             <div className="row vs-rx-actions">

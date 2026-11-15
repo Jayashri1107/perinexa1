@@ -598,7 +598,7 @@ export function staffWhen(item) {
 }
 
 /** PH8: "Batch BCG-2611A, expiry 03/2027, Sample Vaccines Ltd". */
-export const vaccineWords = (v) => `Batch ${v.batch}${v.expiry ? `, expiry ${v.expiry.slice(5)}/${v.expiry.slice(0, 4)}` : ''}${v.manufacturer ? `, ${v.manufacturer}` : ''}`;
+export const vaccineWords = (v) => `${v.batch ? `Batch ${v.batch}` : 'Sticker pasted in the file'}${v.expiry ? `, expiry ${v.expiry.slice(5)}/${v.expiry.slice(0, 4)}` : ''}${v.manufacturer ? `, ${v.manufacturer}` : ''}`;
 
 /** The staff copy's details: guideline source, result, notes, and who moved, included or added it (and why). */
 export function staffDetails(item) {

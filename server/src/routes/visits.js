@@ -101,6 +101,15 @@ const assertNotSigned = (visit) => {
   }
 };
 
+// A visit signed with no medicines takes its prescription afterwards, once (doctor's request, 15 Nov 2026): the
+// signed notes stay as they were, and the prescription is marked "added after signing" with the name and time.
+const canAddPrescriptionAfterSigning = (visit) => visit.status === 'active' && Boolean(visit.signed) && !(visit.prescription?.items?.length > 0);
+const assertCanAddPrescription = (visit) => {
+  if (!canAddPrescriptionAfterSigning(visit)) {
+    throw conflict(`This visit was signed by ${visit.signed.byName} at ${timeIn(visit.signed.at)} and its prescription is already written, so it can no longer be changed. Add a correction below it instead.`, 'VISIT_SIGNED');
+  }
+};
+
 // Free text is checked for words about the baby's sex, except for newborns (their sex is recorded after birth).
 const schemasFor = (patient) => visitSchemas({ pcpndt: patient.careType !== 'newborn' });
 
@@ -114,18 +123,22 @@ function partChanged(visit, part) {
 }
 
 // Saves one part atomically: only if it is still the version the person edited, and the visit is not cancelled.
-async function savePart(req, patient, visit, part, { rev, ...data }) {
+// afterSigning: the prescription of a visit signed with no medicines (once only – see the prescription route).
+async function savePart(req, patient, visit, part, { rev, ...data }, { afterSigning = false } = {}) {
   const set = Object.fromEntries(Object.entries(data).map(([k, v]) => [`${part}.${k}`, v]));
   Object.assign(set, { [`${part}.by`]: req.user._id, [`${part}.byName`]: req.user.name, [`${part}.at`]: req.now ?? new Date() });
+  if (afterSigning) set[`${part}.addedAfterSigning`] = true;
+  const state = afterSigning ? { signed: { $ne: null }, 'prescription.items.0': { $exists: false } } : { signed: null };
   const r = await Visit.updateOne(
-    { _id: visit._id, tenantId: req.tenantId, patientId: patient._id, status: 'active', signed: null, [`${part}.rev`]: rev },
+    { _id: visit._id, tenantId: req.tenantId, patientId: patient._id, status: 'active', ...state, [`${part}.rev`]: rev },
     { $set: set, $inc: { [`${part}.rev`]: 1 } },
     { runValidators: true },
   );
   if (r.matchedCount === 1) return;
   const latest = await Visit.findOne({ _id: visit._id, tenantId: req.tenantId, patientId: patient._id });
   assertActive(latest);
-  assertNotSigned(latest);
+  if (afterSigning) assertCanAddPrescription(latest);
+  else assertNotSigned(latest);
   throw partChanged(latest, part);
 }
 
@@ -219,6 +232,8 @@ function visitPageAccess(visit, access, duplicate = false) {
     canViewNotes: access.notes,
     canSign: access.edit && open,
     canAddAddition: access.vitals && signedActive,
+    // a visit signed with no medicines: the prescription can still be written, once
+    canAddPrescription: access.edit && !duplicate && canAddPrescriptionAfterSigning(visit),
     canCancel: access.edit && visit.status === 'active',
     canCheckPrescription: access.edit,
   };
@@ -367,10 +382,14 @@ visitsRouter.put('/:visitId/prescription', async (req, res) => {
   const body = parse(schemasFor(patient).prescription, req.body);
   const visit = await findVisit(req, patient);
   assertActive(visit);
-  assertNotSigned(visit);
-  await savePart(req, patient, visit, 'prescription', body);
+  const afterSigning = Boolean(visit.signed);
+  if (afterSigning) {
+    assertCanAddPrescription(visit);
+    if (!body.items.length) throw invalid({ items: 'Add at least one medicine.' });
+  }
+  await savePart(req, patient, visit, 'prescription', body, { afterSigning });
   // How many warnings the doctor went ahead with (the count only – never the medicines or the reasons)
-  await audit(req, 'PRESCRIPTION_UPDATED', { details: ids(patient, visit, body.warningReasons.length ? { warningsOverridden: body.warningReasons.length } : {}) });
+  await audit(req, 'PRESCRIPTION_UPDATED', { details: ids(patient, visit, { ...(body.warningReasons.length ? { warningsOverridden: body.warningReasons.length } : {}), ...(afterSigning ? { afterSigning: true } : {}) }) });
   const latest = await findVisit(req, patient);
   res.json(await visitPage(req, patient, latest, access));
 });

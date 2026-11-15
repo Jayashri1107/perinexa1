@@ -245,14 +245,14 @@ describe('names and addresses (G3)', () => {
   });
 
   it('joins a pincode or flat number said digit by digit, but never takes in a phone number', () => {
-    expect(voice('address sector 15 rohini delhi pin code 1 1 0 0 8 5 phone 98765 43210').values.address).toBe('Sector 15 Rohini Delhi Pin Code 110085');
+    expect(voice('address sector 15 rohini delhi pin code 1 1 0 0 8 5 phone 98765 43210').values).toMatchObject({ address: 'Sector 15 Rohini Delhi', pinCode: '110085' }); // the PIN in its own box (15 Nov 2026)
     expect(voice('address flat number two zero three sai heights baner').values.address).toBe('Flat Number 203 Sai Heights Baner');
     const r = voice('address baner pune 9 8 7 6 5 4 3 2 1 0');
     expect(r.values).toMatchObject({ address: 'Baner Pune', phone: '98765 43210' });
     expect(voice('address baner pune 0 9 8 7 6 5 4 3 2 1 0').values).toMatchObject({ address: 'Baner Pune', phone: '98765 43210' });
     // a pincode and a phone both said digit by digit: split only after a whole pincode
     for (const text of ['address flat 2 0 3 Wakad Pune 4 1 1 0 5 7 9 8 7 6 5 4 3 2 1 0', 'address flat two zero three Wakad Pune four one one zero five seven nine eight seven six five four three two one zero']) {
-      expect(voice(text).values, text).toMatchObject({ address: 'Flat 203 Wakad Pune 411057', phone: '98765 43210' });
+      expect(voice(text).values, text).toMatchObject({ address: 'Flat 203 Wakad Pune', pinCode: '411057', phone: '98765 43210' });
     }
     const unsure = voice('address Wakad Pune 4 1 1 0 5 7 9 8 7 6 5 4 3 2 1');
     expect(unsure.values.phone).toBeUndefined();

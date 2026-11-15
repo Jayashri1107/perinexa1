@@ -696,7 +696,7 @@
      "fullName": "Anita Rao",
      "ageYears": "30",
      "phone": "98765 43210",
-     "address": "Baner Pune 411045"
+     "address": "Baner Pune", "pinCode": "411045"
     }
    }
   },
@@ -711,7 +711,7 @@
    ],
    "expected": {
     "values": {
-     "address": "Baner Pune 411045",
+     "address": "Baner Pune", "pinCode": "411045",
      "fullName": "Anita Rao",
      "ageYears": "30",
      "phone": "98765 43210"
@@ -1949,10 +1949,8 @@
     "values": {
      "fullName": "Reena Das",
      "ageYears": "27",
-     "address": [
-      "Sector 15 Rohini Delhi Pin Code 110085",
-      "Sector 15 Rohini Delhi 110085"
-     ],
+     "address": "Sector 15 Rohini Delhi",
+      "pinCode": "110085",
      "phone": "98765 43210"
     }
    }
@@ -1970,10 +1968,8 @@
     "values": {
      "fullName": "Reena Das",
      "ageYears": "27",
-     "address": [
-      "Sector 15 Rohini Delhi Pin Code 110085",
-      "Sector 15 Rohini Delhi 110085"
-     ],
+     "address": "Sector 15 Rohini Delhi",
+      "pinCode": "110085",
      "phone": "98765 43210"
     }
    }
@@ -2009,7 +2005,7 @@
     "values": {
      "fullName": "Reena Das",
      "ageYears": "27",
-     "address": "Door Number 12 Anna Nagar Chennai 600040",
+     "address": "Door Number 12 Anna Nagar Chennai", "pinCode": "600040",
      "phone": "98765 43210"
     }
    }
