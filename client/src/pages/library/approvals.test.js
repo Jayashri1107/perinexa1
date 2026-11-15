@@ -23,6 +23,14 @@ describe('draftsFrom', () => {
     ]);
   });
 
+  it('lists the wording of the high-risk factors on consent forms while it is a draft', () => {
+    const rows = (riskWording) => draftsFrom({ consents: { forms: [], riskWording } }).map((d) => [d.key, d.kind, d.to]);
+    expect(rows({ version: 1, approved: false, canApprove: true })).toEqual([['risk-wording', 'consent', '/consent-forms/risk-wording']]);
+    expect(rows({ version: 1, approved: true, canApprove: true })).toEqual([]);
+    expect(rows({ version: 1, approved: false, canApprove: false })).toEqual([]); // not a doctor: nothing to approve
+    expect(rows(undefined)).toEqual([]); // an answer from before the status was sent
+  });
+
   it('lists the new built-in entries of the medicine safety list that a doctor has not added yet', () => {
     const names = (list) => draftsFrom({ medSafety: { list } }).map((d) => [d.key, d.name, d.to]);
     // An approved list made before the new kinds of entry existed: nothing to approve, but entries to add

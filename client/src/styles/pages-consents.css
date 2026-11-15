@@ -60,3 +60,14 @@
 .cf-scans { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .cf-scans a { display: inline-flex; gap: var(--space-1); align-items: center; }
 .cf-scans svg.lucide { width: 14px; height: 14px; }
+
+/* The print dialog: her high-risk factors, each with its complications under it */
+.cf-risk-hint { margin: 0 0 var(--space-2); }
+.cf-risk-item { align-items: flex-start; padding: var(--space-2) 0; }
+.cf-risk-item input { margin-top: calc((var(--lh-body) - 18px) / 2); }
+.cf-risk-sub { display: block; }
+
+/* The wording of the high-risk factors (Clinic library › Consent forms) */
+.cf-risk-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-6); }
+.cf-risk-card h2 { margin: 0 0 var(--space-1); }
+.cf-risk-card p { margin: 0; }

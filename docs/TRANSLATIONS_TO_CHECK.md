@@ -707,3 +707,18 @@ Every phrase of the table page, word for word (`TABLE_LABELS`, `DANGER_SIGNS`, `
 | --- | --- | --- |
 | RMO | आरएमओ | आरएमओ |
 | Consultant | सल्लागार डॉक्टर | परामर्शदाता डॉक्टर |
+
+## High-risk factors on consent forms (14 Nov 2026)
+
+40 risk factors, each with its name and its possible complications, and four fixed lines (the heading, the sentences
+that they were explained, "Possible complications" and "Other risk factors and their complications"), in Marathi and
+Hindi. They are easiest to read in the app, as printed, English beside the translation: **Clinic library → Consent
+forms → High-risk factors on consent forms → Read the wording** (choose Marathi or Hindi at the top). The wording
+lives in `server/src/consents/riskWording.js`. A Marathi and a Hindi reviewer read every line on 14 Nov 2026 and
+twelve points were corrected; these were left for a fluent speaker to decide: वार / प्लॅसेंटा and आँवल / प्लेसेंटा for
+the placenta, व्रण (टाका) and निशान (टाँका) for the scar on the uterus, बाळ दगावणे / बच्चे की मृत्यु for the loss of the
+baby, जन्मजात व्यंग / जन्मजात विकृति for a birth defect (the information sheets say जन्मजात दोष), नैराश्य / अवसाद for
+depression (the sheets say उदास वाटणे / मन उदास रहना), हार्ट फेल्युअर / हार्ट फेल्योर (the sheets say हृदय निकामी होणे),
+लठ्ठपणा / मोटापा for obesity, and the transliterated terms (प्री-एक्लॅम्पसिया, थ्रॉम्बोफिलिया, हायड्रॉप्स,
+इम्युनोग्लोब्युलिन, जेस्टेशनल डायबेटीस). In Hindi, anaesthesia is written एनेस्थीसिया (बेहोशी या सुन्न करने की दवा), as on
+the anaesthesia consent.

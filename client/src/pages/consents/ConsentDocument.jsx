@@ -88,6 +88,66 @@ export function ConsentClauses({ form, lang, values }) {
   );
 }
 
+/**
+ * The patient's high-risk factors with the complications of each, before the clauses: English with the translation
+ * next to it. risk: riskToPrint() – { section, rows, other }. A factor from a rule of the hospital's own has no
+ * wording of ours: its name is printed as the hospital wrote it, with a line to write the complications on.
+ */
+export function ConsentRiskSection({ risk, lang }) {
+  if (!risk || (!risk.rows.length && !risk.other)) return null;
+  const second = lang !== 'en' ? lang : null;
+  const S = risk.section;
+  const cell = (l, row) => (
+    <td lang={l}>
+      {row.name[l] ? (
+        <span className="pdoc-risk-name">{row.name[l]}</span>
+      ) : (
+        <span className="pdoc-risk-name" lang="en">
+          {row.name.en}
+        </span>
+      )}
+      {' – '}
+      {S.complications[l]}: {row.complications ? row.complications[l] : <span className="pdoc-line" role="img" aria-label="blank line, to fill in by hand" />}
+    </td>
+  );
+  return (
+    <section className="pdoc-risk">
+      <h2 className="pdoc-risk-title">
+        <PrintLabel label={S.heading} lang={lang} />
+      </h2>
+      <table className={`ptable pdoc-clauses ${second ? 'pdoc-two' : ''}`.trim()}>
+        <tbody>
+          <tr>
+            <td className="pdoc-num" />
+            <td lang="en">{S.intro.en}</td>
+            {second && <td lang={second}>{S.intro[second]}</td>}
+          </tr>
+          {risk.rows.map((row) => (
+            <tr key={row.id}>
+              <td className="pdoc-num">•</td>
+              {cell('en', row)}
+              {second && cell(second, row)}
+            </tr>
+          ))}
+          {risk.other && (
+            <tr>
+              <td className="pdoc-num">•</td>
+              <td lang="en">
+                <span className="pdoc-risk-name">{S.other.en}</span>: <strong>{risk.other}</strong>
+              </td>
+              {second && (
+                <td lang={second}>
+                  <span className="pdoc-risk-name">{S.other[second]}</span>: <strong lang="en">{risk.other}</strong>
+                </td>
+              )}
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 function SignLine({ label, lang, value }) {
   return (
     <div className="pdoc-sig-line">
@@ -216,16 +276,25 @@ function SignatureBoxes({ lang, patient, doctor, information }) {
 /**
  * The whole printed form. values: the blanks (patient, age, mrn, hospital, doctor, procedure, reason);
  * doctor: { name, professional } of the doctor who explains it, or null to leave the name blank.
- * A form that is not approved says DRAFT at the top of every page.
+ * A form that is not approved says DRAFT at the top of every page. risk: the patient's high-risk factors to print
+ * before the clauses (riskToPrint(), or null) – while the hospital has not approved their wording, the page says
+ * DRAFT too.
  */
-export function ConsentPrintDocument({ form, lang, patient, letterhead, values, doctor, printedAt, printedByName }) {
+export function ConsentPrintDocument({ form, lang, patient, letterhead, values, doctor, printedAt, printedByName, risk = null }) {
   const newborn = patient.careType === 'newborn';
-  const draft = form.status !== 'approved' ? 'DRAFT – not approved by the hospital. Not for use with patients until a doctor approves this form.' : null;
+  const riskDraft = Boolean(risk) && !risk.approved;
+  const draft =
+    form.status !== 'approved'
+      ? 'DRAFT – not approved by the hospital. Not for use with patients until a doctor approves this form.'
+      : riskDraft
+        ? 'DRAFT – the wording of the high-risk factors on this form is not approved by the hospital. Not for use with patients until a doctor approves it.'
+        : null;
   const approval = form.status === 'approved' ? `approved by ${form.approvedByName} on ${formatDate(form.approvedAt)}` : 'draft';
   const footer = (
     <>
       <span>
         {form.title.en} · version {form.version} · {approval}
+        {risk ? ` · high-risk factors wording version ${risk.version} (${risk.approved ? 'approved' : 'draft'})` : ''}
       </span>
       <span>
         {patient.fullName} · {patient.mrn} · printed {formatDateTime(printedAt)} by {printedByName}
@@ -245,6 +314,7 @@ export function ConsentPrintDocument({ form, lang, patient, letterhead, values, 
           [<PrintLabel key="no" label={PRINT_LABELS.patientNo} lang={lang} />, <span key="mrn" className="pdoc-tabular">{patient.mrn}</span>],
         ]}
       />
+      <ConsentRiskSection risk={risk} lang={lang} />
       <ConsentClauses form={form} lang={lang} values={values} />
       <SignatureBoxes lang={lang} patient={patient} doctor={doctor} information={form.kind === 'information'} />
       <LetterheadFooter letterhead={letterhead} />

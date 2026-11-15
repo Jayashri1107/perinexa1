@@ -37,6 +37,38 @@ export function ConsentFormStatus({ form }) {
   );
 }
 
+/**
+ * Consent forms also carry the patient's high-risk factors with their complications: whether a doctor approved
+ * that wording, and the way to read it.
+ */
+function RiskWordingCard({ wording: w }) {
+  if (!w) return null;
+  return (
+    <section className="card cf-risk-card" aria-labelledby="cf-risk-card-title">
+      <div>
+        <h2 id="cf-risk-card-title">High-risk factors on consent forms</h2>
+        <p className="hint">
+          Every consent form printed for a patient can carry her high-risk factors and the complications of each. The wording is the same for all forms.
+        </p>
+      </div>
+      <span className="row">
+        {w.approved ? (
+          <StatusPill tone="stable" title={`Approved by ${w.approvedByName} on ${formatDateTime(w.approvedAt)}`}>
+            Approved · v{w.version}
+          </StatusPill>
+        ) : (
+          <StatusPill tone="watch" icon={TriangleAlert}>
+            Draft · v{w.version}
+          </StatusPill>
+        )}
+        <Link to="/consent-forms/risk-wording" className="btn btn-secondary btn-sm">
+          Read the wording
+        </Link>
+      </span>
+    </section>
+  );
+}
+
 export function ConsentFormsPage({ kind = 'consent' }) {
   const W = kindWords(kind);
   const { activeMembership } = useAuth();
@@ -114,6 +146,7 @@ export function ConsentFormsPage({ kind = 'consent' }) {
             hospital must check each form, including the Marathi and Hindi translations, and a doctor must approve it. Printed drafts say DRAFT on every page.
           </Alert>
         )}
+        {kind === 'consent' && <RiskWordingCard wording={data?.riskWording} />}
         <DataTable
           caption={W.plural}
           columns={columns}

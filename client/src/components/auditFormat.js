@@ -254,6 +254,7 @@ export const AUDIT_LABELS = {
   CONSENT_FORM_CREATED: 'Consent form created',
   CONSENT_FORM_UPDATED: 'Consent form changed',
   CONSENT_FORM_APPROVED: 'Consent form approved',
+  CONSENT_RISK_WORDING_APPROVED: 'Wording of high-risk factors on consent forms approved',
   CONSENT_FORM_ACTIVATED: 'Consent form in use again',
   CONSENT_FORM_DEACTIVATED: 'Consent form no longer used',
   CONSENTS_VIEWED: 'Consent forms viewed',
@@ -708,6 +709,7 @@ export const AUDIT_TONES = {
   CONSENT_SCAN_ADDED: 'patient',
   CONSENT_SCAN_OPENED: 'patient',
   CONSENT_FORM_APPROVED: 'info',
+  CONSENT_RISK_WORDING_APPROVED: 'info',
   PRESCRIPTION_SET_APPROVED: 'info',
   LAB_PACKAGE_APPROVED: 'info',
   VISITS_VIEWED: 'patient',
@@ -1366,6 +1368,8 @@ export function describeAudit(entry) {
       return `${record(d)}${d.change ? `: cycle ${FERTILITY_CYCLE_CHANGES[d.change] ?? d.change}` : ''}`;
     case 'FERTILITY_CYCLE_PRINTED':
       return `${record(d)}${d.language && d.language !== 'en' ? ` (${d.language === 'mr' ? 'English + Marathi' : 'English + Hindi'})` : ''}`;
+    case 'CONSENT_RISK_WORDING_APPROVED':
+      return d.version ? `Version ${d.version}` : '';
     case 'CONSENT_FORM_CREATED':
     case 'CONSENT_FORM_UPDATED':
     case 'CONSENT_FORM_APPROVED':

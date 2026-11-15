@@ -158,6 +158,80 @@ export function blankProblems(form) {
   return out;
 }
 
+// ---------- The patient's high-risk factors on a consent form ----------
+
+// HIV is never printed on a consent or information form or kept with it (owner, 14 Nov 2026): anything typed for
+// a printout that names it is refused. The same words as the server (server/src/consents/riskWording.js – a server test checks that they match).
+const HIV_NAMED = /\bHIV(?:-?[12])?\b|\bH\.I\.V\b|\bH\. I\. V\b|\b(?:PLHIV|PLWHA|PLHA|RVD|PPTCT|PMTCT|ICTC|CD4|HAART)\b|\b(?:anti\s*-?\s*)?retro\s*[-–—:=\/(]*\s*(?:virals?\b|virus\b|positive\b|pos\b|negative\b|neg\b|reactive\b|non\s*-?\s*reactive\b|NR\b|status\b|[-–]\s?ve\b|\+)|\b(?:human\s+)?immun[eo]\s*-?\s*deficiency\s+virus\b|\bacquired\s+immun[eo]\s*-?\s*deficiency\s+syndrome\b|\b(?:zidovudine|nevirapine|efavirenz|dolutegravir|lopinavir|ritonavir|atazanavir|raltegravir|abacavir)\b/i;
+// (the second line, case-sensitive: AIDS, H I V and R.V.D. in capitals, and the Devanagari spellings एच·आय/आई/आइ·व्ही/वी –
+// with dots, spaces, a halant or the abbreviation sign between the letters, only at the start of a word – and एड्स / एडस)
+const HIV_NAMED_OTHER = /\bAIDS\b|\bH I V\b|\bR\.\s?V\.\s?D\b(?!['’])|(?:^|[^ऀ-ॣॱ-ॿ])एच्?[\s.\-॰‌‍]*आ[यईइ]्?[\s.\-॰‌‍]*(?:व्ही|वी|व्हि|वि)|एड्?स/;
+// "ART centre" is NACO's name for the HIV treatment centre – but an IVF unit is an "ART clinic" (ART Act 2021) and is
+// often called an ART centre too: it counts as HIV only when the same text says nothing about assisted reproduction.
+// In capitals only ("a state-of-the-art centre").
+const ART_CENTRE = /\bART\s+(?:[Pp]lus\s+)?[Cc](?:entre|enter|ENTRE|ENTER)s?\b/;
+const ASSISTED_REPRODUCTION = /\b(?:IVF|ICSI|IUI|OPU|embryos?|oocytes?|fertility|infertility|conceived|conception|donor|surrogacy)\b/i;
+export const HIV_WORD_SOURCES = [HIV_NAMED.source, HIV_NAMED_OTHER.source, ART_CENTRE.source, ASSISTED_REPRODUCTION.source];
+export const namesHiv = (text) => {
+  const t = String(text ?? '').replace(/_/g, ' ');
+  return HIV_NAMED.test(t) || HIV_NAMED_OTHER.test(t) || (ART_CENTRE.test(t) && !ASSISTED_REPRODUCTION.test(t));
+};
+export const HIV_ON_CONSENT_MESSAGE =
+  'Please remove the HIV status: it is never printed on a consent or information form or kept with it, because relatives and witnesses sign the form. With the patient’s agreement the doctor writes it on the paper by hand. Consent for an HIV test has its own form.';
+/** The words in a text that are read as HIV ('' when none), so that the print box can show what to change. */
+export const hivWordIn = (text) => {
+  const t = String(text ?? '').replace(/_/g, ' ');
+  const m = HIV_NAMED.exec(t) ?? HIV_NAMED_OTHER.exec(t) ?? (ASSISTED_REPRODUCTION.test(t) ? null : ART_CENTRE.exec(t));
+  return m ? m[0].trim() : '';
+};
+/** The typed values that name HIV: the keys of `typed` ({ procedure, reason, condition, otherRisks }). */
+export const typedHivFields = (typed) => Object.keys(typed ?? {}).filter((k) => namesHiv(typed[k]));
+
+/**
+ * Which of the offered risk factors are ticked when the print dialog opens. factors: [{ id, level }] from the
+ * server. again: the choices made before the preview (riskTicks), or an earlier printout being repeated – then the
+ * doctor's choice of that time is repeated for every factor her record showed then (riskOffered), ticked or not,
+ * and a factor it shows only since then is treated as new. New: the high ones are ticked.
+ */
+export function defaultRiskTicks(factors = [], again = null) {
+  const offered = new Set(factors.map((f) => f.id));
+  if (again?.riskTicks) return again.riskTicks.filter((id) => offered.has(id));
+  // A printout from before forms carried the section has no riskOffered: every factor is new
+  const before = new Set(again?.riskOffered ?? []);
+  const tickedBefore = new Set((again?.riskFactors ?? []).map((f) => f.id));
+  return factors.filter((f) => (before.has(f.id) ? tickedBefore.has(f.id) : f.level === 'high')).map((f) => f.id);
+}
+
+/** Whether the ticks repeat an earlier printout's choice (to say so in the dialog). */
+export const repeatsEarlierTicks = (again) => Boolean(again && !again.riskTicks && (again.riskOffered ?? []).length > 0);
+
+/**
+ * The private factors that were unticked but are still named in the typed reason. The high-risk pregnancy form
+ * fills its reason in from the same risk level, so unticking "Hepatitis B" below would otherwise leave it in
+ * clause 1. factors: from the server (name.en, and labels – the names of the hospital's rules behind the factor).
+ */
+export function privateStillInReason(factors = [], ticked = [], reason = '') {
+  const text = String(reason ?? '').toLowerCase();
+  if (!text.trim()) return [];
+  return factors.filter((f) => f.private && !ticked.includes(f.id) && [f.name?.en, ...(f.labels ?? [])].some((w) => w && text.includes(String(w).toLowerCase())));
+}
+
+/**
+ * The section as printed: { section, rows, other, version, approved }, or null when nothing is printed.
+ * risk: { factors, section, wording } from the server; ids: the ticked factors; other: what the doctor typed.
+ */
+export function riskToPrint(risk, ids = [], other = '') {
+  if (!risk) return null;
+  const ticked = new Set(ids);
+  const rows = risk.factors.filter((f) => ticked.has(f.id));
+  const typed = String(other ?? '').trim();
+  if (!rows.length && !typed) return null;
+  return { section: risk.section, rows, other: typed, version: risk.wording.version, approved: Boolean(risk.wording.approved) };
+}
+
+/** "Previous caesarean section, Diabetes" – the risk factors of a stored printout, for the list of printouts. */
+export const printedRiskWords = (consent) => [...(consent.riskFactors ?? []).map((f) => f.name), consent.otherRisks ? 'other (typed)' : null].filter(Boolean).join(', ');
+
 // ---------- The printed form ----------
 
 /** The labels printed on a consent form, in each language ("Signature / सही"). */
