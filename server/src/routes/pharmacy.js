@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { z } from 'zod';
 import { addDays, daysBetween, hospitalDayStart, isoDay, timeIn, toHospitalDate, utcDay } from '../careplans/dates.js';
 import { Admission } from '../models/Admission.js';
+import { Appointment } from '../models/Appointment.js';
 import { Arrival } from '../models/Arrival.js';
 import { Membership, hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
@@ -1050,7 +1051,8 @@ const invoiceFields = z
     paymentRemarks: z.string().trim().max(200).default(''),
     // A registered patient's bill (13 Nov 2026): on her hospital bill (paid at the billing desk), or paid here
     onHospitalBill: z.literal(true).optional(),
-    // A walk-in's bill with no payment chosen (13 Nov 2026): on credit – paid later on the invoice (Receive payment)
+    // A registered (OPD or IPD) patient's bill with no payment chosen (15 Nov 2026, the developer): on credit – paid later
+    // on the invoice (Receive payment). A walk-in (External) customer pays in full; no credit.
     onCredit: z.literal(true).optional(),
     // A walk-in sale to a business that gives its GSTIN (for its tax invoice and the e-invoice file). Its state is
     // read from the GSTIN's first two digits.
@@ -1080,12 +1082,13 @@ const invoiceFields = z
   // A registered patient's invoice goes on her hospital bill, or is paid here (13 Nov 2026) – not both; a walk-in has no hospital bill
   .refine((b) => !b.onHospitalBill || b.patientId, { message: 'Only a registered patient’s bill can go on a hospital bill.', path: ['onHospitalBill'] })
   .refine((b) => !(b.onHospitalBill && (b.payment || b.payments)), { message: 'Choose the hospital bill or a payment here, not both.', path: ['payments'] })
-  .refine((b) => !b.onCredit || !b.patientId, { message: 'A registered patient’s bill on credit goes on her hospital bill.', path: ['onCredit'] })
+  .refine((b) => !b.onCredit || b.patientId, { message: 'A walk-in (External) customer pays the whole bill now – credit is only for OPD and IPD patients.', path: ['onCredit'] })
+  .refine((b) => !(b.onCredit && b.onHospitalBill), { message: 'Choose the hospital bill or credit, not both.', path: ['onCredit'] })
   .refine((b) => !(b.onCredit && (b.payment || b.payments)), { message: 'A bill on credit has no payment now.', path: ['payments'] })
   .refine((b) => !(b.payment && b.payments), { message: 'Send the payment once.', path: ['payments'] });
 // A patient's invoice sent without either choice goes on her hospital bill (as before 13 Nov 2026; the Payment window
 // always asks)
-const invoiceSchema = invoiceFields.refine((b) => b.patientId || b.payment || b.payments || b.onCredit, { message: 'A walk-in customer pays at the counter: choose how, or put the bill on credit.', path: ['payment'] });
+const invoiceSchema = invoiceFields.refine((b) => b.patientId || b.payment || b.payments, { message: 'A walk-in (External) customer pays the whole bill now: choose how it is paid.', path: ['payment'] });
 
 const loadInvoice = async (req) => {
   const inv = await PharmacyInvoice.findOne({ tenantId: req.tenantId, _id: idParam(req) });
@@ -1291,8 +1294,34 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
   await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', {
     details: search || mrn || byPerson ? { by: search || parts.length ? 'name' : phoneRx ? 'phone' : 'number', patientIds: people.filter((x) => x.mrn).map((x) => x.key), walkInBills: people.filter((x) => !x.mrn).length, withoutBill: Math.min(unbilled.length, Math.max(room, 0)) } : { by: 'list', type: type ?? 'all', people: people.length, ...(browsing ? { wholeList: fullCount, pages } : {}) },
   });
-  // The doctor of a person with pharmacy bills is their latest bill's (14 Nov 2026). Someone never billed here stays name
-  // and number only – nothing else of their record (not their own doctor) is sent.
+  // Each patient's doctor (14-15 Nov 2026, the developer): their latest pharmacy bill's; else, while admitted, the doctor
+  // in charge of the stay; else the doctor of their latest appointment; else the doctor assigned at registration – the
+  // doctor's name only; nothing else of the record is sent for someone never billed here
+  const noDoctor = people.filter((x) => !x.doctor && x.mrn).map((x) => x.key);
+  if (noDoctor.length) {
+    const ids = noDoctor.map((k) => new mongoose.Types.ObjectId(k));
+    const [stays, booked, own] = await Promise.all([
+      Admission.find({ tenantId: req.tenantId, patientId: { $in: ids }, status: 'admitted' }, { patientId: 1, doctorId: 1, doctorName: 1 }).lean(),
+      Appointment.aggregate([
+        { $match: { tenantId: req.tenantId, patientId: { $in: ids }, status: 'booked' } },
+        { $sort: { on: -1 } },
+        { $group: { _id: '$patientId', doctorId: { $first: '$doctorId' } } },
+      ]),
+      Patient.find({ tenantId: req.tenantId, _id: { $in: ids }, assignedDoctor: { $ne: null } }, { assignedDoctor: 1 }).lean(),
+    ]);
+    const userIds = [...stays.map((a) => a.doctorId), ...booked.map((a) => a.doctorId), ...own.map((p) => p.assignedDoctor)].filter(Boolean);
+    const names = new Map((userIds.length ? await User.find({ _id: { $in: userIds } }, { name: 1 }).lean() : []).map((u) => [String(u._id), u.name]));
+    const nameOf = (id) => (id ? (names.get(String(id)) ?? '') : '');
+    const found = new Map();
+    for (const p of own) found.set(String(p._id), nameOf(p.assignedDoctor));
+    for (const a of booked) if (nameOf(a.doctorId)) found.set(String(a._id), nameOf(a.doctorId));
+    for (const a of stays) {
+      const name = a.doctorName || nameOf(a.doctorId);
+      if (name) found.set(String(a.patientId), name);
+    }
+    for (const x of people) if (!x.doctor && found.get(x.key)) x.doctor = found.get(x.key);
+  }
+  for (const x of people) x.doctor ??= '';
   res.json({ people, more: browsing ? fullMore : groups.length > PEOPLE_LIMIT || unbilled.length > room, ...(browsing ? { pages } : {}) });
 });
 

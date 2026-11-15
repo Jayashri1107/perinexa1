@@ -436,7 +436,8 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     expect(JSON.stringify(log.details)).not.toMatch(/asha/i);
   });
 
-  it('a search also finds patients without a bill: name and number only, never a sensitive record or a duplicate', async () => {
+  // 14 Nov 2026 (the developer): also the name of the doctor assigned at registration – still nothing else of the record
+  it('a search also finds patients without a bill: name, number and their doctor only, never a sensitive record or a duplicate', async () => {
     const med = await stocked();
     const billed = await register('Sample Mira Billed');
     const plain = await register('Sample Mira Unbilled');
@@ -449,7 +450,9 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
 
     const found = await q({ search: 'mira' });
     expect(found.people.map((x) => x.name)).toEqual(['Sample Mira Billed', 'Sample Mira Unbilled']);
-    expect(found.people[1]).toEqual({ key: plain.id, type: '', name: 'Sample Mira Unbilled', mrn: plain.mrn, phone: '', lastAt: null, billCount: 0, bills: [] });
+    const { doctor, ...rest } = found.people[1];
+    expect(rest).toEqual({ key: plain.id, type: '', name: 'Sample Mira Unbilled', mrn: plain.mrn, phone: '', lastAt: null, billCount: 0, bills: [] });
+    expect(typeof doctor).toBe('string');
     expect((await q({ mrn: plain.mrn })).people.map((x) => x.name)).toEqual(['Sample Mira Unbilled']);
     // With nothing typed (owner's approval, 9 Nov 2026) the whole list – still never a sensitive record or a duplicate;
     // one letter finds only the billed; a bill's filter asks about bills

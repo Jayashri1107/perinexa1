@@ -182,8 +182,10 @@ async function allocate(req, medicine, qty, batchId, today, locationId = null) {
  * discountReason, payment { mode, reference } (a walk-in pays at once), buyer? { name, gstin, address, place, pin } (a
  * walk-in sale to a business with a GSTIN – never a patient) }. The doctor comes from the prescription (visitId) when
  * there is one. Returns the invoice.
- * payments [{ mode, amountPaise, reference, bank, on, authorisedBy, narration }] (the Payment window, 7 Nov 2026): a
- * walk-in's bill paid in one or more parts, which must add up to the bill exactly; paymentRemarks: its Remarks.
+ * payments [{ mode, amountPaise, reference, bank, on, authorisedBy, narration }] (the Payment window, 7 Nov 2026): the
+ * bill paid in one or more parts – a walk-in's must add up to the bill exactly; an OPD or IPD patient's may come to less,
+ * the rest staying due on the invoice (15 Nov 2026); paymentRemarks: its Remarks. onCredit (a patient only): nothing paid
+ * now, all of it due on the invoice – not on her hospital bill.
  * dryRun: only what the bill would come to ({ totalPaise, atMrpPaise, lines }) – no stock taken, no number used.
  */
 export async function createInvoice(req, body, { dryRun = false } = {}) {
@@ -355,11 +357,15 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
         });
       }
     }
-    // Paid in parts at the Payment window: the parts make up the bill exactly (else nothing is sold)
+    // Paid in parts at the Payment window: a walk-in's parts make up the bill exactly; a patient's may come to less – the
+    // balance stays due on the invoice (15 Nov 2026) – but never to more (else nothing is sold)
     const owed = sum(lines).amountPaise;
     const paid = (body.payments ?? []).reduce((n, p) => n + p.amountPaise, 0);
-    if (!dryRun && body.payments && paid !== owed) {
-      throw bad(`The bill comes to ${rupeesOf(owed)}, and the amounts paid add up to ${rupeesOf(paid)}. Make them the same.`, { payments: 'The amounts paid must make up the bill.' });
+    if (!dryRun && body.payments && paid > owed) {
+      throw bad(`The bill comes to ${rupeesOf(owed)}, and the amounts paid add up to ${rupeesOf(paid)}. Lower an amount.`, { payments: 'The amounts paid are more than the bill.' });
+    }
+    if (!dryRun && body.payments && !body.patientId && paid !== owed) {
+      throw bad(`The bill comes to ${rupeesOf(owed)}, and the amounts paid add up to ${rupeesOf(paid)}. A walk-in (External) customer pays the whole bill.`, { payments: 'The amounts paid must make up the bill.' });
     }
   } catch (err) {
     for (const t of taken) await moveStock(req, t.batch, t.qty, { ...meta, kind: 'return', reason: 'Sale not completed' }).catch(() => {});
@@ -412,8 +418,9 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     await wardRequest.save();
   }
 
-  // A registered patient not paid here: the invoice goes on her hospital bill (her stay's while she is admitted)
-  if (patient && !counterPaid.length) {
+  // A registered patient not paid here and not on credit: the invoice goes on her hospital bill (her stay's while she is
+  // admitted)
+  if (patient && !counterPaid.length && !body.onCredit) {
     const bill = stay ? await openStayBill(req, stay) : await openBillFor(req, patient._id);
     await pushLines(req, bill._id, [{ name: `Pharmacy – invoice ${number}`, group: 'medicine', ratePaise: total, source: 'auto', ref: { kind: 'pharmacy', id: invoice._id } }]);
     invoice.billId = bill._id;
