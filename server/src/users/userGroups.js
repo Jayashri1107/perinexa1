@@ -26,10 +26,24 @@ export const ROLE_NAMES = {
   records: 'Medical records',
 };
 
-/** A group's name for a mix of roles: "Doctor + Hospital admin" (clinical roles first). PURE. */
+// A group's name may be 80 characters (models/UserGroup.js); a made name keeps room for " (2026-11-15) (2)" after it.
+export const MADE_NAME_MAX = 62;
+
+/**
+ * A group's name for a mix of roles: "Doctor + Hospital admin" (clinical roles first). A long mix is cut to the roles
+ * that fit and how many more: "Doctor + RMO + Nurse + Reception + 6 more" (the live server, 15 Nov 2026: a member with
+ * many roles stopped the move to groups at startup). PURE.
+ */
 export const nameForRoles = (roles) => {
   const sorted = TENANT_ROLES.filter((r) => roles.includes(r));
-  return [...sorted.filter((r) => r !== 'admin'), ...sorted.filter((r) => r === 'admin')].map((r) => ROLE_NAMES[r] ?? r).join(' + ');
+  const names = [...sorted.filter((r) => r !== 'admin'), ...sorted.filter((r) => r === 'admin')].map((r) => ROLE_NAMES[r] ?? r);
+  const all = names.join(' + ');
+  if (all.length <= MADE_NAME_MAX) return all;
+  for (let n = names.length - 1; n >= 1; n -= 1) {
+    const short = `${names.slice(0, n).join(' + ')} + ${names.length - n} more`;
+    if (short.length <= MADE_NAME_MAX) return short;
+  }
+  return `${names.length} roles`;
 };
 
 const sameRoles = (a, b) => a.length === b.length && a.every((r) => b.includes(r));
@@ -40,8 +54,11 @@ export async function groupForRoles(roles, { createdBy = null } = {}) {
   const candidates = await UserGroup.find({ roles: { $all: wanted, $size: wanted.length }, isActive: true }).sort({ system: -1, createdAt: 1 });
   const found = candidates.find((g) => sameRoles(g.roles, wanted));
   if (found) return { group: found, made: false };
-  let name = nameForRoles(wanted);
-  if (await UserGroup.exists({ name })) name = `${name} (${new Date().toISOString().slice(0, 10)})`;
+  const base = nameForRoles(wanted);
+  let name = base;
+  if (await UserGroup.exists({ name })) name = `${base} (${new Date().toISOString().slice(0, 10)})`;
+  // two long mixes cut to the same name on the same day: numbered
+  for (let n = 2; (await UserGroup.exists({ name })) && n < 100; n += 1) name = `${base} (${new Date().toISOString().slice(0, 10)}) (${n})`;
   const group = await UserGroup.create({ name, roles: wanted, system: wanted.length === 1, createdBy, description: wanted.length === 1 ? '' : 'Made for staff who had these roles together.' });
   return { group, made: true };
 }
