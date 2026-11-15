@@ -109,3 +109,91 @@ patients; the words used for "tear" (Hindi चीरा suggests a cut – फ�
 to anxiety), "count only kicks", "stroke" (लकवा vs दिमाग़ में रक्तस्राव – make it the same in every sheet), "as
 allowed by law" in the fetal-anomaly sheet, and the grammatical gender of गरोदरपणा in Marathi. HIV is deliberately not
 an information sheet (see `docs/PROGRESS.md`).
+
+## The patient's high-risk factors on her consent forms (added 14 Nov 2026)
+
+The owner's request (14 Nov 2026, an exception to the feature pause; branch `consent-risk-factors`): when a doctor
+takes any consent – admission, an operation or procedure, a caesarean, anaesthesia or any other – the patient's
+high-risk factors and the complications they can lead to must be on that consent. Before this, only the form
+"High-risk pregnancy: information and consent" was given her risk factors (as its typed reason).
+
+- **Where they come from.** The reasons behind her risk level on the record (antenatal care; `careplans/risk.js`).
+  Rules that mean the same thing are one factor (BMI 30 and BMI 35 are both "Obesity"). A diagnosis is printed
+  instead of what it covers: "High blood pressure" (ticked on her record) instead of "Raised blood pressure at the
+  latest check" (one reading of 140/90 – not yet the diagnosis); "Diabetes" (before pregnancy) instead of "Diabetes
+  in this pregnancy"; "Rh sensitisation" instead of "Rh-negative blood group".
+- **What the doctor sees.** The print box of every consent form has **High-risk factors of this patient**: one tick
+  box per factor with its complications under it. The high ones are ticked, the moderate ones are offered unticked,
+  and there is a line to type **other risk factors and their complications** (for example for a gynaecology patient,
+  whose record has no risk level).
+- **Print again** repeats the doctor's earlier choice for every factor her record showed then – ticked or not, so a
+  factor she left off stays off – and treats a factor that is new since then as new (ticked when it is high). The box
+  says so.
+- **What is printed.** A section before the clauses, "High-risk factors in this patient", in English with Marathi
+  or Hindi next to it: a sentence that they were explained, then each factor with "Possible complications: …", and
+  the typed line in bold.
+- **What is kept.** The printout records which factors were offered and which were printed (name and complications
+  in English) and what was typed; they show under "Printed for this patient", with "(draft wording – the paper said
+  DRAFT)" when that was so. The audit log still holds ids only.
+- **Information forms** do not carry the section (each is about one condition already).
+- **When the hospital changes a risk rule.** Our wording was written for the built-in rules. A rule whose cut-off a
+  doctor changed (haemoglobin under 10 instead of 11) keeps our wording; when our name states the cut-off ("Mother's
+  age over 35 years") and the rule no longer has it, the rule's own name is printed with our complications. A rule
+  changed to check something else, and a rule the hospital added, is printed by its own name with a line to write
+  the complications by hand (no translation).
+
+**Privacy (the owner's decision, 14 Nov 2026).** HIV is **never** listed, printed or stored by this feature – a
+consent form is signed by relatives and witnesses (HIV and AIDS (Prevention and Control) Act 2017); with the
+patient's agreement the doctor writes it on the paper by hand. This is enforced three ways: a risk reason is left
+out when its rule **checks** the HIV condition, whatever a doctor called the rule ("RVD reactive", "On ART", a
+Marathi name); a reason whose name names HIV is left out too; and the typed line "Other risk factors" is refused
+when it names HIV. Refused: HIV in its spellings (H.I.V., एचआयव्ही) and written out, AIDS, PLHIV, RVD, retroviral,
+"retro positive / negative / NR / +ve" (the result either way), CD4, HAART, ICTC, PPTCT, PMTCT, "ART centre" (unless
+the same text is about assisted reproduction – IVF, ICSI, conceived …), and the medicines used for HIV. Left writable
+on purpose: "ART" alone and "ART clinic" (an IVF unit), "viral load", tenofovir and lamivudine (also hepatitis B),
+TLE, NVP, "seropositive". This is a draft list for the owner to check; the print box shows which words were read as
+HIV, so an ordinary phrase caught by mistake can be reworded. The same now holds for the reason filled into the high-risk pregnancy form, which used to
+include "HIV" when it was ticked. The same refusal applies to everything a doctor types for a printout – the
+operation, the reason, and the condition on an information form (the owner's further decision, 14 Nov 2026): the
+print box says so under the box, the server refuses it too, and "Print again" of an earlier printout whose typed
+reason names HIV asks for it to be removed. Consent for an HIV test has its own form (its name says "HIV test"; it
+has no blank to type into – its print box still offers the line "Other risk factors", which is checked like the
+others). **Not checked:** the wording of a form itself (a title or clause a doctor writes in Clinic library › Consent
+forms) and the two lines typed when the signed copy is recorded (the witness, where the paper is kept) – neither is
+typed for the paper that relatives sign. A word list can be spelled around, so staff are still told.
+Syphilis, hepatitis B and mental-health conditions **are** printed like the other factors (the owner chose this over
+leaving them unticked); the print box marks each as "Private: untick it if she has not agreed that her relatives may
+know" – also for a rule of the hospital's own on one of these conditions – and, on the high-risk pregnancy form,
+refuses the preview while an unticked private factor is still written in the typed reason. Mental-health information
+is confidential under the Mental Healthcare Act 2017 – the developer and the owner should look at this choice again
+before go-live.
+
+**The wording is a DRAFT.** 40 risk factors, each with a name and its complications in English, Marathi and Hindi,
+written by the software developer (Claude) from common obstetric teaching – `server/src/consents/riskWording.js`.
+It is read in the app at **Clinic library → Consent forms → High-risk factors on consent forms → Read the wording**
+(it is also listed under **Clinic library → To approve**), where a doctor approves it. The approval is of exactly
+the text that was read: any later change of the words makes it a draft again. Until then **every consent form that
+carries the section says DRAFT at the top of every page**, even when the form itself is approved – and a form that
+is itself still a draft says DRAFT anyway. The hospital cannot edit this wording in the app yet – corrections go to
+the developer.
+
+On 14 Nov 2026 the wording was read by six independent reviewers (code and privacy, the screens, an obstetrician's
+reading of the English, Marathi, Hindi, the tests) and corrected where a second reviewer confirmed the point. That
+is not the doctor's check. Before approving, the doctor should look at:
+
+- each list of complications: right, and complete enough without frightening? The same line is printed on every
+  consent, so it must fit a delivery and an operation;
+- the opening sentence: "… They can add to the risks of the treatment, operation or delivery covered by this form,
+  and to the risks of delaying or refusing it." (it is also printed on the refusal form);
+- "Raised blood pressure at the latest check" (one reading) and "Severe anaemia in this pregnancy" (from the lowest
+  haemoglobin of the pregnancy, so it stays after treatment – the line says "if the haemoglobin is still very low")
+  are ticked by default, like every high factor: is that wanted?
+- points the reviewers left to the doctor: "Obesity (high BMI)" – the hospital's own sheet says "high body weight";
+  the mental-health line ("can make it hard to care for herself and the baby") on a paper relatives sign; whether
+  "Bleeding in this pregnancy" should also name heavy bleeding after delivery and an emergency caesarean; whether
+  the Rh-negative line should say that Rh-negative blood may have to be arranged before an operation;
+- the Marathi and Hindi with fluent speakers (`docs/TRANSLATIONS_TO_CHECK.md`, last section);
+- the words that count as naming HIV in a typed box (the privacy paragraph above): is anything a doctor would write
+  missing – for example TLD, NACO or Tri-Dot – and is anything refused that a form needs to say – for example "ART
+  centre" (an IVF unit is called that too), "CD4" (also a cycle day), "RVD" (also rheumatic valve disease) or
+  ritonavir?

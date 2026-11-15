@@ -171,6 +171,13 @@
 .pdoc-clauses.pdoc-two td:not(.pdoc-num) { width: 48%; }
 /* Filled-in values (names, numbers, what the doctor typed) look the same in both columns */
 .pdoc-clauses td:lang(mr) strong, .pdoc-clauses td:lang(hi) strong { font-family: var(--font-print); font-size: var(--fs-print-body); }
+/* The patient's high-risk factors with their complications, before the clauses */
+.pdoc-risk { margin: 0 0 var(--space-3); }
+.pdoc-risk .ptable.pdoc-clauses { margin-bottom: 0; border-top: 1.5px solid var(--print-ink); border-bottom: 1.5px solid var(--print-ink); }
+.pdoc .pdoc-risk-title { margin: 0 0 var(--space-1); font-size: var(--fs-print-h2); line-height: var(--lh-print-deva); }
+.pdoc-risk-name { font-weight: 600; }
+/* English inside the translation's column (a rule the hospital named, what the doctor typed) looks as in the English column */
+.pdoc-risk td :lang(en) { font-family: var(--font-print); font-size: var(--fs-print-body); }
 /* A blank to fill in by hand */
 .pdoc-line { display: inline-block; min-width: 40mm; border-bottom: 1px solid var(--print-ink); }
 .pdoc-line::after { content: '\00a0'; }

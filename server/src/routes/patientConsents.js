@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { addDays, hospitalToday, utcDay } from '../careplans/dates.js';
+import { riskTemplateFor } from '../careplans/templatesService.js';
 import { currentPlanItems, planCtx } from '../careplans/plansService.js';
 import { byListOrder, ensureConsentForms, formSummary } from '../consents/consentFormsService.js';
 import { formBlanks, languagesOf, LANGUAGE_NAMES } from '../consents/consentText.js';
 import { isRetired, RETIRED_FORM_KEYS, retiredFormIds } from '../consents/retiredForms.js';
+import { consentRiskFactors, HIV_ON_CONSENT_MESSAGE, RISK_SECTION, riskWordingStatus, typedHivFields } from '../consents/riskWording.js';
 import { consentFacts, formIsFor, suggestion } from '../consents/suggest.js';
 import { ConsentForm, FORM_KINDS } from '../models/ConsentForm.js';
 import { LabOrder } from '../models/LabOrder.js';
@@ -25,6 +27,11 @@ import { objectId, parse } from '../utils/validate.js';
 // The form is printed in the browser; the server records the printout (PatientConsent) and audits ids only.
 // Forms removed from Perinexa (consents/retiredForms.js) are never offered, and their printouts stay stored but
 // are never listed or opened.
+// A consent form (not an information form) can carry the patient's high-risk factors with their complications
+// (consents/riskWording.js): those who print get the list, choose which are printed, and the printout keeps them.
+// HIV never reaches a form this way: a reason is known as HIV by what its rule checks (the hospital's risk rules are
+// read for that), and anything typed for a printout that names HIV is refused – the section's own line and the
+// blanks of any consent or information form (the operation, the reason, the condition).
 
 export const patientConsentsRouter = Router({ mergeParams: true });
 
@@ -96,20 +103,26 @@ async function conditionFindings(ctx, patient) {
   };
 }
 
+// The hospital's risk rules her level was worked out from (loadPatientForPlan has brought it up to date with them):
+// what a rule checks – not what a doctor called it – decides whether its reason is about HIV, and which wording fits.
+const riskRulesFor = async (patient) => (patient.careType === 'antenatal' ? ((await riskTemplateFor(patient))?.riskRules ?? []) : []);
+
 /**
  * The active forms of one kind for this patient, each with its suggestion and whether it fits her type of care.
- * Forms removed from Perinexa (retired) are left out; `retired` may be passed when already looked up.
+ * Forms removed from Perinexa (retired) are left out; `retired` and `rules` (riskRulesFor) may be passed when
+ * already looked up.
  */
-async function formsFor(req, patient, kind, retired) {
+async function formsFor(req, patient, kind, retired, rules) {
   await ensureConsentForms(req.tenantId);
   retired ??= await retiredFormIds(req.tenantId);
+  rules ??= await riskRulesFor(patient);
   const ctx = planCtx(req);
   const [forms, planItems, findings] = await Promise.all([
     ConsentForm.find({ tenantId: req.tenantId, isActive: true, kind }),
     currentPlanItems(ctx, patient),
     kind === 'information' ? conditionFindings(ctx, patient) : {},
   ]);
-  const facts = consentFacts(patient, planItems, hospitalToday(ctx.now), findings);
+  const facts = consentFacts(patient, planItems, hospitalToday(ctx.now), findings, rules);
   return forms
     .filter((f) => !isRetired(f, retired))
     .map((f) => ({ ...formSummary(f), forThisCare: formIsFor(f, patient.careType), suggested: suggestion(f, facts) }))
@@ -127,8 +140,19 @@ const printSchema = z
     reason: safeText('Reason', 300).default(''),
     condition: safeText('Condition or complication', 200).default(''),
     doctor: z.enum(['me', 'blank'], 'Choose whether to print your name').default('me'),
+    // Her high-risk factors to print on a consent form: ids from the list this route gave (never free text)
+    riskFactors: z.array(z.string().min(1).max(80)).max(60).default([]),
+    otherRisks: safeText('Other risk factors', 300).default(''),
+    // What the page showed for the section's wording – its version and whether it said DRAFT (null: no section)
+    riskWordingVersion: z.number().int().positive().nullable().default(null),
+    riskWordingApproved: z.boolean().nullable().default(null),
   })
   .strict();
+
+// The patient's high-risk factors for those who print her consent forms, with the fixed words of the section and
+// whether the hospital approved the wording. Null for information forms and for those who only view.
+const riskForPrinting = (req, patient, kind, access, rules) =>
+  kind === 'consent' && access.print ? { factors: consentRiskFactors(patient, rules), section: RISK_SECTION, wording: riskWordingStatus(req.tenant) } : null;
 
 // The forms for this patient – each with its suggestion (if any) and whether it is listed for this type of
 // care – the forms printed before (newest first), and the language to offer first: the one last used for this
@@ -140,8 +164,9 @@ patientConsentsRouter.get('/', async (req, res) => {
   const access = assertCanView(req, patient);
   await ensureConsentForms(req.tenantId);
   const retired = await retiredFormIds(req.tenantId);
+  const rules = await riskRulesFor(patient);
   const [list, printed] = await Promise.all([
-    formsFor(req, patient, kind, retired),
+    formsFor(req, patient, kind, retired, rules),
     PatientConsent.find({
       tenantId: req.tenantId,
       patientId: patient._id,
@@ -162,6 +187,7 @@ patientConsentsRouter.get('/', async (req, res) => {
       const a = patientAccess(req, patient);
       return Boolean(a.editClinical || a.recordVitals);
     })(),
+    risk: riskForPrinting(req, patient, kind, access, rules),
     defaultLanguage: printed[0]?.language ?? req.tenant?.letterhead?.consentLanguage ?? 'mr',
   });
 });
@@ -211,6 +237,34 @@ patientConsentsRouter.post('/', async (req, res) => {
   }
 
   const blanks = formBlanks(form);
+  // Her risk factors are printed on consent forms only, and only those her record shows now: the names and
+  // complications are taken from the record and the built-in wording, never from what the website sends.
+  const consentKind = (form.kind ?? 'consent') === 'consent';
+  const offered = consentKind ? consentRiskFactors(patient, await riskRulesFor(patient)) : [];
+  const chosen = new Set(consentKind ? body.riskFactors : []);
+  const riskFactors = offered.filter((f) => chosen.has(f.id));
+  if (riskFactors.length !== chosen.size) {
+    throw conflict("The patient's risk factors changed after you opened this form. Close the preview, reload the page and check them again.");
+  }
+  const otherRisks = consentKind ? body.otherRisks : '';
+  // What the doctor typed for this printout: only the blanks this form has are printed and kept
+  const typed = {
+    procedure: blanks.has('procedure') ? body.procedure : '',
+    reason: blanks.has('reason') ? body.reason : '',
+    condition: blanks.has('condition') ? body.condition : '',
+    otherRisks,
+  };
+  // HIV is never printed on a consent or information form or kept with it (owner, 14 Nov 2026) – also not when it
+  // is typed, into the section's own line or into a blank of the form
+  const hivIn = typedHivFields(typed);
+  if (hivIn.length) throw Object.assign(new HttpError(400, HIV_ON_CONSENT_MESSAGE, 'VALIDATION'), { fields: Object.fromEntries(hivIn.map((k) => [k, HIV_ON_CONSENT_MESSAGE])) });
+  const riskWording = riskWordingStatus(req.tenant);
+  const riskSection = riskFactors.length > 0 || otherRisks.trim() !== ''; // the section is printed at all
+  // The paper shows the wording and its DRAFT line as the page loaded them: a print made from an older state
+  // (the wording was approved or changed meanwhile) is refused, so that the record and the paper agree
+  if (riskSection && body.riskWordingVersion !== null && (body.riskWordingVersion !== riskWording.version || body.riskWordingApproved !== riskWording.approved)) {
+    throw conflict('The wording of the high-risk factors was approved or changed after you opened this page. Close the preview, reload the page and print again.');
+  }
   let consent;
   try {
     consent = await PatientConsent.create({
@@ -223,10 +277,15 @@ patientConsentsRouter.post('/', async (req, res) => {
       formApproved: form.status === 'approved',
       title: form.title.en,
       language: body.language,
-      procedure: blanks.has('procedure') ? body.procedure : '',
-      reason: blanks.has('reason') ? body.reason : '',
-      condition: blanks.has('condition') ? body.condition : '',
+      procedure: typed.procedure,
+      reason: typed.reason,
+      condition: typed.condition,
       doctorName: body.doctor === 'me' ? req.user.name : null,
+      riskFactors: riskFactors.map((f) => ({ id: f.id, name: f.name.en, complications: f.complications?.en ?? '' })),
+      riskOffered: offered.map((f) => f.id),
+      otherRisks,
+      riskWordingVersion: riskSection ? riskWording.version : null,
+      riskWordingApproved: riskSection ? riskWording.approved : null,
       clientRequestId: body.clientRequestId,
       printedBy: req.user._id,
       printedByName: req.user.name,

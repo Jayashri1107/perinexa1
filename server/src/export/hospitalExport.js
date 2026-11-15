@@ -141,7 +141,7 @@ export const KINDS = [
   { file: 'admissions.json', model: Admission, what: 'Stays in hospital: admission, ward and bed, reason, discharge.' },
   { file: 'inpatient-documents.json', model: ClinicalDocument, what: 'The documents of each stay: admission, round, delivery, operation and discharge notes – signed, draft or marked "entered in error" – with additions.' },
   { file: 'nursing-entries.json', model: NursingEntry, what: 'The nursing chart of each stay: vital signs, medicines given and notes.' },
-  { file: 'consents.json', model: PatientConsent, what: 'Consent forms and information sheets printed for a patient, with what was typed into them, and when the signed copy came back. Scanned signed copies are in the "files" folder.' },
+  { file: 'consents.json', model: PatientConsent, what: 'Consent forms and information sheets printed for a patient, with what was typed into them, the high-risk factors printed on a consent form (with their complications, in English), and when the signed copy came back. Scanned signed copies are in the "files" folder.' },
   { file: 'appointments.json', model: Appointment, what: 'Appointments and walk-in tokens, and what became of them.' },
   { file: 'arrivals.json', model: Arrival, what: 'Patients marked as arrived at reception, by day.' },
   { file: 'follow-ups.json', model: FollowUp, what: 'Follow-ups added by hand: with which doctor, what for, from which day, and whether she came.' },

@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { tenantScoped } from '../utils/tenantScope.js';
 
 // A consent form printed for one patient: which form (and its version), in which languages, what the doctor
-// typed into its blanks, and who printed it when. The signed paper is the consent: "signed" records that the
+// typed into its blanks, which of her high-risk factors were printed on it, and who printed it when. The signed paper is the consent: "signed" records that the
 // signed copy came back – the date it was signed, the witness and where the paper is kept – once, never changed.
 // scans: scanned copies of the signed paper (Version 2, utils/storedFiles.js). Clinical information: shown only to those who may see
 // the patient's medical details; the audit log gets ids only.
@@ -21,6 +21,19 @@ const consentSchema = new mongoose.Schema(
     reason: { type: String, trim: true, maxlength: 300, default: '' },
     condition: { type: String, trim: true, maxlength: 200, default: '' }, // information forms: the condition explained
     doctorName: { type: String, maxlength: 150, default: null }, // null: left blank to fill in by hand
+    // The high-risk factors printed on the form (consents/riskWording.js), as chosen by the doctor: the English
+    // name and complications as printed. riskOffered: the ids of the factors her record showed then (ticked or not),
+    // so that "Print again" repeats the doctor's choice for those and treats a factor that is new since as new.
+    // otherRisks: what the doctor typed as other risk factors. riskWordingVersion / riskWordingApproved: the wording
+    // on the paper – false = it was a draft when printed ("DRAFT" on the paper); null = the section was not printed.
+    riskFactors: {
+      type: [new mongoose.Schema({ id: { type: String, maxlength: 80 }, name: { type: String, maxlength: 200 }, complications: { type: String, maxlength: 600, default: '' } }, { _id: false })],
+      default: [],
+    },
+    riskOffered: { type: [{ type: String, maxlength: 80 }], default: [] },
+    otherRisks: { type: String, trim: true, maxlength: 300, default: '' },
+    riskWordingVersion: { type: Number, default: null },
+    riskWordingApproved: { type: Boolean, default: null },
     // The same print sent twice (double click, retry) is saved once.
     clientRequestId: { type: String, required: true, maxlength: 64 },
     printedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
