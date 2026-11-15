@@ -225,6 +225,8 @@ const load70 = () => import('./pages/consents/ConsentFormDetailPage.jsx');
 const ConsentFormDetailPage = screen(load70, 'ConsentFormDetailPage');
 const load71 = () => import('./pages/consents/ConsentFormEditPage.jsx');
 const ConsentFormEditPage = screen(load71, 'ConsentFormEditPage');
+const loadRiskWording = () => import('./pages/consents/RiskWordingPage.jsx');
+const RiskWordingPage = screen(loadRiskWording, 'RiskWordingPage');
 const load72 = () => import('./pages/consents/PatientConsentsTab.jsx');
 const PatientConsentsTab = screen(load72, 'PatientConsentsTab');
 const load73 = () => import('./pages/visits/PatientVisitsTab.jsx');
@@ -773,6 +775,7 @@ export function App() {
                 <Route path="library/approvals" element={<ApprovalsPage />} />
                 <Route path="clinical-rules/risk" element={<RiskRulesPage />} />
                 <Route path="consent-forms" element={<ConsentFormsPage />} />
+                <Route path="consent-forms/risk-wording" element={<RiskWordingPage />} />
                 <Route path="consent-forms/:id" element={<ConsentFormDetailPage />} />
                 <Route path="consent-forms/:id/edit" element={<ConsentFormEditPage />} />
                 <Route path="information-forms" element={<ConsentFormsPage kind="information" key="information" />} />

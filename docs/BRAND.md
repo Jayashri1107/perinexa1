@@ -116,7 +116,10 @@ Anything printed from the app: A4, print-friendly, the same look on every docume
 - Printed labels in both languages: "Signature / सही". Values filled in from the record, or typed by the doctor, in
   bold; an empty blank prints as a line to fill in by hand. Signature boxes two by two.
 - On a phone the preview stacks the two languages; paper always keeps them side by side.
-- **CSS**: `.pdoc-clauses`, `.pdoc-sig*`, `.pdoc-line` in `print.css`.
+- The patient's high-risk factors come before the clauses, between two 1.5 px rules: a sentence that they were
+  explained, then one bulleted row per factor – its name in bold, then "Possible complications: …" – and what the
+  doctor typed in bold, in both columns.
+- **CSS**: `.pdoc-clauses`, `.pdoc-sig*`, `.pdoc-line`, `.pdoc-risk*` in `print.css`.
 
 ### Printed prescriptions (10 designs, Feature 8)
 Built on the printed-documents pattern above (preview first, the footer on every page, the tab title names the

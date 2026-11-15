@@ -8,12 +8,14 @@ import { ensureConsentForms } from '../src/consents/consentFormsService.js';
 import { EN } from '../src/consents/forms/en.js';
 import { HI } from '../src/consents/forms/hi.js';
 import { MR } from '../src/consents/forms/mr.js';
+import { HIV_ON_CONSENT_MESSAGE, HIV_WORD_SOURCES, namesHiv, RISK_WORDING_HASH, RISK_WORDING_VERSION } from '../src/consents/riskWording.js';
 import { INFO_EN } from '../src/consents/forms/info_en.js';
 import { INFO_HI } from '../src/consents/forms/info_hi.js';
 import { INFO_MR } from '../src/consents/forms/info_mr.js';
 import { AuditLog } from '../src/models/AuditLog.js';
 import { ConsentForm } from '../src/models/ConsentForm.js';
 import { SUGGEST_RULES } from '../src/models/ConsentForm.js';
+import { Tenant } from '../src/models/Tenant.js';
 import * as website from '../../client/src/pages/consents/consentFormat.js';
 import { addMember, connectTestDb, createSuperAdmin, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb } from './helpers.js';
 
@@ -276,5 +278,63 @@ describe('the website checks the words the same way', () => {
       expect(website.languagesOf(f)).toEqual(languagesOf(f));
     }
     expect(website.SUGGEST_RULES).toEqual(SUGGEST_RULES);
+  });
+});
+
+describe('the wording of the high-risk factors printed on consent forms', () => {
+  const V = RISK_WORDING_VERSION;
+  const wording = async (who) => (await as(who)).get('/api/consent-forms/risk-wording');
+  const approveWording = async (who, body) => (await as(who)).post('/api/consent-forms/risk-wording/approve').send(body);
+
+  it('is read by doctors, RMOs and nurses and starts as a draft', async () => {
+    for (const who of ['drA', 'rmo', 'nurse']) {
+      const res = await wording(who);
+      expect(res.status, who).toBe(200);
+      expect(res.body.wording).toMatchObject({ version: V, status: 'draft', approved: false, approvedByName: null, canApprove: who === 'drA' });
+      expect(res.body.wording.groups.length).toBeGreaterThan(30);
+      expect(res.body.wording.groups[0]).toEqual({ id: expect.any(String), name: expect.any(Object), complications: expect.any(Object), private: false });
+      expect(res.body.wording.section.heading.en).toBe('High-risk factors in this patient');
+    }
+    for (const who of ['reception', 'lab', 'admin']) expect((await wording(who)).status, who).toBe(403);
+    expect(JSON.stringify((await wording('drA')).body)).not.toMatch(/\b(hiv|aids)\b/i);
+    // The list of forms carries the status too (the library's card and "To approve")
+    expect((await list('drA')).body.riskWording).toEqual({ version: V, approved: false, approvedByName: null, approvedAt: null, canApprove: true });
+    expect((await list('nurse')).body.riskWording).toMatchObject({ approved: false, canApprove: false });
+  });
+
+  it('refuses the same HIV words on the website as on the server', () => {
+    expect(website.HIV_WORD_SOURCES).toEqual(HIV_WORD_SOURCES);
+    expect(website.HIV_ON_CONSENT_MESSAGE).toBe(HIV_ON_CONSENT_MESSAGE);
+    expect(HIV_WORD_SOURCES).toHaveLength(4);
+    for (const typed of ['HIV positive', 'RVD reactive', 'Retro: NR', 'attends the ART centre', 'ICSI at ART centre', 'एचआयव्ही', 'पीपीएच आयव्ही ऑक्सिटोसिन', 'Retroplacental clot', 'hearing aids', 'ART pregnancy']) {
+      expect(website.namesHiv(typed), typed).toBe(namesHiv(typed));
+    }
+    expect(website.hivWordIn('LSCS for RVD reactive mother')).toBe('RVD'); // shown under the box, so that the words can be changed
+    expect(website.hivWordIn('Retroplacental clot')).toBe('');
+    expect(website.typedHivFields({ procedure: 'LSCS', reason: 'HIV', condition: 'PLHIV', otherRisks: '' })).toEqual(['reason', 'condition']);
+  });
+
+  it('is approved by a doctor only, for the version read, once', async () => {
+    expect((await approveWording('rmo', { confirm: true, version: V })).status).toBe(403);
+    expect((await approveWording('drA', { version: V })).status).toBe(400);
+    expect((await approveWording('drA', { confirm: true, version: V + 1 })).status).toBe(409);
+    const res = await approveWording('drB', { confirm: true, version: V });
+    expect(res.status).toBe(200);
+    expect(res.body.wording).toMatchObject({ status: 'approved', approved: true, approvedByName: 'Sample drB', version: V });
+    expect((await AuditLog.findOne({ action: 'CONSENT_RISK_WORDING_APPROVED' })).details).toEqual({ version: V });
+    expect((await Tenant.findById(hospital._id)).consentRiskWording).toMatchObject({ approvedVersion: V, approvedHash: RISK_WORDING_HASH, approvedByName: 'Sample drB' });
+    // approving again changes nothing
+    expect((await approveWording('drA', { confirm: true, version: V })).body.wording.approvedByName).toBe('Sample drB');
+    expect(await AuditLog.countDocuments({ action: 'CONSENT_RISK_WORDING_APPROVED' })).toBe(1);
+    expect((await wording('nurse')).body.wording).toMatchObject({ status: 'approved', approvedByName: 'Sample drB' });
+    expect((await list('drA')).body.riskWording).toMatchObject({ approved: true, approvedByName: 'Sample drB' });
+    // another hospital is not affected
+    const elsewhere = await wording('outsider');
+    expect(elsewhere.status).toBe(200);
+    expect(elsewhere.body.wording).toMatchObject({ status: 'draft', approved: false, approvedByName: null, approvedAt: null });
+    // the approval is of exactly the text that was read: other words under the same number are a draft again
+    await Tenant.updateOne({ _id: hospital._id }, { $set: { 'consentRiskWording.approvedHash': 'the fingerprint of another text' } });
+    expect((await wording('drA')).body.wording).toMatchObject({ status: 'draft', approved: false, approvedByName: null });
+    expect((await approveWording('drA', { confirm: true, version: V })).body.wording).toMatchObject({ status: 'approved', approvedByName: 'Sample drA' });
   });
 });

@@ -70,6 +70,16 @@ const tenantSchema = new mongoose.Schema(
       hipId: { type: String, trim: true, maxlength: 60, default: '' },
       counterCode: { type: String, trim: true, maxlength: 40, default: '' },
     },
+    // The high-risk factors printed on consent forms (consents/riskWording.js): which version of the built-in DRAFT
+    // wording a doctor of this hospital approved – with the fingerprint of its text – and who. Another version or
+    // another text (or none) = the section prints as DRAFT.
+    consentRiskWording: {
+      approvedVersion: { type: Number, default: null },
+      approvedHash: { type: String, maxlength: 64, default: null },
+      approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      approvedByName: { type: String, trim: true, maxlength: 150, default: null },
+      approvedAt: { type: Date, default: null },
+    },
     // Patient messages (Version 2), switched on by the hospital admin: automatic reminders and the patient portal.
     messaging: {
       remindersEnabled: { type: Boolean, default: false },
@@ -220,6 +230,7 @@ tenantSchema.set('toJSON', {
     delete ret.billing; // the UPI ID leaves only through the billing routes (never to the platform's lists of hospitals)
     delete ret.referrals; // the consultants' direct lines leave only through the referral routes (never to the platform)
     delete ret.tally; // the accountant's account names leave only through the Tally routes (never to the platform)
+    delete ret.consentRiskWording; // read through the consent-form routes only
     return ret;
   },
 });

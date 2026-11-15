@@ -4,9 +4,11 @@ import { z } from 'zod';
 import { blankProblems, languagesOf } from '../consents/consentText.js';
 import { byListOrder, ensureConsentForms, formJSON, formSummary } from '../consents/consentFormsService.js';
 import { isRetired, retiredFormIds } from '../consents/retiredForms.js';
+import { RISK_WORDING_HASH, RISK_WORDING_VERSION, riskWordingJSON, riskWordingStatus } from '../consents/riskWording.js';
 import { ConsentForm, FORM_KINDS, SUGGEST_RULES } from '../models/ConsentForm.js';
 import { hasRole } from '../models/Membership.js';
 import { CARE_TYPES } from '../models/Patient.js';
+import { Tenant } from '../models/Tenant.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { idParams, objectId, parse } from '../utils/validate.js';
@@ -108,7 +110,49 @@ consentFormsRouter.use((req, _res, next) => {
 consentFormsRouter.get('/', async (req, res) => {
   await ensureConsentForms(req.tenantId);
   const [forms, retired] = await Promise.all([ConsentForm.find({ tenantId: req.tenantId }), retiredFormIds(req.tenantId)]);
-  res.json({ forms: forms.filter((f) => !isRetired(f, retired)).map(formSummary).sort(byListOrder), canEdit: isDoctor(req) });
+  res.json({
+    forms: forms.filter((f) => !isRetired(f, retired)).map(formSummary).sort(byListOrder),
+    canEdit: isDoctor(req),
+    // The wording of the high-risk factors printed on consent forms: draft or approved (the library's card, "To approve")
+    riskWording: { ...riskWordingStatus(req.tenant), canApprove: isDoctor(req) },
+  });
+});
+
+// The high-risk factors printed on consent forms (consents/riskWording.js): the built-in DRAFT wording – each
+// risk factor with its complications, in three languages – for the same people to read, and whether a doctor of
+// this hospital approved it. It holds no patient data. These routes come before '/:id'.
+const riskWordingFor = (req, tenant) => {
+  const status = riskWordingStatus(tenant);
+  return { ...riskWordingJSON(), ...status, status: status.approved ? 'approved' : 'draft', canApprove: isDoctor(req) };
+};
+const riskApproveSchema = z
+  .object({
+    confirm: z.literal(true, 'Please confirm that the wording has been reviewed'),
+    version: z.number('The version you reviewed is missing – please reload the page').int().positive(),
+  })
+  .strict();
+
+consentFormsRouter.get('/risk-wording', async (req, res) => {
+  res.json({ wording: riskWordingFor(req, req.tenant) });
+});
+
+// A doctor confirms the wording and its translations were read and approves this version: consent forms that
+// carry the section then print without the DRAFT label. The approval is of exactly this text (its fingerprint is
+// kept): new built-in wording – a new version, or any change of the words – is a draft again.
+consentFormsRouter.post('/risk-wording/approve', async (req, res) => {
+  if (!isDoctor(req)) throw forbidden('Only doctors can approve the wording of the high-risk factors.');
+  const { version } = parse(riskApproveSchema, req.body);
+  if (version !== RISK_WORDING_VERSION) {
+    throw new HttpError(409, `The wording was changed (now version ${RISK_WORDING_VERSION}) after you opened it. Please review the latest version before approving.`, 'CONFLICT');
+  }
+  if (!riskWordingStatus(req.tenant).approved) {
+    await Tenant.updateOne(
+      { _id: req.tenantId },
+      { $set: { consentRiskWording: { approvedVersion: version, approvedHash: RISK_WORDING_HASH, approvedBy: req.user._id, approvedByName: req.user.name, approvedAt: req.now ?? new Date() } } },
+    );
+    await audit(req, 'CONSENT_RISK_WORDING_APPROVED', { details: { version } });
+  }
+  res.json({ wording: riskWordingFor(req, await Tenant.findById(req.tenantId)) });
 });
 
 consentFormsRouter.get('/:id', async (req, res) => {

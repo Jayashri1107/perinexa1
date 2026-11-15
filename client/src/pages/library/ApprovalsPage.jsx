@@ -55,6 +55,11 @@ export function draftsFrom({ templates, redFlags, medSafety, consents, sets, pac
       by: f.updatedByName,
     });
   }
+  // The wording of the high-risk factors printed on consent forms: approved on its own page (sent with the list of forms)
+  const rw = consents?.riskWording;
+  if (rw && !rw.approved && rw.canApprove !== false) {
+    out.push({ key: 'risk-wording', kind: 'consent', name: 'High-risk factors on consent forms – the wording', to: '/consent-forms/risk-wording' });
+  }
   for (const p of packages?.packages ?? []) {
     if (p.status === 'draft' && p.isActive) out.push({ key: `p:${p.id}`, kind: 'package', name: p.name, to: `/test-packages/${p.id}`, changedAt: p.updatedAt, by: p.updatedByName });
   }
