@@ -11,13 +11,33 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
 import { ConsentPrintDocument } from './ConsentDocument.jsx';
-import { INFO_STAGES, LANGUAGE_NAMES, PRINT_LANGUAGES, SUGGEST_WHY, infoStage, kindWords, printLanguageLabel } from './consentFormat.js';
+import {
+  HIV_ON_CONSENT_MESSAGE,
+  INFO_STAGES,
+  LANGUAGE_NAMES,
+  PRINT_LANGUAGES,
+  SUGGEST_WHY,
+  defaultRiskTicks,
+  hivWordIn,
+  infoStage,
+  kindWords,
+  printLanguageLabel,
+  printedRiskWords,
+  privateStillInReason,
+  repeatsEarlierTicks,
+  riskToPrint,
+  typedHivFields,
+} from './consentFormat.js';
 
 // The Consent forms tab on the patient record: the hospital's forms that fit this patient (suggested ones
 // first – e.g. "Scan due", "High-risk pregnancy"), printed in English with Marathi or Hindi next to it and
 // filled in with her details. Who sees it follows the patient access rules: those who may see the medical
 // details; the treating (or an unassigned) doctor and RMOs print. Each printout is recorded ("Printed for
 // this patient"); the paper she signs is the consent.
+//
+// A consent form also carries her high-risk factors with the complications of each (owner's request, 14 Nov
+// 2026): the print dialog lists the factors the risk level rests on – the high ones ticked – and the doctor
+// chooses which are printed and may type others. HIV is never listed (privacy law).
 //
 // The same tab, with kind="information", is "Information given": the doctor explains a condition or complication
 // (PIH, GDM, low thyroid …) and the patient and her relatives sign that they were informed. Suggested from the
@@ -100,7 +120,7 @@ function FormSection({ title, hint, forms, ...rowProps }) {
  * Choose the language, fill in the typed blanks (procedure, reason – filled in from the record when the form is
  * suggested) and whether to print the doctor's name. again: an earlier printout to repeat (same choices).
  */
-function ConsentPrintDialog({ summary, defaultLanguage, again, onPreview, onCancel }) {
+function ConsentPrintDialog({ summary, defaultLanguage, again, risk, onPreview, onCancel }) {
   const { user } = useAuth();
   const { data, error } = useFetch(`/consent-forms/${summary.id}`);
   const form = data?.form ?? null;
@@ -112,6 +132,11 @@ function ConsentPrintDialog({ summary, defaultLanguage, again, onPreview, onCanc
   const [reason, setReason] = useState(again?.reason ?? summary.suggested?.prefill?.reason ?? '');
   const [condition, setCondition] = useState(again?.condition ?? summary.suggested?.prefill?.condition ?? '');
   const [doctor, setDoctor] = useState(again && !again.doctorName ? 'blank' : 'me');
+  // Her high-risk factors (consent forms only): the ticked ones are printed with their complications
+  const factors = risk?.factors ?? [];
+  const [ticked, setTicked] = useState(() => defaultRiskTicks(factors, again));
+  const [otherRisks, setOtherRisks] = useState(again?.otherRisks ?? '');
+  const tick = (id, on) => setTicked((list) => (on ? [...list.filter((x) => x !== id), id] : list.filter((x) => x !== id)));
   const [errors, setErrors] = useState({});
   const ref = useDialogFocus(onCancel);
   const chosen = langs.includes(language) ? language : 'en';
@@ -123,8 +148,32 @@ function ConsentPrintDialog({ summary, defaultLanguage, again, onPreview, onCanc
     if (blanks.has('procedure') && mentionsFetalSex(procedure)) found.procedure = PCPNDT_MESSAGE;
     if (blanks.has('reason') && mentionsFetalSex(reason)) found.reason = PCPNDT_MESSAGE;
     if (blanks.has('condition') && mentionsFetalSex(condition)) found.condition = PCPNDT_MESSAGE;
+    if (risk && mentionsFetalSex(otherRisks)) found.otherRisks = PCPNDT_MESSAGE;
+    // HIV is never printed on a form or kept with it – also not when it is typed, in any of the boxes
+    const typed = {
+      procedure: blanks.has('procedure') ? procedure : '',
+      reason: blanks.has('reason') ? reason : '',
+      condition: blanks.has('condition') ? condition : '',
+      otherRisks: risk ? otherRisks : '',
+    };
+    // … with the words that were read as HIV, so that an ordinary phrase caught by mistake can be reworded
+    for (const k of typedHivFields(typed)) found[k] ??= `${HIV_ON_CONSENT_MESSAGE} Read as HIV here: “${hivWordIn(typed[k])}”.`;
+    // A private factor that was unticked must not stay on the paper through the typed reason (the high-risk
+    // pregnancy form fills its reason in from the same risk level)
+    const stillNamed = risk && blanks.has('reason') ? privateStillInReason(factors, ticked, reason) : [];
+    if (!found.reason && stillNamed.length) {
+      const names = stillNamed.map((f) => f.name.en).join(', ');
+      found.reason = `${names}: unticked below, but still written in this reason. Remove it here too, or tick it again.`;
+    }
     setErrors(found);
-    if (Object.keys(found).length) return;
+    const firstBad = ['procedure', 'reason', 'condition', 'otherRisks'].find((k) => found[k]);
+    if (firstBad) {
+      // A long box (the risk factors): bring the refused field into view, or Preview seems to do nothing
+      const box = document.getElementById({ procedure: 'cf-procedure', reason: 'cf-reason', condition: 'cf-condition', otherRisks: 'cf-other-risks' }[firstBad]);
+      box?.focus({ preventScroll: true });
+      box?.scrollIntoView?.({ block: 'center' });
+      return;
+    }
     onPreview({
       form,
       language: chosen,
@@ -132,6 +181,8 @@ function ConsentPrintDialog({ summary, defaultLanguage, again, onPreview, onCanc
       reason: blanks.has('reason') ? reason.trim() : '',
       condition: blanks.has('condition') ? condition.trim() : '',
       doctor,
+      riskTicks: risk ? factors.filter((f) => ticked.includes(f.id)).map((f) => f.id) : [],
+      otherRisks: risk ? otherRisks.trim() : '',
     });
   };
 
@@ -176,6 +227,48 @@ function ConsentPrintDialog({ summary, defaultLanguage, again, onPreview, onCanc
             <input id="cf-condition" value={condition} maxLength={200} onChange={(e) => setCondition(e.target.value)} />
           </Field>
         )}
+        {risk && (
+          <fieldset className="fieldset">
+            <legend>High-risk factors of this patient</legend>
+            <p className="hint cf-risk-hint">
+              {factors.length > 0
+                ? 'From the risk level on the record. Each ticked factor is printed on the form with its possible complications, in the languages chosen above. HIV is never listed here.'
+                : 'No risk factors to list from the record (the risk level is worked out for antenatal care, and HIV is never listed). You can type others below.'}
+              {factors.length > 0 && repeatsEarlierTicks(again)
+                ? ' Ticked as on the earlier printout; a factor that is new since then is ticked if it is high-risk. Check them against the record today.'
+                : ''}
+            </p>
+            {!risk.wording.approved && (
+              <Alert type="warning">
+                The wording of this section – its heading, its first sentence and the complications of each factor – is a <strong>draft</strong>: no doctor of
+                the hospital has approved it yet. A form that carries the section, also with only the line typed below, says DRAFT at the top of every page.{' '}
+                <Link to="/consent-forms/risk-wording">Read the wording</Link>
+              </Alert>
+            )}
+            {factors.map((f, i) => (
+              <label key={f.id} className="check cf-risk-item" htmlFor={`cf-risk-${i}`}>
+                <input id={`cf-risk-${i}`} type="checkbox" checked={ticked.includes(f.id)} onChange={(e) => tick(f.id, e.target.checked)} />
+                <span>
+                  {f.name.en}
+                  {f.level !== 'high' && <span className="muted"> – moderate risk</span>}
+                  <span className="t-caption muted cf-risk-sub">
+                    {f.complications ? f.complications.en : "A rule of the hospital's own: no wording for its complications, so a line is printed to write them by hand."}
+                  </span>
+                  {f.private && <span className="t-caption cf-risk-sub">Private: untick it if she has not agreed that her relatives may know.</span>}
+                </span>
+              </label>
+            ))}
+            <Field
+              label="Other risk factors and their complications (optional)"
+              id="cf-other-risks"
+              error={errors.otherRisks}
+              keepHint
+              hint='Printed as you type it, e.g. "Fibroid in the lower uterus – more bleeding at the operation". Do not write HIV status here: it is refused.'
+            >
+              <textarea id="cf-other-risks" rows={2} value={otherRisks} maxLength={300} onChange={(e) => setOtherRisks(e.target.value)} />
+            </Field>
+          </fieldset>
+        )}
         <fieldset className="fieldset">
           <legend>Doctor who explains the form</legend>
           <label className="check" htmlFor="cf-doctor-me">
@@ -206,13 +299,14 @@ function ConsentPrintDialog({ summary, defaultLanguage, again, onPreview, onCanc
 // ---------- Print preview ----------
 
 /** The filled-in form. Print records the printout (once per preview, even if printed twice), then prints. */
-function ConsentPrintPreview({ patient, choice, onPrinted, onBack, onClose }) {
+function ConsentPrintPreview({ patient, choice, risk, onPrinted, onBack, onClose }) {
   const { user, activeMembership } = useAuth();
   const lh = useFetch('/tenant/settings/letterhead');
   const letterhead = lh.data?.letterhead ?? { name: activeMembership.tenantName };
   const [clientRequestId] = useState(newRequestId);
   const [printedAt] = useState(() => new Date());
-  const { form, language, procedure, reason, condition = '', doctor } = choice;
+  const { form, language, procedure, reason, condition = '', doctor, riskTicks = [], otherRisks = '' } = choice;
+  const printedRisk = form.kind === 'information' ? null : riskToPrint(risk, riskTicks, otherRisks);
   const values = {
     patient: patient.fullName,
     age: patient.currentAge ?? '',
@@ -227,7 +321,21 @@ function ConsentPrintPreview({ patient, choice, onPrinted, onBack, onClose }) {
   const record = async () => {
     const res = await api(`/patients/${patient.id}/consents`, {
       method: 'POST',
-      body: { clientRequestId, formId: form.id, version: form.version, language, procedure, reason, condition, doctor },
+      body: {
+        clientRequestId,
+        formId: form.id,
+        version: form.version,
+        language,
+        procedure,
+        reason,
+        condition,
+        doctor,
+        riskFactors: printedRisk ? printedRisk.rows.map((f) => f.id) : [],
+        otherRisks: printedRisk ? printedRisk.other : '',
+        // What this page shows for the section's wording: the server refuses the print when that has changed
+        riskWordingVersion: printedRisk ? printedRisk.version : null,
+        riskWordingApproved: printedRisk ? printedRisk.approved : null,
+      },
     });
     onPrinted(res.consent);
   };
@@ -256,6 +364,7 @@ function ConsentPrintPreview({ patient, choice, onPrinted, onBack, onClose }) {
         doctor={doctor === 'me' ? user : null}
         printedAt={printedAt}
         printedByName={user.name}
+        risk={printedRisk}
       />
     </PrintPreview>
   );
@@ -349,7 +458,7 @@ function Scans({ patient, consent, canAdd, onAdded, onError }) {
   return (
     <span className="cf-scans">
       {scans.map((f, i) => (
-        <button key={f.id} type="button" className="btn btn-link btn-sm t-caption" onClick={() => openStoredFile(`/patients/${patient.id}/consents/${consent.id}/scans/${f.id}`).catch((err) => setError(err.message))}>
+        <button key={f.id} type="button" className="btn btn-link btn-sm t-caption" onClick={() => openStoredFile(`/patients/${patient.id}/consents/${consent.id}/scans/${f.id}`).catch((err) => onError(err.message))}>
           <Paperclip aria-hidden="true" /> Scan {scans.length > 1 ? i + 1 : ''} ({fileSize(f.size)})
         </button>
       ))}
@@ -504,6 +613,12 @@ export function PatientConsentsTab({ kind = 'consent' }) {
                     {c.procedure ? ` · ${c.procedure}` : ''}
                     {c.condition ? ` · ${c.condition}` : ''}
                   </span>
+                  {printedRiskWords(c) && (
+                    <span className="t-caption muted">
+                      High-risk factors printed: {printedRiskWords(c)}
+                      {c.riskWordingApproved === false ? ' (draft wording – the paper said DRAFT)' : ''}
+                    </span>
+                  )}
                   {/* Whether the signed paper came back (the signed paper is the consent) */}
                   <span className="cf-signed">
                     {c.signed ? (
@@ -562,6 +677,7 @@ export function PatientConsentsTab({ kind = 'consent' }) {
           summary={printing.summary}
           defaultLanguage={lang}
           again={printing.again}
+          risk={information ? null : data.risk}
           onPreview={(choice) => setPrinting({ ...printing, step: 'preview', choice })}
           onCancel={() => setPrinting(null)}
         />
@@ -570,6 +686,7 @@ export function PatientConsentsTab({ kind = 'consent' }) {
         <ConsentPrintPreview
           patient={patient}
           choice={printing.choice}
+          risk={information ? null : data.risk}
           onPrinted={printed}
           onBack={() => setPrinting({ ...printing, step: 'dialog', again: { ...printing.choice, doctorName: printing.choice.doctor === 'me' ? 'me' : null } })}
           onClose={() => setPrinting(null)}

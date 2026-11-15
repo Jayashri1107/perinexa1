@@ -118,7 +118,8 @@ scripts/db.mjs        Local MongoDB start / stop
   log never shows which patient. Plain names in `client/src/components/auditFormat.js`.
 - **Rules required by law or chosen for safety** (keep them): no recording or showing of the baby's sex before birth
   (PC-PNDT Act: `server/src/utils/pcpndt.js`, `client/src/pcpndtWords.js`, also stripped from voice entry); HIV tests
-  shown and printed under a neutral name; staff are deactivated, never deleted; password hashes are never returned.
+  shown and printed under a neutral name; HIV status never put on a consent form by the app
+  (`server/src/consents/riskWording.js`); staff are deactivated, never deleted; password hashes are never returned.
   **One narrowing, decided by the owner and reviewed with the developer (27 Oct 2026):** on the history-taking sheet,
   words about a child's sex are allowed only in *Previous deliveries* and the table of previous pregnancies (a child
   already born: "male child, 2.9 kg"); every other text keeps the refusal (`server/src/patients/historyFields.js`
@@ -243,6 +244,15 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   platform admins). Identity only – name, patient number, hospital, type of care, who added her and when; never the
   phone, address, age or anything medical. Opening one opens her hospital, where her record is seen and audited as
   before; each list shown is written to the audit log of every hospital in it (how many, never who).
+- **High-risk factors on consent forms** (14 Nov 2026, built at the owner's request in `girishsolanke/perinexa` branch
+  `consent-risk-factors`, brought into perinexa1 on 15 Nov 2026): the app **never puts HIV status on a consent form** – not
+  as a risk factor (a reason is known as HIV by what its rule checks), not in the reason filled into the high-risk
+  pregnancy form, and not in anything a doctor types for a printout of a consent or information form – the operation,
+  the reason, the condition, the line "Other risk factors" (refused in the print box and on the server); relatives and
+  witnesses sign these forms. Syphilis, hepatitis B and mental-health conditions are printed like the other factors and
+  ticked by default – the owner chose this over leaving them unticked – and are only marked "Private" in the print box.
+  The wording is built in, approved per hospital by a doctor (`Tenant.consentRiskWording`, with a fingerprint of the
+  text), and says DRAFT on paper until then; the hospital cannot edit it. Last section of `docs/CONSENT_FORMS.md`.
 - **Fake data only.** Test patient P-000003 in "Sunrise General Hospital (Demo)" is fake but uses the owner's own phone
   number and address: never copy those anywhere shared.
 
@@ -260,6 +270,9 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   method and interpretation notes.
 - Consent forms and their translations (`docs/CONSENT_FORMS.md`); Marathi and Hindi wording
   (`docs/TRANSLATIONS_TO_CHECK.md`).
+- The high-risk factors printed on consent forms: 40 factors with the complications of each in three languages
+  (14 Nov 2026; `server/src/consents/riskWording.js`, last section of `docs/CONSENT_FORMS.md`), and the words that
+  count as naming HIV in a typed line (`namesHiv` in the same file).
 
 ## 11. Working with Claude on this project
 

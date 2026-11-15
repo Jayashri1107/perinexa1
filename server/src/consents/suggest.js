@@ -8,6 +8,7 @@
 import { gaOn, utcDay } from '../careplans/dates.js';
 import { currentAge } from '../models/Patient.js';
 import { formBlanks } from './consentText.js';
+import { isHivReason, rulesByKey } from './riskWording.js';
 
 const DUE = ['due', 'overdue'];
 
@@ -49,9 +50,11 @@ function pastProblems(patient) {
 /**
  * The facts the rules use. planItems: the current care plan's items with today's status
  * ([{ kind, name, status, dueBy }], empty without a plan); today: the hospital's date; findings: the latest
- * visit's red-flag keys and lab results of this pregnancy ({ flagKeys, ogttHigh, tshHigh, hbLow }).
+ * visit's red-flag keys and lab results of this pregnancy ({ flagKeys, ogttHigh, tshHigh, hbLow }); rules: the
+ * hospital's risk rules her level was worked out from (what a rule checks decides whether its reason is about HIV).
  */
-export function consentFacts(patient, planItems = [], today = new Date(), findings = {}) {
+export function consentFacts(patient, planItems = [], today = new Date(), findings = {}, rules = null) {
+  const ruleOf = rulesByKey(rules);
   const antenatal = patient.careType === 'antenatal';
   const edd = antenatal ? utcDay(patient.pregnancy?.effectiveEdd) : null;
   const scans = planItems.filter((i) => i.kind === 'scan' && DUE.includes(i.status));
@@ -59,7 +62,8 @@ export function consentFacts(patient, planItems = [], today = new Date(), findin
     careType: patient.careType,
     antenatal,
     riskHigh: patient.risk?.level === 'high',
-    highReasons: (patient.risk?.reasons ?? []).filter((r) => r.level === 'high').map((r) => r.label),
+    // HIV is never filled into a form that relatives and witnesses sign (the doctor may write it in by hand)
+    highReasons: (patient.risk?.reasons ?? []).filter((r) => r.level === 'high' && !isHivReason(r, ruleOf.get(r.key) ?? null)).map((r) => r.label),
     previousCaesareans: patient.obstetric?.previousCaesareans ?? 0,
     weeks: edd ? (gaOn(edd, today)?.weeks ?? null) : null,
     scanDue: scans.length > 0,

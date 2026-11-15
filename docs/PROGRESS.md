@@ -1,5 +1,65 @@
 # Progress
 
+## High-risk factors on every consent form (14 Nov 2026, from the other Perinexa copy; branch `consent-risk-factors`)
+Brought from `girishsolanke/perinexa` (branch `consent-risk-factors`, commits 1499f254 and f17fc46b of 14 Nov 2026, the
+owner's request – an exception to the feature pause) on 15 Nov 2026, by applying its changes onto perinexa1's code. The
+test results quoted below are from that copy; perinexa1's own run is in the commit message.
+- **What changed:** the owner found that a patient's high-risk
+  factors were missing from her consents. The cause: only the form "High-risk pregnancy: information and consent"
+  was given them (as its typed reason); admission, operation, caesarean, anaesthesia and the other forms never
+  looked at the risk level. Now the **print box of every consent form** lists the **High-risk factors of this
+  patient** – the reasons behind the risk level on her record, the high ones ticked, the moderate ones offered – each
+  with the complications it can lead to, and a line to type other risk factors. What is ticked is printed **before
+  the clauses** as "High-risk factors in this patient", in English with Marathi or Hindi next to it, and is kept with
+  the printout (shown under "Printed for this patient"). "Print again" repeats the doctor's earlier ticks.
+  Information forms do not carry it.
+- **The owner's decisions (14 Nov 2026):** build it now; **HIV is never printed** by the app, while syphilis,
+  hepatitis B and mental-health conditions are printed like the others, each marked "Private: untick it if she has
+  not agreed that her relatives may know"; and (the same evening) the **typed boxes of every consent and
+  information form refuse HIV too** – the operation, the reason, the condition. HIV is kept out by what a risk rule
+  checks (not by its name), out of the high-risk pregnancy form's filled-in reason, and out of everything typed for
+  a printout (it is refused, in the print box and on the server).
+- **DRAFT wording to check:** 40 risk factors with their complications in three languages, written by the software
+  developer. A doctor reads and approves it at **Clinic library → Consent forms → High-risk factors on consent
+  forms → Read the wording** (also listed under **To approve**); until then every consent that carries the section
+  says **DRAFT** on every page. The hospital cannot edit this wording in the app yet (corrections go to the
+  developer). What to look at is listed in the last section of `docs/CONSENT_FORMS.md`.
+- **Checked the same day by six independent reviewers** (code and privacy, the screens, an obstetrician's reading,
+  Marathi, Hindi, the tests), each finding re-checked by a second one; the confirmed points were corrected: HIV
+  under another name or typed by hand, "Print again" after unticking, one raised blood-pressure reading no longer
+  printed as "High blood pressure", gestational diabetes with its own line (no "birth defects"), severe anaemia
+  worded for a haemoglobin that may have come up, the Rh lines, tuberculosis and liver "when active", the opening
+  sentence (it also stands on the refusal form), twelve Marathi and Hindi corrections, the approval tied to the
+  exact text, and the draft wording listed under "To approve".
+- **How to test:** open an antenatal patient whose risk level is High (for example age 38 with a previous
+  caesarean) → **Consent forms** → **Print** next to "General consent for admission and treatment" → the box
+  "High-risk factors of this patient" shows the factors with ticks → **Preview**: the section stands above clause
+  1, the page says DRAFT at the top, and the small line at the foot of the page says "high-risk factors wording
+  version 1 (draft)". Close, go to Clinic library → Consent forms → Read the wording → **Approve** (a doctor) →
+  print the form again: the warning about the draft wording is gone from the print box, and the line at the foot
+  now says "(approved)". The DRAFT line at the top goes only when the form itself is approved too (open the form in
+  the Consent forms list → **Approve**); until then it reads "DRAFT – not approved by the hospital". Try typing
+  "HIV positive" into the typed line, or into the Reason of the caesarean consent: the preview is refused, the box
+  is brought into view and a message under it says why and which words were read as HIV. For a gynaecology patient the box only offers the
+  typed line.
+- **Open questions for the owner:** should a doctor be able to take an approval of the wording back; is the DRAFT
+  list of words that count as naming HIV in a typed box right – refused: HIV in its spellings and written out,
+  AIDS, PLHIV, RVD, retroviral, "retro positive / negative / NR", CD4, HAART, ICTC, PPTCT, ART centre, the HIV
+  medicines; left writable on purpose: "ART" alone and "ART clinic" (also IVF), "viral load", tenofovir,
+  lamivudine, TLE, NVP, "seropositive" – say what to add or remove; and the wording points listed in
+  `docs/CONSENT_FORMS.md`.
+- **For the developer – two tests that fail now and then, neither touched by this change:** in the full test
+  runs of 14 Nov 2026, `server/tests/abdm-fetch.test.js` ("a consent that does not name her ABHA …") failed once on timing
+  (it sends two messages from ABDM back to back without waiting for the first one's work – `abdmIdle()`), and
+  `server/tests/billing.test.js` ("starts with every hospital at ₹0 …") failed once with "Login failed in test:
+  404 {}" – an empty answer that is not Perinexa's own (its 404 is JSON), as if the test's sign-in had reached
+  another program on the same port of this computer. Each passed in the other runs. The last run, on the final code (with the refusal of HIV in the typed boxes): server 1,561
+  passed (4 skipped as usual), website 2,012 passed; the build works.
+- Files: `server/src/consents/riskWording.js` (wording
+  and rules), `server/src/routes/patientConsents.js`, `server/src/routes/consentForms.js` (`/risk-wording`),
+  `client/src/pages/consents/` (`PatientConsentsTab.jsx`, `ConsentDocument.jsx`, `RiskWordingPage.jsx`,
+  `consentFormat.js`), `client/src/pages/library/ApprovalsPage.jsx`.
+
 ## Super admin's hospital view; user groups and page access (14 Nov 2026, branches `user-groups`, `user-groups-b`)
 - Plan and decisions: `docs/USER_GROUPS_PLAN.md`. Merged into master for the development app. **The owner approved
   Part B on 15 Nov 2026.**
