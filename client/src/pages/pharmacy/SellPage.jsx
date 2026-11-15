@@ -396,7 +396,8 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const [allergies, setAllergies] = useState(null);
   // PH10: the prescription line whose other brands are being looked at
   const [otherBrands, setOtherBrands] = useState(null);
-  const [doctor, setDoctor] = useState({ name: '', reg: '' });
+  // 14 Nov 2026: the patient's doctor (her latest pharmacy bill's, else the one assigned at registration) filled in
+  const [doctor, setDoctor] = useState({ name: start.patient?.doctor ?? '', reg: '' });
   const doctors = useFetch('/pharmacy/doctors'); // the hospital's doctors for the Doctor name drop-down
   const [rxSeen, setRxSeen] = useState(false);
   const [lines, setLines] = useState(() =>
@@ -945,11 +946,11 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                   </label>
                   <label className="ph-total-field">
                     <span>Disc %</span>
-                    <input inputMode="decimal" className="tabular" value={discount} maxLength={8} disabled={!lines.length} onChange={(e) => changePct(e.target.value)} />
+                    <input inputMode="decimal" className="tabular" value={discount} maxLength={8} disabled={!lines.length} onChange={(e) => changePct(e.target.value.replace(/[^\d.]/g, ''))} />
                   </label>
                   <label className="ph-total-field">
                     <span>Disc amount</span>
-                    <input inputMode="decimal" className="tabular" value={discountAmount} maxLength={12} disabled={!lines.length} onChange={(e) => changeAmount(e.target.value)} />
+                    <input inputMode="decimal" className="tabular" value={discountAmount} maxLength={12} disabled={!lines.length} onChange={(e) => changeAmount(e.target.value.replace(/[^\d.]/g, ''))} />
                   </label>
                   <label className="ph-total-field ph-total-reason">
                     <span>Conc. reason</span>
@@ -966,8 +967,10 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                 </div>
                 {(s.fields.discountPercent || s.fields.discountReason) && <p className="field-error">{s.fields.discountPercent || s.fields.discountReason}</p>}
                 {pct > 100 && <p className="field-error">The discount cannot be more than the bill.</p>}
+                {/* 15 Nov 2026: a discount needs its reason – said here, so Save being off is never a mystery */}
+                {pct > 0 && pct <= 100 && discountReason.trim().length < 3 && <p className="field-error">Write the concession reason (at least 3 letters) – the bill saves once it is written.</p>}
                 <p className="hint">
-                  {who === 'walkin' ? 'Save opens the Payment window: the customer pays here, by cash, cheque, card, NEFT / RTGS or online, or in parts.' : issue ? 'The invoice goes on her stay’s bill.' : 'The invoice goes on her hospital bill; she pays at the billing desk.'} Prices are the batch MRP (GST included).
+                  {who === 'walkin' ? 'Save opens the Payment window: the customer pays here, by cash, cheque, card, NEFT / RTGS or online, or in parts.' : issue ? 'The invoice goes on her stay’s bill.' : 'Save opens the Payment window: the hospital bill, paid here in full or in part, or credit (paid later).'} Prices are the batch MRP (GST included).
                 </p>
               </>
             )}

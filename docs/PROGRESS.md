@@ -46,8 +46,18 @@
   on pointing), small Qty and Dose boxes, and a taller box (about 15 rows on a laptop) that scrolls inside. Notes that
   matter (a substitute, Other brands, a pack that can't be split, allergy or look-alike warnings) still show on their row.
 - The people found on the Sales bill page are a table like the day's bills (Patient / customer, UHID, Type, Doctor,
-  Bills, Last bill, Bills link); `/api/pharmacy/invoices/people` gives a billed person's doctor – the latest pharmacy
-  bill's. Someone never billed here stays name and number only ("–" for the doctor).
+  Bills, Last bill, Bills link); `/api/pharmacy/invoices/people` gives each patient's doctor – the latest pharmacy
+  bill's, else the doctor assigned at registration (the developer, 14 Nov 2026: the doctor's name only; nothing else of
+  the record for someone never billed here). Choosing a patient fills the bill's Doctor name with it.
+- 15 Nov 2026 (the developer, from the pharmacy's users): **credit only for OPD and IPD patients** – a patient's bill
+  may be paid in part (the rest stays due on the bill, paid later with Receive payment) or not at all ("Save this bill as
+  credit?"), or go on the hospital bill; a walk-in (External) customer pays the whole bill now (server and Payment
+  window). A discount with no concession reason now says so under the totals (Save used to stay off without a word);
+  the Disc boxes take numbers only. The printed bill reads Gross (at MRP) · Disc · Net · Paid Amount · Bal. Amt. The
+  doctor of a patient never billed here: the doctor in charge of a current stay, else the latest appointment's doctor,
+  else the doctor assigned at registration.
+- The people found and the day's bills scroll inside a box of fixed height (the screen's height less the page's top,
+  at least 280px) with the headings kept at the top and one line per row – the page no longer grows with the list.
 
 ## Sales bill: one page, no New bill / Bill list tabs (14 Nov 2026, branch `pharmacy-mis`)
 - As on the earlier software, the bill's buttons are Expiry list · **Bill list** · Save · Close; the Bill list page has

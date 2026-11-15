@@ -130,8 +130,11 @@ describe('a registered patient’s bill: the hospital bill, or paid here (13 Nov
     const paid = await sale({ payments: [{ mode: 'upi', amountPaise: 600, reference: 'UPI-77' }] });
     expect(paid.status, JSON.stringify(paid.body)).toBe(201);
     expect(paid.body.invoice).toMatchObject({ billId: null, paidPaise: 600, balancePaise: 0 });
-    // Short payment is refused, as for a walk-in
-    expect((await sale({ payments: [{ mode: 'cash', amountPaise: 100 }] })).status).toBe(400);
+    // Paid in part (15 Nov 2026): the rest stays due on the bill, not on the hospital bill; never more than the bill
+    const part = await sale({ discountPercent: 10, discountReason: 'Staff family', payments: [{ mode: 'cash', amountPaise: 300 }] });
+    expect(part.status, JSON.stringify(part.body)).toBe(201);
+    expect(part.body.invoice).toMatchObject({ billId: null, paidPaise: 300, balancePaise: 240 });
+    expect((await sale({ payments: [{ mode: 'cash', amountPaise: 700 }] })).status).toBe(400);
 
     const onBill = await sale({ onHospitalBill: true });
     expect(onBill.status).toBe(201);
@@ -149,15 +152,19 @@ describe('a registered patient’s bill: the hospital bill, or paid here (13 Nov
   });
 });
 
-describe('a bill with no payment chosen goes on credit (13 Nov 2026)', () => {
-  it('a walk-in owes it and pays later at the counter, never more than is due; a patient’s goes on her hospital bill', async () => {
+describe('a bill with no payment chosen goes on credit – OPD and IPD patients only (15 Nov 2026)', () => {
+  it('a patient owes it and pays later at the counter, never more than is due; a walk-in cannot take credit', async () => {
     const m = await inStock();
-    const owed = await ph('post', '/invoices', walkIn(m, { onCredit: true }));
+    const p = (await (await as('reception')).post('/api/patients').send(samplePatient({ fullName: 'Sample Credit Mother', assignedDoctor: people.drA._id.toString() }))).body.patient;
+    const owed = await ph('post', '/invoices', { kind: 'sale', patientId: p.id, onCredit: true, lines: [{ medicineId: m.id, qty: 3 }] });
     expect(owed.status, JSON.stringify(owed.body)).toBe(201);
     const inv = owed.body.invoice;
     expect(inv).toMatchObject({ billId: null, paidPaise: 0, balancePaise: 600 });
-    // Credit with a payment, or a patient on "credit", is refused
-    expect((await ph('post', '/invoices', walkIn(m, { onCredit: true, payment: { mode: 'cash' } }))).status).toBe(400);
+    // A walk-in on credit, credit with a payment, or credit and the hospital bill together, is refused
+    expect((await ph('post', '/invoices', walkIn(m, { onCredit: true }))).status).toBe(400);
+    expect((await ph('post', '/invoices', walkIn(m))).status).toBe(400);
+    expect((await ph('post', '/invoices', { kind: 'sale', patientId: p.id, onCredit: true, payment: { mode: 'cash' }, lines: [{ medicineId: m.id, qty: 1 }] })).status).toBe(400);
+    expect((await ph('post', '/invoices', { kind: 'sale', patientId: p.id, onCredit: true, onHospitalBill: true, lines: [{ medicineId: m.id, qty: 1 }] })).status).toBe(400);
     // Paid later in two parts; not more than is due
     expect((await ph('post', `/invoices/${inv.id}/payments`, { payments: [{ mode: 'cash', amountPaise: 700 }] })).status).toBe(400);
     const part = await ph('post', `/invoices/${inv.id}/payments`, { payments: [{ mode: 'upi', amountPaise: 400, reference: 'UPI-9' }] });
@@ -167,8 +174,6 @@ describe('a bill with no payment chosen goes on credit (13 Nov 2026)', () => {
     expect(rest.body.invoice.balancePaise).toBe(0);
     expect((await ph('post', `/invoices/${inv.id}/payments`, { payments: [{ mode: 'cash', amountPaise: 1 }] })).status).toBe(400);
 
-    const p = (await (await as('reception')).post('/api/patients').send(samplePatient({ fullName: 'Sample Credit Mother', assignedDoctor: people.drA._id.toString() }))).body.patient;
-    expect((await ph('post', '/invoices', { kind: 'sale', patientId: p.id, onCredit: true, lines: [{ medicineId: m.id, qty: 1 }] })).status).toBe(400);
     const onBill = (await ph('post', '/invoices', { kind: 'sale', patientId: p.id, onHospitalBill: true, lines: [{ medicineId: m.id, qty: 1 }] })).body.invoice;
     // A bill on the hospital bill is paid at the billing desk, not here
     expect((await ph('post', `/invoices/${onBill.id}/payments`, { payments: [{ mode: 'cash', amountPaise: 100 }] })).status).toBe(400);
@@ -191,10 +196,10 @@ describe('Search patient, as the earlier software (13 Nov 2026)', () => {
     expect((await find({ first: 'asha' })).sort()).toEqual(['Sample Asha Patil', 'Sample Asha Rani Kale']);
     expect(await find({ middle: 'rani' })).toEqual(['Sample Asha Rani Kale']);
     expect(await find({ phone: '98765 00022' })).toEqual(['Sample Asha Patil']);
-    // 14 Nov 2026: someone billed carries the latest bill's doctor; someone never billed only name and number
+    // 14 Nov 2026: someone billed carries the latest bill's doctor; someone never billed the doctor assigned at registration
     const found = ok(await ph('get', `/invoices/people?${new URLSearchParams({ first: 'asha' })}`)).people;
     expect(found.find((x) => x.name === 'Sample Asha Rani Kale').doctor).toBe('Dr Sample Bill');
-    expect(found.find((x) => x.name === 'Sample Asha Patil')).not.toHaveProperty('doctor');
+    expect(found.find((x) => x.name === 'Sample Asha Patil').doctor).toMatch(/drA/);
     // The dates narrow to people with bills on those days
     expect(await find({ first: 'asha', from: '2026-09-28', to: '2026-09-28' })).toEqual(['Sample Asha Rani Kale']);
     expect(await find({ first: 'asha', from: '2026-09-01', to: '2026-09-02' })).toEqual([]);

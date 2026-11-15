@@ -25,7 +25,8 @@ describe('the pharmacy bill', () => {
     for (const part of ['Sample Medical Stores', 'D.L. No. S-20-1 S-21-1', 'GSTN No. 27ABCDE1234F1Z5', 'Mobile No. 99999 00000', 'Bill No PH-000007', 'Reg No SH-0042', 'Patient Name Sample Asha Kale', 'Type OPD Patient', 'Doctor Name Dr Sample Rao']) expect(text).toContain(part);
     expect(text).toMatch(/Sr\. Item Name Batch No Expiry MRP Disc Amt Qty Amount/);
     expect(text).toContain('1 Sampleol 650 B100 Aug-2029 350.00 35.00 2.00 665.00');
-    expect(text).toContain('Gross 665.00');
+    // 15 Nov 2026: as the earlier bill – Gross at MRP, Disc, Net
+    expect(text).toContain('Gross 700.00 Disc 35.00 Net 665.00');
     expect(text).toContain('GET WELL SOON');
     expect(text).toContain('Subject to Sample Town Jurisdiction');
     expect(text).toContain('Pharmacist Sample Pharmacist');
@@ -38,6 +39,8 @@ describe('the pharmacy bill', () => {
     // 13 Nov 2026: a registered patient may pay at the counter – then the bill is not on the hospital bill
     const paidHere = paper({ ...invoice, billId: null, paidPaise: 66500 });
     expect(paidHere).toContain('Paid Amount 665.00');
+    expect(paidHere).toContain('Bal. Amt 0.00');
+    expect(paper({ ...invoice, billId: null, paidPaise: 30000, balancePaise: 36500 })).toContain('Paid Amount 300.00 Bal. Amt 365.00');
     expect(paidHere).not.toContain('Payable at the billing desk');
   });
 

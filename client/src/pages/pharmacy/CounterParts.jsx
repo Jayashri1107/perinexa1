@@ -114,6 +114,9 @@ const toPaise = (text) => (/^\d+(\.\d{0,2})?$/.test(String(text).trim()) ? Math.
  * or in parts that make up the bill. A registered patient's bill (13 Nov 2026, the developer): choosing how is compulsory
  * – Hospital bill (paid later at the billing desk, as before) or paid here like a walk-in; Save stays off until one is
  * chosen, and the bill's print preview then opens.
+ * Credit (15 Nov 2026, the developer): only an OPD or IPD patient's bill – paid in part (the rest stays due on the
+ * bill) or not at all ("Save this bill as credit?"); paid later with Receive payment. A walk-in (External) customer
+ * pays the whole bill now.
  * body: the invoice about to be made (without the payment); who: { uhid, name };
  * onSave({ payments, paymentRemarks } | { onHospitalBill: true }).
  */
@@ -142,9 +145,10 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
   const paid = amounts.reduce((n, a) => n + (a ?? 0), 0);
   const balance = hospital ? 0 : net - paid;
   const cardOk = !ways.card.on || !ways.card.reference.trim() || /^\d{4}$/.test(ways.card.reference.trim());
-  const paysHere = chosen.length > 0 && amounts.every((a) => a && a > 0) && balance === 0 && cardOk;
-  // Nothing ticked (13 Nov 2026): the bill goes on credit – a patient's on her hospital bill, a walk-in's to be paid later
-  const onCredit = !hospital && chosen.length === 0;
+  // Paid here: a walk-in pays the whole bill; a patient may pay part, the rest staying due on the bill (15 Nov 2026)
+  const paysHere = chosen.length > 0 && amounts.every((a) => a && a > 0) && (walkIn ? balance === 0 : balance >= 0) && cardOk;
+  // Nothing ticked: a patient's bill goes on credit (asked first); a walk-in must choose how they pay
+  const onCredit = !walkIn && !hospital && chosen.length === 0;
   const [askCredit, setAskCredit] = useState(false); // "Save this bill as credit?" is open
   const ready = Boolean(quote) && !saving && (onCredit || (!walkIn && hospital) || paysHere);
   const set = (mode, change) => setWays((all) => ({ ...all, [mode]: { ...all[mode], ...change } }));
@@ -160,7 +164,7 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
   const nothingChosen = Boolean(quote) && onCredit;
   const save = () =>
     onSave(
-      !walkIn && (hospital || onCredit)
+      !walkIn && hospital
         ? { onHospitalBill: true }
         : onCredit
           ? { onCredit: true, paymentRemarks: remarks.trim() }
@@ -277,8 +281,12 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
                 </label>
                 {nothingChosen && (
                   <p className="ph-pay-choose" role="status">
-                    <CircleAlert aria-hidden="true" /> No payment chosen: the bill goes on credit
-                    {walkIn ? ' – the customer pays later (Receive payment on the bill)' : ' – on the patient’s hospital bill'}. Tick a way above if it is paid now.
+                    <CircleAlert aria-hidden="true" /> No payment chosen: the bill goes on credit – the patient pays later (Receive payment on the bill). Tick a way above if it is paid now.
+                  </p>
+                )}
+                {walkIn && Boolean(quote) && chosen.length === 0 && (
+                  <p className="ph-pay-choose" role="status">
+                    <CircleAlert aria-hidden="true" /> A walk-in (External) customer pays the whole bill now – credit is only for OPD and IPD patients. Tick how it is paid.
                   </p>
                 )}
             </>
@@ -301,7 +309,15 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
             </button>
           </div>
         </div>
-        {quote && balance !== 0 && chosen.length > 0 && <p className="hint">{balance > 0 ? `₹${two(balance)} is still to be paid.` : `₹${two(-balance)} more than the bill: lower an amount.`}</p>}
+        {quote && balance !== 0 && chosen.length > 0 && (
+          <p className="hint">
+            {balance < 0
+              ? `₹${two(-balance)} more than the bill: lower an amount.`
+              : walkIn
+                ? `₹${two(balance)} is still to be paid – a walk-in customer pays the whole bill.`
+                : `₹${two(balance)} stays due on this bill as credit (Receive payment later).`}
+          </p>
+        )}
         {askCredit && (
           <CreditQuestion
             amount={quote ? two(net) : ''}
@@ -330,7 +346,7 @@ function CreditQuestion({ amount, walkIn, onYes, onNo }) {
         </h2>
         <p id="ph-credit-ask-text">
           No payment is chosen. {amount ? `₹${amount} ` : 'The bill '}
-          {walkIn ? 'will be owed by the customer and can be paid later with Receive payment on the bill.' : 'will go on the patient’s hospital bill, paid at the billing desk.'}
+          will be owed by the patient and can be paid later with Receive payment on the bill.
         </p>
         <div className="ph-credit-ask-actions">
           <button type="button" className="btn btn-primary" autoFocus onClick={onYes}>
