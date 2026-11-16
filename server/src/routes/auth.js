@@ -1,7 +1,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { lockedError, staffFailed, staffLockLeft, staffSignedIn } from '../auth/loginLock.js';
+import { lockedError, staffClaimTry, staffFailed, staffLockLeft, staffSignedIn } from '../auth/loginLock.js';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config.js';
@@ -185,12 +185,13 @@ export function authRouter({ loginRateLimitMax }) {
     const { email, password } = parse(loginSchema, req.body);
     const now = req.now ?? new Date();
     // 3 wrong tries in a row lock this email for 2 minutes (auth/loginLock.js): the password is not checked meanwhile
-    const left = await staffLockLeft(email, now);
-    if (left) throw lockedError(left);
+    // The try is counted before the password is checked, so tries sent all at once cannot get round it (health check M3)
+    const claimed = await staffClaimTry(email, now);
+    if (claimed.lockedFor) throw lockedError(claimed.lockedFor);
     const user = await User.findOne({ email }).select('+passwordHash');
     // A wrong try – the same for an unknown email, so the answer never shows whether an account exists
     const wrong = async () => {
-      const { lockedFor, triesLeft } = await staffFailed(email, now);
+      const { lockedFor, triesLeft } = await staffFailed(email, now, { counted: true });
       if (lockedFor) {
         await audit(req, 'LOGIN_LOCKED', { ...(user ? { actor: user, target: user } : {}), details: { email, seconds: lockedFor } });
         throw lockedError(lockedFor);
@@ -261,7 +262,7 @@ export function authRouter({ loginRateLimitMax }) {
     const token = req.cookies?.[COOKIE_NAME];
     if (token) {
       try {
-        const payload = jwt.verify(token, config.JWT_SECRET);
+        const payload = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] });
         const user = await User.findById(payload.sub);
         if (user && user.tokenVersion === payload.tv) {
           user.tokenVersion += 1; // this cookie can never be used again
@@ -499,11 +500,19 @@ export function authRouter({ loginRateLimitMax }) {
   router.post('/change-password', requireAuth, async (req, res) => {
     const { currentPassword, newPassword } = parse(changePasswordSchema, req.body);
     const user = await User.findById(req.user._id).select('+passwordHash');
+    const now = req.now ?? new Date();
+    // Wrong current passwords count towards the same 3-try lock as signing in (health check L17, 16 Nov 2026): a
+    // stolen session cannot be used to try passwords at the request limit's pace
+    const claimed = await staffClaimTry(user.email, now);
+    if (claimed.lockedFor) throw lockedError(claimed.lockedFor);
 
     if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+      const { lockedFor } = await staffFailed(user.email, now, { counted: true });
+      if (lockedFor) throw lockedError(lockedFor);
       const message = 'Current password is incorrect.';
       return res.status(400).json({ error: { message, code: 'VALIDATION', fields: { currentPassword: message } } });
     }
+    await staffSignedIn(user.email);
 
     user.passwordHash = await hashPassword(newPassword);
     user.mustChangePassword = false;

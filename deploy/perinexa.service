@@ -12,6 +12,9 @@ User=perinexa
 Group=perinexa
 WorkingDirectory=/opt/perinexa/app/server
 ExecStart=/usr/bin/node src/index.js
+# Production, whatever server/.env says; and only Caddy on this server reaches the app (health check L19, L20)
+Environment=NODE_ENV=production
+Environment=API_HOST=127.0.0.1
 Restart=always
 RestartSec=5
 # The server finishes requests in progress before it stops.

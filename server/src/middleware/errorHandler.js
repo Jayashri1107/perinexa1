@@ -8,7 +8,7 @@ export function notFound(_req, _res, next) {
 
 // One place that turns every error into a clear, safe JSON response.
 // eslint-disable-next-line no-unused-vars
-export function errorHandler(err, _req, res, _next) {
+export function errorHandler(err, req, res, _next) {
   if (err instanceof ZodError) {
     const fields = {};
     for (const issue of err.issues) {
@@ -48,6 +48,15 @@ export function errorHandler(err, _req, res, _next) {
 
   if (err?.type === 'entity.parse.failed') {
     return res.status(400).json({ error: { message: 'The request data was not valid JSON.', code: 'BAD_JSON' } });
+  }
+
+  // A value the database could not take (a wrong id, a field of the wrong kind) that the route did not check first: a
+  // 400 for the browser, and in the log only which fields – never the value itself, which may be a patient's phone or
+  // name (health check L15, 16 Nov 2026).
+  if (err?.name === 'CastError' || err?.name === 'ValidationError') {
+    const fields = err.name === 'CastError' ? [err.path] : Object.keys(err.errors ?? {});
+    console.error(`${err.name} on ${req.method} ${req.originalUrl.split('?')[0]} – field(s): ${fields.filter(Boolean).join(', ') || '?'}`);
+    return res.status(400).json({ error: { message: 'One of the values is not valid. Please check and try again.', code: 'VALIDATION' } });
   }
 
   // Unexpected problem: log the details on the server, but never leak them to the browser.

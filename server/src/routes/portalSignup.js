@@ -2,7 +2,7 @@ import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { rateLimitStore } from '../utils/sharedState.js';
-import { countFailure, lockedError, secondsLeft } from '../auth/loginLock.js';
+import { claimTry, lockedError, secondsLeft, triedWrong } from '../auth/loginLock.js';
 import { z } from 'zod';
 import { mobileDigits } from '../abdm/abhaFormat.js';
 import { addDays, hospitalToday } from '../careplans/dates.js';
@@ -30,7 +30,7 @@ import { capitalizeName } from '../utils/personName.js';
 //    reception approves (linking her record) or rejects it (routes/patientAccounts.js). The answer is the same whether
 //    or not the mobile or email is already signed up here, so this page never tells anyone who is registered.
 //  - Sign in: email and password, or mobile and an OTP by SMS. Only an APPROVED account opens her portal; a pending or
-//    rejected one is told so only after the right password or OTP. 5 wrong tries lock the account for 30 minutes;
+//    rejected one is told so only after the right password or OTP. 3 wrong tries in a row lock the account for 2 minutes;
 //    tries are also limited per computer.
 //  - OTP: 6 digits, 10 minutes, 5 tries, kept only as a keyed hash; sent by the reminders' SMS provider (server/.env).
 //    Without a provider, outside production, "practice mode" shows the OTP on screen; in production mobile sign-in is
@@ -51,6 +51,25 @@ const same = (a, b) => a.length === b.length && timingSafeEqual(Buffer.from(a), 
 let limiterCount = 0; // each limit counts on its own
 const limiter = (limit) =>
   rateLimit({ windowMs: 15 * 60 * 1000, limit, store: rateLimitStore(`portal-signup-${limit}-${++limiterCount}`), standardHeaders: 'draft-8', legacyHeaders: false, message: { error: { message: 'Too many tries. Please wait 15 minutes, or call the hospital.', code: 'RATE_LIMITED' } } });
+
+// OTPs to one mobile number, whoever asks and from wherever (health check M4, 16 Nov 2026): each one is a paid SMS or
+// WhatsApp, and a limit per computer alone lets someone with many addresses flood a patient. Counted for every number
+// – registered or not – so the answer never tells whether someone is a patient. A number that is not a mobile is left
+// to the route (400). Off (no-op) when the limit is 0.
+const mobileLimiter = (windowMs, limit, message) =>
+  limit && windowMs
+    ? rateLimit({
+        windowMs,
+        limit,
+        store: rateLimitStore(`portal-otp-mobile-${windowMs}-${++limiterCount}`),
+        keyGenerator: (req) => `${String(req.params.key ?? '').toUpperCase()}:${mobileDigits(req.body?.mobile)}`,
+        skip: (req) => !mobileDigits(req.body?.mobile),
+        standardHeaders: 'draft-8',
+        legacyHeaders: false,
+        // RATE_LIMITED: the portal already has this refusal in Marathi and Hindi (portalWords.js) – no new patient wording
+        message: { error: { message, code: 'RATE_LIMITED' } },
+      })
+    : (_req, _res, next) => next();
 
 /**
  * How an OTP reaches her: WhatsApp (the hospital switched it on – SMS if WhatsApp fails), the SMS provider, practice
@@ -85,12 +104,19 @@ async function accountBy(tenant, filter) {
 
 // 3 wrong tries lock the account for 2 minutes (auth/loginLock.js – owner, 19 Oct 2026)
 const isLocked = (a, now) => secondsLeft(a.lockedUntil, now) > 0;
-const locked = (a, now) => lockedError(secondsLeft(a.lockedUntil, now), 'PORTAL_LOCKED');
-/** A wrong password or OTP: counted; the third in a row locks the account. Returns the seconds locked now (0: not). */
-async function failed(a, now) {
-  const lockedFor = countFailure(a, now);
-  await a.save();
-  return lockedFor;
+/**
+ * One try at her password or OTP, counted in the database BEFORE it is checked (health check M3, 16 Nov 2026), so tries
+ * sent all at once cannot each be checked before any is counted. Throws while locked. Returns `wrong()`: call it if the
+ * try was wrong – the third in a row locks the account; it returns the seconds locked now (0: not).
+ */
+async function claimFor(account, now) {
+  const filter = { _id: account._id, tenantId: account.tenantId };
+  const claim = await claimTry(PatientAccount, filter, now);
+  if (claim.lockedFor) throw lockedError(claim.lockedFor, 'PORTAL_LOCKED');
+  // As in the database now, so that signIn's reset to 0 is saved
+  account.failedAttempts = claim.count;
+  account.lockedUntil = null;
+  return () => triedWrong(PatientAccount, filter, claim.count, now);
 }
 
 /** After the right password or OTP: a pending or rejected account is told so; an approved one gets her portal. */
@@ -122,10 +148,15 @@ async function refuse(req, tenant, reason, message = WRONG, lockedFor = 0) {
   throw new HttpError(401, message, 'PORTAL_LOGIN_FAILED');
 }
 
-/** /api/portal/h – otpLimitMax: OTPs one computer may ask for in 15 minutes (each one sends an SMS). */
-export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
+/**
+ * /api/portal/h – otpLimitMax: OTPs one computer may ask for in 15 minutes (each one sends an SMS); mobileGapSeconds
+ * and mobileDailyMax: OTPs one mobile number may be sent, whoever asks (0 = no such limit).
+ */
+export function portalSignupRouter({ otpLimitMax = 8, mobileGapSeconds = 0, mobileDailyMax = 0 } = {}) {
   const router = Router();
   const otpLimiter = limiter(otpLimitMax);
+  const mobileGap = mobileLimiter(mobileGapSeconds * 1000, 1, 'An OTP was sent to this number a moment ago. Please wait a minute before asking for another.');
+  const mobileDaily = mobileLimiter(24 * 60 * 60 * 1000, mobileDailyMax, 'Too many OTPs for this number today. Please sign in with your email and password, or call the hospital.');
   const stepLimiter = limiter(Math.max(30, otpLimitMax * 3));
 
   // ---------- The hospitals a patient can choose on the sign-in page ----------
@@ -201,15 +232,15 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
       await fakeVerify(body.password); // as long as a wrong password
       return refuse(req, tenant, 'unknown_email');
     }
-    if (isLocked(account, req.now)) throw locked(account, req.now);
+    const wrong = await claimFor(account, req.now);
     if (!(await verifyPassword(body.password, account.passwordHash))) {
-      return refuse(req, tenant, 'wrong_password', WRONG, await failed(account, req.now));
+      return refuse(req, tenant, 'wrong_password', WRONG, await wrong());
     }
     return signIn(req, res, tenant, account, 'password');
   });
 
   // ---------- Sign in: mobile and OTP ----------
-  router.post('/:key/otp', otpLimiter, async (req, res) => {
+  router.post('/:key/otp', otpLimiter, mobileGap, mobileDaily, async (req, res) => {
     const tenant = await hospitalOf(req);
     const mode = otpMode(tenant);
     if (mode === 'off') throw new HttpError(409, 'Sign-in with an OTP is not available yet. Please use your email and password.', 'OTP_OFF');
@@ -241,11 +272,13 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
     const mobile = mobileOf(body.mobile);
     const account = await accountBy(tenant, { mobile });
     if (!account || !account.otp || account.otp.expiresAt <= req.now) return refuse(req, tenant, 'otp_expired', WRONG_OTP);
-    if (isLocked(account, req.now)) throw locked(account, req.now);
+    const wrong = await claimFor(account, req.now);
     if (!same(hashOtp(account._id, body.otp), account.otp.hash)) {
-      account.otp.tries += 1;
-      if (account.otp.tries >= MAX_FAILED) account.otp = null; // a new OTP is needed
-      return refuse(req, tenant, 'wrong_otp', WRONG_OTP, await failed(account, req.now));
+      // This OTP's own tries, counted in the database too; after MAX_FAILED a new OTP is needed
+      const filter = { _id: account._id, tenantId: account.tenantId, 'otp.hash': account.otp.hash };
+      const after = await PatientAccount.findOneAndUpdate(filter, { $inc: { 'otp.tries': 1 } }, { returnDocument: 'after', projection: { otp: 1 } }).lean();
+      if (after?.otp && after.otp.tries >= MAX_FAILED) await PatientAccount.updateOne(filter, { $set: { otp: null } });
+      return refuse(req, tenant, 'wrong_otp', WRONG_OTP, await wrong());
     }
     return signIn(req, res, tenant, account, 'otp');
   });

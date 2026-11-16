@@ -131,6 +131,13 @@ sudo systemctl reload caddy
    sudo -u perinexa git -C /opt/perinexa/app pull --ff-only origin main
    sudo /opt/perinexa/app/deploy/deploy.sh
    ```
+4. `deploy.sh` does not install `deploy/perinexa.service` or `deploy/Caddyfile`. When a change touches one of them
+   (16 Nov 2026: `perinexa.service` now sets `NODE_ENV=production` and `API_HOST=127.0.0.1`), copy it again after the
+   deploy:
+   ```bash
+   sudo cp /opt/perinexa/app/deploy/perinexa.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl restart perinexa
+   curl -s http://127.0.0.1:4000/api/health
+   ```
 
 ## 9. Saved copies of the database, and putting one back
 

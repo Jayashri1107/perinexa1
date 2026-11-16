@@ -5,7 +5,7 @@ import { leaveOn } from '../appointments/slots.js';
 import { Appointment } from '../models/Appointment.js';
 import { OpdSchedule } from '../models/OpdSchedule.js';
 import rateLimit from 'express-rate-limit';
-import { countFailure, lockedError, secondsLeft } from '../auth/loginLock.js';
+import { claimTry, lockedError, secondsLeft, triedWrong } from '../auth/loginLock.js';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config.js';
@@ -30,7 +30,7 @@ import { letterheadFor } from './settings.js';
 // The patient portal (Version 2) – deliberately small, because it opens patient information to the internet:
 //  - off until the hospital admin switches it on (Hospital admin → Patient messages);
 //  - staff (doctors, RMOs, nurses, reception) make an access code for a patient and hand it to her on paper;
-//  - she signs in with the code and the last 4 digits of her mobile number; 5 wrong tries lock the code for 30
+//  - she signs in with the code and the last 4 digits of her mobile number; 3 wrong tries in a row lock the code for 2
 //    minutes, and sign-ins are rate-limited per computer;
 //  - she sees only her next appointment and the upcoming items of her care plan in plain words, and the hospital's
 //    phone – never results, notes, diagnoses, risk, documents or anything typed by staff;
@@ -143,9 +143,12 @@ portalRouter.post('/login', signInLimiter, async (req, res) => {
   // (a record closed after a death: its codes were withdrawn when it was closed – the same answer as for any withdrawn code)
   if (!enabled || !patient || isClosed(patient)) throw new HttpError(401, WRONG, 'PORTAL_LOGIN_FAILED');
   const expected = lastFour(patient.phone);
+  // The try is counted in the database before the digits are checked (health check M3, 16 Nov 2026)
+  const claim = await claimTry(PortalAccess, { _id: access._id }, now);
+  if (claim.lockedFor) throw lockedError(claim.lockedFor, 'PORTAL_LOCKED');
+  access.failedAttempts = claim.count; // as in the database now, so the reset below is saved
   if (expected.length !== 4 || digits.length !== 4 || !sameText(expected, digits)) {
-    const lockedFor = countFailure(access, now);
-    await access.save();
+    const lockedFor = await triedWrong(PortalAccess, { _id: access._id }, claim.count, now);
     await portalAudit(req, 'PORTAL_LOGIN_FAILED', access, { reason: 'wrong_digits' });
     if (lockedFor) throw lockedError(lockedFor, 'PORTAL_LOCKED');
     throw new HttpError(401, WRONG, 'PORTAL_LOGIN_FAILED');
@@ -190,7 +193,7 @@ export async function portalSession(req, res) {
   const token = req.cookies?.[PORTAL_COOKIE];
   let payload = null;
   try {
-    payload = token ? jwt.verify(token, portalKey, { audience: 'perinexa-portal' }) : null;
+    payload = token ? jwt.verify(token, portalKey, { audience: 'perinexa-portal', algorithms: ['HS256'] }) : null;
   } catch {
     payload = null;
   }

@@ -108,8 +108,10 @@ function AddMemberForm({ basePath, defaultRoles, groups, onAdded, onCancel, noAd
  * - linkToUser: super admins get a link to the person's full account page
  */
 /** A doctor's departments: a short summary that opens to a tick list of every department. */
-export function DoctorDepartments({ m, busy, onChange }) {
+export function DoctorDepartments({ m, busy, onChange, readOnly = false }) {
   const list = m.departments?.length ? m.departments : m.department ? [m.department] : [];
+  // One's own departments are shown, never changed (health check L1, 16 Nov 2026)
+  if (readOnly) return <span className="member-departments">{list.length ? list.join(', ') : 'No department'}</span>;
   return (
     <details className="member-departments">
       <summary>
@@ -260,7 +262,7 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
           {Object.keys(m.pageOverrides ?? {}).length > 0 && <span className="member-own-pages">· own page access</span>}
           {/* A doctor's departments (owner, 27 Oct 2026; more than one from 29 Oct 2026): registration and admission offer a
               department's doctors */}
-          {m.roles.includes('doctor') && <DoctorDepartments m={m} busy={busyId === m.id} onChange={(next) => run(m, async () => {
+          {m.roles.includes('doctor') && <DoctorDepartments m={m} busy={busyId === m.id} readOnly={m.user.id === me.id} onChange={(next) => run(m, async () => {
             await api(`${basePath}/${m.id}/department`, { method: 'PATCH', body: { departments: next } });
             setSuccess(next.length ? `${m.user.name}: ${next.join(', ')}.` : `${m.user.name}'s departments are cleared.`);
           })} />}

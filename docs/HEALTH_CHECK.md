@@ -41,6 +41,9 @@ with the time written down (`docs/DEPLOY_AWS.md` sections 4 and 9). Encrypted EB
 - `zod` 4.6.5 – memory exhaustion (GHSA-mrhx-c7xc-m3w5); fixed in 4.6.6+.
 - Moderate: `qs` 6.16.0, `ip-address` 10.7.2.
 *Fix:* update within the existing ranges (no new dependency), `npm test`, `npm run build`, one server start.
+**Fixed 16 Nov 2026** (`d65467a0`, `98365b6d`): body-parser 2.4.0, mongoose 9.12.1, zod 4.6.7, qs 6.17.1, ip-address
+10.7.6; the build and test tools too (vite 8.3.8, vitest 5.1.0, concurrently 10.0.7). `npm audit` finds 0 in all
+packages. Only `package-lock.json` changed.
 
 **H3 – Platform users can read patient records inside a hospital.** Owner decides. **Verified.**
 `server/src/middleware/auth.js` `platformMembership` gives a platform user every hospital role, and
@@ -70,27 +73,54 @@ Needs the developer's and owner's agreement on the library (a new dependency).
 request without the header, or with the name of a page set to Edit, skips the check. Roles and need-to-know still
 apply, so it never gives more than the roles do – but a hospital admin who sets "Reports: None" will believe reports
 are blocked. *Fix:* map routes to pages on the server, or say plainly in the admin screen that it hides menu items only.
+**Fixed for each page's own areas, 16 Nov 2026:** `PAGE_ROUTES` in `server/src/access/pages.js` lists the API areas
+that belong to one menu item only (found by reading which screens call each area): Pharmacy, Theatre, Specimens,
+Formulary, Privileges, Clinical audit (with case reviews, dashboards, PPH reviews), Analytics, Tally (Billing), the lab's
+QC / setup / stock, and referring doctors. These are checked on the server whatever page the request names, or none
+(`pageAccessGuard`); Formulary → Stock places still reads the pharmacy's medicines and stock. **Still by the header
+only:** areas several menu items share – patients, billing, the lab's orders, appointments, beds, the Today page's
+summaries – because refusing them by area would break the other pages that use them. For those, the roles and the
+need-to-know rules remain the real limit, as the admin screen's help already says ("Each item also needs a role").
 
 **M2 – The server never ends a session for inactivity on its own; no absolute limit.** Open. **Verified.**
 `requireAuth` renews the cookie on every request, including the background polls (`NotificationBell.jsx:29`,
 `TodayPage.jsx:592`, `pharmacy/RegisterPage.jsx:181`). The 30-minute logout is enforced only by the browser timer; a
 stolen cookie, or an open tab, stays signed in indefinitely. *Fix:* an absolute lifetime (e.g. 12 hours, an `authTime`
 claim) and a last-activity time that polls do not refresh.
+**Fixed 16 Nov 2026:** the session cookie carries the sign-in time (`at`), kept as it is renewed, and is refused
+`SESSION_MAX_HOURS` (default 12) after signing in. Only a change (any non-GET request) or the website's "still here"
+call (`GET /api/auth/me`, sent at most every 5 minutes while the person is using the page) renews it; the lists pages
+read again by themselves do not, so an unused open tab ends after `SESSION_TIMEOUT_MINUTES` on the server too.
+Sessions from before the change start their 12 hours at their next request. Staff on a longer shift sign in again
+after 12 hours.
 
 **M3 – Account lock and OTP try counter can be raced.** Open. *Plausible.*
 `routes/auth.js:188` with `auth/loginLock.js`, and `routes/portalSignup.js:244-248`: the lock is checked before the
 attempt and counted after it; `otp.tries` is incremented in memory and saved, so parallel guesses overwrite each other.
 Many parallel requests from many addresses can make far more guesses than the limit. *Fix:* atomic
 `findOneAndUpdate` with a condition on `tries` / `lockedUntil`.
+**Fixed 16 Nov 2026** (confirmed: a test of 12 wrong passwords sent at once checked all 12 before the fix, at most 3
+after). Every try – staff sign-in (`staffClaimTry`), a patient's password and OTP (`claimFor` in `portalSignup.js`) and
+the portal code (`portal.js`) – is now counted in one database step *before* it is checked, and refused unchecked once
+3 in a row are used; the OTP's own try count is a database `$inc` too. Tests: `server/tests/parallel-tries.test.js`.
 
 **M4 – Nothing limits OTP messages to one mobile number.** Open. **Verified.**
 `routes/portalSignup.js` `POST /:key/otp` is limited per IP only; each request for a registered mobile sends a paid
 SMS / WhatsApp. *Fix:* a cooldown per mobile (e.g. 60 s) and a daily cap.
+**Fixed 16 Nov 2026:** one OTP a minute and 5 in 24 hours per hospital and mobile number, whoever asks
+(`PORTAL_OTP_MOBILE_GAP_SECONDS`, `PORTAL_OTP_MOBILE_DAILY_MAX`; 0 turns a limit off). Counted for every number,
+registered or not, so the answer never tells whether someone is a patient. Refused with the existing `RATE_LIMITED`
+code, which the portal already shows in Marathi and Hindi – no new patient wording.
 
 **M5 – A patient's bills are listed without the need-to-know check or an audit entry.** Open. **Verified.**
 `routes/billing.js:144` `GET /patient/:patientId` checks only the hospital; the appointments equivalent
 (`appointments.js:326-333`) calls `assertNotHidden` / `patientAccess` and writes an audit line. *Fix:* the same three
 steps here.
+**Fixed 16 Nov 2026:** `assertNotHidden` and a `BILL_VIEWED` entry (`list: true`, the number of bills, never an
+amount) on every listing. On a closer look the access gap was smaller than stated: only reception, billing and the
+admin reach the billing routes, and reception and billing see every patient's identity by design, so the real gap was
+the missing audit entry. A view-level check like the appointments one was not added, because it would block the
+hospital admin – whether admins see bills is the owner's decision (L5).
 
 **M6 – Fertility plan text is not checked for the baby's sex.** Owner decides. **Verified.**
 `routes/fertilityPlans.js` (section text up to 8,000 characters, switch notes, cycle notes) never calls the PC-PNDT
@@ -108,6 +138,12 @@ are audited. *Needed:* the owner decides who may download these; numbers only fo
 `takeTurn`. `deploy.sh` waits 60 seconds; on a large database it can restart the server in the middle of one and go
 back to the old code on half-changed data. A failed step is only a warning. *Fix:* record each finished step in the
 database (run once), move finished ones out of `index.js`, and give `healthy()` more time when a step is running.
+**Reduced 16 Nov 2026:** `deploy.sh` and `restore.sh` now wait up to five minutes for the server to answer, and
+`index.js` logs how long the startup steps took (`journalctl -u perinexa | grep "Startup steps"`). On a closer look
+the steps are not one-off moves but repairs that keep running (a doctor without "Dr.", a member without a group, a
+next-visit date without an appointment …), each safe to run again, so they were not made run-once – that would change
+what the app does. **Still open (Low, before a second server copy):** a lock so only one copy runs them at a time;
+and, per step, whether it can retire once the owner agrees nothing old is left.
 
 **M9 – The AI report reader sends the whole report image.** Owner decides (before AI is switched on).
 `routes/ai.js:212-236` sends the full photo / PDF, with the printed name, phone and MRN; text features remove them
@@ -122,31 +158,35 @@ database (run once), move finished ones out of `index.js`, and give `healthy()` 
 The JSON parsers (21 MB for `/api/patients/*/documents`) run before `requireAuth` and before the API rate limit
 (`app.js:164-218`); Caddy allows 32 MB. Anonymous parallel 21 MB posts can exhaust the memory of the single server.
 *Fix:* parse large bodies only after `requireAuth`, and the rate limit before the parsers.
+**Fixed 16 Nov 2026:** every larger staff body limit (`big()` in `app.js`) first checks the session cookie's
+signature, so a large body is read only for someone signed in; the cookie parser and the per-person request limit now
+come before any body is read. Still read before a sign-in check: the scan bridge (its own key, 8 MB) and the ABDM push
+address (refused before reading when ABDM is off, as before).
 
 ## Low
 
 | ID | Where | What | Status |
 | --- | --- | --- | --- |
-| L1 | `routes/members.js` `PATCH /:memberId/department` | An admin who is also a doctor can change their own departments (no self check, unlike roles, group and pages), then see other departments' patients in clinical work. Audited. **Verified.** | Open |
+| L1 | `routes/members.js` `PATCH /:memberId/department` | An admin who is also a doctor can change their own departments (no self check, unlike roles, group and pages), then see other departments' patients in clinical work. Audited. **Verified.** | Fixed 16 Nov 2026: refused (`SELF_ACTION`); one's own departments shown read-only on the staff screen |
 | L2 | members reset-password, `platformUsers.js:291` | A password reset hands the admin the temporary password of a doctor who works nowhere else – they can sign in as her. Audited, and she is locked out. Consider a reset link to the user instead. | Open |
 | L3 | `utils/patientAccess.js`, `patients.js:1356` | Rights of several roles are OR-ed: a doctor who is also a receptionist can assign another doctor's sensitive patient to themselves. Audited. | Open |
 | L4 | `platformPatients.js:41`, `platformHospitalView.js:170` | The super admin's patient lists show `careType` (e.g. abortion, infertility) and include sensitive records. Follows 24 Oct decision. | Owner decides |
 | L5 | `billingRules.js:6` | Hospital admins are in the billing roles, so they see bills with names and services. *Plausible.* | Owner decides |
-| L6 | `utils/tenantScope.js:28, 36` | The hospital guard checks only that `tenantId` is present; `{$in: [...]}` or `{$ne: x}` would pass. Nothing uses that today. | Open |
-| L7 | `routes/abdm.js:234`, `abdmService.js:81` | `POST /api/abdm/done/:id` ends an ABDM transaction without the hospital / user check `getTxn` does (random UUID; nothing read). | Open |
-| L8 | `patients.js:1452, 933`, `arrivals.js:104`, `admissionDesk.js:165`, `fertilityPlans.js:517`, `stockPlaces.js:233`, `billing.js:120` | Patient-reading routes without an audit entry (the page flow logs `GET /patients/:id`, a direct call is not logged). | Open |
-| L9 | `models/AuditLog.js`, `utils/audit.js:18` | Edit blocking misses `replaceOne`, `findOneAndReplace`, `bulkWrite`, `save()` on an existing entry and `collection` calls; a failed audit write is swallowed and the record still returned. | Open |
-| L10 | `utils/auditDetails.js` | `FERTILITY_*`, `STOCK_PLACE_USED`, `WARD_REQUEST_MADE` are not in the patients category: ids (never names) reach the super admin's log, and fertility events miss the hospital's Patients tab. | Open |
-| L11 | `ai/prescriptionCheck.js:33` | The AI prescription check's output is not passed through the fetal-sex check (input is). | Open |
+| L6 | `utils/tenantScope.js:28, 36` | The hospital guard checks only that `tenantId` is present; `{$in: [...]}` or `{$ne: x}` would pass. Nothing uses that today. | Fixed 16 Nov 2026: tenantId must be one ObjectId, its text or { $eq } |
+| L7 | `routes/abdm.js:234`, `abdmService.js:81` | `POST /api/abdm/done/:id` ends an ABDM transaction without the hospital / user check `getTxn` does (random UUID; nothing read). | Fixed 16 Nov 2026: only a step this person started here is ended |
+| L8 | `patients.js:1452, 933`, `arrivals.js:104`, `admissionDesk.js:165`, `fertilityPlans.js:517`, `stockPlaces.js:233`, `billing.js:120` | Patient-reading routes without an audit entry (the page flow logs `GET /patients/:id`, a direct call is not logged). | Partly fixed 16 Nov 2026: the doctors' notes are now audited (PATIENT_VIEWED, sections: notes); the others are read inside a record already opened and logged – accepted |
+| L9 | `models/AuditLog.js`, `utils/audit.js:18` | Edit blocking misses `replaceOne`, `findOneAndReplace`, `bulkWrite`, `save()` on an existing entry and `collection` calls; a failed audit write is swallowed and the record still returned. | Fixed 16 Nov 2026: replaceOne, findOneAndReplace, bulkWrite and save() of an existing entry blocked; a failed audit write still does not stop the work – accepted (a database fault would otherwise stop the hospital) |
+| L10 | `utils/auditDetails.js` | `FERTILITY_*`, `STOCK_PLACE_USED`, `WARD_REQUEST_MADE` are not in the patients category: ids (never names) reach the super admin's log, and fertility events miss the hospital's Patients tab. | Fixed 16 Nov 2026: these events are now patient events |
+| L11 | `ai/prescriptionCheck.js:33` | The AI prescription check's output is not passed through the fetal-sex check (input is). | Fixed 16 Nov 2026: an issue that mentions it is left out |
 | L12 | `careplans/antenatalDraft.js:80` | "HIV test (with counselling)" is named on care plans, outside the neutral name. DRAFT content. | Owner decides |
-| L13 | `routes/labStock.js:132-133` | Lab stock adjustment is read-then-write; it can lose an update against the atomic `$inc` in `lab/stock.js:27`. | Open |
+| L13 | `routes/labStock.js:132-133` | Lab stock adjustment is read-then-write; it can lose an update against the atomic `$inc` in `lab/stock.js:27`. | Fixed 16 Nov 2026: one conditional $inc; a clash asks for a recount |
 | L14 | `pharmacyService.js` (about line 371) | No transactions anywhere; a crash in the middle of a pharmacy sale can leave stock out with no invoice. | Open |
-| L15 | `middleware/errorHandler.js:54` | The whole error is logged; Mongoose cast / validation errors carry the rejected value (a phone number) into the log. | Open |
-| L16 | `routes/portalSignup.js:224-230` | The OTP request is slower, and can answer 503, only for a registered mobile: shows whether someone is a patient. Send without waiting, same answer always. | Open |
-| L17 | `routes/auth.js:503` | A wrong current password on "change password" is not counted towards the lock. | Open |
-| L18 | `routes/portal.js:59`, `portalSignup.js:47`, `utils/sharedState.js:14` | Several keys are derived from `JWT_SECRET`; rotating it also invalidates every printed portal code and pending ABDM steps. Document it, or use separate keys. | Open |
-| L19 | `index.js:102`, `auth.js:137`, `portal.js:183`, `portal.js:33` | Hardening: the server listens on all interfaces (bind to 127.0.0.1 behind Caddy); pin `algorithms: ['HS256']` on verify; portal logout leaves the token valid up to 15 min; comments say "5 tries, 30 minutes" where the code does 3 and 2; no `Permissions-Policy` header. | Open |
-| L20 | `deploy/perinexa.service`, `db-backup-lib.sh`, `patients.js:751` | Ops: the service does not set `NODE_ENV=production` itself; `ReadWritePaths` lets the server rewrite its own code; the backup does not pass `MONGO_CA_CERT` (only matters off Atlas – it then refuses to deploy, safely); patient search uses an unanchored regex that cannot use the indexes. | Open |
+| L15 | `middleware/errorHandler.js:54` | The whole error is logged; Mongoose cast / validation errors carry the rejected value (a phone number) into the log. | Fixed 16 Nov 2026: cast / validation errors answer 400 and log the field names only |
+| L16 | `routes/portalSignup.js:224-230` | The OTP request is slower, and can answer 503, only for a registered mobile: shows whether someone is a patient. Send without waiting, same answer always. | Owner decides: fixing it removes the patient's "OTP could not be sent" message |
+| L17 | `routes/auth.js:503` | A wrong current password on "change password" is not counted towards the lock. | Fixed 16 Nov 2026: counted like a sign-in try |
+| L18 | `routes/portal.js:59`, `portalSignup.js:47`, `utils/sharedState.js:14` | Several keys are derived from `JWT_SECRET`; rotating it also invalidates every printed portal code and pending ABDM steps. Document it, or use separate keys. | Accepted: documented here; separate keys later would reissue every printed portal code |
+| L19 | `index.js:102`, `auth.js:137`, `portal.js:183`, `portal.js:33` | Hardening: the server listens on all interfaces (bind to 127.0.0.1 behind Caddy); pin `algorithms: ['HS256']` on verify; portal logout leaves the token valid up to 15 min; comments say "5 tries, 30 minutes" where the code does 3 and 2; no `Permissions-Policy` header. | Fixed 16 Nov 2026 except portal logout (token ends within 15 min – accepted): API_HOST=127.0.0.1 in perinexa.service, HS256 pinned, comments corrected, Permissions-Policy sent |
+| L20 | `deploy/perinexa.service`, `db-backup-lib.sh`, `patients.js:751` | Ops: the service does not set `NODE_ENV=production` itself; `ReadWritePaths` lets the server rewrite its own code; the backup does not pass `MONGO_CA_CERT` (only matters off Atlas – it then refuses to deploy, safely); patient search uses an unanchored regex that cannot use the indexes. | Partly fixed 16 Nov 2026: NODE_ENV=production in perinexa.service; ReadWritePaths, the CA file for the backup and the search regex stay open (Low) |
 
 ## Decisions for the owner
 

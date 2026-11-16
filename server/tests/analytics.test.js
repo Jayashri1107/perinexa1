@@ -561,7 +561,7 @@ describe('numbers: deliveries – Dr B (sees every record), whole hospital, 12 m
   });
 
   it('the fixture: four confirmed notes in H1, one in H2; a note entered in error and a draft; the deaths', async () => {
-    const notes = await ClinicalDocument.find({ tenantId: { $in: [fx.hospitals.h1._id, fx.hospitals.h2._id] }, kind: 'delivery' }).lean();
+    const notes = await ClinicalDocument.find({ tenantId: { $in: [fx.hospitals.h1._id, fx.hospitals.h2._id] }, kind: 'delivery' }).setOptions({ acrossHospitals: true }).lean();
     const byName = Object.fromEntries(Object.entries(fx.docIds).map(([name, docId]) => [name, notes.find((d) => String(d._id) === docId)]));
     expect(Object.fromEntries(Object.entries(byName).map(([name, d]) => [name, d.status]))).toEqual({
       'A-07 delivery': 'signed',

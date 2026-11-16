@@ -20,6 +20,7 @@ import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { fileUploadSchema, findFile, sendFile, storeFile } from '../utils/storedFiles.js';
 import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js';
+import { assertNotHidden } from '../utils/patientAccess.js';
 import { mentionsFetalSex } from '../utils/pcpndt.js';
 import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
 import { documentOffer, offerView, sendPatientPdf } from '../visits/whatsappDocuments.js';
@@ -140,12 +141,16 @@ billingRouter.get('/bills', async (req, res) => {
   res.json({ today: isoDay(today), date: q.search ? null : isoDay(q.date ?? today), bills: views });
 });
 
-// A patient's bills (her record's Bills tab), newest first.
+// A patient's bills (her record's Bills tab), newest first. The department rule and the audit log as for her
+// appointments (health check M5, 16 Nov 2026): a record hidden from this person is "not found", and every listing is
+// logged – the bill numbers and how many, never an amount.
 billingRouter.get('/patient/:patientId', async (req, res) => {
   const { patientId } = parse(z.object({ patientId: objectId }), req.params);
-  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: patientId }, { _id: 1, duplicateOf: 1 }).lean();
+  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: patientId }).lean();
   if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  assertNotHidden(req, patient);
   const bills = await Bill.find({ tenantId: req.tenantId, patientId }).sort({ on: -1, createdAt: -1, _id: -1 }).limit(200).lean();
+  await audit(req, 'BILL_VIEWED', { details: { patientId: String(patient._id), list: true, bills: bills.length } });
   const views = await billViews(req.tenantId, bills, { full: false });
   // Money still owed on a record marked as a duplicate of this one (her earlier record): the bills stay there, and
   // reception – who works on this record now – is told here. Numbers only.

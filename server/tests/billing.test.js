@@ -320,6 +320,18 @@ describe('bills and payments at the desk', () => {
     const them = await loginAs(outsider, { app });
     expect((await them.get(`/api/billing/bills/${b.id}`)).status).toBe(404);
     expect((await them.post(`/api/billing/bills/${b.id}/payments`).send({ mode: 'cash', amountPaise: 100 })).status).toBe(404);
+    expect((await them.get(`/api/billing/patient/${p.id}`)).status).toBe(404);
+  });
+
+  it("a patient's Bills tab is in the audit log – how many bills, never an amount (health check M5, 16 Nov 2026)", async () => {
+    await prices({ consult_new: 50000 });
+    const p = await register('Listed Mother');
+    await startVisit(p);
+    const before = await AuditLog.countDocuments({ tenantId: hospital._id, action: 'BILL_VIEWED' });
+    expect(await billsOf(p)).toHaveLength(1);
+    const entries = await AuditLog.find({ tenantId: hospital._id, action: 'BILL_VIEWED' }).sort({ _id: 1 }).lean();
+    expect(entries).toHaveLength(before + 1);
+    expect(entries.at(-1).details).toEqual({ patientId: p.id, list: true, bills: 1 });
   });
 });
 

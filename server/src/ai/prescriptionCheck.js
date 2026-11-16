@@ -3,6 +3,7 @@
 // careful colleague would point out. It only asks: the doctor corrects or prints as it is. Never the patient's name,
 // phone, address or number (ai/context.js).
 
+import { mentionsFetalSex } from '../utils/pcpndt.js';
 import { patientContext, scrub } from './context.js';
 import { askAI, strictObject } from './openai.js';
 
@@ -59,5 +60,8 @@ export async function checkPrescription(req, patient, visit, ids) {
     schema: SCHEMA,
   });
   const order = { important: 0, check: 1 };
-  return (answer.issues ?? []).slice(0, 6).sort((a, b) => order[a.severity] - order[b.severity]);
+  // Like every other AI answer, nothing about the sex of the fetus reaches the doctor (PC-PNDT; health check L11,
+  // 16 Nov 2026): an issue that mentions it is left out – the rest of the check still helps. A newborn has been born.
+  const allowed = (it) => patient.careType === 'newborn' || ![it.about, it.problem, it.suggestion].some((t) => mentionsFetalSex(t));
+  return (answer.issues ?? []).filter(allowed).slice(0, 6).sort((a, b) => order[a.severity] - order[b.severity]);
 }

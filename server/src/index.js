@@ -37,6 +37,11 @@ try {
   process.exit(1);
 }
 
+// The startup steps below run at every start, before the server answers (so nobody works on half-changed records). Each
+// is safe to run again – a second run finds nothing to do – so a start cut off in the middle is finished by the next
+// one. deploy/deploy.sh waits up to five minutes for them (health check M8, 16 Nov 2026); how long they took is logged.
+const stepsStarted = Date.now();
+
 // Make sure the "one hospital standard template per care type" rule exists in the database, and bring every
 // hospital's built-in draft risk rules up to date now – rather than in the middle of someone's first save.
 try {
@@ -99,7 +104,9 @@ try {
   console.error('\n⚠️  WARNING: could not move the staff into user groups at startup. Details:', err.message, '\n');
 }
 
-const server = createApp().listen(config.API_PORT, () => {
+console.log(`Startup steps took ${((Date.now() - stepsStarted) / 1000).toFixed(1)} s.`);
+
+const server = createApp().listen(config.API_PORT, ...(config.API_HOST ? [config.API_HOST] : []), () => {
   console.log(`✅ Server running on http://localhost:${config.API_PORT} (${config.NODE_ENV})`);
 });
 // Behind the hosting's load balancer: keep idle connections a little longer than it does.

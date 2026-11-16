@@ -909,7 +909,7 @@ describe("ABDM's calls: only from ABDM's gateway, and one hospital per HIP ID", 
     });
     const res = await request(app).post('/api/abdm/public/api/v3/consent/request/hip/notify').set('X-HIP-ID', 'IN2710000099').set('Authorization', 'Bearer signed-by-abdm').send({ notification: { status: 'GRANTED', consentId: 'c-sample' } });
     expect(res.status).toBe(409);
-    expect(await AbdmConsent.countDocuments({ tenantId: { $in: [hospital._id, other._id] } })).toBe(0);
+    expect(await AbdmConsent.countDocuments({ tenantId: { $in: [hospital._id, other._id] } }).setOptions({ acrossHospitals: true })).toBe(0);
   });
 
   it("ABDM's addresses have their own limit, not a browser's", async () => {

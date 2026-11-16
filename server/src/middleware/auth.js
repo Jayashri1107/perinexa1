@@ -23,11 +23,15 @@ const cookieOptions = () => ({
 // switch back (with their password); kept as the session is renewed.
 // `mode` (22 Oct 2026): 'admin' while a person who is both a hospital admin and clinical staff works as the admin
 // (switched with their password); otherwise they work in their clinical roles. Kept as the session is renewed.
+// `at` (health check M2, 16 Nov 2026): when this person signed in (seconds). Kept as the session is renewed – taken from
+// res.locals.authTime, which requireAuth sets – so the session ends SESSION_MAX_HOURS after signing in, however busy.
+// A new sign-in has none yet and starts the clock.
 export function setAuthCookie(res, user, tenantId = null, via = null, mode = null) {
   const maxAgeMs = config.SESSION_TIMEOUT_MINUTES * 60 * 1000;
   const payload = {
     sub: user._id.toString(),
     tv: user.tokenVersion,
+    at: res.locals?.authTime ?? Math.floor(Date.now() / 1000),
     tid: tenantId ? String(tenantId) : null,
     ...(via ? { via: String(via.id), vtv: via.tv } : {}),
     ...(mode === 'admin' ? { mode: 'admin' } : {}),
@@ -134,7 +138,7 @@ export async function requireAuth(req, res, next) {
 
   let payload;
   try {
-    payload = jwt.verify(token, config.JWT_SECRET);
+    payload = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] });
   } catch {
     clearAuthCookie(res);
     throw new HttpError(401, 'Your session has expired. Please log in again.', 'SESSION_EXPIRED');
@@ -145,6 +149,15 @@ export async function requireAuth(req, res, next) {
     clearAuthCookie(res);
     throw new HttpError(401, 'Your session has ended. Please log in again.', 'SESSION_EXPIRED');
   }
+  // At most SESSION_MAX_HOURS after signing in (health check M2). A session from before 16 Nov 2026 has no `at`: its
+  // clock starts now.
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const authTime = Number.isInteger(payload.at) ? payload.at : nowSeconds;
+  if (nowSeconds - authTime > config.SESSION_MAX_HOURS * 3600) {
+    clearAuthCookie(res);
+    throw new HttpError(401, `You have been signed in for ${config.SESSION_MAX_HOURS} hours. Please log in again.`, 'SESSION_EXPIRED');
+  }
+  res.locals.authTime = authTime;
 
   req.user = user;
   req.via = payload.via ? { id: payload.via, tv: payload.vtv } : null; // a super admin in their own doctor account
@@ -166,7 +179,10 @@ export async function requireAuth(req, res, next) {
 
   // Sliding session: activity keeps you logged in. If access to the hospital was removed,
   // the renewed cookie no longer points at it.
-  setAuthCookie(res, user, req.tenantId, req.via, req.mode);
+  // Only a change, or the website's "still here" call (GET /api/auth/me, sent while the person is using the page),
+  // renews it – not the lists a page reads again by itself (the bell, Today, the pharmacy register), so an open tab
+  // nobody uses ends after SESSION_TIMEOUT_MINUTES on the server too (health check M2, 16 Nov 2026).
+  if (!READS.has(req.method) || req.originalUrl.split('?')[0] === '/api/auth/me') setAuthCookie(res, user, req.tenantId, req.via, req.mode);
   next();
 }
 

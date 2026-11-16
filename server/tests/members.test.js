@@ -293,4 +293,12 @@ describe("a doctor's department", () => {
     expect((await (await loginAs(limited, { app })).patch(`/api/tenant/members/${m._id}/department`).send({ department: 'Pediatric' })).status).toBe(403);
     expect(await AuditLog.countDocuments({ action: 'MEMBER_ROLE_CHANGED', 'details.department.to': 'Pediatric' })).toBe(1);
   });
+
+  it("never one's own – like roles, group and page access (health check L1, 16 Nov 2026)", async () => {
+    const own = await Membership.findOne({ userId: admin._id, tenantId: home._id });
+    const res = await s.patch(`/api/tenant/members/${own._id}/department`).send({ departments: ['Pediatric'] });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('SELF_ACTION');
+    expect((await Membership.findById(own._id).lean()).departments ?? []).toEqual([]);
+  });
 });

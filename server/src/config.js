@@ -35,6 +35,9 @@ const isValidTimeZone = (timeZone) => {
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_PORT: z.coerce.number().int().positive().default(4000),
+  // The address the server listens on. Empty: every address (development, DigitalOcean). On the AWS server
+  // deploy/perinexa.service sets 127.0.0.1, so only Caddy on the same server reaches it (health check L19).
+  API_HOST: z.string().default(''),
   MONGO_URI: z.string().min(1, 'MONGO_URI is required'),
   // A hosted database's own CA certificate (the PEM text, e.g. DigitalOcean Managed MongoDB's CA_CERT): the connection
   // is then checked against it. Empty: no extra certificate (a local database, or one with a public certificate).
@@ -45,6 +48,9 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters long'),
   CLIENT_URL: z.url().default('http://localhost:5173'),
   SESSION_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(30),
+  // A session ends this many hours after signing in, however busy (health check M2, 16 Nov 2026): a stolen cookie or
+  // a shared computer left signed in does not stay usable for days.
+  SESSION_MAX_HOURS: z.coerce.number().int().min(1).max(72).default(12),
   COOKIE_SECURE: z.enum(['true', 'false']).optional(),
   // WRONG sign-in tries per 15 minutes from one internet address (right ones are not counted): a whole hospital often
   // shares one address. Each account also locks on its own after wrong tries (utils/loginLock.js).
@@ -78,6 +84,10 @@ const schema = z.object({
   MSG91_FLOW_URL: z.url().default('https://control.msg91.com/api/v5/flow'),
   // OTPs one computer may ask for in 15 minutes on a hospital's portal page (sign-up and sign-in with ABHA).
   PORTAL_OTP_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(8),
+  // OTPs one mobile number may be sent on a hospital's portal page, whoever asks (health check M4, 16 Nov 2026):
+  // one every PORTAL_OTP_MOBILE_GAP_SECONDS, and PORTAL_OTP_MOBILE_DAILY_MAX in 24 hours. 0 = no such limit.
+  PORTAL_OTP_MOBILE_GAP_SECONDS: z.coerce.number().int().min(0).max(3600).default(60),
+  PORTAL_OTP_MOBILE_DAILY_MAX: z.coerce.number().int().min(0).max(100).default(5),
   // The hospital's time zone: "today" for care plans and pregnancy weeks is the date there.
   HOSPITAL_TIME_ZONE: z.string().default('Asia/Kolkata').refine(isValidTimeZone, 'HOSPITAL_TIME_ZONE is not a known time zone'),
   // Smart features that use AI (OpenAI). Without a key the AI buttons explain that AI is not set up.

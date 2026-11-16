@@ -22,8 +22,11 @@ build_and_start() {
     as_app npm run build &&
     systemctl restart perinexa
 }
+# Up to five minutes: the server answers only after its startup steps (server/src/index.js), which take longer on a
+# large database. A minute was not enough there, and going back to the version before in the middle of them left the
+# old code on half-changed records (health check M8, 16 Nov 2026).
 healthy() {
-  for _ in $(seq 1 30); do
+  for _ in $(seq 1 150); do
     curl -fs "$HEALTH" >/dev/null && return 0
     sleep 2
   done

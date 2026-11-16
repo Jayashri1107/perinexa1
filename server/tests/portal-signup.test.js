@@ -292,6 +292,34 @@ describe('signing in', () => {
     const key = await signupOn();
     for (const status of [200, 200, 429]) expect((await request(app).post(`/api/portal/h/${key}/otp`).send({ mobile: '9876543210' })).status).toBe(status);
   });
+
+  it('one OTP a minute to a mobile number, whoever asks – registered or not, the same answer (health check M4, 16 Nov 2026)', async () => {
+    app = createApp({ portalOtpMobileGapSeconds: 60, portalOtpMobileDailyMax: 0 });
+    sessions = {};
+    const key = await signupOn();
+    await signUp(key);
+    const otp = (mobile) => request(app).post(`/api/portal/h/${key}/otp`).send({ mobile });
+    expect((await otp('9876543210')).status).toBe(200);
+    // the same number written another way, from another computer: still the same number
+    const again = await otp('+91 98765 43210');
+    expect(again.status).toBe(429);
+    expect(again.body.error.code).toBe('RATE_LIMITED');
+    // another number is not held up; a number with no account is limited the same way
+    expect((await otp('9000000009')).status).toBe(200);
+    const unknown = await otp('9000000009');
+    expect(unknown.status).toBe(429);
+    expect(unknown.body.error).toEqual(again.body.error);
+    // not a mobile number: the route's own answer, nothing counted
+    expect((await otp('12')).status).toBe(400);
+  });
+
+  it('at most so many OTPs a day to one mobile number (health check M4, 16 Nov 2026)', async () => {
+    app = createApp({ portalOtpMobileGapSeconds: 0, portalOtpMobileDailyMax: 2 });
+    sessions = {};
+    const key = await signupOn();
+    for (const status of [200, 200, 429]) expect((await request(app).post(`/api/portal/h/${key}/otp`).send({ mobile: '9876543210' })).status).toBe(status);
+    expect((await request(app).post(`/api/portal/h/${key}/otp`).send({ mobile: '9123456780' })).status).toBe(200);
+  });
 });
 
 describe('her records in the portal', () => {

@@ -13,6 +13,9 @@ export default defineConfig({
       JWT_SECRET: 'test-only-secret-that-is-long-enough-1234567890',
       LOGIN_RATE_LIMIT_MAX: '1000',
       PORTAL_OTP_RATE_LIMIT_MAX: '1000',
+      // OTPs per mobile number: off, except where a test turns them on (tests ask for several OTPs in a row)
+      PORTAL_OTP_MOBILE_GAP_SECONDS: '0',
+      PORTAL_OTP_MOBILE_DAILY_MAX: '0',
       // Never the real OpenAI key from server/.env: AI tests set a fake one and replace OpenAI with a stand-in.
       OPENAI_API_KEY: '',
       // Tests freeze the clock, so a kept Analytics page would never expire: off, except where a test turns it on.

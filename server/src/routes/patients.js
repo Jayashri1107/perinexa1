@@ -1452,8 +1452,12 @@ patientsRouter.delete('/:id/risk-override', async (req, res) => {
 // Notes on the patient's record (emergency notes for now).
 patientsRouter.get('/:id/notes', async (req, res) => {
   const patient = await findPatient(req);
-  if (!patientAccess(req, patient).viewNotes) throw forbidden("You can't view this patient's notes.");
+  const access = patientAccess(req, patient);
+  if (!access.viewNotes) throw forbidden("You can't view this patient's notes.");
   const notes = await PatientNote.find({ tenantId: req.tenantId, patientId: patient._id }).sort({ createdAt: -1 });
+  // The doctors' notes are the most private part of her record: read in the audit log every time, also when asked for
+  // on their own (health check L8, 16 Nov 2026)
+  await audit(req, 'PATIENT_VIEWED', { details: { patientId: String(patient._id), mrn: patient.mrn, access: access.level, sections: ['notes'] } });
   res.json({ notes });
 });
 

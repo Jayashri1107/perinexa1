@@ -40,11 +40,12 @@ platformPatientsRouter.get('/', async (req, res) => {
   }
   const [rows, total] = await Promise.all([
     Patient.find(filter, { tenantId: 1, mrn: 1, fullName: 1, careType: 1, createdBy: 1, createdAt: 1 })
+      .setOptions({ acrossHospitals: true }) // the hospitals this super admin may list (utils/tenantScope.js)
       .sort(toMongoSort(q.sort))
       .skip((q.page - 1) * q.limit)
       .limit(q.limit)
       .lean(),
-    Patient.countDocuments(filter),
+    Patient.countDocuments(filter).setOptions({ acrossHospitals: true }),
   ]);
   const people = new Map((await User.find({ _id: { $in: [...new Set(rows.map((r) => String(r.createdBy)))] } }, { name: 1 }).lean()).map((u) => [String(u._id), u.name]));
   // The list shown is in each listed hospital's audit log (how many of its patients, never who)
