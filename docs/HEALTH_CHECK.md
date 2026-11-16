@@ -139,7 +139,7 @@ The JSON parsers (21 MB for `/api/patients/*/documents`) run before `requireAuth
 
 | ID | Where | What | Status |
 | --- | --- | --- | --- |
-| L1 | `routes/members.js` `PATCH /:memberId/department` | An admin who is also a doctor can change their own departments (no self check, unlike roles, group and pages), then see other departments' patients in clinical work. Audited. **Verified.** | Open |
+| L1 | `routes/members.js` `PATCH /:memberId/department` | An admin who is also a doctor can change their own departments (no self check, unlike roles, group and pages), then see other departments' patients in clinical work. Audited. **Verified.** | Fixed 16 Nov 2026: refused (`SELF_ACTION`); one's own departments shown read-only on the staff screen |
 | L2 | members reset-password, `platformUsers.js:291` | A password reset hands the admin the temporary password of a doctor who works nowhere else – they can sign in as her. Audited, and she is locked out. Consider a reset link to the user instead. | Open |
 | L3 | `utils/patientAccess.js`, `patients.js:1356` | Rights of several roles are OR-ed: a doctor who is also a receptionist can assign another doctor's sensitive patient to themselves. Audited. | Open |
 | L4 | `platformPatients.js:41`, `platformHospitalView.js:170` | The super admin's patient lists show `careType` (e.g. abortion, infertility) and include sensitive records. Follows 24 Oct decision. | Owner decides |

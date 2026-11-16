@@ -362,6 +362,9 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
     const body = parse(z.union([z.object({ departments: z.array(pick).max(DEPARTMENTS.length) }).strict(), z.object({ department: z.enum(['', ...DEPARTMENTS], 'Choose a department from the list') }).strict()]), req.body);
     const wanted = body.departments ? DEPARTMENTS.filter((d) => body.departments.includes(d)) : body.department ? [body.department] : [];
     const m = await findMember(req);
+    // Like roles, group and page access: never one's own – an admin who is also a doctor would otherwise give herself
+    // every department and see their patients in clinical work (health check L1, 16 Nov 2026)
+    if (isSelf(req, m)) throw new HttpError(400, "You can't change your own departments.", 'SELF_ACTION');
     assertAdminRight(req, 'roles');
     if (!m.roles.includes('doctor')) throw new HttpError(400, 'Only a doctor has a department.', 'NOT_DOCTOR');
     const before = departmentsOf(m);
