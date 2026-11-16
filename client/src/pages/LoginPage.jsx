@@ -237,7 +237,7 @@ function AuthFrame({ children }) {
     <div className="auth2">
       <div className="auth2-card">
         <aside className="auth2-art" aria-label="About Perinexa">
-          <img className="auth2-art-logo" src={logoReversed} alt="Perinexa by Docvritta" width="150" height="37" />
+          <img className="auth2-art-logo" src={logoReversed} alt="Perinexa by Njeeva" width="150" height="37" />
           <div className="auth2-orbit" aria-hidden="true">
             <ul>
               {AUTH_ICONS.map((Icon, i) => (
@@ -258,10 +258,10 @@ function AuthFrame({ children }) {
               </li>
             ))}
           </ul>
-          <p className="auth2-foot">© {new Date().getFullYear()} Perinexa by Docvritta</p>
+          <p className="auth2-foot">© {new Date().getFullYear()} Perinexa by Njeeva</p>
         </aside>
         <main className="auth2-form">
-          <img className="auth2-logo" src={logo} alt="Perinexa by Docvritta" width="170" height="42" />
+          <img className="auth2-logo" src={logo} alt="Perinexa by Njeeva" width="170" height="42" />
           {children}
         </main>
       </div>

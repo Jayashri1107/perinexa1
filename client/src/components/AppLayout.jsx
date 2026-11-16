@@ -483,7 +483,7 @@ export function AppLayout() {
             {phone && mobileOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
           </button>
           <Link to="/" onClick={closeMobile} aria-label="Perinexa – start page">
-            <img className="sb-logo" src={logoReversed} alt="Perinexa by Docvritta" width="150" height="37" />
+            <img className="sb-logo" src={logoReversed} alt="Perinexa by Njeeva" width="150" height="37" />
             <img className="sb-appicon" src={appIcon} alt="Perinexa" width="40" height="40" />
           </Link>
         </div>

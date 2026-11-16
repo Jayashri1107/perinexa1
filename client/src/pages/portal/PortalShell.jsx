@@ -73,7 +73,7 @@ export function PortalShell({ patientName, hospitalName, section, onSection, lan
             <Menu aria-hidden="true" />
           </button>
           <span>
-            <img className="sb-logo" src={logoReversed} alt="Perinexa by Docvritta" width="150" height="37" />
+            <img className="sb-logo" src={logoReversed} alt="Perinexa by Njeeva" width="150" height="37" />
             <img className="sb-appicon" src={appIcon} alt="Perinexa" width="40" height="40" />
           </span>
           {open && (
