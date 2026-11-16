@@ -30,7 +30,7 @@ import { capitalizeName } from '../utils/personName.js';
 //    reception approves (linking her record) or rejects it (routes/patientAccounts.js). The answer is the same whether
 //    or not the mobile or email is already signed up here, so this page never tells anyone who is registered.
 //  - Sign in: email and password, or mobile and an OTP by SMS. Only an APPROVED account opens her portal; a pending or
-//    rejected one is told so only after the right password or OTP. 5 wrong tries lock the account for 30 minutes;
+//    rejected one is told so only after the right password or OTP. 3 wrong tries in a row lock the account for 2 minutes;
 //    tries are also limited per computer.
 //  - OTP: 6 digits, 10 minutes, 5 tries, kept only as a keyed hash; sent by the reminders' SMS provider (server/.env).
 //    Without a provider, outside production, "practice mode" shows the OTP on screen; in production mobile sign-in is

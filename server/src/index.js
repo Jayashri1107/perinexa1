@@ -106,7 +106,7 @@ try {
 
 console.log(`Startup steps took ${((Date.now() - stepsStarted) / 1000).toFixed(1)} s.`);
 
-const server = createApp().listen(config.API_PORT, () => {
+const server = createApp().listen(config.API_PORT, ...(config.API_HOST ? [config.API_HOST] : []), () => {
   console.log(`✅ Server running on http://localhost:${config.API_PORT} (${config.NODE_ENV})`);
 });
 // Behind the hosting's load balancer: keep idle connections a little longer than it does.

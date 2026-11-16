@@ -35,6 +35,9 @@ const isValidTimeZone = (timeZone) => {
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_PORT: z.coerce.number().int().positive().default(4000),
+  // The address the server listens on. Empty: every address (development, DigitalOcean). On the AWS server
+  // deploy/perinexa.service sets 127.0.0.1, so only Caddy on the same server reaches it (health check L19).
+  API_HOST: z.string().default(''),
   MONGO_URI: z.string().min(1, 'MONGO_URI is required'),
   // A hosted database's own CA certificate (the PEM text, e.g. DigitalOcean Managed MongoDB's CA_CERT): the connection
   // is then checked against it. Empty: no extra certificate (a local database, or one with a public certificate).

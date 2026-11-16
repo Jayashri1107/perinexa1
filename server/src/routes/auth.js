@@ -262,7 +262,7 @@ export function authRouter({ loginRateLimitMax }) {
     const token = req.cookies?.[COOKIE_NAME];
     if (token) {
       try {
-        const payload = jwt.verify(token, config.JWT_SECRET);
+        const payload = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] });
         const user = await User.findById(payload.sub);
         if (user && user.tokenVersion === payload.tv) {
           user.tokenVersion += 1; // this cookie can never be used again
@@ -500,11 +500,19 @@ export function authRouter({ loginRateLimitMax }) {
   router.post('/change-password', requireAuth, async (req, res) => {
     const { currentPassword, newPassword } = parse(changePasswordSchema, req.body);
     const user = await User.findById(req.user._id).select('+passwordHash');
+    const now = req.now ?? new Date();
+    // Wrong current passwords count towards the same 3-try lock as signing in (health check L17, 16 Nov 2026): a
+    // stolen session cannot be used to try passwords at the request limit's pace
+    const claimed = await staffClaimTry(user.email, now);
+    if (claimed.lockedFor) throw lockedError(claimed.lockedFor);
 
     if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+      const { lockedFor } = await staffFailed(user.email, now, { counted: true });
+      if (lockedFor) throw lockedError(lockedFor);
       const message = 'Current password is incorrect.';
       return res.status(400).json({ error: { message, code: 'VALIDATION', fields: { currentPassword: message } } });
     }
+    await staffSignedIn(user.email);
 
     user.passwordHash = await hashPassword(newPassword);
     user.mustChangePassword = false;

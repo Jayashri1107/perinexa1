@@ -233,7 +233,11 @@ abdmRouter.get('/card/:id', async (req, res) => {
 
 abdmRouter.post('/done/:id', async (req, res) => {
   desk(req);
-  await endTxn(parse(z.object({ id: z.uuid() }), req.params).id);
+  const { id } = parse(z.object({ id: z.uuid() }), req.params);
+  // Only a step this person started in this hospital is ended (health check L7, 16 Nov 2026); for any other – expired,
+  // or someone else's – there is nothing of hers to end, and the answer is the same
+  const mine = await getTxn(req, id).catch(() => null);
+  if (mine) await endTxn(id);
   res.json({ ok: true });
 });
 

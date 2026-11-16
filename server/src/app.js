@@ -118,7 +118,7 @@ function personKey(req) {
   const token = req.cookies?.[COOKIE_NAME];
   if (token) {
     try {
-      return `u:${jwt.verify(token, config.JWT_SECRET).sub}`;
+      return `u:${jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }).sub}`;
     } catch {
       /* expired or not ours: by address */
     }
@@ -133,7 +133,7 @@ function signedInFirst(req, _res, next) {
   const token = req.cookies?.[COOKIE_NAME];
   if (!token) return next(new HttpError(401, 'Please log in.', 'NOT_AUTHENTICATED'));
   try {
-    jwt.verify(token, config.JWT_SECRET);
+    jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] });
   } catch {
     return next(new HttpError(401, 'Your session has expired. Please log in again.', 'SESSION_EXPIRED'));
   }
@@ -177,6 +177,12 @@ export function createApp({
   // run (zxing-wasm: reading the Aadhaar QR, drawing QR codes) – still no eval of text; blob: lets a picture made in
   // this browser from a chosen file be shown (an Aadhaar card photo, a profile photo or signature).
   app.use(helmet({ contentSecurityPolicy: { directives: { 'script-src': ["'self'", "'wasm-unsafe-eval'"], 'img-src': ["'self'", 'data:', 'blob:'] } } }));
+  // Browser features (health check L19, 16 Nov 2026): the camera (Aadhaar QR, photos) and the microphone (dictation)
+  // for Perinexa's own pages only; location, payment and device access for nobody.
+  app.use((_req, res, next) => {
+    res.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()');
+    next();
+  });
   if (config.SLOW_REQUEST_MS) app.use(logSlowRequests(config.SLOW_REQUEST_MS));
   app.use(cors({ origin: config.CLIENT_URL, credentials: true, allowedHeaders: ['Content-Type', 'X-Tenant-Id', PAGE_HEADER] }));
   // The cookie and the request limit come before any body is read (health check M11, 16 Nov 2026): the large staff

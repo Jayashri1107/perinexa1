@@ -30,7 +30,7 @@ import { letterheadFor } from './settings.js';
 // The patient portal (Version 2) – deliberately small, because it opens patient information to the internet:
 //  - off until the hospital admin switches it on (Hospital admin → Patient messages);
 //  - staff (doctors, RMOs, nurses, reception) make an access code for a patient and hand it to her on paper;
-//  - she signs in with the code and the last 4 digits of her mobile number; 5 wrong tries lock the code for 30
+//  - she signs in with the code and the last 4 digits of her mobile number; 3 wrong tries in a row lock the code for 2
 //    minutes, and sign-ins are rate-limited per computer;
 //  - she sees only her next appointment and the upcoming items of her care plan in plain words, and the hospital's
 //    phone – never results, notes, diagnoses, risk, documents or anything typed by staff;
@@ -193,7 +193,7 @@ export async function portalSession(req, res) {
   const token = req.cookies?.[PORTAL_COOKIE];
   let payload = null;
   try {
-    payload = token ? jwt.verify(token, portalKey, { audience: 'perinexa-portal' }) : null;
+    payload = token ? jwt.verify(token, portalKey, { audience: 'perinexa-portal', algorithms: ['HS256'] }) : null;
   } catch {
     payload = null;
   }

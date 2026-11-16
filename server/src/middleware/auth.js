@@ -138,7 +138,7 @@ export async function requireAuth(req, res, next) {
 
   let payload;
   try {
-    payload = jwt.verify(token, config.JWT_SECRET);
+    payload = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] });
   } catch {
     clearAuthCookie(res);
     throw new HttpError(401, 'Your session has expired. Please log in again.', 'SESSION_EXPIRED');

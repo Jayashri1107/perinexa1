@@ -129,8 +129,10 @@ labStockRouter.post('/batches/:id/adjust', async (req, res) => {
   // adjusted: qty is what was counted; written_off: qty is what is thrown away
   const change = body.kind === 'adjusted' ? body.qty - batch.qty : -Math.min(body.qty, batch.qty);
   if (body.kind === 'written_off' && body.qty <= 0) throw invalid({ qty: 'Enter the quantity written off.' });
-  batch.qty += change;
-  await batch.save();
+  // In one step, and only if the batch still holds what was read (health check L13, 16 Nov 2026): a report taking stock
+  // at the same moment (lab/stock.js, its own $inc) is never overwritten
+  const moved = await LabBatch.updateOne({ _id: batch._id, tenantId: req.tenantId, qty: batch.qty }, { $inc: { qty: change } });
+  if (!moved.modifiedCount) throw new HttpError(409, 'This batch changed just now (stock was used). Please count it again.', 'CHANGED');
   await LabStockMove.create({ tenantId: req.tenantId, itemId: batch.itemId, batchId: batch._id, kind: body.kind, qty: change, costPaise: Math.round(change * batch.unitCostPaise), reason: body.reason.trim(), by: req.user._id, byName: req.user.name, at: req.now ?? new Date() });
   await audit(req, 'LAB_STOCK_CHANGED', { details: { itemId: String(batch.itemId), batchId: String(batch._id), [body.kind]: change } });
   res.json({ items: await itemsView(req.tenantId, req.now ?? new Date()) });
