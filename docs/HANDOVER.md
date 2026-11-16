@@ -109,8 +109,10 @@ scripts/db.mjs        Local MongoDB start / stop
   password change at first sign-in, 30 minutes of inactivity ends the session (browser and server), rate limits on
   sign-in, the portal sign-in and the whole API.
 - **Hospital separation.** Hospital data carries a `tenantId`. The `tenantScoped` plugin (`utils/tenantScope.js`)
-  refuses find / update / delete queries that do not name the hospital. It does **not** cover `aggregate()` (used in
-  about 15 server files) or direct `collection` calls: check those by hand. This is the most important review item.
+  refuses find / update / delete / count queries that do not name the hospital, and `aggregate()` pipelines whose
+  first stage is not a `$match` on `tenantId`. It does **not** cover `distinct`, `bulkWrite`, `insertMany`, direct
+  `collection` calls or joined collections (`$lookup`), and it checks only that `tenantId` is present, not its value:
+  check those by hand. This is the most important review item (`docs/HEALTH_CHECK.md`, 16 Nov 2026).
 - **Need-to-know access to a record.** `utils/patientAccess.js`: a doctor's own patients, sensitive records, read-only
   access, emergency access with a written reason, what each role may see.
 - **Audit log.** `utils/audit.js` writes, `models/AuditLog.js` blocks edits and deletes through Mongoose only (not at
