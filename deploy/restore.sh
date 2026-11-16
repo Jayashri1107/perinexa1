@@ -48,7 +48,7 @@ if ! mongorestore --config="$conf" --archive="$archive" --gzip --drop --quiet; t
   exit 1
 fi
 systemctl start perinexa
-for _ in $(seq 1 30); do
+for _ in $(seq 1 150); do # up to five minutes: the startup steps run first (server/src/index.js)
   if curl -fs "$HEALTH" >/dev/null; then
     echo "OK: the database is back as it was in $archive, and the site is online."
     exit 0

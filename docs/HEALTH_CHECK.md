@@ -126,6 +126,12 @@ are audited. *Needed:* the owner decides who may download these; numbers only fo
 `takeTurn`. `deploy.sh` waits 60 seconds; on a large database it can restart the server in the middle of one and go
 back to the old code on half-changed data. A failed step is only a warning. *Fix:* record each finished step in the
 database (run once), move finished ones out of `index.js`, and give `healthy()` more time when a step is running.
+**Reduced 16 Nov 2026:** `deploy.sh` and `restore.sh` now wait up to five minutes for the server to answer, and
+`index.js` logs how long the startup steps took (`journalctl -u perinexa | grep "Startup steps"`). On a closer look
+the steps are not one-off moves but repairs that keep running (a doctor without "Dr.", a member without a group, a
+next-visit date without an appointment …), each safe to run again, so they were not made run-once – that would change
+what the app does. **Still open (Low, before a second server copy):** a lock so only one copy runs them at a time;
+and, per step, whether it can retire once the owner agrees nothing old is left.
 
 **M9 – The AI report reader sends the whole report image.** Owner decides (before AI is switched on).
 `routes/ai.js:212-236` sends the full photo / PDF, with the printed name, phone and MRN; text features remove them
