@@ -5438,3 +5438,10 @@ All on master in C:\perinexa1; details and the browser test steps for each are i
 Waiting for the owner: approval of every DRAFT list; whether a missing privilege should block an operation; whether the
 tiers replace today's risk rules; when other records should seal; the manual's codes for each form; the antenatal
 record (OBG-F-01), standing prescriptions and labour admission form; labour epidural and tubal ligation consents.
+
+## Database saved before every deploy (developer, 16 Nov 2026)
+- `deploy/deploy.sh` saves the whole database with `mongodump` to `/opt/perinexa/backups` before it changes anything
+  (newest 14 kept, root-only) and deploys nothing if that fails; `deploy/restore.sh <file>` puts a copy back, after
+  saving the database as it is now. Shared steps in `deploy/db-backup-lib.sh`. Needs MongoDB Database Tools on the
+  server – install steps, the first-time order and restore steps in `docs/DEPLOY_AWS.md` sections 2, 8 and 9.
+- Tested here with a stand-in `mongodump` only; try `restore.sh` once on the server's demo data.

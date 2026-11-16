@@ -42,6 +42,14 @@ curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash - && sudo apt-ge
 sudo adduser --system --group --home /opt/perinexa perinexa
 ```
 
+**MongoDB Database Tools** (`mongodump`, `mongorestore`): `deploy.sh` saves the database with them before every
+deploy and refuses to deploy without them. On mongodb.com/try/download/database-tools pick *Ubuntu* with the
+server's version (`lsb_release -rs`) and *x86_64* (a t3 server), copy the `.deb` link, then:
+```bash
+wget -O /tmp/mongodb-database-tools.deb '<the .deb link>' && sudo apt install -y /tmp/mongodb-database-tools.deb
+mongodump --version
+```
+
 ## 3. The code
 
 ```bash
@@ -108,9 +116,35 @@ sudo systemctl reload caddy
    build. On GitHub → Settings → Branches, a rule for `main` with "Require status checks to pass" (the `test` check)
    keeps a red change out of `main`.
 2. Merge into `main` when CI is green and you have read the change.
-3. On the server: `sudo /opt/perinexa/app/deploy/deploy.sh` – it fetches `main`, runs `npm ci` and the build,
+3. On the server: `sudo /opt/perinexa/app/deploy/deploy.sh` – it first **saves the whole database** to
+   `/opt/perinexa/backups` (and deploys nothing if that fails), then fetches `main`, runs `npm ci` and the build,
    restarts, and checks `/api/health` for a minute; if the new version is not healthy it goes back to the one before
    by itself. It refuses to run if files were changed by hand on the server.
+
+   A deploy never deletes data: the code changes, the database stays. But the startup steps of a new version
+   (`server/src/index.js`) may change existing records, and going back to the version before does not undo that –
+   the saved copy does (section 9). `--no-backup` deploys without saving (not advised).
+
+   **The first time** after this step was added, the server still has the old `deploy.sh`, which saves nothing. Fetch
+   the new scripts first, then deploy – the code that is running does not change until the restart:
+   ```bash
+   sudo -u perinexa git -C /opt/perinexa/app pull --ff-only origin main
+   sudo /opt/perinexa/app/deploy/deploy.sh
+   ```
+
+## 9. Saved copies of the database, and putting one back
+
+- `deploy.sh` saves `/opt/perinexa/backups/<UTC time>-before-<commit>.archive.gz` (mongodump, gzip) before every
+  deploy and keeps the newest 14. The folder and files are root-only: they hold everything in the database.
+- See them: `sudo ls -lt /opt/perinexa/backups`.
+- Put one back: `sudo /opt/perinexa/app/deploy/restore.sh /opt/perinexa/backups/<file>.archive.gz`. It asks you to
+  type `restore`, saves the database as it is now (`…-before-restore.archive.gz`, so a wrong restore can be undone
+  the same way), stops the app, replaces every collection in the copy (`mongorestore --drop`), starts the app and
+  checks `/api/health`. **Everything entered after the copy was saved is lost** – with real patients, decide with the
+  owner first.
+- These copies live on the server's own disk: they protect against a bad deploy, not against losing the server or
+  the Atlas cluster. The real backup is Atlas M10 continuous backup (section 4). Try `restore.sh` once on the demo data
+  so the steps are known before they are needed.
 
 Automatic deploys (later, if wanted): GitHub Actions with an **IAM role through OIDC** (no stored keys) that asks AWS
 Systems Manager to run `deploy.sh` on the instance. Not an IAM user with access keys, and not SSH from GitHub.
