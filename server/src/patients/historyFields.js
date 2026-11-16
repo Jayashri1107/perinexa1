@@ -19,6 +19,7 @@ export const MAX_PREGNANCIES = 15;
 // Numbers, with the ranges the server accepts (a value outside is refused, never silently changed).
 export const HISTORY_NUMBERS = {
   marriedSinceYears: { min: 0, max: 60, label: 'Married since (years)' },
+  marriedSinceMonths: { min: 0, max: 11, label: 'Married since (months)' }, // with the years (doctor's request, 16 Nov 2026)
   menarcheAge: { min: 8, max: 20, label: 'Age at first period' },
   cycleLengthDays: { min: 15, max: 180, label: 'Cycle length (days)' },
   bleedingDays: { min: 1, max: 20, label: 'Days of bleeding' },

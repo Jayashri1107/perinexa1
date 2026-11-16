@@ -423,6 +423,14 @@ const VALUE_LABELS = {
   'medical.bloodGroup': 'Blood group',
   'medical.heightCm': 'Height (cm)',
   'medical.weightKg': 'Weight (kg)',
+  // The history sheet's blanks, as "Ask AI where these belong" may suggest them (server/src/ai/understand.js)
+  'history.complaint': 'Complaints',
+  'history.cycle': 'Cycle',
+  'history.marriedSinceYears': 'Married since (years)',
+  'history.marriedSinceMonths': 'Married since (months)',
+  'history.consanguinity': 'Consanguinity',
+  'history.previousDeliveries': 'Previous deliveries',
+  'history.otherHistory': 'Any other history',
   'newborn.birthWeightGrams': 'Birth weight (g)',
   'newborn.birthAt': 'Date and time of birth',
 };

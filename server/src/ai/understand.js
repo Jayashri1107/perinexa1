@@ -7,6 +7,7 @@ import { BLOOD_GROUPS, CONDITIONS, PAST_COMPLICATIONS } from '../models/Patient.
 import { FETAL_MOVEMENTS, OEDEMA_GRADES, PRESENTATIONS, URINE_GRADES } from '../visits/rxCodes.js';
 import { mentionsFetalSex } from '../utils/pcpndt.js';
 import { ANTI_D, LOSS_TYPE_KEYS, MAX_WEEKS } from '../patients/abortionRules.js';
+import { CYCLE_KINDS, HISTORY_NUMBERS, YES_NO } from '../patients/historyFields.js';
 
 const num = (label, min, max, decimals = false) => ({ type: 'number', label, min, max, decimals });
 const choice = (label, values) => ({ type: 'choice', label, values: values.filter(Boolean) });
@@ -39,6 +40,15 @@ export const FORM_FIELDS = {
     'medical.conditions': choice('Existing condition', CONDITIONS),
     'obstetric.pastComplications': choice('Previous pregnancy problem', PAST_COMPLICATIONS),
     'medical.otherConditions': text('Other condition'),
+    // The history-taking sheet's blanks (16 Nov 2026: without them "married since 7 months" or "non-consanguineous
+    // marriage" was pushed into a wrong field, e.g. Other condition). Not for a baby's record.
+    'history.complaint': text('Complaints – why she came'),
+    'history.cycle': choice('Menstrual cycle', CYCLE_KINDS),
+    'history.marriedSinceYears': num('Married since – whole years', HISTORY_NUMBERS.marriedSinceYears.min, HISTORY_NUMBERS.marriedSinceYears.max),
+    'history.marriedSinceMonths': num('Married since – months besides the years', HISTORY_NUMBERS.marriedSinceMonths.min, HISTORY_NUMBERS.marriedSinceMonths.max),
+    'history.consanguinity': choice('Consanguineous marriage', YES_NO),
+    'history.previousDeliveries': text('Previous deliveries'),
+    'history.otherHistory': text('Any other personal, medical, operative or family history'),
     notes: text('Notes'),
   },
   visit: {
@@ -139,8 +149,10 @@ export function checkSuggestions(raw, { form, parts, today, careType }) {
   return out.some((x) => x.field === 'abortion.lmp') ? out.filter((x) => x.field !== 'abortion.weeks') : out;
 }
 
-// Pregnancy dates belong to antenatal care, and the pregnancy-loss fields only to the Abortion type of care.
+// Pregnancy dates belong to antenatal care, the pregnancy-loss fields only to the Abortion type of care, and the history
+// sheet to every type of care but a baby's.
 function fitsCareType(field, careType) {
+  if (careType === 'newborn' && String(field).startsWith('history.')) return false; // a baby's record has no history sheet
   if (careType === 'abortion') return !String(field).startsWith('pregnancy.');
   return !String(field).startsWith('abortion.');
 }

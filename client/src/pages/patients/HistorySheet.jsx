@@ -97,12 +97,15 @@ export function HistorySheet({ values: h, set, setPregnancies, fe, age, lmp, onL
         <p className="hs-line">
           <span className="hs-words">Obstetric history – Married since</span>
           <input aria-label="Married since (years)" inputMode="numeric" className={`hs-blank hs-num${mark('marriedSinceYears')}`} value={h.marriedSinceYears} onChange={(e) => set('marriedSinceYears', e.target.value.replace(/\D/g, '').slice(0, 2))} />
-          <span className="hs-words">years. Consanguinity</span>
+          <span className="hs-words">years</span>
+          <input aria-label="Married since (months)" inputMode="numeric" className={`hs-blank hs-num${mark('marriedSinceMonths')}`} value={h.marriedSinceMonths} onChange={(e) => set('marriedSinceMonths', e.target.value.replace(/\D/g, '').slice(0, 2))} />
+          <span className="hs-words">months. Consanguinity</span>
           <span className={mark('consanguinity')}>
             <Choice name="hs-consanguinity" label="Consanguinity" value={h.consanguinity} options={L.YES_NO} onChange={(x) => set('consanguinity', x)} />
           </span>
         </p>
         {fe('history.marriedSinceYears') && <p className="field-error">{fe('history.marriedSinceYears')}</p>}
+        {fe('history.marriedSinceMonths') && <p className="field-error">{fe('history.marriedSinceMonths')}</p>}
 
         <div className="hs-line hs-line-block">
           <label className="hs-words" htmlFor="hs-deliveries">
