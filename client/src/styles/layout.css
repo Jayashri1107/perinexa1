@@ -14,7 +14,7 @@
 }
 .sb-brand { position: relative; display: flex; align-items: center; min-height: var(--titlebar-height); padding: var(--space-6) var(--space-6) var(--space-4); }
 .sb-brand a { display: block; border-radius: var(--radius-md); }
-.sb-logo { display: block; width: 184px; height: auto; } /* at least 160 px with "by Docvritta" */
+.sb-logo { display: block; width: 184px; height: auto; } /* at least 160 px with "by Njeeva" */
 .sb-appicon { display: none; width: var(--nav-tile-size); height: var(--nav-tile-size); border-radius: var(--radius-md); }
 .sb-close {
   display: none; margin-left: auto; width: var(--control-height); height: var(--control-height); place-items: center;
