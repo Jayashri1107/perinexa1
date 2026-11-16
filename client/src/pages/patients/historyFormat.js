@@ -33,6 +33,8 @@ const CHOICES = ['cycle', 'consanguinity', 'flow', 'pain', 'lmpCertain', 'transf
 export const EMPTY_PREGNANCY = { year: '', outcome: '', weeks: '', mode: '', place: '', weightGrams: '', aliveNow: '', problems: '' };
 
 const str = (v) => (v == null ? '' : String(v));
+// A stored day as the record shows it ("2 Oct 2026")
+const showDay = (v) => new Date(`${String(v).slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 const day = (v) => (v ? String(v).slice(0, 10) : '');
 
 /** The form's values from the stored sheet (text, as the inputs show it). */
@@ -41,6 +43,7 @@ export function historyValues(h) {
     ...Object.fromEntries(TEXTS.map((k) => [k, h?.[k] ?? ''])),
     ...Object.fromEntries(NUMBERS.map((k) => [k, str(h?.[k])])),
     ...Object.fromEntries(CHOICES.map((k) => [k, h?.[k] ?? ''])),
+    lmp: day(h?.lmp),
     previousPeriod: day(h?.previousPeriod),
     family: [...(h?.family ?? [])],
     pregnancies: (h?.pregnancies ?? []).map((r) => ({ ...EMPTY_PREGNANCY, ...Object.fromEntries(Object.entries(r).map(([k, v]) => [k, str(v)])) })),
@@ -57,6 +60,7 @@ export function historyPayload(values) {
     ...Object.fromEntries(TEXTS.map((k) => [k, v[k].trim()])),
     ...Object.fromEntries(NUMBERS.map((k) => [k, n(v[k])])),
     ...Object.fromEntries(CHOICES.map((k) => [k, v[k]])),
+    lmp: v.lmp || null,
     previousPeriod: v.previousPeriod || null,
     family: v.family,
     pregnancies: v.pregnancies
@@ -68,7 +72,7 @@ export function historyPayload(values) {
 /** True when nothing has been written on the sheet. */
 export function historyEmpty(h) {
   if (!h) return true;
-  if (CHOICES.some((k) => h[k]) || NUMBERS.some((k) => h[k] != null && h[k] !== '') || h.previousPeriod) return false;
+  if (CHOICES.some((k) => h[k]) || NUMBERS.some((k) => h[k] != null && h[k] !== '') || h.previousPeriod || h.lmp) return false;
   if ((h.family ?? []).length || (h.pregnancies ?? []).length) return false;
   return !TEXTS.some((k) => (h[k] ?? '').trim());
 }
@@ -91,7 +95,7 @@ export function historyLines(h) {
   const married = [marriedSinceText(h), h.consanguinity ? `Consanguinity ${L.YES_NO[h.consanguinity].toLowerCase()}` : ''].filter(Boolean).join(' · ');
   const lines = [
     ['Complaints', h.complaint],
-    ['Menstrual history', h.cycle ? `Cycle ${L.CYCLE_KINDS[h.cycle].toLowerCase()}` : ''],
+    ['Menstrual history', [h.lmp ? `LMP ${showDay(h.lmp)}` : '', h.cycle ? `Cycle ${L.CYCLE_KINDS[h.cycle].toLowerCase()}` : ''].filter(Boolean).join(' · ')],
     ['Married since', married],
     ['Previous deliveries', h.previousDeliveries],
     ['Other history', h.otherHistory],
@@ -112,7 +116,7 @@ export function historyPrintLines(h, { age = '', lmp = '' } = {}) {
   const years = String(age ?? '').replace(/\s*yrs?$/, '');
   const out = [];
   if (h.complaint?.trim()) out.push(`Patient is ${years ? `${years} years` : '…'} with complaints of ${h.complaint.trim()}`);
-  const menstrual = [lmp ? `LMP ${lmp}` : '', h.cycle ? `Cycle ${L.CYCLE_KINDS[h.cycle].toLowerCase()}` : ''].filter(Boolean).join(' · ');
+  const menstrual = [lmp ? `LMP ${lmp}` : h.lmp ? `LMP ${showDay(h.lmp)}` : '', h.cycle ? `Cycle ${L.CYCLE_KINDS[h.cycle].toLowerCase()}` : ''].filter(Boolean).join(' · ');
   if (menstrual) out.push(`Menstrual history – ${menstrual}`);
   const married = [marriedSinceText(h) ? `Married since ${marriedSinceText(h)}` : '', h.consanguinity ? `Consanguinity ${L.YES_NO[h.consanguinity].toLowerCase()}` : ''].filter(Boolean).join(' · ');
   if (married) out.push(`Obstetric history – ${married}`);
@@ -163,7 +167,8 @@ const DELIVERY_WORDS = [
   /\b(?:previous(?:ly)?|prev\.?|past|earlier) deliver(?:y|ies|ed)\b/,
   /\bdelivery history\b/,
   // "previous LSCS in 2021": the anchor is "previous" alone, so the kind of delivery stays in the blank
-  /\bprevious(?=\s+(?:lscs|caesarean|cesarean|c[\s-]?section|normal|ftnd|nvd|vaginal|full[\s-]term))/,
+  // (also with a count: "previous 2 normal deliveries", "previous one LSCS" – 16 Nov 2026)
+  /\bprevious(?=\s+(?:(?:\d{1,2}|one|two|three|four|five)\s+)?(?:lscs|caesarean|cesarean|c[\s-]?section|normal|ftnd|nvd|vaginal|full[\s-]term))/,
 ];
 const anyOf = (list) => new RegExp(list.map((rx) => rx.source).join('|'), 'i');
 
@@ -248,7 +253,8 @@ export function readSentence(text, { careType } = {}) {
     }
     if (f.key === 'menstrual' || f.key === 'complaint') {
       // "cycle regular", "regular cycles", and "periods were regular" (its anchor ends just before the word)
-      const cyc = /\bcycles?\s+(?:is\s+|are\s+)?(regular|irregular)\b|\b(regular|irregular)\s+cycles?\b|^\s*(regular|irregular)\b/i.exec(t);
+      // (also "LMP 2 October, periods were regular": the LMP anchor came first, so the words are inside this part)
+      const cyc = /\b(?:cycles?|periods?|menses)\s+(?:(?:is|are|were|was|has been|have been)\s+)?(regular|irregular)\b|\b(regular|irregular)\s+(?:cycles?|periods?|menses)\b|^\s*(regular|irregular)\b/i.exec(t);
       if (cyc) out.cycle = (cyc[1] ?? cyc[2] ?? cyc[3]).toLowerCase();
     }
     if (f.key === 'married') {
@@ -343,10 +349,13 @@ export function withHistorySheet(result, text, { careType, careLine = false, rea
     if ((sheet.marriedSinceYears || sheet.marriedSinceMonths) && /\bmarried (?:since|for)\b/i.test(u.text) && !/\b(?:con[sn]|kin)/i.test(u.text)) return true;
     if (sheet.consanguinity && (NO_CONSANGUINITY.test(u.text) || YES_CONSANGUINITY.test(u.text)) && !/\bmarried (?:since|for)\b/i.test(u.text)) return true;
     if (sheet.consanguinity && (sheet.marriedSinceYears || sheet.marriedSinceMonths) && /\bmarried (?:since|for)\b/i.test(u.text)) return true;
-    const t = plainWords(u.text);
-    if (!t || taken.some((s) => s.includes(t) || t.includes(s))) return true;
-    const rest = plainWords(anchorsOf.reduce((x, rx) => x.replace(rx, ' '), u.text));
-    return !rest || taken.some((s) => s.includes(rest));
+    // (numbers compared as digits: the voice entry writes "1" and "2nd" where the blank kept "one" and "second")
+    const digits = (x) => norm(x).replace(/\b(\d+)(?:st|nd|rd|th)\b/g, '$1').replace(/\b(?:first|second|third)\b/g, (w) => ({ first: '1', second: '2', third: '3' })[w]);
+    const takenD = taken.map(digits);
+    const t = digits(u.text);
+    if (!t || takenD.some((s) => s.includes(t) || t.includes(s))) return true;
+    const rest = digits(anchorsOf.reduce((x, rx) => x.replace(rx, ' '), u.text));
+    return !rest || takenD.some((s) => s.includes(rest));
   };
   // The complaint is written once (10 Nov 2026): when the sheet's "complaints of" took it, the voice entry's
   // "Reason for visit: …" note saying the same is left out of the notes; any other note stays

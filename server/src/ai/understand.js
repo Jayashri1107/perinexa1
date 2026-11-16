@@ -42,6 +42,7 @@ export const FORM_FIELDS = {
     'medical.otherConditions': text('Other condition'),
     // The history-taking sheet's blanks (16 Nov 2026: without them "married since 7 months" or "non-consanguineous
     // marriage" was pushed into a wrong field, e.g. Other condition). Not for a baby's record.
+    'history.lmp': date('LMP', pastWithin(730)), // types of care without a pregnancy LMP (16 Nov 2026)
     'history.complaint': text('Complaints – why she came'),
     'history.cycle': choice('Menstrual cycle', CYCLE_KINDS),
     'history.marriedSinceYears': num('Married since – whole years', HISTORY_NUMBERS.marriedSinceYears.min, HISTORY_NUMBERS.marriedSinceYears.max),
@@ -153,6 +154,10 @@ export function checkSuggestions(raw, { form, parts, today, careType }) {
 // sheet to every type of care but a baby's.
 function fitsCareType(field, careType) {
   if (careType === 'newborn' && String(field).startsWith('history.')) return false; // a baby's record has no history sheet
-  if (careType === 'abortion') return !String(field).startsWith('pregnancy.');
+  // One LMP box per type of care: the pregnancy's (antenatal), the loss's (abortion), else the history sheet's
+  if (field === 'history.lmp') return careType === undefined || !['antenatal', 'abortion', 'newborn'].includes(careType);
+  // The pregnancy dates have a box in antenatal care only: offered elsewhere, an accepted LMP went nowhere (16 Nov 2026)
+  if (String(field).startsWith('pregnancy.')) return careType === undefined || careType === 'antenatal';
+  if (careType === 'abortion') return true;
   return !String(field).startsWith('abortion.');
 }

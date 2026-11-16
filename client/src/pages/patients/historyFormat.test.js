@@ -181,3 +181,35 @@ describe('married since in months, and the words doctors use', () => {
     expect(historyPayload({ ...historyValues(null), marriedSinceMonths: '7' })).toMatchObject({ marriedSinceYears: null, marriedSinceMonths: 7 });
   });
 });
+
+// 16 Nov 2026 (doctor's test): the LMP and previous deliveries from a dictation, numbers kept
+describe('LMP and previous deliveries as doctors say them', () => {
+  const now = new Date('2026-11-16T10:00:00Z');
+  const read = (said) => withHistorySheet(extractPatientDetails(said, { careType: 'antenatal', now }), said, { careType: 'antenatal', readDate, now });
+  it('reads the whole history sentence, the cycle said after the LMP too', () => {
+    const r = read('Came to confirm the pregnancy. LMP 2 October 2026, periods were regular, married since 2 years, non consanguineous marriage. Previous deliveries 1 full term normal delivery in 2023, 3 kg, alive and well.');
+    expect(r.values.pregnancy.lmp).toBe('2026-10-02');
+    expect(r.values.history).toMatchObject({ cycle: 'regular', marriedSinceYears: '2', consanguinity: 'no', previousDeliveries: '1 full term normal delivery in 2023, 3 kg, alive and well' });
+    expect(r.unused).toEqual([]);
+  });
+  it('reads an LMP without a year that ends the sentence', () => {
+    expect(read('LMP 02/10.').values.pregnancy.lmp).toBe('2026-10-02');
+  });
+  it('takes previous deliveries said with a count, and leaves nothing of them as not understood', () => {
+    expect(read('Para 2 living 2. Previous 2 normal deliveries.').values.history.previousDeliveries).toBe('2 normal deliveries');
+    const r = read('Previous deliveries one full term normal delivery 2023 and one LSCS 2025.');
+    expect(r.values.history.previousDeliveries).toBe('one full term normal delivery 2023 and one LSCS 2025');
+    expect(r.unused).toEqual([]);
+  });
+  it("fills the history sheet's own LMP for other types of care, and shows it on the record", () => {
+    const said = 'Came with complaints of irregular periods. LMP 2nd October 2026, periods were irregular.';
+    for (const careType of ['gynaecology', 'infertility', 'other']) {
+      const r = withHistorySheet(extractPatientDetails(said, { careType, now }), said, { careType, readDate, now });
+      expect(r.values.history).toMatchObject({ lmp: '2026-10-02', cycle: 'irregular' });
+      expect(r.values.pregnancy?.lmp).toBeUndefined();
+      expect(r.unused).toEqual([]);
+    }
+    expect(historyLines({ lmp: '2026-10-02T00:00:00.000Z', cycle: 'irregular' })).toEqual([['Menstrual history', 'LMP 2 Oct 2026 · Cycle irregular']]);
+    expect(historyPayload({ ...historyValues(null), lmp: '2026-10-02' })).toMatchObject({ lmp: '2026-10-02' });
+  });
+});

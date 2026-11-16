@@ -68,7 +68,7 @@ export function historyEmpty(h) {
   const choices = ['cycle', 'consanguinity', 'flow', 'pain', 'lmpCertain', 'transfusion', 'td', 'rubella', 'hepB', 'diet', 'tobacco', 'alcohol'];
   if (choices.some((k) => h[k])) return false;
   if (Object.keys(HISTORY_NUMBERS).some((k) => h[k] != null)) return false;
-  if (h.previousPeriod) return false;
+  if (h.previousPeriod || h.lmp) return false;
   if ((h.family ?? []).length || (h.pregnancies ?? []).length) return false;
   return !Object.keys(HISTORY_TEXTS).some((k) => (h[k] ?? '').trim());
 }
