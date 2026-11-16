@@ -78,6 +78,10 @@ const schema = z.object({
   MSG91_FLOW_URL: z.url().default('https://control.msg91.com/api/v5/flow'),
   // OTPs one computer may ask for in 15 minutes on a hospital's portal page (sign-up and sign-in with ABHA).
   PORTAL_OTP_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(8),
+  // OTPs one mobile number may be sent on a hospital's portal page, whoever asks (health check M4, 16 Nov 2026):
+  // one every PORTAL_OTP_MOBILE_GAP_SECONDS, and PORTAL_OTP_MOBILE_DAILY_MAX in 24 hours. 0 = no such limit.
+  PORTAL_OTP_MOBILE_GAP_SECONDS: z.coerce.number().int().min(0).max(3600).default(60),
+  PORTAL_OTP_MOBILE_DAILY_MAX: z.coerce.number().int().min(0).max(100).default(5),
   // The hospital's time zone: "today" for care plans and pregnancy weeks is the date there.
   HOSPITAL_TIME_ZONE: z.string().default('Asia/Kolkata').refine(isValidTimeZone, 'HOSPITAL_TIME_ZONE is not a known time zone'),
   // Smart features that use AI (OpenAI). Without a key the AI buttons explain that AI is not set up.

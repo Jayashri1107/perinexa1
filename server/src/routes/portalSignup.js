@@ -52,6 +52,25 @@ let limiterCount = 0; // each limit counts on its own
 const limiter = (limit) =>
   rateLimit({ windowMs: 15 * 60 * 1000, limit, store: rateLimitStore(`portal-signup-${limit}-${++limiterCount}`), standardHeaders: 'draft-8', legacyHeaders: false, message: { error: { message: 'Too many tries. Please wait 15 minutes, or call the hospital.', code: 'RATE_LIMITED' } } });
 
+// OTPs to one mobile number, whoever asks and from wherever (health check M4, 16 Nov 2026): each one is a paid SMS or
+// WhatsApp, and a limit per computer alone lets someone with many addresses flood a patient. Counted for every number
+// – registered or not – so the answer never tells whether someone is a patient. A number that is not a mobile is left
+// to the route (400). Off (no-op) when the limit is 0.
+const mobileLimiter = (windowMs, limit, message) =>
+  limit && windowMs
+    ? rateLimit({
+        windowMs,
+        limit,
+        store: rateLimitStore(`portal-otp-mobile-${windowMs}-${++limiterCount}`),
+        keyGenerator: (req) => `${String(req.params.key ?? '').toUpperCase()}:${mobileDigits(req.body?.mobile)}`,
+        skip: (req) => !mobileDigits(req.body?.mobile),
+        standardHeaders: 'draft-8',
+        legacyHeaders: false,
+        // RATE_LIMITED: the portal already has this refusal in Marathi and Hindi (portalWords.js) – no new patient wording
+        message: { error: { message, code: 'RATE_LIMITED' } },
+      })
+    : (_req, _res, next) => next();
+
 /**
  * How an OTP reaches her: WhatsApp (the hospital switched it on – SMS if WhatsApp fails), the SMS provider, practice
  * mode (shown on screen, never in production), or not at all. Without a hospital: SMS or not.
@@ -122,10 +141,15 @@ async function refuse(req, tenant, reason, message = WRONG, lockedFor = 0) {
   throw new HttpError(401, message, 'PORTAL_LOGIN_FAILED');
 }
 
-/** /api/portal/h – otpLimitMax: OTPs one computer may ask for in 15 minutes (each one sends an SMS). */
-export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
+/**
+ * /api/portal/h – otpLimitMax: OTPs one computer may ask for in 15 minutes (each one sends an SMS); mobileGapSeconds
+ * and mobileDailyMax: OTPs one mobile number may be sent, whoever asks (0 = no such limit).
+ */
+export function portalSignupRouter({ otpLimitMax = 8, mobileGapSeconds = 0, mobileDailyMax = 0 } = {}) {
   const router = Router();
   const otpLimiter = limiter(otpLimitMax);
+  const mobileGap = mobileLimiter(mobileGapSeconds * 1000, 1, 'An OTP was sent to this number a moment ago. Please wait a minute before asking for another.');
+  const mobileDaily = mobileLimiter(24 * 60 * 60 * 1000, mobileDailyMax, 'Too many OTPs for this number today. Please sign in with your email and password, or call the hospital.');
   const stepLimiter = limiter(Math.max(30, otpLimitMax * 3));
 
   // ---------- The hospitals a patient can choose on the sign-in page ----------
@@ -209,7 +233,7 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
   });
 
   // ---------- Sign in: mobile and OTP ----------
-  router.post('/:key/otp', otpLimiter, async (req, res) => {
+  router.post('/:key/otp', otpLimiter, mobileGap, mobileDaily, async (req, res) => {
     const tenant = await hospitalOf(req);
     const mode = otpMode(tenant);
     if (mode === 'off') throw new HttpError(409, 'Sign-in with an OTP is not available yet. Please use your email and password.', 'OTP_OFF');

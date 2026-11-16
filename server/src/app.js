@@ -143,6 +143,8 @@ function logSlowRequests(ms) {
 export function createApp({
   loginRateLimitMax = config.LOGIN_RATE_LIMIT_MAX,
   portalOtpRateLimitMax = config.PORTAL_OTP_RATE_LIMIT_MAX,
+  portalOtpMobileGapSeconds = config.PORTAL_OTP_MOBILE_GAP_SECONDS,
+  portalOtpMobileDailyMax = config.PORTAL_OTP_MOBILE_DAILY_MAX,
   apiRateLimitMax = config.API_RATE_LIMIT_MAX,
   abdmPublicRateLimitMax = config.ABDM_PUBLIC_RATE_LIMIT_MAX,
   analyticsCacheMs = config.ANALYTICS_CACHE_SECONDS * 1000,
@@ -239,7 +241,7 @@ export function createApp({
   // The patient portal (Version 2): its own sign-in with a code, no staff login (routes/portal.js)
   // Patients' own accounts: sign-up and sign-in on the hospital's portal, her password, and her records
   // (docs/PATIENT_ACCOUNTS_PLAN.md)
-  app.use('/api/portal/h', portalSignupRouter({ otpLimitMax: portalOtpRateLimitMax }));
+  app.use('/api/portal/h', portalSignupRouter({ otpLimitMax: portalOtpRateLimitMax, mobileGapSeconds: portalOtpMobileGapSeconds, mobileDailyMax: portalOtpMobileDailyMax }));
   app.use('/api/portal/account', portalAccountRouter);
   app.use('/api/portal/records', portalRecordsRouter);
   app.use('/api/portal', portalRouter);

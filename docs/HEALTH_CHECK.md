@@ -89,6 +89,10 @@ Many parallel requests from many addresses can make far more guesses than the li
 **M4 – Nothing limits OTP messages to one mobile number.** Open. **Verified.**
 `routes/portalSignup.js` `POST /:key/otp` is limited per IP only; each request for a registered mobile sends a paid
 SMS / WhatsApp. *Fix:* a cooldown per mobile (e.g. 60 s) and a daily cap.
+**Fixed 16 Nov 2026:** one OTP a minute and 5 in 24 hours per hospital and mobile number, whoever asks
+(`PORTAL_OTP_MOBILE_GAP_SECONDS`, `PORTAL_OTP_MOBILE_DAILY_MAX`; 0 turns a limit off). Counted for every number,
+registered or not, so the answer never tells whether someone is a patient. Refused with the existing `RATE_LIMITED`
+code, which the portal already shows in Marathi and Hindi – no new patient wording.
 
 **M5 – A patient's bills are listed without the need-to-know check or an audit entry.** Open. **Verified.**
 `routes/billing.js:144` `GET /patient/:patientId` checks only the hospital; the appointments equivalent
