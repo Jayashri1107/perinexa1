@@ -15,10 +15,12 @@ HEALTH=http://127.0.0.1:4000/api/health
 . "$(dirname "$(readlink -f "$0")")/db-backup-lib.sh"
 
 as_app() { runuser -u perinexa -- "$@"; }
+# Joined with && on purpose: it is called inside "if", where set -e is off, so a failed npm ci or build must stop it
+# here – otherwise the server restarts on a half-built website and the health check still says OK.
 build_and_start() {
-  as_app npm ci --no-audit --no-fund
-  as_app npm run build
-  systemctl restart perinexa
+  as_app npm ci --no-audit --no-fund &&
+    as_app npm run build &&
+    systemctl restart perinexa
 }
 healthy() {
   for _ in $(seq 1 30); do
