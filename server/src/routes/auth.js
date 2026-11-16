@@ -1,7 +1,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { lockedError, staffFailed, staffLockLeft, staffSignedIn } from '../auth/loginLock.js';
+import { lockedError, staffClaimTry, staffFailed, staffLockLeft, staffSignedIn } from '../auth/loginLock.js';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config.js';
@@ -185,12 +185,13 @@ export function authRouter({ loginRateLimitMax }) {
     const { email, password } = parse(loginSchema, req.body);
     const now = req.now ?? new Date();
     // 3 wrong tries in a row lock this email for 2 minutes (auth/loginLock.js): the password is not checked meanwhile
-    const left = await staffLockLeft(email, now);
-    if (left) throw lockedError(left);
+    // The try is counted before the password is checked, so tries sent all at once cannot get round it (health check M3)
+    const claimed = await staffClaimTry(email, now);
+    if (claimed.lockedFor) throw lockedError(claimed.lockedFor);
     const user = await User.findOne({ email }).select('+passwordHash');
     // A wrong try – the same for an unknown email, so the answer never shows whether an account exists
     const wrong = async () => {
-      const { lockedFor, triesLeft } = await staffFailed(email, now);
+      const { lockedFor, triesLeft } = await staffFailed(email, now, { counted: true });
       if (lockedFor) {
         await audit(req, 'LOGIN_LOCKED', { ...(user ? { actor: user, target: user } : {}), details: { email, seconds: lockedFor } });
         throw lockedError(lockedFor);

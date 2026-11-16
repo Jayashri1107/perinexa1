@@ -2,7 +2,7 @@ import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { rateLimitStore } from '../utils/sharedState.js';
-import { countFailure, lockedError, secondsLeft } from '../auth/loginLock.js';
+import { claimTry, lockedError, secondsLeft, triedWrong } from '../auth/loginLock.js';
 import { z } from 'zod';
 import { mobileDigits } from '../abdm/abhaFormat.js';
 import { addDays, hospitalToday } from '../careplans/dates.js';
@@ -104,12 +104,19 @@ async function accountBy(tenant, filter) {
 
 // 3 wrong tries lock the account for 2 minutes (auth/loginLock.js – owner, 19 Oct 2026)
 const isLocked = (a, now) => secondsLeft(a.lockedUntil, now) > 0;
-const locked = (a, now) => lockedError(secondsLeft(a.lockedUntil, now), 'PORTAL_LOCKED');
-/** A wrong password or OTP: counted; the third in a row locks the account. Returns the seconds locked now (0: not). */
-async function failed(a, now) {
-  const lockedFor = countFailure(a, now);
-  await a.save();
-  return lockedFor;
+/**
+ * One try at her password or OTP, counted in the database BEFORE it is checked (health check M3, 16 Nov 2026), so tries
+ * sent all at once cannot each be checked before any is counted. Throws while locked. Returns `wrong()`: call it if the
+ * try was wrong – the third in a row locks the account; it returns the seconds locked now (0: not).
+ */
+async function claimFor(account, now) {
+  const filter = { _id: account._id, tenantId: account.tenantId };
+  const claim = await claimTry(PatientAccount, filter, now);
+  if (claim.lockedFor) throw lockedError(claim.lockedFor, 'PORTAL_LOCKED');
+  // As in the database now, so that signIn's reset to 0 is saved
+  account.failedAttempts = claim.count;
+  account.lockedUntil = null;
+  return () => triedWrong(PatientAccount, filter, claim.count, now);
 }
 
 /** After the right password or OTP: a pending or rejected account is told so; an approved one gets her portal. */
@@ -225,9 +232,9 @@ export function portalSignupRouter({ otpLimitMax = 8, mobileGapSeconds = 0, mobi
       await fakeVerify(body.password); // as long as a wrong password
       return refuse(req, tenant, 'unknown_email');
     }
-    if (isLocked(account, req.now)) throw locked(account, req.now);
+    const wrong = await claimFor(account, req.now);
     if (!(await verifyPassword(body.password, account.passwordHash))) {
-      return refuse(req, tenant, 'wrong_password', WRONG, await failed(account, req.now));
+      return refuse(req, tenant, 'wrong_password', WRONG, await wrong());
     }
     return signIn(req, res, tenant, account, 'password');
   });
@@ -265,11 +272,13 @@ export function portalSignupRouter({ otpLimitMax = 8, mobileGapSeconds = 0, mobi
     const mobile = mobileOf(body.mobile);
     const account = await accountBy(tenant, { mobile });
     if (!account || !account.otp || account.otp.expiresAt <= req.now) return refuse(req, tenant, 'otp_expired', WRONG_OTP);
-    if (isLocked(account, req.now)) throw locked(account, req.now);
+    const wrong = await claimFor(account, req.now);
     if (!same(hashOtp(account._id, body.otp), account.otp.hash)) {
-      account.otp.tries += 1;
-      if (account.otp.tries >= MAX_FAILED) account.otp = null; // a new OTP is needed
-      return refuse(req, tenant, 'wrong_otp', WRONG_OTP, await failed(account, req.now));
+      // This OTP's own tries, counted in the database too; after MAX_FAILED a new OTP is needed
+      const filter = { _id: account._id, tenantId: account.tenantId, 'otp.hash': account.otp.hash };
+      const after = await PatientAccount.findOneAndUpdate(filter, { $inc: { 'otp.tries': 1 } }, { returnDocument: 'after', projection: { otp: 1 } }).lean();
+      if (after?.otp && after.otp.tries >= MAX_FAILED) await PatientAccount.updateOne(filter, { $set: { otp: null } });
+      return refuse(req, tenant, 'wrong_otp', WRONG_OTP, await wrong());
     }
     return signIn(req, res, tenant, account, 'otp');
   });

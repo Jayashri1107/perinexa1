@@ -91,6 +91,10 @@ after 12 hours.
 attempt and counted after it; `otp.tries` is incremented in memory and saved, so parallel guesses overwrite each other.
 Many parallel requests from many addresses can make far more guesses than the limit. *Fix:* atomic
 `findOneAndUpdate` with a condition on `tries` / `lockedUntil`.
+**Fixed 16 Nov 2026** (confirmed: a test of 12 wrong passwords sent at once checked all 12 before the fix, at most 3
+after). Every try – staff sign-in (`staffClaimTry`), a patient's password and OTP (`claimFor` in `portalSignup.js`) and
+the portal code (`portal.js`) – is now counted in one database step *before* it is checked, and refused unchecked once
+3 in a row are used; the OTP's own try count is a database `$inc` too. Tests: `server/tests/parallel-tries.test.js`.
 
 **M4 – Nothing limits OTP messages to one mobile number.** Open. **Verified.**
 `routes/portalSignup.js` `POST /:key/otp` is limited per IP only; each request for a registered mobile sends a paid

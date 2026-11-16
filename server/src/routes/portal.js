@@ -5,7 +5,7 @@ import { leaveOn } from '../appointments/slots.js';
 import { Appointment } from '../models/Appointment.js';
 import { OpdSchedule } from '../models/OpdSchedule.js';
 import rateLimit from 'express-rate-limit';
-import { countFailure, lockedError, secondsLeft } from '../auth/loginLock.js';
+import { claimTry, lockedError, secondsLeft, triedWrong } from '../auth/loginLock.js';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config.js';
@@ -143,9 +143,12 @@ portalRouter.post('/login', signInLimiter, async (req, res) => {
   // (a record closed after a death: its codes were withdrawn when it was closed – the same answer as for any withdrawn code)
   if (!enabled || !patient || isClosed(patient)) throw new HttpError(401, WRONG, 'PORTAL_LOGIN_FAILED');
   const expected = lastFour(patient.phone);
+  // The try is counted in the database before the digits are checked (health check M3, 16 Nov 2026)
+  const claim = await claimTry(PortalAccess, { _id: access._id }, now);
+  if (claim.lockedFor) throw lockedError(claim.lockedFor, 'PORTAL_LOCKED');
+  access.failedAttempts = claim.count; // as in the database now, so the reset below is saved
   if (expected.length !== 4 || digits.length !== 4 || !sameText(expected, digits)) {
-    const lockedFor = countFailure(access, now);
-    await access.save();
+    const lockedFor = await triedWrong(PortalAccess, { _id: access._id }, claim.count, now);
     await portalAudit(req, 'PORTAL_LOGIN_FAILED', access, { reason: 'wrong_digits' });
     if (lockedFor) throw lockedError(lockedFor, 'PORTAL_LOCKED');
     throw new HttpError(401, WRONG, 'PORTAL_LOGIN_FAILED');
