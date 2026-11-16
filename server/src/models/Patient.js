@@ -107,6 +107,7 @@ const historySchema = new mongoose.Schema(
   {
     cycle: choice(CYCLE_KINDS),
     consanguinity: choice(YES_NO),
+    lmp: { type: Date, default: null }, // LMP for every type of care but antenatal and abortion, which keep their own (16 Nov 2026)
     previousPeriod: { type: Date, default: null }, // the period before the LMP (a day)
     flow: choice(FLOW),
     pain: choice(PERIOD_PAIN),

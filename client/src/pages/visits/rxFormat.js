@@ -159,6 +159,7 @@ export const RX_LABELS = {
   tests: W('Tests advised', 'करायच्या तपासण्या', 'कराने वाली जाँचें'),
   nextVisit: W('Next visit', 'पुढील तपासणी', 'अगली जाँच'),
   dueByNext: W('Due by your next visit', 'पुढील तपासणीपर्यंत करायचे', 'अगली जाँच तक करना है'),
+  doneToday: W('Done at this visit', 'या तपासणीत केले', 'इस जाँच में किया गया'),
   summary: W('Visit summary', 'तपासणीचा सारांश', 'जाँच का सारांश'),
 };
 
@@ -301,7 +302,7 @@ export const SHOW_LABELS = {
   investigations: 'Tests advised',
   advice: 'Advice',
   nextVisit: 'Next visit',
-  planItems: 'Care-plan items due by the next visit',
+  planItems: 'Care-plan items done at this visit and due by the next',
   pregnancy: 'Pregnancy summary (LMP, EDD, weeks, G P L A)',
   signature: 'Signature block',
   rxSymbol: 'The ℞ symbol',

@@ -386,6 +386,7 @@ const historySchema = z
   .object({
     cycle: historyChoice(CYCLE_KINDS, 'regular or irregular'),
     consanguinity: historyChoice(YES_NO, 'yes or no'),
+    lmp: z.preprocess(emptyToNull, dateOnly('LMP')).default(null),
     previousPeriod: z.preprocess(emptyToNull, dateOnly('Period before the LMP')).default(null),
     flow: historyChoice(FLOW, 'the amount'),
     pain: historyChoice(PERIOD_PAIN, 'the pain'),

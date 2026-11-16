@@ -24,7 +24,7 @@ import {
 //
 // Props: design (the doctor's design), letterhead, doctor { name, professional }, patient { fullName, ageText,
 // mrn, careType, allergies? } (allergies: the line to print – always printed when given, in every design), visit { visitOn, ga, vitals, details, items, notes }, pregnancy (antenatal: { lmp, edd,
-// eddSource, gpla, bloodGroup, risk } or null), nextDue [{ text, when }] (care-plan items due by the next visit),
+// eddSource, gpla, bloodGroup, risk } or null), nextDue [{ text, when }] (care-plan items due by the next visit), doneToday [{ text }] (care-plan items done at this visit),
 // planLabel (the care plan's Draft label, or null), printedAt, printedByName, and copy: 'prescription', or
 // 'summary' – the visit summary, when no medicines are given: the same page titled "Visit summary", without the
 // medicines and their instructions.
@@ -413,11 +413,14 @@ function Advice({ visit, d }) {
   );
 }
 
-function NextVisit({ visit, d, nextDue, planLabel, boxed = true }) {
+function NextVisit({ visit, d, nextDue, doneToday = [], planLabel, boxed = true }) {
   const det = visit.details ?? {};
   const due = d.show.planItems ? nextDue : [];
-  if (!d.show.nextVisit || (!det.nextVisitOn && !due.length)) return null;
-  const long = due.length > 8;
+  // The care-plan items ticked as done at this visit (doctor's request, 16 Nov 2026: "the care plan is not on the
+  // prescription") – with the same switch as the items due
+  const done = d.show.planItems ? doneToday : [];
+  if (!d.show.nextVisit || (!det.nextVisitOn && !due.length && !done.length)) return null;
+  const long = due.length + done.length > 8;
   return (
     <section className={[boxed ? 'rx-next' : 'rx-section', long ? 'rx-next-long' : ''].filter(Boolean).join(' ')}>
       <div className="rx-section-title">
@@ -429,6 +432,19 @@ function NextVisit({ visit, d, nextDue, planLabel, boxed = true }) {
         )}
         {has(det.nextVisitNote) && <span> – {det.nextVisitNote}</span>}
       </div>
+      {done.length > 0 && (
+        <div className="rx-due">
+          <span className="rx-small">
+            <Bi label={RX_LABELS.doneToday} lang={d.language} />
+            {planLabel ? ` (care plan: ${planLabel})` : ''}:
+          </span>
+          <ul className={done.length >= 4 ? 'rx-due-list rx-due-cols' : 'rx-due-list'}>
+            {done.map((x) => (
+              <li key={x.text}>{x.text}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {due.length > 0 && (
         <div className="rx-due">
           <span className="rx-small">
@@ -875,7 +891,7 @@ export function rxStyle(d) {
   return style;
 }
 
-export function RxDocument({ design: d, letterhead, doctor, patient, visit, pregnancy = null, nextDue = [], planLabel = null, printedAt, printedByName, copy = 'prescription' }) {
+export function RxDocument({ design: d, letterhead, doctor, patient, visit, pregnancy = null, nextDue = [], doneToday = [], planLabel = null, printedAt, printedByName, copy = 'prescription' }) {
   const Layout = LAYOUTS[d.design] ?? Classic;
   const a5 = d.design === 'half_page' || d.paper === 'A5';
   const summary = copy === 'summary';
@@ -905,7 +921,7 @@ export function RxDocument({ design: d, letterhead, doctor, patient, visit, preg
   );
   return (
     <PrintDocument footer={footer} className={className} style={rxStyle(d)}>
-      <Layout d={d} letterhead={letterhead} doctor={doctor} patient={patient} visit={visit} pregnancy={pregnancy} nextDue={nextDue} planLabel={planLabel} summary={summary} />
+      <Layout d={d} letterhead={letterhead} doctor={doctor} patient={patient} visit={visit} pregnancy={pregnancy} nextDue={nextDue} doneToday={doneToday} planLabel={planLabel} summary={summary} />
     </PrintDocument>
   );
 }

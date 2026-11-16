@@ -31,6 +31,7 @@ function Sample({ design, letterhead, user }) {
       visit={{ ...SAMPLE.visit, notes: SAMPLE.visit.notes }}
       pregnancy={SAMPLE.pregnancy}
       nextDue={SAMPLE.nextDue}
+      doneToday={SAMPLE.doneToday}
       printedAt={PREVIEW_AT}
       printedByName={user.name}
     />

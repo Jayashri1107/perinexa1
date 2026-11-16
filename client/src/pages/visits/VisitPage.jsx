@@ -112,6 +112,8 @@ function VisitPrintPreview({ patient, page, copy, onCopy, onClose, aiNote = null
   const nextDue = (page.carePlan?.upcoming ?? [])
     .filter((i) => new Date(i.dueFrom).getTime() <= limit)
     .map((i) => ({ text: patientWhat(i, patient.careType), when: windowText(i.dueFrom, i.dueBy) }));
+  // What the care plan marked done at this visit (ticked on Visit details), in the patient's words (16 Nov 2026)
+  const doneToday = (page.carePlan?.doneHere ?? []).filter((i) => i.kind !== 'visit').map((i) => ({ text: patientWhat(i, patient.careType) }));
   const overdue = design.show.planItems ? (page.carePlan?.overdue ?? 0) : 0;
   const ownDesign = doctor.id === user.id;
   const medicines = v.prescription.items.length > 0;
@@ -203,6 +205,7 @@ function VisitPrintPreview({ patient, page, copy, onCopy, onClose, aiNote = null
           }}
           pregnancy={pregnancy}
           nextDue={nextDue}
+          doneToday={doneToday}
           planLabel={page.carePlan?.label ?? null}
           printedAt={printedAt}
           printedByName={user.name}

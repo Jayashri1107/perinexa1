@@ -1065,8 +1065,8 @@ export function PatientForm({
                     setPregnancies={(rows) => setHistory('pregnancies', rows)}
                     fe={fe}
                     age={v.ageYears}
-                    lmp={type === 'antenatal' ? v.pregnancy.lmp : type === 'abortion' ? v.abortion.lmp : ''}
-                    onLmp={type === 'antenatal' ? (x) => setV((cur) => ({ ...cur, pregnancy: { ...cur.pregnancy, lmp: x } })) : type === 'abortion' ? (x) => setAbortion('lmp', x) : null}
+                    lmp={type === 'antenatal' ? v.pregnancy.lmp : type === 'abortion' ? v.abortion.lmp : v.history.lmp}
+                    onLmp={type === 'antenatal' ? (x) => setV((cur) => ({ ...cur, pregnancy: { ...cur.pregnancy, lmp: x } })) : type === 'abortion' ? (x) => setAbortion('lmp', x) : (x) => setV((cur) => ({ ...cur, history: { ...cur.history, lmp: x } }))}
                     medicalOpen={Boolean(fe('medical.allergies'))}
                     heard={heard}
                     onClearHeard={() => setHeard('')}
