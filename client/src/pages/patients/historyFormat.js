@@ -28,7 +28,7 @@ export const HISTORY_LABELS = {
 // 27 Oct 2026; server/src/patients/historyFields.js BORN_CHILD_TEXTS): every other text of the sheet is checked.
 export const SEX_CHECKED_TEXTS = ['complaint', 'otherHistory', 'periodsOther', 'contraception', 'operations', 'currentMedicines', 'familyWho', 'occupation', 'sleepAppetite', 'bowelBladder'];
 const TEXTS = ['complaint', 'previousDeliveries', 'otherHistory', 'periodsOther', 'contraception', 'operations', 'currentMedicines', 'familyWho', 'occupation', 'sleepAppetite', 'bowelBladder'];
-const NUMBERS = ['marriedSinceYears', 'menarcheAge', 'cycleLengthDays', 'bleedingDays'];
+const NUMBERS = ['marriedSinceYears', 'marriedSinceMonths', 'menarcheAge', 'cycleLengthDays', 'bleedingDays'];
 const CHOICES = ['cycle', 'consanguinity', 'flow', 'pain', 'lmpCertain', 'transfusion', 'td', 'rubella', 'hepB', 'diet', 'tobacco', 'alcohol'];
 export const EMPTY_PREGNANCY = { year: '', outcome: '', weeks: '', mode: '', place: '', weightGrams: '', aliveNow: '', problems: '' };
 
@@ -73,11 +73,22 @@ export function historyEmpty(h) {
   return !TEXTS.some((k) => (h[k] ?? '').trim());
 }
 
+// "4 years", "7 months", "2 years 3 months" (doctor's request, 16 Nov 2026: months too, for a marriage of under a year)
+const filled = (x) => x != null && String(x).trim() !== '';
+const count = (n, word) => `${n} ${word}${Number(n) === 1 ? '' : 's'}`;
+export function marriedSinceText(h) {
+  const y = filled(h?.marriedSinceYears) ? Number(h.marriedSinceYears) : null;
+  const m = filled(h?.marriedSinceMonths) ? Number(h.marriedSinceMonths) : null;
+  if (y == null && m == null) return '';
+  if (y == null) return count(m, 'month');
+  return m ? `${count(y, 'year')} ${count(m, 'month')}` : `${y} years`;
+}
+
 /** The five lines as the record shows them (Overview, copy of the record): [label, text] for those written. */
 export function historyLines(h) {
   if (!h) return [];
   const L = HISTORY_LABELS;
-  const married = [h.marriedSinceYears != null && h.marriedSinceYears !== '' ? `${h.marriedSinceYears} years` : '', h.consanguinity ? `Consanguinity ${L.YES_NO[h.consanguinity].toLowerCase()}` : ''].filter(Boolean).join(' · ');
+  const married = [marriedSinceText(h), h.consanguinity ? `Consanguinity ${L.YES_NO[h.consanguinity].toLowerCase()}` : ''].filter(Boolean).join(' · ');
   const lines = [
     ['Complaints', h.complaint],
     ['Menstrual history', h.cycle ? `Cycle ${L.CYCLE_KINDS[h.cycle].toLowerCase()}` : ''],
@@ -103,7 +114,7 @@ export function historyPrintLines(h, { age = '', lmp = '' } = {}) {
   if (h.complaint?.trim()) out.push(`Patient is ${years ? `${years} years` : '…'} with complaints of ${h.complaint.trim()}`);
   const menstrual = [lmp ? `LMP ${lmp}` : '', h.cycle ? `Cycle ${L.CYCLE_KINDS[h.cycle].toLowerCase()}` : ''].filter(Boolean).join(' · ');
   if (menstrual) out.push(`Menstrual history – ${menstrual}`);
-  const married = [h.marriedSinceYears != null && h.marriedSinceYears !== '' ? `Married since ${h.marriedSinceYears} years` : '', h.consanguinity ? `Consanguinity ${L.YES_NO[h.consanguinity].toLowerCase()}` : ''].filter(Boolean).join(' · ');
+  const married = [marriedSinceText(h) ? `Married since ${marriedSinceText(h)}` : '', h.consanguinity ? `Consanguinity ${L.YES_NO[h.consanguinity].toLowerCase()}` : ''].filter(Boolean).join(' · ');
   if (married) out.push(`Obstetric history – ${married}`);
   if (h.previousDeliveries?.trim()) out.push(`Previous deliveries – ${h.previousDeliveries.trim()}`);
   if (h.otherHistory?.trim()) out.push(`Any other personal, medical, operative or family history – ${h.otherHistory.trim()}`);
@@ -144,6 +155,8 @@ const COMPLAINT_WORDS = [
   /\bc\s?\/\s?o\b/,
   /\bpresent(?:s|ed|ing) with\b/,
   /\b(?:came|comes|come|has come|coming)(?: for the| the)?(?: (?:first|1st) time| today)?(?: to (?:the )?(?:hospital|opd|clinic))? with\b/,
+  // "Came to confirm the pregnancy", "came for ANC check-up" (16 Nov 2026): the reason she came is the complaint
+  /\b(?:came|comes|has come|coming)(?: (?:here|today))?(?= (?:to|for) )/,
   /\bcomplaints?\b/,
 ];
 const DELIVERY_WORDS = [
@@ -156,7 +169,8 @@ const anyOf = (list) => new RegExp(list.map((rx) => rx.source).join('|'), 'i');
 
 const ANCHORS = [
   ['complaint', anyOf(COMPLAINT_WORDS)],
-  ['menstrual', /\bmenstrual history\b|\bL\.?\s?M\.?\s?P\b/i],
+  // also "…, periods were regular" / "menses irregular" said after a comma or full stop (the word regular stays in the blank)
+  ['menstrual', /\bmenstrual history\b|\bL\.?\s?M\.?\s?P\b|(?<=^\s?|[,.;]\s?)(?:(?:her|the)\s+)?(?:periods?|menses|cycles?)(?:\s+(?:is|are|were|was|has been|have been))?(?=\s+(?:ir)?regular\b)/i],
   ['married', /\bmarried (?:since|for)\b|\bobstetric history\b/i],
   ['deliveries', anyOf(DELIVERY_WORDS)],
   // "No major personal, medical, operative and family history" / "nil significant past history": the words themselves are
@@ -178,6 +192,11 @@ const DELIVERY_MODES = [
   ['forceps', /\bforceps\b/i],
   ['normal', /\b(?:normal|vaginal|nvd|ftnd)\b/i],
 ];
+
+// Consanguinity as speech to text writes it: "consanguineous", "consanguinous", "consensuous", "consagnuity"
+const KIN = '(?:consan\\w*|consen\\w*|consag\\w*)';
+const NO_CONSANGUINITY = new RegExp(`\\bnon[\\s-]?${KIN}|\\b(?:no|not|nil|without)\\s+${KIN}|\\b${KIN}\\s*(?:is\\s*)?(?:no|nil|absent|none|negative)\\b`, 'i');
+const YES_CONSANGUINITY = new RegExp(`\\b${KIN}\\s*(?:is\\s*)?(?:yes|present|positive)\\b|\\b${KIN}\\s+marriage\\b`, 'i');
 
 const clean = (t) =>
   t
@@ -225,17 +244,24 @@ export function readSentence(text, { careType } = {}) {
     if (f.key === 'complaint') {
       // Ends before the template's next words, or before advice or a plan said in the same breath (that goes to notes)
       const c = clean(t.replace(/\b(?:menstrual|obstetric) history\b.*$/i, '').replace(/(?:[.;]\s*|\s)(?:advise[ds]?|advice|plan(?:ned)?|investigations?)\b.*$/i, ''));
-      if (c) out.complaint = c;
+      if (c) out.complaint = c.replace(/^for\s+/i, ''); // "came for ANC check-up"
     }
     if (f.key === 'menstrual' || f.key === 'complaint') {
-      const cyc = /\bcycles?\s+(?:is\s+|are\s+)?(regular|irregular)\b|\b(regular|irregular)\s+cycles?\b/i.exec(t);
-      if (cyc) out.cycle = (cyc[1] ?? cyc[2]).toLowerCase();
+      // "cycle regular", "regular cycles", and "periods were regular" (its anchor ends just before the word)
+      const cyc = /\bcycles?\s+(?:is\s+|are\s+)?(regular|irregular)\b|\b(regular|irregular)\s+cycles?\b|^\s*(regular|irregular)\b/i.exec(t);
+      if (cyc) out.cycle = (cyc[1] ?? cyc[2] ?? cyc[3]).toLowerCase();
     }
     if (f.key === 'married') {
-      const yrs = /\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*(?:years?|yrs?)\b/i.exec(t);
-      if (yrs) out.marriedSinceYears = String(WORD_NUMBERS[yrs[1].toLowerCase()] ?? Number(yrs[1]));
-      if (/\bnon[\s-]?consanguin/i.test(t) || /\bconsanguinity\s*(?:is\s*)?(?:no|nil|absent|none|negative)\b/i.test(t)) out.consanguinity = 'no';
-      else if (/\bconsanguinity\s*(?:is\s*)?(?:yes|present|positive)\b|\bconsanguineous marriage\b/i.test(t)) out.consanguinity = 'yes';
+      // "4 years", "7 months", "2 years 3 months" (doctor's request, 16 Nov 2026: months too); "24 months" is 2 years
+      const yrs = new RegExp(`\\b${NUMBER}\\s*(?:years?|yrs?)\\b`, 'i').exec(t);
+      const mos = new RegExp(`\\b${NUMBER}\\s*(?:months?|mths?)\\b`, 'i').exec(t);
+      const months = mos ? number(mos[1]) : NaN;
+      if (yrs && (!mos || months < 12)) out.marriedSinceYears = String(number(yrs[1]));
+      if (mos && months < 12) out.marriedSinceMonths = String(months);
+      else if (mos && !yrs && months % 12 === 0) out.marriedSinceYears = String(months / 12);
+      // Speech to text spells it many ways: "consanguineous", "consanguinous", "consensuous", "consagnuity"
+      if (NO_CONSANGUINITY.test(t)) out.consanguinity = 'no';
+      else if (YES_CONSANGUINITY.test(t)) out.consanguinity = 'yes';
     }
     if (f.key === 'deliveries') {
       const d = clean(t);
@@ -276,6 +302,7 @@ const SHEET_LABELS = {
   complaint: 'Complaints',
   cycle: 'Cycle',
   marriedSinceYears: 'Married since (years)',
+  marriedSinceMonths: 'Married since (months)',
   consanguinity: 'Consanguinity',
   previousDeliveries: 'Previous deliveries',
   otherHistory: 'Any other history',
@@ -312,6 +339,10 @@ export function withHistorySheet(result, text, { careType, careLine = false, rea
   // delivered twice" when the blank took "twice, both normal"): those words are the blank's heading, not something to ask
   const anchorsOf = [...ANCHORS, ...(CARE_ANCHORS[careType] ?? [])].map(([, rx]) => new RegExp(rx.source, 'gi'));
   const covered = (u) => {
+    // "married since 7 months" and "no consensuous marriage": the blanks took a number or a yes/no, too short to compare
+    if ((sheet.marriedSinceYears || sheet.marriedSinceMonths) && /\bmarried (?:since|for)\b/i.test(u.text) && !/\b(?:con[sn]|kin)/i.test(u.text)) return true;
+    if (sheet.consanguinity && (NO_CONSANGUINITY.test(u.text) || YES_CONSANGUINITY.test(u.text)) && !/\bmarried (?:since|for)\b/i.test(u.text)) return true;
+    if (sheet.consanguinity && (sheet.marriedSinceYears || sheet.marriedSinceMonths) && /\bmarried (?:since|for)\b/i.test(u.text)) return true;
     const t = plainWords(u.text);
     if (!t || taken.some((s) => s.includes(t) || t.includes(s))) return true;
     const rest = plainWords(anchorsOf.reduce((x, rx) => x.replace(rx, ' '), u.text));

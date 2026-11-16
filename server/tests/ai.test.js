@@ -309,6 +309,21 @@ describe('Ask AI where these belong', () => {
     expect(sent[0].body.response_format.json_schema.schema.properties.suggestions.items.properties.field.enum).not.toContain('phone');
     expect((await (await as('drA')).post('/api/ai/understand').send({ form: 'patient', careType: 'antenatal', parts: [] })).status).toBe(400);
   });
+
+  it('may place a part in the history sheet (married since in months, consanguinity), never on a baby\'s record', () => {
+    const today = new Date('2026-11-16T00:00:00Z');
+    const parts = ['married since 7 months', 'no consensuous marriage'];
+    const said = [
+      { part: 0, field: 'history.marriedSinceMonths', value: '7' },
+      { part: 0, field: 'history.marriedSinceMonths', value: '14' }, // months besides the years: 0–11
+      { part: 1, field: 'history.consanguinity', value: 'No' },
+    ];
+    expect(checkSuggestions(said, { form: 'patient', parts, today, careType: 'antenatal' })).toEqual([
+      { part: 0, field: 'history.marriedSinceMonths', value: '7', label: 'Married since – months besides the years: 7' },
+      { part: 1, field: 'history.consanguinity', value: 'no', label: 'Consanguineous marriage: no' },
+    ]);
+    expect(checkSuggestions(said, { form: 'patient', parts, today, careType: 'newborn' })).toEqual([]);
+  });
 });
 
 describe('Dictated medicines (Prescription tab)', () => {

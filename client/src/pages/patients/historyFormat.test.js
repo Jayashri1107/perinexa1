@@ -157,3 +157,27 @@ describe("doctor's feedback of 15 Nov 2026", () => {
     expect(bornChildSpans('complaints of pain', 'antenatal')).toEqual([]);
   });
 });
+
+// Doctor's video of 15 Nov 2026: months for "married since", and the words of that dictation in the right blanks
+describe('married since in months, and the words doctors use', () => {
+  const said = 'Came to confirm the pregnancy, periods were regular, married since seven months, no consensuous marriage';
+  it('reads the dictation of the video into the four blanks', () => {
+    expect(readSentence(said)).toEqual({ complaint: 'to confirm the pregnancy', cycle: 'regular', marriedSinceMonths: '7', consanguinity: 'no' });
+  });
+  it('leaves nothing of it as not understood (so nothing is sent to AI)', () => {
+    const r = withHistorySheet(extractPatientDetails(said, { careType: 'antenatal' }), said, { careType: 'antenatal', readDate });
+    expect(r.unused).toEqual([]);
+    expect(r.values.history).toMatchObject({ marriedSinceMonths: '7', consanguinity: 'no' });
+  });
+  it('reads years and months together, and whole years said in months', () => {
+    expect(readSentence('Married since 2 years 3 months, non consanguineous marriage')).toEqual({ marriedSinceYears: '2', marriedSinceMonths: '3', consanguinity: 'no' });
+    expect(readSentence('Married for 24 months')).toEqual({ marriedSinceYears: '2' });
+    expect(readSentence('Married since 4 years, consanguineous marriage')).toEqual({ marriedSinceYears: '4', consanguinity: 'yes' });
+  });
+  it('shows and prints the months', () => {
+    expect(historyLines({ marriedSinceMonths: 7 })).toEqual([['Married since', '7 months']]);
+    expect(historyLines({ marriedSinceYears: 1, marriedSinceMonths: 1, consanguinity: 'no' })).toEqual([['Married since', '1 year 1 month · Consanguinity no']]);
+    expect(historyPrintLines({ marriedSinceYears: 2, marriedSinceMonths: 6 })).toEqual(['Obstetric history – Married since 2 years 6 months']);
+    expect(historyPayload({ ...historyValues(null), marriedSinceMonths: '7' })).toMatchObject({ marriedSinceYears: null, marriedSinceMonths: 7 });
+  });
+});

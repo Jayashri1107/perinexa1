@@ -234,6 +234,7 @@ aiAskRouter.post('/understand', async (req, res) => {
       "Perinexa's reader could not place the numbered parts below. For each part, suggest where it belongs, using ONLY these fields and value formats:",
       fieldList(form, careType),
       'Rules: only what the part clearly says – never guess or add. A part may give several fields (e.g. "two kids both normal delivery" → para 2 and living 2), or none (leave it out).',
+      'History sheet: "married since 7 months" → history.marriedSinceMonths 7 (no years); "married since 2 years 3 months" → years 2 and months 3; "non-consanguineous" or "no consanguineous marriage" (however misspelt) → history.consanguinity no; "periods regular" → history.cycle regular; why she came (e.g. "came to confirm the pregnancy") → history.complaint. A negative or a history detail is never an Existing condition or Other condition.',
       'Existing conditions and previous-pregnancy problems: the code from the list. Text fields: the words said, tidied, in English. Dates: work out the full date from today if said relatively.',
       'Never suggest a name, phone, address, or anything about the sex of a fetus or baby.',
     ].join('\n'),
