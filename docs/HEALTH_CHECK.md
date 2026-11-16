@@ -73,6 +73,14 @@ Needs the developer's and owner's agreement on the library (a new dependency).
 request without the header, or with the name of a page set to Edit, skips the check. Roles and need-to-know still
 apply, so it never gives more than the roles do – but a hospital admin who sets "Reports: None" will believe reports
 are blocked. *Fix:* map routes to pages on the server, or say plainly in the admin screen that it hides menu items only.
+**Fixed for each page's own areas, 16 Nov 2026:** `PAGE_ROUTES` in `server/src/access/pages.js` lists the API areas
+that belong to one menu item only (found by reading which screens call each area): Pharmacy, Theatre, Specimens,
+Formulary, Privileges, Clinical audit (with case reviews, dashboards, PPH reviews), Analytics, Tally (Billing), the lab's
+QC / setup / stock, and referring doctors. These are checked on the server whatever page the request names, or none
+(`pageAccessGuard`); Formulary → Stock places still reads the pharmacy's medicines and stock. **Still by the header
+only:** areas several menu items share – patients, billing, the lab's orders, appointments, beds, the Today page's
+summaries – because refusing them by area would break the other pages that use them. For those, the roles and the
+need-to-know rules remain the real limit, as the admin screen's help already says ("Each item also needs a role").
 
 **M2 – The server never ends a session for inactivity on its own; no absolute limit.** Open. **Verified.**
 `requireAuth` renews the cookie on every request, including the background polls (`NotificationBell.jsx:29`,

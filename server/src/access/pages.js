@@ -39,6 +39,38 @@ export const PAGES = [
 ];
 export const PAGE_KEYS = PAGES.map((p) => p.key);
 
+// Health check M1 (16 Nov 2026): API areas that belong to ONE menu item only – checked on the server whatever menu item
+// the request names (or none), so None and View on these pages hold even for a request typed by hand. Paths are
+// relative to /api. Found by reading which screens call each area (client/src): an area is listed only when no other
+// menu item's screens use it. readsElsewhere: reads another menu item also needs (Formulary → Stock places reads the
+// pharmacy's medicines and their stock). Areas shared by several menu items (patients, billing, lab, the Today page's
+// summaries …) stay with the menu item the request names, and with the roles and need-to-know rules as always.
+export const PAGE_ROUTES = [
+  { page: 'pharmacy', prefix: '/pharmacy', readsElsewhere: [/^\/pharmacy\/medicines$/, /^\/pharmacy\/stock\/[^/]+$/] },
+  { page: 'theatre', prefix: '/theatre' },
+  { page: 'specimens', prefix: '/specimens' },
+  { page: 'formulary', prefix: '/formulary' },
+  { page: 'privileges', prefix: '/privileges' },
+  { page: 'clinical-audit', prefix: '/clinical-audit' },
+  { page: 'clinical-audit', prefix: '/case-reviews' },
+  { page: 'clinical-audit', prefix: '/dashboards' },
+  { page: 'clinical-audit', prefix: '/pph-reviews' },
+  { page: 'analytics', prefix: '/analytics' },
+  { page: 'billing', prefix: '/tally' },
+  { page: 'lab', prefix: '/lab-qc' },
+  { page: 'lab', prefix: '/lab-setup' },
+  { page: 'lab', prefix: '/lab-stock' },
+  { page: 'referrals', prefix: '/referring-doctors' },
+];
+
+/** The menu item an API path (relative to /api, no query) belongs to on its own, or null. PURE. */
+export function pageOfRoute(path, method = 'GET') {
+  const route = PAGE_ROUTES.find((r) => path === r.prefix || path.startsWith(`${r.prefix}/`));
+  if (!route) return null;
+  if (method === 'GET' && route.readsElsewhere?.some((rx) => rx.test(path))) return null;
+  return route.page;
+}
+
 /** Only known menu items and levels, and only those that are not Edit (Edit is the default). PURE. */
 export function cleanPages(pages = {}) {
   const out = {};

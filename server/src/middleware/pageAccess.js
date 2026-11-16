@@ -1,4 +1,4 @@
-import { PAGE_KEYS, effectivePages } from '../access/pages.js';
+import { PAGE_KEYS, effectivePages, pageOfRoute } from '../access/pages.js';
 import { UserGroup } from '../models/UserGroup.js';
 import { HttpError } from '../utils/httpError.js';
 
@@ -16,11 +16,19 @@ export async function pagesOf(membership) {
   return effectivePages(group, membership);
 }
 
+// Health check M1 (16 Nov 2026): besides the menu item the request names, the menu item its API area belongs to on its
+// own (access/pages.js PAGE_ROUTES) – that one is checked even when the header is left out or names another page.
 export async function pageAccessGuard(req, _res, next) {
-  const page = req.get(PAGE_HEADER);
-  if (!page || !PAGE_KEYS.includes(page) || !req.membership || req.membership.platform) return next();
-  const level = (await pagesOf(req.membership))[page] ?? 'edit';
-  if (level === 'none') throw new HttpError(403, 'You do not have access to this page. Ask your hospital admin.', 'PAGE_HIDDEN');
-  if (level === 'view' && !READS.has(req.method)) throw new HttpError(403, 'View only: you may look at this page but not change anything on it.', 'PAGE_VIEW_ONLY');
+  if (!req.membership || req.membership.platform) return next();
+  const named = req.get(PAGE_HEADER);
+  const fromRoute = pageOfRoute(req.originalUrl.split('?')[0].replace(/^\/api/, ''), req.method);
+  const toCheck = [...new Set([PAGE_KEYS.includes(named) ? named : null, fromRoute].filter(Boolean))];
+  if (!toCheck.length) return next();
+  const pages = await pagesOf(req.membership);
+  for (const page of toCheck) {
+    const level = pages[page] ?? 'edit';
+    if (level === 'none') throw new HttpError(403, 'You do not have access to this page. Ask your hospital admin.', 'PAGE_HIDDEN');
+    if (level === 'view' && !READS.has(req.method)) throw new HttpError(403, 'View only: you may look at this page but not change anything on it.', 'PAGE_VIEW_ONLY');
+  }
   next();
 }

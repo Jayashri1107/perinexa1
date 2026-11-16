@@ -6,6 +6,7 @@ import { createApp } from '../src/app.js';
 import { AuditLog } from '../src/models/AuditLog.js';
 import { Membership } from '../src/models/Membership.js';
 import { UserGroup } from '../src/models/UserGroup.js';
+import { pageOfRoute } from '../src/access/pages.js';
 import { moveToUserGroups, nameForRoles } from '../src/users/userGroups.js';
 import { addMember, connectTestDb, createSuperAdmin, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
@@ -157,5 +158,43 @@ describe('page access on the server', () => {
     await addMember(user, tenant, 'pharmacist', { groupId: group._id });
     const s = await loginAs(user, { app });
     expect((await s.get('/api/tenant/members').set('X-Perinexa-Page', 'hospital-admin')).status).toBe(403);
+  });
+
+  it("holds for a page's own API area even when the request names no page, or another (health check M1, 16 Nov 2026)", async () => {
+    const group = await UserGroup.create({ name: 'Pharmacy, no theatre', roles: ['pharmacist', 'nurse'], pages: { theatre: 'none', pharmacy: 'view' } });
+    const user = await createUser();
+    await addMember(user, tenant, ['pharmacist', 'nurse'], { groupId: group._id });
+    const s = await loginAs(user, { app });
+    // Theatre is None: refused without the header, and with the header of a page she may use
+    expect((await s.get('/api/theatre')).body.error?.code).toBe('PAGE_HIDDEN');
+    expect((await s.get('/api/theatre').set('X-Perinexa-Page', 'today')).body.error?.code).toBe('PAGE_HIDDEN');
+    // Pharmacy is View: reading works, a change is refused whatever page it names
+    expect((await s.get('/api/pharmacy/suppliers')).status).toBe(200);
+    expect((await s.post('/api/pharmacy/suppliers').send({ name: 'Sample Supplier' })).body.error?.code).toBe('PAGE_VIEW_ONLY');
+    expect((await s.post('/api/pharmacy/suppliers').set('X-Perinexa-Page', 'formulary').send({ name: 'Sample Supplier' })).body.error?.code).toBe('PAGE_VIEW_ONLY');
+  });
+
+  it("leaves the pharmacy's medicines readable for Formulary → Stock places when Pharmacy is None", async () => {
+    const group = await UserGroup.create({ name: 'Formulary only', roles: ['pharmacist'], pages: { pharmacy: 'none' } });
+    const user = await createUser();
+    await addMember(user, tenant, 'pharmacist', { groupId: group._id });
+    const s = await loginAs(user, { app });
+    expect((await s.get('/api/pharmacy/medicines').set('X-Perinexa-Page', 'formulary')).status).toBe(200);
+    expect((await s.get('/api/pharmacy/suppliers')).body.error?.code).toBe('PAGE_HIDDEN');
+    expect((await s.post('/api/pharmacy/medicines').send({ name: 'Sample' })).body.error?.code).toBe('PAGE_HIDDEN');
+  });
+});
+
+describe('which menu item an API area belongs to on its own (health check M1)', () => {
+  it('only the areas no other menu item uses; reads Formulary needs stay open', () => {
+    expect(pageOfRoute('/theatre')).toBe('theatre');
+    expect(pageOfRoute('/theatre/abc')).toBe('theatre');
+    expect(pageOfRoute('/theatres')).toBeNull();
+    expect(pageOfRoute('/case-reviews/x')).toBe('clinical-audit');
+    expect(pageOfRoute('/pharmacy/medicines', 'GET')).toBeNull();
+    expect(pageOfRoute('/pharmacy/medicines', 'POST')).toBe('pharmacy');
+    expect(pageOfRoute('/pharmacy/stock/abc', 'GET')).toBeNull();
+    expect(pageOfRoute('/patients/abc')).toBeNull();
+    expect(pageOfRoute('/billing/bills')).toBeNull();
   });
 });
