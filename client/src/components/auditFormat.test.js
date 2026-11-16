@@ -277,6 +277,8 @@ describe('billing in the audit log (5 Oct 2026)', () => {
     expect(AUDIT_LABELS.BILL_ITEM_REMOVED).toBe('Item taken off a bill');
     expect(describeAudit({ action: 'BILL_VIEWED', details: bill })).toBe('Bill B-000007');
     expect(describeAudit({ action: 'BILL_VIEWED', details: { ...bill, claimForm: true } })).toBe('Bill B-000007 · claim form opened');
+    expect(describeAudit({ action: 'BILL_VIEWED', details: { patientId: 'p', list: true, bills: 3 } })).toBe("A patient's bills listed (3 bills)");
+    expect(describeAudit({ action: 'BILL_VIEWED', details: { patientId: 'p', list: true, bills: 1 } })).toBe("A patient's bills listed (1 bill)");
     expect(describeAudit({ action: 'BILL_ITEM_ADDED', details: { ...bill, priceItemId: 'i', amountPaise: 50000 } })).toBe('Bill B-000007 · ₹500');
     expect(describeAudit({ action: 'BILL_ITEM_REMOVED', details: { ...bill, amountPaise: 120050, reason: 'Added by mistake' } })).toBe('Bill B-000007 · ₹1,200.50');
     expect(describeAudit({ action: 'DISCOUNT_GIVEN', details: { ...bill, mode: 'percent', value: 10, discountPaise: 5000, reason: 'Staff family' } })).toBe('Bill B-000007 · 10% (₹50)');

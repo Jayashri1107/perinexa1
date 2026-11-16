@@ -41,6 +41,9 @@ with the time written down (`docs/DEPLOY_AWS.md` sections 4 and 9). Encrypted EB
 - `zod` 4.6.5 – memory exhaustion (GHSA-mrhx-c7xc-m3w5); fixed in 4.6.6+.
 - Moderate: `qs` 6.16.0, `ip-address` 10.7.2.
 *Fix:* update within the existing ranges (no new dependency), `npm test`, `npm run build`, one server start.
+**Fixed 16 Nov 2026** (`d65467a0`, `98365b6d`): body-parser 2.4.0, mongoose 9.12.1, zod 4.6.7, qs 6.17.1, ip-address
+10.7.6; the build and test tools too (vite 8.3.8, vitest 5.1.0, concurrently 10.0.7). `npm audit` finds 0 in all
+packages. Only `package-lock.json` changed.
 
 **H3 – Platform users can read patient records inside a hospital.** Owner decides. **Verified.**
 `server/src/middleware/auth.js` `platformMembership` gives a platform user every hospital role, and
@@ -91,6 +94,11 @@ SMS / WhatsApp. *Fix:* a cooldown per mobile (e.g. 60 s) and a daily cap.
 `routes/billing.js:144` `GET /patient/:patientId` checks only the hospital; the appointments equivalent
 (`appointments.js:326-333`) calls `assertNotHidden` / `patientAccess` and writes an audit line. *Fix:* the same three
 steps here.
+**Fixed 16 Nov 2026:** `assertNotHidden` and a `BILL_VIEWED` entry (`list: true`, the number of bills, never an
+amount) on every listing. On a closer look the access gap was smaller than stated: only reception, billing and the
+admin reach the billing routes, and reception and billing see every patient's identity by design, so the real gap was
+the missing audit entry. A view-level check like the appointments one was not added, because it would block the
+hospital admin – whether admins see bills is the owner's decision (L5).
 
 **M6 – Fertility plan text is not checked for the baby's sex.** Owner decides. **Verified.**
 `routes/fertilityPlans.js` (section text up to 8,000 characters, switch notes, cycle notes) never calls the PC-PNDT

@@ -1778,6 +1778,8 @@ export function describeAudit(entry) {
       return d.records != null ? `${count(d.patients ?? 0, 'patient')} – ${count(d.records, 'record')} in all and ${count(d.files ?? 0, 'stored file')}, written to a folder on the server` : '';
     // Billing: numbers and amounts only (see PAYMENT_MODE_WORDS)
     case 'BILL_VIEWED':
+      // A patient's Bills tab: how many bills were listed (health check M5, 16 Nov 2026)
+      if (d.list) return `A patient's bills listed (${count(d.bills ?? 0, 'bill')})`;
       return joined(billOf(d), d.claimForm ? 'claim form opened' : '');
     case 'BILL_ITEM_ADDED':
     case 'BILL_ITEM_REMOVED':
