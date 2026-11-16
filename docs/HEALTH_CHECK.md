@@ -79,6 +79,12 @@ are blocked. *Fix:* map routes to pages on the server, or say plainly in the adm
 `TodayPage.jsx:592`, `pharmacy/RegisterPage.jsx:181`). The 30-minute logout is enforced only by the browser timer; a
 stolen cookie, or an open tab, stays signed in indefinitely. *Fix:* an absolute lifetime (e.g. 12 hours, an `authTime`
 claim) and a last-activity time that polls do not refresh.
+**Fixed 16 Nov 2026:** the session cookie carries the sign-in time (`at`), kept as it is renewed, and is refused
+`SESSION_MAX_HOURS` (default 12) after signing in. Only a change (any non-GET request) or the website's "still here"
+call (`GET /api/auth/me`, sent at most every 5 minutes while the person is using the page) renews it; the lists pages
+read again by themselves do not, so an unused open tab ends after `SESSION_TIMEOUT_MINUTES` on the server too.
+Sessions from before the change start their 12 hours at their next request. Staff on a longer shift sign in again
+after 12 hours.
 
 **M3 – Account lock and OTP try counter can be raced.** Open. *Plausible.*
 `routes/auth.js:188` with `auth/loginLock.js`, and `routes/portalSignup.js:244-248`: the lock is checked before the

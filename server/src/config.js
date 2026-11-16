@@ -45,6 +45,9 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters long'),
   CLIENT_URL: z.url().default('http://localhost:5173'),
   SESSION_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(30),
+  // A session ends this many hours after signing in, however busy (health check M2, 16 Nov 2026): a stolen cookie or
+  // a shared computer left signed in does not stay usable for days.
+  SESSION_MAX_HOURS: z.coerce.number().int().min(1).max(72).default(12),
   COOKIE_SECURE: z.enum(['true', 'false']).optional(),
   // WRONG sign-in tries per 15 minutes from one internet address (right ones are not counted): a whole hospital often
   // shares one address. Each account also locks on its own after wrong tries (utils/loginLock.js).
