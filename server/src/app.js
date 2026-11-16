@@ -107,6 +107,7 @@ import {
   requireTenantRole,
 } from './middleware/auth.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import { HttpError } from './utils/httpError.js';
 
 // apiRateLimitMax: requests a minute per browser (tests with a frozen clock raise it).
 // abdmPublicRateLimitMax: calls a minute from one address to ABDM's public addresses (ABDM's gateway, other hospitals).
@@ -124,6 +125,22 @@ function personKey(req) {
   }
   return ipKeyGenerator(req.ip ?? '');
 }
+
+// A large body (a file as base64, up to 21 MB) is read only for someone with a valid session (health check M11,
+// 16 Nov 2026): without this, anyone could make the single server hold many large bodies in memory before any sign-in
+// check. Only the signature is checked here (no database); requireAuth still does the full check afterwards.
+function signedInFirst(req, _res, next) {
+  const token = req.cookies?.[COOKIE_NAME];
+  if (!token) return next(new HttpError(401, 'Please log in.', 'NOT_AUTHENTICATED'));
+  try {
+    jwt.verify(token, config.JWT_SECRET);
+  } catch {
+    return next(new HttpError(401, 'Your session has expired. Please log in again.', 'SESSION_EXPIRED'));
+  }
+  return next();
+}
+/** A larger body limit for one staff address – read only after the session's signature is checked. */
+const big = (limit) => [signedInFirst, express.json({ limit })];
 
 // Writes slow requests to the server's log (method, path with ids replaced, status, milliseconds) – never a query,
 // a body or a name.
@@ -162,32 +179,48 @@ export function createApp({
   app.use(helmet({ contentSecurityPolicy: { directives: { 'script-src': ["'self'", "'wasm-unsafe-eval'"], 'img-src': ["'self'", 'data:', 'blob:'] } } }));
   if (config.SLOW_REQUEST_MS) app.use(logSlowRequests(config.SLOW_REQUEST_MS));
   app.use(cors({ origin: config.CLIENT_URL, credentials: true, allowedHeaders: ['Content-Type', 'X-Tenant-Id', PAGE_HEADER] }));
+  // The cookie and the request limit come before any body is read (health check M11, 16 Nov 2026): the large staff
+  // bodies below need a session first (big), and a flood is refused without reading what it sends.
+  app.use(cookieParser());
+  // Counted per signed-in person, so the many staff of one hospital (often one internet address) never share a limit.
+  app.use(
+    '/api',
+    rateLimit({
+      windowMs: 60 * 1000,
+      limit: apiRateLimitMax,
+      standardHeaders: 'draft-8',
+      legacyHeaders: false,
+      keyGenerator: personKey,
+      store: rateLimitStore('api'),
+      skip: (req) => req.originalUrl.startsWith('/api/abdm/public/'),
+    }),
+  );
   // A photo or PDF of a report read by AI (Smart features) is larger than any other request.
-  app.use(/^\/api\/patients\/[^/]+\/ai\/read-report$/, express.json({ limit: '10mb' }));
-  app.use(/^\/api\/patients\/[^/]+\/ai\/ask$/, express.json({ limit: '200kb' })); // Ask AI: the conversation so far
-  app.use('/api/ai/transcribe', express.json({ limit: '12mb' }));
+  app.use(/^\/api\/patients\/[^/]+\/ai\/read-report$/, big('10mb'));
+  app.use(/^\/api\/patients\/[^/]+\/ai\/ask$/, big('200kb')); // Ask AI: the conversation so far
+  app.use('/api/ai/transcribe', big('12mb'));
   // A lab report file (PDF or photo, at most 5 MB; base64 makes it about a third larger).
-  app.use(/^\/api\/lab\/orders\/[^/]+\/files$/, express.json({ limit: '8mb' }));
-  app.use(/^\/api\/imaging\/[^/]+\/images$/, express.json({ limit: '8mb' })); // a picture from the ultrasound machine
+  app.use(/^\/api\/lab\/orders\/[^/]+\/files$/, big('8mb'));
+  app.use(/^\/api\/imaging\/[^/]+\/images$/, big('8mb')); // a picture from the ultrasound machine
   // The scan bridge (routes/scanBridge.js): a picture of a machine study, then a study with its structured reports
   app.use(/^\/api\/scan-bridge\/studies\/[^/]+\/images$/, express.json({ limit: '8mb' }));
   app.use('/api/scan-bridge/studies', express.json({ limit: '4mb' }));
-  app.use(/^\/api\/patients\/[^/]+\/consents\/[^/]+\/scans$/, express.json({ limit: '8mb' }));
-  app.use(/^\/api\/pph\/[^/]+\/scans$/, express.json({ limit: '8mb' })); // the scan of the paper PPH chart (OBG-F-07)
-  app.use(/^\/api\/patients\/[^/]+\/visits\/[^/]+\/whatsapp$/, express.json({ limit: '8mb' })); // the PDF to send
+  app.use(/^\/api\/patients\/[^/]+\/consents\/[^/]+\/scans$/, big('8mb'));
+  app.use(/^\/api\/pph\/[^/]+\/scans$/, big('8mb')); // the scan of the paper PPH chart (OBG-F-07)
+  app.use(/^\/api\/patients\/[^/]+\/visits\/[^/]+\/whatsapp$/, big('8mb')); // the PDF to send
   // A referral's files: the referring doctor's note or reports, and the PDF of a consultant note or discharge card
   // released to the referral desk (at most 5 MB each, like the files above).
-  app.use(/^\/api\/referrals\/[^/]+\/(attachments|releases)$/, express.json({ limit: '8mb' }));
-  app.use(/^\/api\/billing\/expenses\/[^/]+\/file$/, express.json({ limit: '8mb' })); // an expense's bill (Daily Expenses)
+  app.use(/^\/api\/referrals\/[^/]+\/(attachments|releases)$/, big('8mb'));
+  app.use(/^\/api\/billing\/expenses\/[^/]+\/file$/, big('8mb')); // an expense's bill (Daily Expenses)
   // The medicine safety list is saved whole: 300 entries with their names, advice and sources do not fit in 100 kb.
   // (Each field has its own limit, so the list's "at most 300 entries" is reached before this one.)
-  app.use('/api/medicine-safety', express.json({ limit: '2mb' }));
-  app.use(/^\/api\/specimens\/[^/]+\/report$/, express.json({ limit: '8mb' })); // a histopathology report's file
-  app.use(/^\/api\/patients\/[^/]+\/documents$/, express.json({ limit: '21mb' })); // a scanned case sheet of up to 15 MB, as base64
+  app.use('/api/medicine-safety', big('2mb'));
+  app.use(/^\/api\/specimens\/[^/]+\/report$/, big('8mb')); // a histopathology report's file
+  app.use(/^\/api\/patients\/[^/]+\/documents$/, big('21mb')); // a scanned case sheet of up to 15 MB, as base64
   // The pharmacy's opening stock: up to 5,000 lines read from the old software's file (pharmacy/openingStock.js).
-  app.use('/api/pharmacy/opening-stock', express.json({ limit: '4mb' }));
-  app.use('/api/auth/me/photo', express.json({ limit: '200kb' })); // My profile: a small staff photo
-  app.use(/^\/api\/lab-setup\/signatories(\/[^/]+)?$/, express.json({ limit: '300kb' })); // a signature picture (lab reports)
+  app.use('/api/pharmacy/opening-stock', big('4mb'));
+  app.use('/api/auth/me/photo', big('200kb')); // My profile: a small staff photo
+  app.use(/^\/api\/lab-setup\/signatories(\/[^/]+)?$/, big('300kb')); // a signature picture (lab reports)
   // From ABDM and other hospitals (ABDM M2 and M3): a limit of their own, checked before any body is read – ABDM's
   // messages and the pages of her records come in bursts from a few addresses, and must not meet a browser's limit.
   app.use('/api/abdm/public', rateLimit({ windowMs: 60 * 1000, limit: abdmPublicRateLimitMax, standardHeaders: 'draft-8', legacyHeaders: false, store: rateLimitStore('abdm-public') }));
@@ -196,7 +229,6 @@ export function createApp({
   // so it is refused before the body is read in practice mode and for an unknown HIU ID (routes/abdmFetch.js).
   app.use(/^\/api\/abdm\/public\/api\/v3\/hiu\/data\/push\/[^/]+$/, beforePushBody, express.json({ limit: '30mb' }));
   app.use(express.json({ limit: '100kb' }));
-  app.use(cookieParser());
   // One moment per request: everything in a request (e.g. "today" for care plans) uses the same time,
   // even if the request happens to run across midnight.
   app.use((req, _res, next) => {
@@ -216,19 +248,6 @@ export function createApp({
     res.set('Cache-Control', 'no-store');
     next();
   });
-  // Counted per signed-in person, so the many staff of one hospital (often one internet address) never share a limit.
-  app.use(
-    '/api',
-    rateLimit({
-      windowMs: 60 * 1000,
-      limit: apiRateLimitMax,
-      standardHeaders: 'draft-8',
-      legacyHeaders: false,
-      keyGenerator: personKey,
-      store: rateLimitStore('api'),
-      skip: (req) => req.originalUrl.startsWith('/api/abdm/public/'),
-    }),
-  );
 
   // For the hosting's health check and uptime monitors: 503 while the database is not reachable.
   app.get('/api/health', (_req, res) => {

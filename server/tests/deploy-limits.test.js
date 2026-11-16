@@ -65,3 +65,37 @@ describe('the live server (21 Oct 2026)', () => {
     expect(productionProblems({ ...good, SETUP_CODE: '123456' })[0]).toMatch(/SETUP_CODE is too easy/);
   });
 });
+
+// Health check M11 (16 Nov 2026): a large body is read only for someone with a session, and the request limit comes
+// before any body is read. A body that is not JSON shows which came first: read first, it would be refused as bad JSON
+// (400); checked first, it is refused without being read.
+describe('large bodies only after the session (health check M11, 16 Nov 2026)', () => {
+  const notJson = 'x'.repeat(2 * 1024 * 1024);
+  const upload = (agent) => agent.post('/api/patients/000000000000000000000000/documents').set('Content-Type', 'application/json').send(notJson);
+
+  it('refuses a large upload without a session, or with a forged one, before reading it', async () => {
+    const app = createApp();
+    const none = await upload(request(app));
+    expect(none.status).toBe(401);
+    expect(none.body.error.code).toBe('NOT_AUTHENTICATED');
+    const forged = await request(app).post('/api/patients/000000000000000000000000/documents').set('Cookie', 'perinexa_session=not-a-real-token').set('Content-Type', 'application/json').send(notJson);
+    expect(forged.status).toBe(401);
+    expect(forged.body.error.code).toBe('SESSION_EXPIRED');
+  });
+
+  it('reads it for a signed-in person (bad JSON is then refused as such)', async () => {
+    const app = createApp();
+    const tenant = await createTenant('Upload Hospital');
+    const nurse = await createUser();
+    await addMember(nurse, tenant, 'nurse');
+    const s = await loginAs(nurse, { app });
+    expect((await upload(s)).status).toBe(400);
+  });
+
+  it('counts the request limit before reading the body', async () => {
+    const app = createApp({ apiRateLimitMax: 1 });
+    const post = () => request(app).post('/api/visits/whatever').set('Content-Type', 'application/json').send('{not json');
+    expect((await post()).status).toBe(400);
+    expect((await post()).status).toBe(429);
+  });
+});

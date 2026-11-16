@@ -134,6 +134,10 @@ database (run once), move finished ones out of `index.js`, and give `healthy()` 
 The JSON parsers (21 MB for `/api/patients/*/documents`) run before `requireAuth` and before the API rate limit
 (`app.js:164-218`); Caddy allows 32 MB. Anonymous parallel 21 MB posts can exhaust the memory of the single server.
 *Fix:* parse large bodies only after `requireAuth`, and the rate limit before the parsers.
+**Fixed 16 Nov 2026:** every larger staff body limit (`big()` in `app.js`) first checks the session cookie's
+signature, so a large body is read only for someone signed in; the cookie parser and the per-person request limit now
+come before any body is read. Still read before a sign-in check: the scan bridge (its own key, 8 MB) and the ABDM push
+address (refused before reading when ABDM is off, as before).
 
 ## Low
 
