@@ -368,7 +368,8 @@ const DATE_PATTERNS = [
 const NOT_A_YEAR = "(?![\\d:.]|\\s*(?:weeks?|wks?|w\\b|days?|months?|years?|yrs?|a\\.?\\s?m\\b|p\\.?\\s?m\\b|hrs|hours|baje|o'?\\s?clock|in\\s+the))";
 const SAID_DATE_PATTERNS = [
   { rx: new RegExp(`^(\\d{1,2})(?:\\s+by\\s+|\\s+)(\\d{1,2})(?:(?:\\s+by\\s+|\\s+)${YEAR})?${NOT_A_YEAR}`, 'i'), d: 1, m: 2, y: 3 },
-  { rx: /^(\d{1,2})\s*[/.-]\s*(\d{1,2})(?![\d/.-])/, d: 1, m: 2 },
+  // (a full stop after it ends the sentence: "LMP 02/10." – 16 Nov 2026)
+  { rx: /^(\d{1,2})\s*[/.-]\s*(\d{1,2})(?![\d/-]|\.\d)/, d: 1, m: 2 },
 ];
 const todayUtc = (now) => Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -409,6 +410,7 @@ const VALUE_LABELS = {
   ageYears: 'Age',
   phone: 'Phone',
   'pregnancy.lmp': 'LMP',
+  'history.lmp': 'LMP',
   'pregnancy.scanEdd': 'EDD from dating scan',
   // Abortion type of care (pregnancy loss)
   'abortion.lmp': 'LMP',
@@ -579,6 +581,7 @@ function finish(f) {
   show('pregnancy.findings', 'Findings in this pregnancy', list('pregnancy.findings', PREGNANCY_FINDING_LABELS), { ticks: ticks('pregnancy.findings', PREGNANCY_FINDING_LABELS) });
   show('abortion.lossType', 'Type of loss', LOSS_LABELS[v.abortion?.lossType]);
   show('abortion.lmp', 'LMP', v.abortion?.lmp && showDate(v.abortion.lmp));
+  show('history.lmp', 'LMP', v.history?.lmp && showDate(v.history.lmp));
   show('abortion.weeks', 'Weeks at presentation', v.abortion?.weeks);
   show('abortion.antiD', 'Anti-D', ANTI_D[v.abortion?.antiD]);
   const ob = v.obstetric ?? {};
@@ -1889,8 +1892,9 @@ export function extractPatientDetails(text, { careType, now = new Date(), words 
   let datesHeard = false; // an LMP or EDD was said (used or not)
   let approxLmp = null; // the date an LMP said roughly gives ("LMP 2 months back")
   // Abortion care (pregnancy loss): the LMP fills the loss's own LMP; there is no EDD and no weeks today.
-  const lmpPath = careType === 'abortion' ? 'abortion.lmp' : 'pregnancy.lmp';
-  if (careType === 'antenatal' || careType === 'abortion') {
+  // Every other type of care but a baby's: the history sheet's own LMP (owner's go-ahead, 16 Nov 2026)
+  const lmpPath = careType === 'abortion' ? 'abortion.lmp' : careType === 'antenatal' ? 'pregnancy.lmp' : 'history.lmp';
+  if (careType && careType !== 'newborn') {
     for (const m of s.matchAll(LMP_RX)) {
       const rest = s.slice(m.index + m[0].length);
       const date = readDate(rest, now, 'past');

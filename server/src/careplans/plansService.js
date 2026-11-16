@@ -1419,7 +1419,8 @@ export async function visitPlanInfo(ctx, patient, visitId) {
       .map(view),
     doneHere: plan.items
       .filter((it) => it.state === 'done' && it.done?.visitId && String(it.done.visitId) === String(visitId))
-      .map((it) => ({ id: itemId(it), kind: it.kind, name: it.name, on: it.done.on })),
+      // (patientText: the prescription prints what was done at this visit in the patient's words – 16 Nov 2026)
+      .map((it) => ({ id: itemId(it), kind: it.kind, name: it.name, patientText: it.patientText ?? '', on: it.done.on })),
     nextVisits: open.filter((it) => it.kind === 'visit' && coming(it)).sort(byDueFrom).slice(0, 3).map(view),
     // For the printed prescription (what to do by the next visit). Overdue items are left to the doctor: Visit
     // details lists them, and the doctor writes any still needed under Tests advised.

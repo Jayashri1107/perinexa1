@@ -38,6 +38,7 @@ export const SAMPLE = {
     notes: 'Take the iron and the calcium at least 2 hours apart.',
   },
   pregnancy: { lmp: '2026-04-10T00:00:00.000Z', edd: '2027-01-15T00:00:00.000Z', eddSource: 'LMP', gpla: 'G2 P1 L1 A0', bloodGroup: 'B+', risk: 'Moderate' },
+  doneToday: [{ text: 'Blood sugar test' }, { text: 'Urine test' }],
   nextDue: [
     { text: 'Repeat sugar test (glucose drink test)', when: '24–28 weeks' },
     { text: 'Tdap injection (protects baby from whooping cough)', when: 'from 27 weeks' },

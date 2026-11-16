@@ -324,6 +324,16 @@ describe('Ask AI where these belong', () => {
     ]);
     expect(checkSuggestions(said, { form: 'patient', parts, today, careType: 'newborn' })).toEqual([]);
   });
+
+  it("offers the LMP box the type of care has: the pregnancy's in antenatal care, the history sheet's otherwise", () => {
+    const today = new Date('2026-11-16T00:00:00Z');
+    const said = [{ part: 0, field: 'pregnancy.lmp', value: '2026-10-02' }];
+    expect(checkSuggestions(said, { form: 'patient', parts: ['LMP 2nd October'], today, careType: 'antenatal' })).toHaveLength(1);
+    expect(checkSuggestions(said, { form: 'patient', parts: ['LMP 2nd October'], today, careType: 'gynaecology' })).toEqual([]);
+    const sheet = [{ part: 0, field: 'history.lmp', value: '2026-10-02' }];
+    expect(checkSuggestions(sheet, { form: 'patient', parts: ['LMP 2nd October'], today, careType: 'gynaecology' })).toEqual([{ part: 0, field: 'history.lmp', value: '2026-10-02', label: 'LMP: 2 Oct 2026' }]);
+    expect(checkSuggestions(sheet, { form: 'patient', parts: ['LMP 2nd October'], today, careType: 'antenatal' })).toEqual([]);
+  });
 });
 
 describe('Dictated medicines (Prescription tab)', () => {

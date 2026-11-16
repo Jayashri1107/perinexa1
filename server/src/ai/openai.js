@@ -96,7 +96,7 @@ export async function askAI(req, { feature, ids = {}, instructions, content, sch
 // Words an obstetrician in India says while dictating: helps the transcription spell them right.
 const DICTATION_PROMPT = [
   'Dictation by an obstetrician in India, in Indian English (a few Hindi or Marathi words may occur – write them in English letters).',
-  'Write numbers as digits and dates like 18/05/2026. Common terms: LMP, EDD, G2 P1 L1 A0, gravida, para, primi, LSCS, caesarean,',
+  'Write every number as digits, exactly as said – never leave a number out ("previous deliveries 2, 1 FTND 2019, 1 LSCS 2022, 3 kg"). Write dates day first like 18/05/2026 ("LMP 2nd October" → LMP 02/10/2026 when the year is said, else LMP 02/10). Common terms: LMP, EDD, G2 P1 L1 A0, gravida, para, primi, LSCS, caesarean,',
   'PIH, GDM, OGTT, DIPSI, Hb, TSH, HBsAg, VDRL, HIV, USG, NT scan, anomaly scan, TIFFA, AFI, FHR, cephalic, breech, oedema,',
   'fundal height, P/A soft, IFA, Td injection, Rh negative, blood group O positive, BP 120/80, pulse, SpO2, per vaginal, PCOS, PCOD.',
 ].join(' ');

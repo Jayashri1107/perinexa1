@@ -29,7 +29,7 @@ Voice = the app's voice entry reads it today (rules, not AI – see section 4).
 | Line | Blanks | Field | Voice today |
 | --- | --- | --- | --- |
 | **Patient is ___ with complaints of ___** | free text (age and a few words about her), free text (complaint and duration) | new (age is on page 1 already) | no |
-| **Menstrual history – LMP ___ Cycle Regular / Irregular** | date; one of two | LMP existing (antenatal and abortion care); cycle new | LMP yes; cycle no |
+| **Menstrual history – LMP ___ Cycle Regular / Irregular** | date; one of two | LMP existing (antenatal and abortion care); for every other type of care but a baby's, the sheet's own LMP (owner's go-ahead, 16 Nov 2026); cycle new | LMP yes; cycle no |
 | **Obstetric history – Married since ___ Consanguinity ___** | years; Yes / No | new | no |
 | **Previous deliveries ___** | free text, as written on paper ("one full-term normal delivery in 2023, 2.9 kg, alive and well") | new; G P L A exist in the drop-down | G P L A and caesareans yes |
 | **Any other personal, medical, operative or family history ___** | one line of free text | new; conditions, allergies, blood group exist in the drop-down | conditions, allergies, blood group yes |
