@@ -22,6 +22,10 @@ const oneHospital = (v) =>
   v instanceof mongoose.Types.ObjectId ||
   v?._bsontype === 'ObjectId' ||
   (v != null && typeof v === 'object' && Object.keys(v).length === 1 && '$eq' in v && oneHospital(v.$eq));
+// A list of named hospitals ({ $in: [ids] }) – only for a query that says so with .setOptions({ acrossHospitals: true })
+// (the super admin's patient list, a test's check of two hospitals), never by accident.
+const listedHospitals = (v) => v != null && typeof v === 'object' && Object.keys(v).length === 1 && Array.isArray(v.$in) && v.$in.every(oneHospital);
+const allowed = (v, options) => oneHospital(v) || (options?.acrossHospitals === true && listedHospitals(v));
 
 // Safety net for hospital data: adds a required tenantId to the model and refuses any
 // query that does not say which hospital (tenant) it is for. This makes it very hard to
@@ -37,7 +41,7 @@ export function tenantScoped(schema) {
       if (!filter || filter.tenantId == null) {
         throw new Error(`Refusing ${op} on ${this.model.modelName} without a tenantId filter`);
       }
-      if (!oneHospital(filter.tenantId)) throw new Error(`Refusing ${op} on ${this.model.modelName}: tenantId must name one hospital`);
+      if (!allowed(filter.tenantId, this.getOptions())) throw new Error(`Refusing ${op} on ${this.model.modelName}: tenantId must name one hospital`);
     });
   }
 
@@ -46,6 +50,6 @@ export function tenantScoped(schema) {
     if (!first?.$match || first.$match.tenantId == null) {
       throw new Error(`Refusing aggregate on ${this._model?.modelName ?? 'model'} without a leading tenantId $match`);
     }
-    if (!oneHospital(first.$match.tenantId)) throw new Error(`Refusing aggregate on ${this._model?.modelName ?? 'model'}: tenantId must name one hospital`);
+    if (!allowed(first.$match.tenantId, this.options)) throw new Error(`Refusing aggregate on ${this._model?.modelName ?? 'model'}: tenantId must name one hospital`);
   });
 }
