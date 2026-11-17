@@ -434,6 +434,8 @@ export const HOSPITAL_ADMIN = {
     { label: 'NICU units', to: '/admin/nicu-units', end: true },
     // The scan bridge's key: the ultrasound machine's pictures and readings (docs/USG_MACHINE_PLAN.md)
     { label: 'Ultrasound machine', to: '/admin/ultrasound-machine', end: true },
+    // Whether Perinexa's own staff may open this hospital's patient records, for a few hours (health check H3)
+    { label: 'Support access', to: '/admin/support-access', end: true },
   ],
 };
 

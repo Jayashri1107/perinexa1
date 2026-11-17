@@ -363,13 +363,18 @@ describe('reports and the export', () => {
     expect(monthly.byDoctor).toEqual([{ id: people.drA._id.toString(), name: 'Sample drA', chargedPaise: 125000 }]);
 
     expect((await (await as('reception')).get('/api/billing/export?from=2026-09-01&to=2026-09-30&what=items')).status).toBe(403);
-    const items = await (await as('admin')).get('/api/billing/export?from=2026-09-01&to=2026-09-30&what=items');
+    // A file of patient names needs a reason, and the reason is in the audit log (health check M7)
+    const noReason = await (await as('admin')).get('/api/billing/export?from=2026-09-01&to=2026-09-30&what=items');
+    expect(noReason.status).toBe(400);
+    expect((await (await as('admin')).get('/api/billing/export?from=2026-09-01&to=2026-09-30&what=items&reason=ok')).status).toBe(400);
+    const items = await (await as('admin')).get('/api/billing/export?from=2026-09-01&to=2026-09-30&what=items&reason=Monthly%20accounts');
     expect(items.headers['content-type']).toMatch(/text\/csv/);
     expect(items.text).toContain("'=Formula Mother");
     expect(items.text.split('\r\n').filter(Boolean)).toHaveLength(4); // header + 3 items
-    const payments = await (await as('admin')).get('/api/billing/export?from=2026-09-01&to=2026-09-30&what=payments');
+    const payments = await (await as('admin')).get('/api/billing/export?from=2026-09-01&to=2026-09-30&what=payments&reason=Monthly%20accounts');
     expect(payments.text).toContain('R-000002');
     expect(await AuditLog.countDocuments({ action: 'BILLING_EXPORTED' })).toBe(2);
+    expect((await AuditLog.findOne({ action: 'BILLING_EXPORTED' }).lean()).details.reason).toBe('Monthly accounts');
   });
 });
 
@@ -449,7 +454,7 @@ describe('the billing department (billing role, 7 Oct 2026)', () => {
     expect((await desk.get('/api/billing/reports/daily?date=2026-09-28')).body.byPerson).toEqual([{ name: 'Sample billing', in: 50000, out: 0, count: 1 }]);
     expect((await desk.get('/api/billing/reports/unpaid')).status).toBe(200);
     expect((await desk.get('/api/billing/reports/monthly?year=2026')).status).toBe(200);
-    expect((await desk.get('/api/billing/export?from=2026-09-01&to=2026-09-30&what=payments')).status).toBe(200);
+    expect((await desk.get('/api/billing/export?from=2026-09-01&to=2026-09-30&what=payments&reason=Monthly%20accounts')).status).toBe(200);
 
     // The price list and the billing settings stay with the hospital admin
     const list = (await desk.get('/api/billing/prices')).body;

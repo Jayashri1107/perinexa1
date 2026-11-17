@@ -14,6 +14,7 @@ import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
+import { NO_SUPPORT_ACCESS, supportAccessOpen } from '../utils/platformAccess.js';
 import { escapeRegex, objectId, pageParams, paged, parse, sortParam, toMongoSort } from '../utils/validate.js';
 
 // One hospital, everything, for the super admin (developer, 14 Nov 2026 – docs/USER_GROUPS_PLAN.md Part A):
@@ -160,6 +161,8 @@ platformHospitalViewRouter.get('/:tenantId/staff', async (req, res) => {
 platformHospitalViewRouter.get('/:tenantId/patients', async (req, res) => {
   if (!req.user?.isSuperAdmin) throw new HttpError(403, "Only a super admin sees a hospital's patients.", 'FORBIDDEN');
   const tenantId = await findTenant(req);
+  // Only while the hospital's admin allows support access (health check H3; owner's decision of 17 Nov 2026)
+  if (!supportAccessOpen(await Tenant.findById(tenantId, { platformAccess: 1 }).lean(), req.now ?? new Date())) throw new HttpError(403, NO_SUPPORT_ACCESS, 'NO_SUPPORT_ACCESS');
   const q = parse(patientsSchema, req.query);
   const filter = { tenantId, duplicateOf: null };
   if (q.department) filter.department = q.department === NONE ? '' : q.department;

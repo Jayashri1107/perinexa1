@@ -80,6 +80,7 @@ over the live one. **How long a restore took when it was last tried: not tried y
 | Site does not load at all | server down, Caddy down, DNS | `systemctl status perinexa caddy`; AWS console → instance state; `nslookup app.perinexa.com` |
 | `502 Bad Gateway` | the app is not running (restarting, crashed) | `journalctl -u perinexa -n 100`; `sudo systemctl restart perinexa` |
 | `/api/health` gives 503 | the database is not reachable | Atlas status page and alerts; Atlas → Network Access still lists 13.201.142.178/32 |
+| Every `/api` request gives 500, `/api/health` too, after an Atlas change (tier upgrade, maintenance) | the app kept its old database connection | `sudo systemctl restart perinexa`, then `curl -s http://127.0.0.1:4000/api/health` (seen 17 Nov 2026 after M0 → M10) |
 | `deploy.sh`: "mongodump is not installed" | the tools are missing | `docs/DEPLOY_AWS.md` section 2 (Ubuntu 26.04: the `ubuntu2604` .deb) |
 | `deploy.sh`: "FAILED to save the database" | Atlas refused or the disk is full | `df -h`; Atlas network access; then deploy again – never `--no-backup` without a reason |
 | `deploy.sh`: "Files were changed by hand" | someone edited on the server | `sudo -u perinexa git -C /opt/perinexa/app status`; move the change into git, then `git checkout -- <file>` |
@@ -87,6 +88,8 @@ over the live one. **How long a restore took when it was last tried: not tried y
 | Disk full | logs or old copies | `df -h`; `sudo du -sh /opt/perinexa/backups /var/log/journal`; `sudo journalctl --vacuum-time=30d` |
 | Certificate warning | Caddy could not renew | `journalctl -u caddy -n 50`; ports 80 and 443 open in the security group; DNS still points here |
 | Many people locked out | wrong passwords (3 tries → 2 minutes) or the login limit | wait 2 minutes; an admin resets a password from the staff screen |
+| An admin lost the phone with the authenticator app | two-step sign-in (health check H4) | a recovery code signs in once; otherwise the super admin: Users → the person → Reset two-step sign-in (they set it up again at the next sign-in) |
+| Nobody with two-step sign-in can sign in after `JWT_SECRET` was changed | the secrets are encrypted with a key from `JWT_SECRET` | recovery codes still work; or put the old `JWT_SECRET` back; last resort `TWO_STEP_FOR_ADMINS=false` in `server/.env` and restart, then each person resets under My settings |
 | Suspected data leak or break-in | – | do not delete anything; tell the owner at once; see "Data breach" below |
 
 ## Data breach (personal data seen or taken by someone who should not have)

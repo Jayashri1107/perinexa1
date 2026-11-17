@@ -580,7 +580,8 @@ describe('reports and the export', () => {
     const h1 = (await ph('get', '/reports/register?type=H1&from=2026-09-01&to=2026-09-30')).body;
     expect(h1.pages.map((x) => [x.medicine.name, x.rows.map((r) => [r.kind, r.out, r.in])])).toEqual([['Rate Eighteen H1', [['sale', 10, 0], ['return', 0, 5]]]]);
     expect((await ph('get', '/export?from=2026-09-01&to=2026-09-30&what=sales')).status).toBe(403);
-    const csv = await ph('get', '/export?from=2026-09-01&to=2026-09-30&what=sales', undefined, 'admin');
+    expect((await ph('get', '/export?from=2026-09-01&to=2026-09-30&what=sales', undefined, 'admin')).status).toBe(400); // no reason (M7)
+    const csv = await ph('get', '/export?from=2026-09-01&to=2026-09-30&what=sales&reason=Monthly%20accounts', undefined, 'admin');
     expect(csv.text.split('\r\n').filter(Boolean)).toHaveLength(3);
     expect(csv.text).toContain('Report Mother');
   });

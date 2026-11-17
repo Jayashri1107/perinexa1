@@ -1,4 +1,4 @@
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { lockedError, staffClaimTry, staffFailed, staffLockLeft, staffSignedIn } from '../auth/loginLock.js';
@@ -25,6 +25,7 @@ import {
 } from '../middleware/auth.js';
 import { APPEARANCE_CHOICES, STANDARD_APPEARANCE } from '../utils/appearance.js';
 import { capitalizeName } from '../utils/personName.js';
+import { checkCode, matchRecovery, newRecoveryCodes, newSecret, openSecret, otpauthUri, sealSecret } from '../auth/totp.js';
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().min(1, 'Email is required').max(254),
@@ -76,11 +77,85 @@ const appearanceSchema = z
 
 const INVALID_LOGIN = 'Invalid email or password.';
 
+// ---------- Two-step sign-in (health check H4; owner's decision of 17 Nov 2026: an authenticator app) ----------
+// After the right password, someone with two-step sign-in on gets a short-lived ticket instead of a session, and types
+// the 6-digit code from their app (or one of their recovery codes). A super admin, a platform admin or a hospital admin
+// must use it when TWO_STEP_FOR_ADMINS is on (the live server): without it yet, the ticket leads to setting it up
+// first. The ticket is signed with its own key, so it can never be used as a session cookie.
+let twoStepForAdmins = config.twoStepForAdmins;
+const TICKET_MINUTES = 5;
+const ticketKey = () => createHmac('sha256', config.JWT_SECRET).update('perinexa-two-step-ticket-v1').digest();
+const makeTicket = (user, stage) => jwt.sign({ sub: String(user._id), tv: user.tokenVersion, st: stage }, ticketKey(), { expiresIn: TICKET_MINUTES * 60, algorithm: 'HS256' });
+const TICKET_ENDED = 'This sign-in has timed out. Please type your email and password again.';
+function readTicket(ticket) {
+  try {
+    return jwt.verify(String(ticket), ticketKey(), { algorithms: ['HS256'] });
+  } catch {
+    throw new HttpError(401, TICKET_ENDED, 'TWO_STEP_TICKET_ENDED');
+  }
+}
+/** Must this person use two-step sign-in? memberships: theirs as listActiveMemberships gives them. */
+function twoStepRequiredFor(user, memberships = []) {
+  if (!twoStepForAdmins || !user) return false;
+  return isPlatformUser(user) || memberships.some((m) => m.adminSwitch || (m.roles ?? []).includes('admin'));
+}
+async function twoStepRequired(user) {
+  if (!twoStepForAdmins) return false;
+  if (isPlatformUser(user)) return true;
+  return Boolean(await Membership.exists({ userId: user._id, isActive: true, roles: 'admin' }));
+}
+const twoStepKey = (email) => `${email}#two-step`; // its own 3-try lock, apart from the password's
+const codeSchema = z.object({ ticket: z.string().min(1).max(2000), code: z.string().trim().min(1, 'Type the code from your app').max(20) }).strict();
+const passwordOnly = z.object({ password: z.string().min(1, 'Type your password.').max(128) }).strict();
+const confirmSchema = z.object({ code: z.string().trim().min(1, 'Type the code from your app').max(20) }).strict();
+const offSchema = z.object({ password: z.string().min(1, 'Type your password.').max(128), code: z.string().trim().min(1, 'Type the code from your app').max(20) }).strict();
+const wrongCode = (triesLeft) => {
+  const message = `That code is not right.${triesLeft === 1 ? ' One more wrong try and sign-in waits 2 minutes.' : ''} Check that your phone shows the right time.`;
+  return Object.assign(new HttpError(400, message, 'WRONG_CODE'), { fields: { code: message } });
+};
+/** Checks a code (or a recovery code) for a user read with the two-step secrets; how it matched, or null. */
+function matchTwoStep(user, code, now) {
+  const secret = openSecret(user.twoStep?.secret);
+  const step = secret ? checkCode(secret, code, { now, after: user.twoStep?.lastStep ?? -1 }) : null;
+  if (step != null) {
+    user.twoStep.lastStep = step;
+    return 'code';
+  }
+  const i = matchRecovery(code, user.twoStep?.recovery ?? []);
+  if (i >= 0) {
+    user.twoStep.recovery.splice(i, 1); // each recovery code works once
+    return 'recovery';
+  }
+  return null;
+}
+const withTwoStep = (q) => q.select('+twoStep.secret +twoStep.recovery +twoStep.pending');
+/** A new secret waiting to be confirmed, kept on the user (encrypted); what the website shows to set up the app. */
+async function startSetup(user) {
+  const secret = newSecret();
+  user.twoStep.pending = sealSecret(secret);
+  await user.save();
+  return { secret, uri: otpauthUri(secret, user.email) };
+}
+/** Turns two-step sign-in on with the confirmed pending secret; the new recovery codes (shown once). */
+function enable(user, step, now) {
+  const { codes, hashes } = newRecoveryCodes();
+  user.twoStep.secret = user.twoStep.pending;
+  user.twoStep.pending = null;
+  user.twoStep.enabled = true;
+  user.twoStep.enabledAt = now;
+  user.twoStep.lastStep = step;
+  user.twoStep.recovery = hashes;
+  return codes;
+}
+
+
 // What the website needs to know about the logged-in person.
 // switchBack: a super admin working in their own doctor account – the website offers "Switch back to super admin".
 // roleMode: 'admin' while someone who is both a hospital admin and clinical staff works as the admin (22 Oct 2026).
 const sessionBody = (user, memberships, activeTenantId, platform = null, switchBack = false, roleMode = null) => ({
   user,
+  // Two-step sign-in must stay on for this person (health check H4): the website then offers no "Turn off"
+  twoStepRequired: twoStepRequiredFor(user, memberships),
   memberships,
   activeTenantId,
   ...(platform ? { platform } : {}),
@@ -137,7 +212,7 @@ export const doctorEmailOf = (email) => {
   return `${email.slice(0, at)}+doctor${email.slice(at)}`;
 };
 const doctorAccountSchema = z.object({ tenantId: objectId }).strict();
-const switchUpSchema = z.object({ password: z.string().min(1, 'Type your super admin password.').max(128) }).strict();
+const switchUpSchema = z.object({ password: z.string().min(1, 'Type your super admin password.').max(128), code: z.string().trim().max(20).optional() }).strict();
 const switchAdminSchema = z.object({ password: z.string().min(1, 'Type your password.').max(128) }).strict();
 const superAdminOnly = (req) => {
   if (!req.user.isSuperAdmin || req.via) throw new HttpError(403, 'Only a super admin can do this.', 'FORBIDDEN');
@@ -161,7 +236,21 @@ const setupSchema = z.object({
   password: passwordSchema,
 });
 
-export function authRouter({ loginRateLimitMax }) {
+/** The person's own password, typed again: wrong tries count towards the sign-in lock. */
+async function checkOwnPassword(req, user, password, now) {
+  const claimed = await staffClaimTry(user.email, now);
+  if (claimed.lockedFor) throw lockedError(claimed.lockedFor);
+  if (!(await verifyPassword(password, user.passwordHash))) {
+    const { lockedFor } = await staffFailed(user.email, now, { counted: true });
+    if (lockedFor) throw lockedError(lockedFor);
+    const message = 'That is not your password.';
+    throw Object.assign(new HttpError(400, message, 'VALIDATION'), { fields: { password: message } });
+  }
+  await staffSignedIn(user.email);
+}
+
+export function authRouter({ loginRateLimitMax, twoStepAdmins = config.twoStepForAdmins }) {
+  twoStepForAdmins = twoStepAdmins;
   const router = Router();
 
   // Per internet address, wrong tries only (a hospital's staff often share one address); the lock per account
@@ -216,6 +305,16 @@ export function authRouter({ loginRateLimitMax }) {
     }
     await staffSignedIn(email);
 
+    // Two-step sign-in: the code next (or setting it up first, when it is required and not on yet)
+    if (user.twoStep?.enabled) return res.json({ twoStep: { step: 'code', ticket: makeTicket(user, 'code') } });
+    if (await twoStepRequired(user)) {
+      const fresh = await withTwoStep(User.findById(user._id));
+      return res.json({ twoStep: { step: 'setup', ticket: makeTicket(user, 'setup'), ...(await startSetup(fresh)) } });
+    }
+    return finishLogin(req, res, user);
+  });
+
+  async function finishLogin(req, res, user, extra = {}) {
     // Land in the hospital the person last worked in (if they still have access there).
     const memberships = await listActiveMemberships(user);
     const activeTenantId = pickTenant(memberships, user.lastTenantId);
@@ -223,9 +322,99 @@ export function authRouter({ loginRateLimitMax }) {
     user.lastLoginAt = new Date();
     if (activeTenantId) user.lastTenantId = activeTenantId;
     await user.save();
-    await audit(req, 'LOGIN_SUCCESS', { actor: user, target: user, tenantId: activeTenantId });
+    await audit(req, 'LOGIN_SUCCESS', { actor: user, target: user, tenantId: activeTenantId, ...(extra.how ? { details: { twoStep: extra.how } } : {}) });
     setAuthCookie(res, user, activeTenantId);
-    res.json(sessionBody(user, memberships, activeTenantId, await platformInfo(user, null), Boolean(await superAdminBehind(user, null))));
+    res.json({
+      ...sessionBody(user, memberships, activeTenantId, await platformInfo(user, null), Boolean(await superAdminBehind(user, null))),
+      ...(extra.recoveryCodes ? { recoveryCodes: extra.recoveryCodes } : {}),
+    });
+  }
+
+  // The second step: the code from the app - or, at the first sign-in where it is required, the code that confirms
+  // the app was set up (two-step sign-in is then turned on and the recovery codes are shown once).
+  router.post('/login/two-step', loginLimiter, async (req, res) => {
+    const body = parse(codeSchema, req.body);
+    const t = readTicket(body.ticket);
+    const now = req.now ?? new Date();
+    const user = await withTwoStep(User.findById(t.sub));
+    if (!user || !user.isActive || user.tokenVersion !== t.tv) throw new HttpError(401, TICKET_ENDED, 'TWO_STEP_TICKET_ENDED');
+    const key = twoStepKey(user.email);
+    const claimed = await staffClaimTry(key, now);
+    if (claimed.lockedFor) throw lockedError(claimed.lockedFor);
+    const failed = async (reason) => {
+      const { lockedFor, triesLeft } = await staffFailed(key, now, { counted: true });
+      await audit(req, 'LOGIN_FAILED', { actor: user, target: user, details: { email: user.email, reason } });
+      if (lockedFor) throw lockedError(lockedFor);
+      throw wrongCode(triesLeft);
+    };
+    let how;
+    let recoveryCodes = null;
+    if (t.st === 'setup') {
+      const secret = openSecret(user.twoStep?.pending);
+      const step = secret ? checkCode(secret, body.code, { now }) : null;
+      if (step == null) return failed('wrong_two_step_setup_code');
+      recoveryCodes = enable(user, step, now);
+      how = 'setup';
+      await user.save();
+      await audit(req, 'TWO_STEP_ENABLED', { actor: user, target: user, details: { atSignIn: true } });
+    } else {
+      if (!user.twoStep?.enabled) throw new HttpError(401, TICKET_ENDED, 'TWO_STEP_TICKET_ENDED');
+      how = matchTwoStep(user, body.code, now);
+      if (!how) return failed('wrong_two_step_code');
+      await user.save();
+      if (how === 'recovery') await audit(req, 'TWO_STEP_RECOVERY_USED', { actor: user, target: user, details: { left: user.twoStep.recovery.length } });
+    }
+    await staffSignedIn(key);
+    return finishLogin(req, res, user, { how, recoveryCodes });
+  });
+
+  // ---------- My two-step sign-in (My profile) ----------
+  // Turn it on: the password again, then the app's code confirms it was set up. Turned off only by someone for whom
+  // it is not required, with the password and a code. A lost phone: a recovery code, or the super admin resets it.
+  router.post('/me/two-step/setup', requireAuth, async (req, res) => {
+    const { password } = parse(passwordOnly, req.body);
+    const now = req.now ?? new Date();
+    const user = await withTwoStep(User.findById(req.user._id).select('+passwordHash'));
+    await checkOwnPassword(req, user, password, now);
+    if (user.twoStep?.enabled) throw new HttpError(409, 'Two-step sign-in is already on.', 'TWO_STEP_ON');
+    res.json(await startSetup(user));
+  });
+
+  router.post('/me/two-step/confirm', requireAuth, async (req, res) => {
+    const { code } = parse(confirmSchema, req.body);
+    const now = req.now ?? new Date();
+    const user = await withTwoStep(User.findById(req.user._id));
+    if (user.twoStep?.enabled) throw new HttpError(409, 'Two-step sign-in is already on.', 'TWO_STEP_ON');
+    const secret = openSecret(user.twoStep?.pending);
+    if (!secret) throw new HttpError(409, 'Start again: press Turn on two-step sign-in.', 'TWO_STEP_NOT_STARTED');
+    const key = twoStepKey(user.email);
+    const claimed = await staffClaimTry(key, now);
+    if (claimed.lockedFor) throw lockedError(claimed.lockedFor);
+    const step = checkCode(secret, code, { now });
+    if (step == null) {
+      const { lockedFor, triesLeft } = await staffFailed(key, now, { counted: true });
+      if (lockedFor) throw lockedError(lockedFor);
+      throw wrongCode(triesLeft);
+    }
+    await staffSignedIn(key);
+    const recoveryCodes = enable(user, step, now);
+    await user.save();
+    await audit(req, 'TWO_STEP_ENABLED', { actor: user, target: user });
+    res.json({ user, recoveryCodes });
+  });
+
+  router.post('/me/two-step/off', requireAuth, async (req, res) => {
+    const { password, code } = parse(offSchema, req.body);
+    const now = req.now ?? new Date();
+    const user = await withTwoStep(User.findById(req.user._id).select('+passwordHash'));
+    if (!user.twoStep?.enabled) throw new HttpError(409, 'Two-step sign-in is already off.', 'TWO_STEP_OFF');
+    if (await twoStepRequired(user)) throw new HttpError(403, 'Two-step sign-in is required for your role and stays on.', 'TWO_STEP_REQUIRED');
+    await checkOwnPassword(req, user, password, now);
+    if (!matchTwoStep(user, code, now)) throw wrongCode(0);
+    user.twoStep = { enabled: false, enabledAt: null, secret: null, pending: null, lastStep: -1, recovery: [] };
+    await user.save();
+    await audit(req, 'TWO_STEP_DISABLED', { actor: user, target: user });
+    res.json({ user });
   });
 
   // Is there a super admin yet? (No login needed: the sign-in page asks before anyone exists.)
@@ -438,7 +627,7 @@ export function authRouter({ loginRateLimitMax }) {
   // "Switch back to super admin": asks the super admin's password (every hospital is behind it). Wrong tries count
   // towards the same lock as signing in with that email.
   router.post('/switch-to-super-admin', requireAuth, async (req, res) => {
-    const { password } = parse(switchUpSchema, req.body);
+    const { password, code } = parse(switchUpSchema, req.body);
     const now = req.now ?? new Date();
     const me = await superAdminBehind(req.user, req.via, { withPassword: true });
     if (!me && req.via) throw new HttpError(403, 'Your super admin session has ended. Please sign out and sign in as super admin.', 'SWITCH_ENDED');
@@ -453,6 +642,24 @@ export function authRouter({ loginRateLimitMax }) {
       throw Object.assign(new HttpError(400, message, 'VALIDATION'), { fields: { password: message } });
     }
     await staffSignedIn(me.email);
+    // Going up to every hospital: the super admin's two-step code too, when it is on (health check H4)
+    if (me.twoStep?.enabled) {
+      const full = await withTwoStep(User.findById(me._id));
+      if (!code) {
+        const message = 'Type the code from your authenticator app.';
+        throw Object.assign(new HttpError(400, message, 'TWO_STEP_CODE_NEEDED'), { fields: { code: message } });
+      }
+      const key = twoStepKey(me.email);
+      const claimed = await staffClaimTry(key, now);
+      if (claimed.lockedFor) throw lockedError(claimed.lockedFor);
+      if (!matchTwoStep(full, code, now)) {
+        const { lockedFor, triesLeft } = await staffFailed(key, now, { counted: true });
+        if (lockedFor) throw lockedError(lockedFor);
+        throw wrongCode(triesLeft);
+      }
+      await full.save();
+      await staffSignedIn(key);
+    }
     await audit(req, 'ACCOUNT_SWITCHED', { actor: me, target: req.user, tenantId: req.tenantId, details: { to: 'superadmin' } });
     setAuthCookie(res, me, null);
     res.json(sessionBody(me, [], null, await platformInfo(me, null)));

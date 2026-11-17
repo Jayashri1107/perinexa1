@@ -211,11 +211,14 @@ export function MonthlyPage() {
   const [to, setTo] = useState(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`);
   const [exportError, setExportError] = useState(null);
   const [busy, setBusy] = useState(null);
+  // Files with patient names need a reason, kept in the audit log (health check M7)
+  const [reason, setReason] = useState('');
   const download = async (what) => {
-    setBusy(what);
     setExportError(null);
+    if (reason.trim().length < 5) return setExportError('Say why you need this file (at least 5 characters).');
+    setBusy(what);
     try {
-      const { blob, name } = await apiFile('/billing/export', { query: { from, to, what } });
+      const { blob, name } = await apiFile('/billing/export', { query: { from, to, what, reason: reason.trim() } });
       downloadFile(blob, name);
     } catch (err) {
       setExportError(err.message);
@@ -320,6 +323,9 @@ export function MonthlyPage() {
             </Field>
             <Field label="To" id="bill-exp-to">
               <input id="bill-exp-to" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
+            </Field>
+            <Field label="Reason for the download" id="bill-exp-reason" hint="Kept in the audit log with the download." keepHint>
+              <input id="bill-exp-reason" value={reason} maxLength={200} placeholder="Monthly accounts for the CA" onChange={(e) => setReason(e.target.value)} />
             </Field>
           </div>
           <div className="row">

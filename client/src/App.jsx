@@ -74,6 +74,7 @@ const load20 = () => import('./pages/abdm/PatientAbhaTab.jsx');
 const PatientAbhaTab = screen(load20, 'PatientAbhaTab');
 const load21 = () => import('./pages/abdm/ScanShare.jsx');
 const AbdmSettingsPage = screen(load21, 'AbdmSettingsPage');
+const SupportAccessPage = screen(() => import('./pages/admin/SupportAccessPage.jsx'), 'SupportAccessPage');
 const load22 = () => import('./pages/pharmacy/InvoicesPage.jsx');
 const InvoicePage = screen(load22, 'InvoicePage');
 const InvoicesPage = screen(load22, 'InvoicesPage');
@@ -797,6 +798,7 @@ export function App() {
                   <Route path="opd-timings" element={<OpdTimingsPage admin />} />
                   <Route path="beds" element={<BedSetupPage />} />
                   <Route path="abdm" element={<AbdmSettingsPage />} />
+                  <Route path="support-access" element={<SupportAccessPage />} />
                   {/* The referral settings: centres, desk number, consultants' direct lines, working hours, holidays */}
                   <Route path="referrals" element={<ReferralSettingsPage />} />
                   {/* Build 13 – NICU units: level of care, admission floor, NICU beds, one more admission */}

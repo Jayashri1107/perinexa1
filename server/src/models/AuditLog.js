@@ -12,6 +12,12 @@ export const AUDIT_ACTIONS = [
   'USER_ACTIVATED',
   'USER_DEACTIVATED',
   'PASSWORD_RESET',
+  // Two-step sign-in with an authenticator app (health check H4, 17 Nov 2026): turned on or off, reset by an admin for a
+  // lost phone, or a recovery code used to sign in
+  'TWO_STEP_ENABLED', 'TWO_STEP_DISABLED', 'TWO_STEP_RESET', 'TWO_STEP_RECOVERY_USED',
+  // A hospital admin allowed Perinexa's staff to open its patient records for a few hours, or ended it early (health
+  // check H3, 17 Nov 2026)
+  'SUPPORT_ACCESS_GRANTED', 'SUPPORT_ACCESS_ENDED',
   'SUPER_ADMIN_GRANTED',
   'SUPER_ADMIN_REVOKED',
   'PLATFORM_ADMIN_CHANGED',
@@ -575,6 +581,8 @@ export const AUDIT_CATEGORIES = {
     'LOGIN_RATE_LIMITED',
     'PASSWORD_RESET',
     'PASSWORD_CHANGED',
+    'TWO_STEP_ENABLED', 'TWO_STEP_DISABLED', 'TWO_STEP_RESET', 'TWO_STEP_RECOVERY_USED',
+    'SUPPORT_ACCESS_GRANTED', 'SUPPORT_ACCESS_ENDED',
     'USER_ACTIVATED',
     'USER_DEACTIVATED',
     'SUPER_ADMIN_GRANTED',

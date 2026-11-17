@@ -7,6 +7,7 @@ import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, pageParams, paged, parse, sortParam, toMongoSort } from '../utils/validate.js';
 
+// Since 17 Nov 2026 (health check H3, the owner's decision): only the hospitals whose admin allows support access now.
 // Patients of every hospital for the super admin (owner, 24 Oct 2026 – docs/HANDOVER.md section 9): identity only –
 // name, patient number, hospital, type of care, who added her and when. Never the phone, address, age or anything
 // medical; her record opens inside her hospital, as before (audited there). Super admins only, not platform admins.
@@ -30,7 +31,9 @@ platformPatientsRouter.use((req, _res, next) => {
 
 platformPatientsRouter.get('/', async (req, res) => {
   const q = parse(listSchema, req.query);
-  const tenants = await Tenant.find(q.tenantId ? { _id: q.tenantId } : {}, { name: 1 }).lean();
+  // Only the hospitals whose admin allows support access now (health check H3; owner's decision of 17 Nov 2026)
+  const now = req.now ?? new Date();
+  const tenants = await Tenant.find({ ...(q.tenantId ? { _id: q.tenantId } : {}), 'platformAccess.until': { $gt: now } }, { name: 1 }).lean();
   const names = new Map(tenants.map((t) => [String(t._id), t.name]));
   const filter = { tenantId: { $in: tenants.map((t) => t._id) }, duplicateOf: null }; // a record marked as a duplicate is left out, as in the hospital's lists
   if (q.careType) filter.careType = q.careType;
@@ -63,7 +66,7 @@ platformPatientsRouter.get('/', async (req, res) => {
       addedBy: people.get(String(r.createdBy)) ?? '',
       createdAt: r.createdAt,
     })),
-    hospitals: (await Tenant.find({}, { name: 1 }).sort({ name: 1 }).lean()).map((t) => ({ id: String(t._id), name: t.name })),
+    hospitals: (await Tenant.find({ 'platformAccess.until': { $gt: now } }, { name: 1 }).sort({ name: 1 }).lean()).map((t) => ({ id: String(t._id), name: t.name })),
     ...paged(q, total),
   });
 });

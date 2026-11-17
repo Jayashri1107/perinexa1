@@ -179,7 +179,9 @@ The owner is a doctor, not a software person. Ask them before changing any of th
 - **Super admin and platform admin (Perinexa1, 12 Oct 2026).** The first super admin is created on the first start
   (no password in a settings file). A super admin may open any hospital and work there with every role, patient records
   included (each record opened is in that hospital's audit log) – a deliberate change from "the super admin never sees
-  patient data". Platform admins see the same and change only what the super admin ticked (Users & access → User
+  patient data". **Changed 17 Nov 2026 (health check H3, the owner's decision):** patient records only while that
+  hospital's own admin allows support access (Hospital admin → Support access: a reason, 2 to 72 hours, ended early
+  at any time; both in its audit log). Without it a platform user sees the hospital's setup and staff only. Platform admins see the same and change only what the super admin ticked (Users & access → User
   permissions). Hospital admins reset passwords, remove access, change roles or edit staff details only with the super
   admin's permission; new people are added by the super admin. Review this before real patient data.
 - **Feature freeze lifted for the lab module (17 Oct 2026)** to build a full lab system (sample numbers and labels,
@@ -242,7 +244,8 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   its readings (once its make, model and export are known), the dashboard, and two-step approval (written, then signed
   by an authorised doctor). This replaces "Scans is for doctors and RMOs only" (19 Oct 2026). Built in Scans
   (`ImagingOrder`), not as a second system. The fetal-sex protection stays.
-- **Super admin: every hospital's patients on one page (24 Oct 2026)**: Platform → Patients, super admins only (not
+- **Super admin: every hospital's patients on one page (24 Oct 2026; since 17 Nov 2026 only the hospitals allowing
+  support access, health check H3)**: Platform → Patients, super admins only (not
   platform admins). Identity only – name, patient number, hospital, type of care, who added her and when; never the
   phone, address, age or anything medical. Opening one opens her hospital, where her record is seen and audited as
   before; each list shown is written to the audit log of every hospital in it (how many, never who).
