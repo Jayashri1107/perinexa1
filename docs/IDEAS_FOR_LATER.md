@@ -214,16 +214,11 @@ purchases to Tally (PH3), Stage C (PH11, PH15, PH24, PH17, PH16, PH26), Stage D 
 PH12, PH14, PH8).
 
 
-## Perinexa Android app (17 Nov 2026, after go-live – not built)
-The owner wants a Perinexa app for Android phones. Held until the health check is closed, the go-live checklist is
-complete and the first commercial version is agreed (feature freeze, `CLAUDE.md`). Until then staff use the website
-in Chrome on Android (**⋮ → Add to Home screen** gives an icon like an app); the website already has a phone layout.
-Questions for the developer and the owner before building:
-- **Which kind:** an installable web app (PWA – the existing website with an app icon, offline page and updates
-  without the Play Store; the least new code) or a store app wrapping the website (Capacitor or a Trusted Web
-  Activity) or a separate native app. Each new tool or library needs the developer's agreement.
-- **Who uses it:** staff only, or patients too (the patient portal).
-- **Security:** the same sign-in, two-step sign-in and 30-minute logout; nothing about patients kept on the phone
-  when signed out; what happens to a lost phone (end its sessions from My settings).
-- **Notifications** (new referral, lab result ready): only with no patient details on the lock screen.
-- **Play Store:** a developer account in the company's name, the store's health-app and privacy declarations.
+## Perinexa Android app (17 Nov 2026 – the owner wants it published; the app itself exists)
+Correction of the note first written here: the app was already made on 31 Oct and 5 Nov 2026 – `mobile/` (Capacitor,
+`com.perinexa.app`, it opens https://app.perinexa.com; Back, Print, files, camera and microphone; `mobile/README.md`).
+The owner approved going ahead with Android first. What remains is publishing it: install `mobile/`'s packages and try
+a test build on a phone; the signing (upload) key kept out of git; a 1024-pixel logo; a privacy policy address;
+patients deleting their own portal account (a Google Play rule for apps where people can sign up); the Google Play
+organisation account and its forms (data safety, health apps, a sample login for the reviewers). Real patients only
+after the go-live checklist, as for the website.
