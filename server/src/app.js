@@ -165,6 +165,7 @@ export function createApp({
   apiRateLimitMax = config.API_RATE_LIMIT_MAX,
   abdmPublicRateLimitMax = config.ABDM_PUBLIC_RATE_LIMIT_MAX,
   analyticsCacheMs = config.ANALYTICS_CACHE_SECONDS * 1000,
+  twoStepForAdmins = config.twoStepForAdmins,
   platformAnalyticsCacheMs = config.ANALYTICS_PLATFORM_CACHE_SECONDS * 1000,
 } = {}) {
   const app = express();
@@ -260,7 +261,7 @@ export function createApp({
     const ok = mongoose.connection.readyState === 1;
     res.status(ok ? 200 : 503).json({ ok });
   });
-  app.use('/api/auth', authRouter({ loginRateLimitMax }));
+  app.use('/api/auth', authRouter({ loginRateLimitMax, twoStepAdmins: twoStepForAdmins }));
   // From ABDM (Scan & Share): no staff login – ABDM's signature is checked (routes/abdm.js)
   app.use('/api/abdm/public', abdmPublicRouter);
   // The patient portal (Version 2): its own sign-in with a code, no staff login (routes/portal.js)

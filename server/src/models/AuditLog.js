@@ -12,6 +12,9 @@ export const AUDIT_ACTIONS = [
   'USER_ACTIVATED',
   'USER_DEACTIVATED',
   'PASSWORD_RESET',
+  // Two-step sign-in with an authenticator app (health check H4, 17 Nov 2026): turned on or off, reset by an admin for a
+  // lost phone, or a recovery code used to sign in
+  'TWO_STEP_ENABLED', 'TWO_STEP_DISABLED', 'TWO_STEP_RESET', 'TWO_STEP_RECOVERY_USED',
   'SUPER_ADMIN_GRANTED',
   'SUPER_ADMIN_REVOKED',
   'PLATFORM_ADMIN_CHANGED',
@@ -575,6 +578,7 @@ export const AUDIT_CATEGORIES = {
     'LOGIN_RATE_LIMITED',
     'PASSWORD_RESET',
     'PASSWORD_CHANGED',
+    'TWO_STEP_ENABLED', 'TWO_STEP_DISABLED', 'TWO_STEP_RESET', 'TWO_STEP_RECOVERY_USED',
     'USER_ACTIVATED',
     'USER_DEACTIVATED',
     'SUPER_ADMIN_GRANTED',

@@ -52,6 +52,9 @@ const schema = z.object({
   // a shared computer left signed in does not stay usable for days.
   SESSION_MAX_HOURS: z.coerce.number().int().min(1).max(72).default(12),
   COOKIE_SECURE: z.enum(['true', 'false']).optional(),
+  // Two-step sign-in (authenticator app) required for super admins, platform admins and hospital admins (health
+  // check H4, owner's decision of 17 Nov 2026). Default: on the live server only; everyone else may turn it on.
+  TWO_STEP_FOR_ADMINS: z.enum(['true', 'false']).optional(),
   // WRONG sign-in tries per 15 minutes from one internet address (right ones are not counted): a whole hospital often
   // shares one address. Each account also locks on its own after wrong tries (utils/loginLock.js).
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(30),
@@ -195,4 +198,5 @@ export const config = {
   RISK_REFRESH_IN_BACKGROUND: env.RISK_REFRESH_IN_BACKGROUND ? env.RISK_REFRESH_IN_BACKGROUND === 'true' : env.NODE_ENV !== 'test',
   // Secure cookies are only sent over HTTPS. Always on in production.
   cookieSecure: env.COOKIE_SECURE ? env.COOKIE_SECURE === 'true' : env.NODE_ENV === 'production',
+  twoStepForAdmins: env.TWO_STEP_FOR_ADMINS ? env.TWO_STEP_FOR_ADMINS === 'true' : env.NODE_ENV === 'production',
 };

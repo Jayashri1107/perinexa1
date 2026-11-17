@@ -20,7 +20,7 @@ function loadWriter() {
 }
 
 /** The QR code of `value` as an inline SVG, sizeMm wide. */
-export function QrCode({ value, sizeMm = 22, className = '' }) {
+export function QrCode({ value, sizeMm = 22, className = '', label = 'QR code to check this report' }) {
   const [svg, setSvg] = useState(null);
   useEffect(() => {
     let alive = true;
@@ -40,5 +40,5 @@ export function QrCode({ value, sizeMm = 22, className = '' }) {
   }, [value]);
   if (!svg) return null;
   // The SVG comes from ZXing's own writer for our own text – not from a person or the network
-  return <span className={`qr-code ${className}`.trim()} style={{ width: `${sizeMm}mm`, height: `${sizeMm}mm` }} role="img" aria-label="QR code to check this report" dangerouslySetInnerHTML={{ __html: svg }} />;
+  return <span className={`qr-code ${className}`.trim()} style={{ width: `${sizeMm}mm`, height: `${sizeMm}mm` }} role="img" aria-label={label} dangerouslySetInnerHTML={{ __html: svg }} />;
 }

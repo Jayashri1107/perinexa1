@@ -775,6 +775,9 @@ export function SwitchBackDialog({ onClose }) {
   const navigate = useNavigate();
   const ref = useDialogFocus(onClose);
   const [password, setPassword] = useState('');
+  // The super admin's two-step code too, when their two-step sign-in is on (health check H4): asked once the server says so
+  const [needCode, setNeedCode] = useState(false);
+  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const submit = async (e) => {
@@ -782,11 +785,15 @@ export function SwitchBackDialog({ onClose }) {
     setBusy(true);
     setError(null);
     try {
-      await switchToSuperAdmin(password);
+      await switchToSuperAdmin(password, needCode ? code : undefined);
       onClose();
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err.fields?.password ?? err.message);
+      if (err.code === 'TWO_STEP_CODE_NEEDED') {
+        setNeedCode(true);
+        setError(null);
+      } else setError(err.fields?.password ?? err.fields?.code ?? err.message);
+      setCode('');
       setBusy(false);
     }
   };
@@ -799,8 +806,13 @@ export function SwitchBackDialog({ onClose }) {
         <Field label="Super admin password" id="switch-back-password">
           <PasswordInput id="switch-back-password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
         </Field>
+        {needCode && (
+          <Field label="Code from your authenticator app" id="switch-back-code" hint="Or one of your recovery codes." keepHint>
+            <input id="switch-back-code" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} maxLength={20} autoFocus />
+          </Field>
+        )}
         <div className="row">
-          <button type="submit" className="btn btn-primary" disabled={!password || busy}>
+          <button type="submit" className="btn btn-primary" disabled={!password || (needCode && !code.trim()) || busy}>
             <ArrowLeftRight aria-hidden="true" /> {busy ? 'Switching…' : 'Switch back'}
           </button>
           <button type="button" className="btn btn-link" onClick={onClose}>

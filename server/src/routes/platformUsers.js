@@ -305,6 +305,21 @@ platformUsersRouter.post('/:id/reset-password', async (req, res) => {
   res.json({ user, temporaryPassword });
 });
 
+// A lost phone (health check H4): two-step sign-in is turned off for this person and their sessions end. At the next
+// sign-in they set it up again (it is required for admins), or may leave it off. The same people who may reset the
+// password may do this; never for oneself.
+platformUsersRouter.post('/:id/reset-two-step', async (req, res) => {
+  const { id } = parse(idParams, req.params);
+  const user = await findUserOr404(id);
+  await assertMayChange(req, user);
+  if (isSelf(req, user)) throw new HttpError(400, 'Use a recovery code to sign in, then set two-step sign-in up again under My profile.', 'SELF_ACTION');
+  user.twoStep = { enabled: false, enabledAt: null, secret: null, pending: null, lastStep: -1, recovery: [] };
+  user.tokenVersion += 1; // signs them out everywhere
+  await user.save();
+  await audit(req, 'TWO_STEP_RESET', { target: user });
+  res.json({ user });
+});
+
 // A platform admin (super admins only): sees what a super admin sees, view only, and may change the ticked areas.
 // Like a super admin, a platform admin is never a member of a hospital.
 const platformAdminSchema = z.object({

@@ -49,6 +49,16 @@ const userSchema = new mongoose.Schema(
     lastTenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', default: null },
     // Increased whenever existing sessions must stop working (logout, password change, deactivation).
     tokenVersion: { type: Number, default: 0 },
+    // Two-step sign-in with an authenticator app (health check H4, auth/totp.js). The secret is encrypted and, like
+    // the recovery codes' hashes and the pending secret of a set-up not yet confirmed, never read unless asked for.
+    twoStep: {
+      enabled: { type: Boolean, default: false },
+      enabledAt: { type: Date, default: null },
+      secret: { type: String, default: null, select: false },
+      pending: { type: String, default: null, select: false },
+      lastStep: { type: Number, default: -1 }, // the last 30-second step used: a code works once only
+      recovery: { type: [String], default: [], select: false },
+    },
   },
   { timestamps: true },
 );
@@ -76,6 +86,8 @@ userSchema.set('toJSON', {
     delete ret.passwordHash;
     delete ret.tokenVersion;
     delete ret.lastTenantId;
+    // Only whether two-step sign-in is on, never its secret, pending secret or recovery hashes
+    ret.twoStep = { enabled: Boolean(ret.twoStep?.enabled), enabledAt: ret.twoStep?.enabledAt ?? null };
     if (ret.linkedAccountId) ret.linkedAccountId = ret.linkedAccountId.toString();
     if (ret.ownedBy) ret.ownedBy = ret.ownedBy.toString();
     return ret;

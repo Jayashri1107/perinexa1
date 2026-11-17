@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { TwoStepSection } from '../components/TwoStep.jsx';
 import { Accessibility, ArrowLeft, BadgeCheck, Camera, ChevronRight, Eye, EyeOff, FileText, Info, Keyboard, KeyRound, LockKeyhole, LogOut, Mic, Palette, Pencil, Trash2, User } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
 import { api } from '../api.js';
@@ -14,7 +15,7 @@ import { asName } from '../personName.js';
 const PLATFORM_ROLE = { superadmin: 'Super admin', platformadmin: 'Platform admin' };
 const TABS = [
   { key: 'account', label: 'Account', icon: User, about: 'Photo, name and contact' },
-  { key: 'security', label: 'Security', icon: LockKeyhole, about: 'Password and signed-in devices' },
+  { key: 'security', label: 'Security', icon: LockKeyhole, about: 'Password, two-step sign-in and signed-in devices' },
   { key: 'appearance', label: 'Appearance', icon: Palette, about: 'Colours and font' },
   { key: 'accessibility', label: 'Accessibility', icon: Accessibility, about: 'Text size, spacing and animation' },
 ];
@@ -123,6 +124,7 @@ export function AccountPage() {
         {tab === 'security' && (
           <>
             <PasswordCard />
+            <TwoStepSection />
             <AccountRow />
           </>
         )}
