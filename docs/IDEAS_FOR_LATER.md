@@ -213,3 +213,17 @@ questions still open: `docs/PHARMACY_BUILD_NOTE.md` (read against perinexa1's ow
 purchases to Tally (PH3), Stage C (PH11, PH15, PH24, PH17, PH16, PH26), Stage D (PH13,
 PH12, PH14, PH8).
 
+
+## Perinexa Android app (17 Nov 2026, after go-live – not built)
+The owner wants a Perinexa app for Android phones. Held until the health check is closed, the go-live checklist is
+complete and the first commercial version is agreed (feature freeze, `CLAUDE.md`). Until then staff use the website
+in Chrome on Android (**⋮ → Add to Home screen** gives an icon like an app); the website already has a phone layout.
+Questions for the developer and the owner before building:
+- **Which kind:** an installable web app (PWA – the existing website with an app icon, offline page and updates
+  without the Play Store; the least new code) or a store app wrapping the website (Capacitor or a Trusted Web
+  Activity) or a separate native app. Each new tool or library needs the developer's agreement.
+- **Who uses it:** staff only, or patients too (the patient portal).
+- **Security:** the same sign-in, two-step sign-in and 30-minute logout; nothing about patients kept on the phone
+  when signed out; what happens to a lost phone (end its sessions from My settings).
+- **Notifications** (new referral, lab result ready): only with no patient details on the lock screen.
+- **Play Store:** a developer account in the company's name, the store's health-app and privacy declarations.
