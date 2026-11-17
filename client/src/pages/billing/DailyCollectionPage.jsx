@@ -7,7 +7,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { downloadFile } from '../../components/print/pdfExport.js';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
-import { Alert, KpiCard, StatusPill, formatDateTime, formatTime } from '../../components/ui.jsx';
+import { Alert, Field, KpiCard, StatusPill, formatDateTime, formatTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { addDaysIso, dayLabel } from '../appointments/appointmentFormat.js';
 import { amountInWords } from './amountWords.js';
@@ -255,7 +255,8 @@ export function DailySummaryPage() {
   const [printing, setPrinting] = useState(false);
   const [cancelling, setCancelling] = useState(null);
   const [filter, setFilter] = useState('');
-  const [excel, setExcel] = useState({ busy: false, error: null });
+  // asking: the reason box is open – a file of patient names needs a reason, kept in the audit log (health check M7)
+  const [excel, setExcel] = useState({ busy: false, error: null, asking: false, reason: '' });
   const d = res.data;
   const day = d?.date ?? date;
   const go = (x) => setParams({ date: x }, { replace: true });
@@ -266,13 +267,15 @@ export function DailySummaryPage() {
   const seesExport = activeMembership.roles.some((r) => REPORT_ROLES.includes(r));
   const today = new Date().toLocaleDateString('en-CA');
   const downloadExcel = async () => {
-    setExcel({ busy: true, error: null });
+    const reason = excel.reason.trim();
+    if (reason.length < 5) return setExcel((x) => ({ ...x, error: 'Say why you need this file (at least 5 characters).' }));
+    setExcel((x) => ({ ...x, busy: true, error: null }));
     try {
-      const { blob, name } = await apiFile('/billing/export', { query: { from: day, to: day, what: 'payments' } });
+      const { blob, name } = await apiFile('/billing/export', { query: { from: day, to: day, what: 'payments', reason } });
       downloadFile(blob, name);
-      setExcel({ busy: false, error: null });
+      setExcel({ busy: false, error: null, asking: false, reason: '' });
     } catch (err) {
-      setExcel({ busy: false, error: err.message });
+      setExcel((x) => ({ ...x, busy: false, error: err.message }));
     }
   };
   const f = d ? dayFigures(d) : null;
@@ -289,8 +292,8 @@ export function DailySummaryPage() {
           d && (
             <>
               {seesExport && (
-                <button type="button" className="btn btn-secondary" onClick={downloadExcel} disabled={excel.busy}>
-                  <Download aria-hidden="true" /> {excel.busy ? 'Preparing…' : 'Download Excel'}
+                <button type="button" className="btn btn-secondary" onClick={() => setExcel((x) => ({ ...x, asking: true, error: null }))} aria-expanded={excel.asking}>
+                  <Download aria-hidden="true" /> Download Excel
                 </button>
               )}
               <button type="button" className="btn btn-primary" onClick={() => setPrinting(true)}>
@@ -302,7 +305,22 @@ export function DailySummaryPage() {
       />
       <FoldCards className="pf-content dc-page" openFirst>
         {res.error && <Alert type="error">{res.error}</Alert>}
-        {excel.error && <Alert type="error">{excel.error}</Alert>}
+        {excel.asking && (
+          <section className="card" aria-label="Download Excel">
+            {excel.error && <Alert type="error">{excel.error}</Alert>}
+            <Field label="Reason for the download" id="dc-exp-reason" hint="The file holds patient names. The reason is kept in the audit log." keepHint>
+              <input id="dc-exp-reason" value={excel.reason} maxLength={200} placeholder="Day's accounts for the CA" onChange={(e) => setExcel((x) => ({ ...x, reason: e.target.value }))} />
+            </Field>
+            <div className="row">
+              <button type="button" className="btn btn-secondary" onClick={downloadExcel} disabled={excel.busy}>
+                <Download aria-hidden="true" /> {excel.busy ? 'Preparing…' : 'Download'}
+              </button>
+              <button type="button" className="btn btn-link" onClick={() => setExcel({ busy: false, error: null, asking: false, reason: '' })}>
+                Cancel
+              </button>
+            </div>
+          </section>
+        )}
         {day && (
           <div className="card dc-daybar">
             <div className="appt-daynav" role="group" aria-label="Day">

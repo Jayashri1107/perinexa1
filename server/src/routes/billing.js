@@ -22,7 +22,7 @@ import { fileUploadSchema, findFile, sendFile, storeFile } from '../utils/stored
 import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { assertNotHidden } from '../utils/patientAccess.js';
 import { mentionsFetalSex } from '../utils/pcpndt.js';
-import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
+import { escapeRegex, exportReason, objectId, parse, requiredDateOnly } from '../utils/validate.js';
 import { documentOffer, offerView, sendPatientPdf } from '../visits/whatsappDocuments.js';
 import { ipdBillingRouter } from './ipdBilling.js';
 
@@ -1052,7 +1052,8 @@ const amount = (p) => (p / 100).toFixed(2);
 
 billingRouter.get('/export', async (req, res) => {
   assertRole(req, REPORT_ROLES, 'The export is for the hospital admin and the billing department.');
-  const q = parse(z.object({ from: requiredDateOnly('From'), to: requiredDateOnly('To'), what: z.enum(['items', 'payments']) }).strict(), req.query);
+  // Both files hold patient names and numbers, so a reason is required (health check M7)
+  const q = parse(z.object({ from: requiredDateOnly('From'), to: requiredDateOnly('To'), what: z.enum(['items', 'payments']), reason: exportReason }).strict(), req.query);
   if (q.to < q.from || daysBetween(q.from, q.to) > 366) throw new HttpError(400, 'Choose a period of at most one year, ending after it starts.', 'VALIDATION');
   const [from, to] = [hospitalDayStart(q.from), hospitalDayStart(addDays(q.to, 1))];
   const field = q.what === 'items' ? 'lines.added.at' : 'payments.at';
@@ -1082,7 +1083,7 @@ billingRouter.get('/export', async (req, res) => {
       }
     }
   }
-  await audit(req, 'BILLING_EXPORTED', { details: { what: q.what, from: isoDay(q.from), to: isoDay(q.to), rows: rows.length - 1 } });
+  await audit(req, 'BILLING_EXPORTED', { details: { what: q.what, from: isoDay(q.from), to: isoDay(q.to), rows: rows.length - 1, reason: q.reason } });
   res.set('Content-Type', 'text/csv; charset=utf-8');
   res.set('Content-Disposition', `attachment; filename="perinexa-${q.what}-${isoDay(q.from)}-to-${isoDay(q.to)}.csv"`);
   res.send(csv(rows));

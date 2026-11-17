@@ -492,10 +492,13 @@ export function ReportsPage() {
   const reg = useFetch(view === 'registers' ? '/pharmacy/reports/register' : null, { type, from, to });
   const [printing, setPrinting] = useState(false);
   const [exportError, setExportError] = useState(null);
+  // The sales file names patients next to their medicines, so it needs a reason, kept in the audit log (health check M7)
+  const [reason, setReason] = useState('');
   const download = async (what) => {
     setExportError(null);
+    if (what === 'sales' && reason.trim().length < 5) return setExportError('Say why you need this file (at least 5 characters).');
     try {
-      const { blob, name } = await apiFile('/pharmacy/export', { query: { from, to, what } });
+      const { blob, name } = await apiFile('/pharmacy/export', { query: { from, to, what, ...(what === 'sales' ? { reason: reason.trim() } : {}) } });
       downloadFile(blob, name);
     } catch (err) {
       setExportError(err.message);
@@ -617,6 +620,9 @@ export function ReportsPage() {
             <h2 id="rep-export">Export for the accountant</h2>
             <p className="hint">Files that open in Excel, for the period above. They hold patient names: keep them safe. Cancelled purchases and cancelled returns are listed too, marked in the Status column.</p>
             <Alert type="error">{exportError}</Alert>
+            <Field label="Reason for the sales file" id="ph-exp-reason" hint="Needed for Sales with GST, which names patients. Kept in the audit log." keepHint>
+              <input id="ph-exp-reason" value={reason} maxLength={200} placeholder="GST return for the CA" onChange={(e) => setReason(e.target.value)} />
+            </Field>
             <div className="row">
               <button type="button" className="btn btn-secondary" onClick={() => download('sales')}>
                 <Download aria-hidden="true" /> Sales with GST

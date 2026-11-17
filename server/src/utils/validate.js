@@ -12,6 +12,14 @@ export const requiredDateOnly = (label) =>
 // The same, or null for "not given".
 export const dateOnly = (label) => z.union([requiredDateOnly(label), z.null()]);
 
+// Why a file with patient names is downloaded (owner's decision of 17 Nov 2026, health check M7): written to the audit
+// log with the download, so every bulk copy of names has a stated purpose.
+export const exportReason = z
+  .string('Say why you need this file')
+  .trim()
+  .min(5, 'Say why you need this file (at least 5 characters)')
+  .max(200, 'The reason is too long (at most 200 characters)');
+
 export const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Sorting for lists. `allowed` are field names; the browser sends e.g. "name" (A→Z) or "-createdAt" (newest first).

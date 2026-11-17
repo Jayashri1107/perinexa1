@@ -47,7 +47,7 @@ import { NOT_CANCELLED, returnTotals } from '../pharmacy/supplierReturnsService.
 import { checkOpening, nameKey, openingSchema, saveOpening } from '../pharmacy/openingStock.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
+import { escapeRegex, exportReason, objectId, parse, requiredDateOnly } from '../utils/validate.js';
 import { pharmacyOrdersRouter } from './pharmacyOrders.js';
 import { pharmacyRegisterRouter } from './pharmacyRegister.js';
 import { pharmacySupplierReturnsRouter } from './pharmacySupplierReturns.js';
@@ -1740,7 +1740,16 @@ const rs = (p) => (p / 100).toFixed(2);
 
 pharmacyRouter.get('/export', async (req, res) => {
   if (!hasRole(req.membership, ...PHARMACY_EXPORT_ROLES)) throw forbidden('The export is for the hospital admin.');
-  const q = parse(z.object({ from: requiredDateOnly('From'), to: requiredDateOnly('To'), what: z.enum(['sales', 'purchases', 'supplier_returns', 'supplier_payments']) }).strict(), req.query);
+  // The sales file names patients next to their medicines, so it needs a reason (health check M7); the supplier files do not
+  const q = parse(
+    z
+      .object({ from: requiredDateOnly('From'), to: requiredDateOnly('To'), what: z.enum(['sales', 'purchases', 'supplier_returns', 'supplier_payments']), reason: exportReason.optional() })
+      .strict()
+      .superRefine((b, ctx) => {
+        if (b.what === 'sales' && !b.reason) ctx.addIssue({ code: 'custom', path: ['reason'], message: 'Say why you need this file (at least 5 characters)' });
+      }),
+    req.query,
+  );
   const [from, to] = period(q);
   let rows;
   if (q.what === 'sales') {
@@ -1775,7 +1784,7 @@ pharmacyRouter.get('/export', async (req, res) => {
     rows = [['Purchase', 'Supplier', 'Invoice', 'Invoice date', 'Status', 'Medicine', 'Manufacturer', 'Batch', 'Expiry', 'Qty', 'Free', 'Rate', 'MRP', 'Value', 'Purchase order']];
     for (const v of views) for (const l of v.lines) rows.push([v.number, v.supplier, v.invoiceNo, v.invoiceDate, v.status, l.name, l.manufacturer ?? '', l.batch, l.expiry, l.qty, l.freeQty, rs(l.ratePaise), rs(l.mrpPaise), rs(l.ratePaise * l.qty), v.order?.number ?? '']);
   }
-  await audit(req, 'PHARMACY_EXPORTED', { details: { what: q.what, from: isoDay(q.from), to: isoDay(q.to), rows: rows.length - 1 } });
+  await audit(req, 'PHARMACY_EXPORTED', { details: { what: q.what, from: isoDay(q.from), to: isoDay(q.to), rows: rows.length - 1, ...(q.reason ? { reason: q.reason } : {}) } });
   res.set('Content-Type', 'text/csv; charset=utf-8');
   res.set('Content-Disposition', `attachment; filename="perinexa-pharmacy-${q.what.replace('_', '-')}-${isoDay(q.from)}-to-${isoDay(q.to)}.csv"`);
   res.send(csv(rows));
