@@ -3,6 +3,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { AuditLog } from '../src/models/AuditLog.js';
+import { Tenant } from '../src/models/Tenant.js';
 import { addMember, connectTestDb, createSuperAdmin, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const app = createApp();
@@ -17,6 +18,8 @@ beforeEach(async () => {
   root = await loginAs(await createSuperAdmin({ name: 'Root Admin' }), { app });
   north = await createTenant('North Sample Hospital');
   south = await createTenant('South Sample Hospital');
+  // Both hospitals' admins allow support access (health check H3, 17 Nov 2026 – tests/support-access.test.js tests it closed)
+  await Tenant.updateMany({}, { platformAccess: { until: new Date(Date.now() + 3600 * 1000), reason: 'Sample support', grantedByName: 'Sample Admin', grantedAt: new Date() } });
 });
 
 async function register(tenant, name, fullName, extra = {}) {

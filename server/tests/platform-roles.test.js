@@ -8,6 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { AuditLog } from '../src/models/AuditLog.js';
+import { Tenant } from '../src/models/Tenant.js';
 import { User } from '../src/models/User.js';
 import { addMember, connectTestDb, createSuperAdmin, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
@@ -108,7 +109,7 @@ describe('giving platform admin rights', () => {
 });
 
 describe("a hospital's setup", () => {
-  it('a super admin opens a hospital fully, like its own staff; every patient record opened is in its audit log', async () => {
+  it('a super admin opens a hospital fully during support access, like its own staff; every patient record opened is in its audit log', async () => {
     const doc = await loginAs(doctor, { app });
     expect((await doc.post('/api/patients').send(samplePatient({ fullName: 'Asha' }))).status).toBe(201);
 
@@ -119,7 +120,10 @@ describe("a hospital's setup", () => {
     expect((await s.get('/api/tenant/members')).status).toBe(200);
     expect((await s.get('/api/tenant/settings/letterhead')).status).toBe(200);
     expect((await s.put('/api/tenant/settings/letterhead').send({ name: 'Alpha Hospital Pvt Ltd' })).status).toBe(200);
-    // Owner's decision (12 Oct 2026, as in the earlier Perinexa1): patients, bills, pharmacy – everything
+    // Patients, bills, pharmacy: only while the hospital's admin allows support access (health check H3; owner's
+    // decision of 17 Nov 2026, replacing that of 12 Oct – tests/support-access.test.js)
+    expect((await s.get('/api/patients')).body.error.code).toBe('NO_SUPPORT_ACCESS');
+    await Tenant.updateOne({ _id: hospital._id }, { platformAccess: { until: new Date(Date.now() + 3600 * 1000), reason: 'Sample support', grantedByName: 'Dr. Alpha', grantedAt: new Date() } });
     for (const url of ['/api/patients', '/api/billing/bills', '/api/pharmacy/medicines', '/api/today', '/api/calendar']) {
       const res = await s.get(url);
       expect(res.status, url).toBe(200);
@@ -155,7 +159,9 @@ describe("a hospital's setup", () => {
     const editor = await loginAs(await platformAdmin(['hospitalSetup']), { app });
     await openHospital(editor, hospital);
     expect((await editor.put('/api/tenant/settings/letterhead').send({ name: 'Changed' })).status).toBe(200);
-    // A platform admin looks at the patients but never changes them
+    // A platform admin looks at the patients during support access, but never changes them
+    expect((await editor.get('/api/patients')).status).toBe(403);
+    await Tenant.updateOne({ _id: hospital._id }, { platformAccess: { until: new Date(Date.now() + 3600 * 1000), reason: 'Sample support', grantedByName: 'Dr. Alpha', grantedAt: new Date() } });
     expect((await editor.get('/api/patients')).status).toBe(200);
     const noPatient = await editor.post('/api/patients').send(samplePatient({ fullName: 'Nope' }));
     expect(noPatient.status).toBe(403);

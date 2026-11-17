@@ -6,6 +6,7 @@ import { Membership, TENANT_ROLES, departmentsOf, hasRole } from '../models/Memb
 import { Tenant } from '../models/Tenant.js';
 import { User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { HttpError } from '../utils/httpError.js';
+import { NO_SUPPORT_ACCESS, supportAccessOpen } from '../utils/platformAccess.js';
 
 export const COOKIE_NAME = 'perinexa_session';
 export const TENANT_HEADER = 'x-tenant-id';
@@ -45,7 +46,8 @@ export function clearAuthCookie(res) {
 }
 
 // A super admin or platform admin opening a hospital's setup: not a member, but the hospital admin's role there, marked
-// `platform` so platformHospitalGuard lets them reach the setup only (never patients, bills, the pharmacy counter …).
+// `platform` so platformHospitalGuard lets them reach the setup only – patients, bills and the pharmacy only while the
+// hospital's admin allows support access (health check H3, 17 Nov 2026).
 // `readOnly`: a platform admin who was not given "hospitalSetup" may look but not change.
 const platformMembership = (user, tenant) => ({
   userId: user._id,
@@ -216,8 +218,8 @@ export const requirePlatform = (area) => (req, _res, next) => {
 /** A hospital's staff (people, their roles and access) belong to "User accounts"; the rest of a hospital to its area. */
 export const staffOr = (area) => (req) => (/\/members(\/|$)/.test(req.originalUrl.split('?')[0]) ? 'users' : area);
 
-// Inside a hospital a platform user reaches its setup only – the pages under Hospital admin – and never anything
-// with patients in it (records, bills, the pharmacy, the calendar, analytics lists). Paths are relative to /api.
+// Inside a hospital a platform user reaches its setup – the pages under Hospital admin – and anything with patients in it
+// (records, bills, the pharmacy, the calendar, analytics lists) only during support access. Paths are relative to /api.
 const PLATFORM_HOSPITAL_PATHS = [
   /^\/tenant\/(members|audit-logs|settings|doctors)(\/|$)/,
   /^\/appointments\/(doctors|timings)(\/|$)/,
@@ -226,15 +228,19 @@ const PLATFORM_HOSPITAL_PATHS = [
 ];
 
 /**
- * After requireTenant. A super admin in a hospital: everything, like its own staff (owner's decision, 12 Oct 2026 –
- * every patient record opened is in the hospital's audit log). A platform admin: reads everything, and changes only
- * the hospital's setup and staff, as far as a super admin allowed.
+ * After requireTenant. A platform user reaches the hospital's setup and staff (as far as a super admin allowed a platform
+ * admin to change them). Anything else – patients, bills, the pharmacy, the lab – only while the hospital's own admin
+ * allows support access (health check H3; owner's decision of 17 Nov 2026, utils/platformAccess.js); then a super admin
+ * works like its staff and a platform admin reads. Every record opened is in the hospital's audit log.
  */
 export function platformHospitalGuard(req, _res, next) {
-  if (!req.membership?.platform || req.user.isSuperAdmin) return next();
-  if (READS.has(req.method)) return next();
+  if (!req.membership?.platform) return next();
   const path = req.originalUrl.split('?')[0].replace(/^\/api/, '');
-  if (!PLATFORM_HOSPITAL_PATHS.some((rx) => rx.test(path))) {
+  const setup = PLATFORM_HOSPITAL_PATHS.some((rx) => rx.test(path));
+  if (!setup && !supportAccessOpen(req.tenant, req.now ?? new Date())) throw new HttpError(403, NO_SUPPORT_ACCESS, 'NO_SUPPORT_ACCESS');
+  if (req.user.isSuperAdmin) return next();
+  if (READS.has(req.method)) return next();
+  if (!setup) {
     throw new HttpError(403, 'View only: a platform admin changes only a hospital\'s setup and staff, never its patients, bills or pharmacy.', 'VIEW_ONLY');
   }
   if (!READS.has(req.method) && !canEditPlatform(req.user, staffOr('hospitalSetup')(req))) throw new HttpError(403, VIEW_ONLY, 'VIEW_ONLY');

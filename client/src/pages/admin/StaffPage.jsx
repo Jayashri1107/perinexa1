@@ -41,6 +41,7 @@ const HUB_GROUPS = [
       { label: 'ABDM', sub: 'ABHA and record sharing', to: '/admin/abdm', icon: ShieldCheck },
       { label: 'Referrals', sub: 'Referral settings', to: '/admin/referrals', icon: Share2 },
       { label: 'Ultrasound machine', sub: 'Connection to the machine', to: '/admin/ultrasound-machine', icon: ScanLine },
+      { label: 'Support access', sub: 'Perinexa staff and patient records', to: '/admin/support-access', icon: ShieldCheck },
     ],
   },
 ];

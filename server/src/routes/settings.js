@@ -10,6 +10,7 @@ import { REFERRAL_SETTINGS_FIELDS, referralSettingsFor, referralSettingsSchema }
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { parse } from '../utils/validate.js';
+import { SUPPORT_HOURS, supportAccessOpen, supportAccessView } from '../utils/platformAccess.js';
 
 const text = (label, max) => z.string().trim().max(max, `${label} is too long`).default('');
 
@@ -129,4 +130,49 @@ tenantSettingsRouter.put('/referrals', requireTenantRole('admin'), async (req, r
     await audit(req, 'REFERRAL_SETTINGS_CHANGED', { details: { fields: changed } }); // names only, never the values
   }
   res.json(await referralAnswer(req, tenant));
+});
+
+// ---------- Support access for Perinexa's own staff (health check H3; owner's decision of 17 Nov 2026) ----------
+// The hospital's own admin – never a super admin or platform admin, who reach these settings too – allows Perinexa's
+// staff to open this hospital's patient records for a stated reason and a few hours, and can end it at any time.
+// Platform users see whether it is open (so they know why records are closed). Both are in the hospital's audit log.
+const supportSchema = z
+  .object({
+    hours: z.coerce.number().refine((h) => SUPPORT_HOURS.includes(h), `Choose ${SUPPORT_HOURS.join(', ')} hours`),
+    reason: z.string().trim().min(5, 'Say why Perinexa staff need the records (at least 5 characters)').max(200, 'The reason is too long'),
+  })
+  .strict();
+const ownAdminOnly = (req) => {
+  if (req.membership?.platform || !hasRole(req.membership, 'admin')) {
+    throw new HttpError(403, "Only this hospital's own admin allows or ends support access.", 'FORBIDDEN');
+  }
+};
+
+tenantSettingsRouter.get('/support-access', async (req, res) => {
+  if (!req.membership?.platform && !hasRole(req.membership, 'admin')) throw new HttpError(403, 'You do not have permission to do this.', 'FORBIDDEN');
+  const tenant = await Tenant.findById(req.tenantId, { platformAccess: 1 }).lean();
+  res.json({ access: supportAccessView(tenant, req.now ?? new Date()), hours: SUPPORT_HOURS, canChange: !req.membership?.platform && hasRole(req.membership, 'admin') });
+});
+
+tenantSettingsRouter.put('/support-access', async (req, res) => {
+  ownAdminOnly(req);
+  const body = parse(supportSchema, req.body);
+  const now = req.now ?? new Date();
+  const until = new Date(now.getTime() + body.hours * 3600 * 1000);
+  const tenant = await Tenant.findByIdAndUpdate(
+    req.tenantId,
+    { $set: { platformAccess: { until, reason: body.reason, grantedBy: req.user._id, grantedByName: req.user.name, grantedAt: now } } },
+    { returnDocument: 'after', projection: { platformAccess: 1 } },
+  ).lean();
+  await audit(req, 'SUPPORT_ACCESS_GRANTED', { details: { hours: body.hours, until: until.toISOString(), reason: body.reason } });
+  res.json({ access: supportAccessView(tenant, now), hours: SUPPORT_HOURS, canChange: true });
+});
+
+tenantSettingsRouter.delete('/support-access', async (req, res) => {
+  ownAdminOnly(req);
+  const now = req.now ?? new Date();
+  const before = await Tenant.findById(req.tenantId, { platformAccess: 1 }).lean();
+  const tenant = await Tenant.findByIdAndUpdate(req.tenantId, { $set: { 'platformAccess.until': null } }, { returnDocument: 'after', projection: { platformAccess: 1 } }).lean();
+  if (supportAccessOpen(before, now)) await audit(req, 'SUPPORT_ACCESS_ENDED', { details: { early: true } });
+  res.json({ access: supportAccessView(tenant, now), hours: SUPPORT_HOURS, canChange: true });
 });
