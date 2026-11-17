@@ -11,6 +11,7 @@ import { fertilityFacts, suggestProtocols } from '../src/fertility/suggest.js';
 import { AuditLog } from '../src/models/AuditLog.js';
 import { Patient } from '../src/models/Patient.js';
 import * as website from '../../client/src/pages/patients/fertilityFormat.js';
+import { SEX_SELECTION_MESSAGE, mentionsSexSelection } from '../src/utils/pcpndt.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const fits = (s) => Object.fromEntries(s.options.filter((o) => o.fit !== 'other').map((o) => [o.key, o.fit]));
@@ -418,5 +419,41 @@ describe('a treatment plan', () => {
     const closed = await build('drA', q);
     expect(closed.status).toBeGreaterThanOrEqual(400);
     expect(closed.body.error.code).toBeDefined();
+  });
+});
+
+// Health check M6 (owner's decision, 17 Nov 2026): the PCPNDT Act also forbids choosing a child's sex before
+// conception, so the plan's and the cycle sheet's free text refuse it – while the clinical words stay allowed.
+describe('sex selection in a fertility plan', () => {
+  it('never appears in the library, and the clinical words of the male work-up are allowed', () => {
+    for (const p of PROTOCOLS) {
+      const plan = composePlan([p.key]);
+      for (const s of plan.sections) expect(mentionsSexSelection(s.text), `${p.key}/${s.key}`).toBe(false);
+      expect(mentionsSexSelection(plan.title), p.key).toBe(false);
+    }
+    expect(mentionsSexSelection(JSON.stringify(PROTOCOLS))).toBe(false);
+    for (const ok of ['Male factor: oligozoospermia', 'Karyotype 47,XXY excluded', 'Sexual health counselling', 'Female partner 32 years', 'Husband to repeat semen analysis', 'Person', 'Season']) {
+      expect(mentionsSexSelection(ok), ok).toBe(false);
+    }
+    for (const bad of ['Couple wants a male child', 'They want a boy', 'Ladka chahiye', 'Asked about sex selection', 'Gender of the embryo', 'sex-selective transfer', 'Sex of the baby', 'Second daughter, wants son']) {
+      expect(mentionsSexSelection(bad), bad).toBe(true);
+    }
+  });
+
+  it('is refused in the plan text, the title and the outcome note', async () => {
+    const p = await register({ fullName: 'Sample Selection' });
+    await history('drA', p);
+    const plan = (await build('drA', p, ['oi_letrozole'])).body.plan;
+    const dr = await as('drA');
+    const withText = (text) => plan.sections.map((s) => (s.key === 'aim' ? { ...s, text } : s));
+    let res = await dr.put(url(p, `/${plan.id}`)).send({ rev: plan.rev, title: plan.title, startOn: null, reviewOn: null, sections: withText('Couple requests a male child') });
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(res.body)).toContain(SEX_SELECTION_MESSAGE);
+    res = await dr.put(url(p, `/${plan.id}`)).send({ rev: plan.rev, title: 'Letrozole – wants a boy', startOn: null, reviewOn: null, sections: plan.sections });
+    expect(res.status).toBe(400);
+    res = await dr.put(url(p, `/${plan.id}`)).send({ rev: plan.rev, title: plan.title, startOn: null, reviewOn: null, sections: withText('Male factor mild; karyotype 46,XY normal') });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    res = await dr.post(url(p, `/${plan.id}/status`)).send({ rev: res.body.plan.rev, status: 'stopped', outcome: { kind: 'discarded', note: 'They want a girl' } });
+    expect(res.status).toBe(400);
   });
 });

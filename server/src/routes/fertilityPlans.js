@@ -17,6 +17,7 @@ import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { patientAccess } from '../utils/patientAccess.js';
+import { SEX_SELECTION_MESSAGE, fertilityText, mentionsSexSelection } from '../utils/pcpndt.js';
 import { findPatient } from '../utils/patientLookup.js';
 import { dateOnly, objectId, parse } from '../utils/validate.js';
 
@@ -166,7 +167,7 @@ const createSchema = z
         planId: objectId,
         rev,
         cyclesDone: z.coerce.number('Cycles must be a number').int('Cycles must be a whole number').min(0, "Cycles can't be negative").max(50, 'Too many cycles').default(0),
-        note: z.string().trim().max(500, 'The note is too long').default(''),
+        note: fertilityText('The note', 500).default(''),
       })
       .strict()
       .optional(),
@@ -263,14 +264,14 @@ fertilityPlanRouter.post('/', async (req, res) => {
 const sectionSchema = z
   .object({
     key: z.string().min(1).max(40),
-    title: z.string().trim().min(1, 'Give the section a title').max(100, 'The section title is too long'),
-    text: z.string().max(MAX_SECTION_TEXT, 'A section is too long'),
+    title: fertilityText('The section title', 100).pipe(z.string().min(1, 'Give the section a title')),
+    text: z.string().max(MAX_SECTION_TEXT, 'A section is too long').refine((t) => !mentionsSexSelection(t), SEX_SELECTION_MESSAGE),
   })
   .strict();
 const editSchema = z
   .object({
     rev,
-    title: z.string().trim().min(1, 'Give the plan a title').max(200, 'The title is too long'),
+    title: fertilityText('The title', 200).pipe(z.string().min(1, 'Give the plan a title')),
     startOn: z.preprocess(emptyToNull, dateOnly('Start date')).default(null),
     reviewOn: z.preprocess(emptyToNull, dateOnly('Review date')).default(null),
     sections: z.array(sectionSchema).min(1, 'A plan needs at least one section').max(12, 'Too many sections'),
@@ -302,7 +303,7 @@ const statusSchema = z
   .object({
     rev,
     status: z.enum(['active', 'completed', 'stopped'], 'Choose what happens to the plan'),
-    outcome: z.object({ kind: z.enum(OUTCOME_KINDS, 'Choose the outcome from the list'), note: z.string().trim().max(500, 'The note is too long').default('') }).strict().optional(),
+    outcome: z.object({ kind: z.enum(OUTCOME_KINDS, 'Choose the outcome from the list'), note: fertilityText('The note', 500).default('') }).strict().optional(),
   })
   .strict();
 
@@ -390,7 +391,7 @@ export function cycleView(cycle) {
   };
 }
 
-const cycleText = (label, max) => z.string().trim().max(max, `${label} is too long`);
+const cycleText = (label, max) => fertilityText(label, max);
 const optionalNumber = (label, { min, max }) => z.preprocess(emptyToNull, z.union([z.null(), z.coerce.number(`${label} must be a number`).min(min, `${label} is too low`).max(max, `${label} is too high`)])).default(null);
 const optionalDay = (label) => z.preprocess(emptyToNull, dateOnly(label)).default(null);
 const choiceOf = (keys, label) => z.preprocess((v) => v ?? '', z.enum([...keys, ''], `Choose ${label} from the list`)).default('');
