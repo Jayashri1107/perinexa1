@@ -1190,6 +1190,7 @@ export function InvoicePage() {
   return (
     <>
       <PharmacyHeader
+        className="ph-counter-head"
         title={`Invoice ${v.number}`}
         crumb={v.number}
         actions={
@@ -1204,8 +1205,9 @@ export function InvoicePage() {
         }
       />
       {/* One invoice, laid out as an invoice (13 Nov 2026): the bill on the left – number, date and status, who it is
-          for, the medicines and the totals; beside it how it was paid, what came back and the prescription */}
-      <div className="pf-content bill-page">
+          for, the medicines and the totals; beside it how it was paid, what came back and the prescription. 18 Nov 2026 (the
+          pharmacy): compact, as the earlier software – the whole bill on one screen */}
+      <div className="pf-content bill-page ph-inv-page">
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>

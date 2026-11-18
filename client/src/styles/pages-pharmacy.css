@@ -1200,3 +1200,36 @@
   .ph-sold-results .dt td { height: 30px; padding: 2px 8px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
   .ph-sold-results .dt .pill, .ph-sold-results .dt .status-pill { padding: 1px 8px; font-size: 0.75rem; }
 }
+
+/* 18 Nov 2026 (the pharmacy): one invoice on one screen, as the earlier software – small text, slim rows, little space */
+.ph-inv-page { gap: var(--space-2); font-size: 0.8125rem; }
+.ph-inv-page .ph-inv { gap: var(--space-3); }
+.ph-inv-page .ph-inv-main { padding: var(--space-3) var(--space-4); }
+.ph-inv-page .ph-inv-head { align-items: center; padding-bottom: var(--space-2); margin-bottom: var(--space-2); }
+.ph-inv-page .ph-inv-head > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); }
+.ph-inv-page .ph-inv-kicker { margin: 0; font-size: 0.6875rem; }
+.ph-inv-page .ph-inv-no { font-size: 1.125rem; }
+.ph-inv-page .ph-inv-date { margin: 0; font-size: 0.8125rem; }
+.ph-inv-page .ph-inv .ph-inv-facts { gap: 2px var(--space-3); margin-bottom: var(--space-2); padding: 6px var(--space-3); }
+.ph-inv-page .ph-inv-facts dt { font-size: 0.6875rem; }
+.ph-inv-page .ph-inv-facts dd { font-size: 0.8125rem; }
+.ph-inv-page .ph-inv-lines { font-size: 0.8125rem; }
+.ph-inv-page .ph-inv-lines :is(th, td) { padding: 4px 8px; }
+.ph-inv-page .ph-inv-lines thead th { font-size: 0.6875rem; }
+.ph-inv-page .ph-inv-totals { margin-top: var(--space-2); }
+.ph-inv-page .ph-inv-totals dl { gap: 1px; width: min(100%, 280px); }
+.ph-inv-page .ph-inv-totals dl > div { font-size: 0.8125rem; }
+.ph-inv-page .ph-inv-totals .ph-inv-grand { margin-top: 4px; padding: 4px var(--space-3); font-size: 0.9375rem; }
+.ph-inv-page .ph-inv-side { gap: var(--space-2); top: var(--space-2); }
+.ph-inv-page .ph-inv-card { padding: var(--space-3); }
+.ph-inv-page .ph-inv-card h2 { margin: 0 0 var(--space-2); font-size: 0.875rem; }
+.ph-inv-page .ph-inv-paid { gap: 6px; }
+.ph-inv-page .ph-inv-paid > div { padding: 4px var(--space-2); }
+.ph-inv-page .ph-inv-paid dt { font-size: 0.6875rem; }
+.ph-inv-page .ph-inv-paid dd { font-size: 0.9375rem; }
+.ph-inv-page .ph-inv-receive { margin-top: var(--space-2); min-height: 30px; padding: 2px 10px; font-size: 0.8125rem; }
+.ph-inv-page .ph-inv-list { margin-top: var(--space-2); }
+.ph-inv-page .ph-inv-list li { padding: 4px 0; }
+.ph-inv-page .ph-inv-row { font-size: 0.8125rem; }
+.ph-inv-page .hint { margin: 4px 0 0; font-size: 0.75rem; }
+.ph-counter-head .ph-actions .btn { min-height: 32px; padding: 4px 12px; font-size: 0.8125rem; }
