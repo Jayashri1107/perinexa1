@@ -105,12 +105,14 @@ export function NewSupplierReturnPage() {
   return (
     <>
       <PharmacyHeader title="Return stock to a supplier" crumb="New return" buying />
-      <div className="pf-content bill-page">
+      {/* 18 Nov 2026 (the pharmacy): one screen – supplier, reason and note on one line; the batches beside the debit note,
+          the batch list scrolling inside its box */}
+      <div className="pf-content bill-page sr-new">
         <Alert type="error" onClose={() => s.setError(null)}>
           {s.error}
         </Alert>
-        <section className="card bill-section">
-          <h2>Supplier</h2>
+        <section className="card bill-section sr-new-head">
+          <h2 className="sr-only">Supplier</h2>
           <div className="form-grid">
             <Field label="Return to" id="sr-sup" hint="A batch goes back to the supplier it was bought from.">
               <select id="sr-sup" value={supplierId} onChange={(e) => choose(e.target.value)}>
@@ -139,8 +141,9 @@ export function NewSupplierReturnPage() {
           </div>
         </section>
 
+        <div className="sr-new-body">
         {supplierId && (
-          <section className="card bill-section">
+          <section className="card bill-section sr-new-batches">
             <div className="row-between">
               <h2>Batches bought from this supplier</h2>
               <div className="segmented" role="group" aria-label="Which batches">
@@ -164,6 +167,7 @@ export function NewSupplierReturnPage() {
             {data && !batches.length && <p className="muted">No stock in hand was bought from this supplier.</p>}
             {data && batches.length > 0 && !shown.length && <p className="muted">{show === 'near' ? 'No expired or near-expiry batch from this supplier.' : 'No expired batch from this supplier.'}</p>}
             {shown.length > 0 && (
+              <div className="sr-new-scroll">
               <table className="bill-lines ph-return-lines">
                 <thead>
                   <tr>
@@ -222,6 +226,7 @@ export function NewSupplierReturnPage() {
                   })}
                 </tbody>
               </table>
+              </div>
             )}
             {bad.length > 0 && <p className="field-error">Check the quantity of {bad[0].b.name}, batch {bad[0].b.batch}: a whole number, at most {bad[0].b.qtyLeft}.</p>}
             {keptInList > 0 && (
@@ -240,7 +245,7 @@ export function NewSupplierReturnPage() {
         )}
 
         {chosen.length > 0 && (
-          <section className="card bill-section">
+          <section className="card bill-section sr-new-note">
             <h2>The debit note</h2>
             <table className="bill-lines ph-return-chosen">
               <caption className="sr-only">What goes back to the supplier</caption>
@@ -314,6 +319,7 @@ export function NewSupplierReturnPage() {
             {!reason && <p className="hint">Choose the reason first.</p>}
           </section>
         )}
+        </div>
       </div>
     </>
   );

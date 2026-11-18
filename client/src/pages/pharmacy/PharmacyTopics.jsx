@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 // Reports → All topics (18 Nov 2026, the pharmacy department's handwritten list of 16 Nov 2026): every topic of the
@@ -64,31 +65,49 @@ export const PHARMACY_TOPICS = [
   },
 ];
 
+/** A topic fits what was typed in the search box: its name or what it says, any case. */
+export const topicFits = ([name, , how], text) => !text.trim() || `${name} ${how}`.toLowerCase().includes(text.trim().toLowerCase());
+
 export function PharmacyTopics() {
+  const [text, setText] = useState('');
+  let n = 0;
   return (
     <div className="ph-topics">
-      {PHARMACY_TOPICS.map((g) => (
-        <section key={g.title} className="card bill-section" aria-label={g.title}>
-          <h2>{g.title}</h2>
-          <ul className="ph-topic-list">
-            {g.items.map(([name, to, how]) => (
-              <li key={name}>
-                <div>
-                  <strong>{name}</strong>
-                  {how && <span className="hint"> – {how}</span>}
-                </div>
-                {to ? (
-                  <Link className="btn btn-secondary btn-sm" to={to}>
-                    Open
-                  </Link>
-                ) : (
-                  <span className="muted">Not built</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      <section className="card ph-topics-intro" aria-label="How to use this list">
+        <p>
+          Every topic from the pharmacy’s list, by the same name. Find the topic (or type a word below), read the short line under it – that is what to do on that screen – and press <strong>Open</strong> to go there.
+        </p>
+        <input type="search" className="ph-topics-find" aria-label="Find a topic" placeholder="Find a topic, e.g. credit, expiry, GRN" value={text} onChange={(e) => setText(e.target.value)} />
+      </section>
+      <div className="ph-topics-groups">
+        {PHARMACY_TOPICS.map((g) => {
+          const items = g.items.map((it) => ({ it, no: ++n })).filter(({ it }) => topicFits(it, text));
+          if (!items.length) return null;
+          return (
+            <section key={g.title} className="card ph-topics-group" aria-label={g.title}>
+              <h2>{g.title}</h2>
+              <ol className="ph-topic-list">
+                {items.map(({ it: [name, to, how], no }) => (
+                  <li key={name}>
+                    <span className="ph-topic-no">{no}</span>
+                    <div className="ph-topic-text">
+                      <strong>{name}</strong>
+                      {how && <span>{how}</span>}
+                    </div>
+                    {to ? (
+                      <Link className="btn btn-secondary btn-sm" to={to}>
+                        Open
+                      </Link>
+                    ) : (
+                      <span className="ph-topic-none">Not built</span>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
