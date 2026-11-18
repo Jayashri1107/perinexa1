@@ -7,6 +7,23 @@ import { expiryLabel } from './pharmacyFormat.js';
 import { PharmacyHeader, money } from './pharmacyUi.jsx';
 import { WitnessFields, emptyWitness } from '../../components/WitnessFields.jsx';
 import { FIELD_LABELS, readStockFile } from './stockFile.js';
+import { typedMonth } from './MisReports.jsx';
+
+const rupeesToPaise = (text) => (/^\d+(\.\d{0,2})?$/.test(String(text).trim()) ? Math.round(Number(text) * 100) : String(text).trim());
+/** One item typed by hand (18 Nov 2026, the pharmacy's request – opening balance, add item) as a line of the file. */
+export function handLine(f) {
+  return {
+    row: 1,
+    name: f.name.trim(),
+    batch: f.batch.trim(),
+    expiry: typedMonth(f.expiry) ?? f.expiry.trim(),
+    qty: /^\d+$/.test(f.qty.trim()) ? Number(f.qty) : f.qty.trim(),
+    mrpPaise: rupeesToPaise(f.mrp),
+    ratePaise: rupeesToPaise(f.rate),
+    gstRate: f.gst === '' ? null : Number(f.gst),
+  };
+}
+const EMPTY_HAND = { name: '', batch: '', expiry: '', qty: '', mrp: '', rate: '', gst: '5' };
 
 // Pharmacy → Stock → Import opening stock (29 Oct 2026): the stock already on the shelves, from the old pharmacy
 // software's Excel file. The file is read in this browser; its lines are checked by the server (every problem listed,
@@ -21,6 +38,25 @@ export function OpeningStockPage() {
   const [done, setDone] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [hand, setHand] = useState(EMPTY_HAND);
+
+  // The item typed by hand is checked and brought in exactly as a one-line file
+  const checkHand = async () => {
+    setError(null);
+    setChecked(null);
+    setDone(null);
+    setBusy(true);
+    try {
+      const lines = [handLine(hand)];
+      setFile({ name: `${hand.name.trim()} (typed by hand)`, lines, columns: [] });
+      setChecked(await api('/pharmacy/opening-stock/check', { method: 'POST', body: { lines } }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const handSet = (k) => (e) => setHand({ ...hand, [k]: e.target.value });
 
   const choose = async (e) => {
     const f = e.target.files?.[0];
@@ -52,6 +88,7 @@ export function OpeningStockPage() {
       setDone(res.imported);
       setChecked(null);
       setFile(null);
+      setHand(EMPTY_HAND);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -84,6 +121,45 @@ export function OpeningStockPage() {
             <input id="os-file" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" onChange={choose} disabled={busy} />
           </Field>
           {busy && <p className="muted">{checked ? 'Bringing in the stock…' : 'Reading and checking the file…'}</p>}
+        </section>
+
+        <section className="card bill-section" aria-labelledby="os-hand">
+          <h2 id="os-hand">Or add one item by hand</h2>
+          <p className="hint">One batch on the shelf: it is checked like a line of the file, then Import brings it in. A name not on the medicine list becomes a new medicine.</p>
+          <div className="form-grid">
+            <Field label="Item name" id="os-h-name">
+              <input id="os-h-name" value={hand.name} maxLength={150} onChange={handSet('name')} />
+            </Field>
+            <Field label="Batch no" id="os-h-batch">
+              <input id="os-h-batch" value={hand.batch} maxLength={40} onChange={handSet('batch')} />
+            </Field>
+            <Field label="Expiry (MM/YY)" id="os-h-exp">
+              <input id="os-h-exp" value={hand.expiry} maxLength={7} inputMode="numeric" placeholder="08/27" onChange={handSet('expiry')} />
+            </Field>
+            <Field label="Quantity (units)" id="os-h-qty">
+              <input id="os-h-qty" value={hand.qty} maxLength={7} inputMode="numeric" onChange={handSet('qty')} />
+            </Field>
+            <Field label="MRP of a unit ₹" id="os-h-mrp">
+              <input id="os-h-mrp" value={hand.mrp} maxLength={10} inputMode="decimal" onChange={handSet('mrp')} />
+            </Field>
+            <Field label="Purchase rate of a unit ₹" id="os-h-rate">
+              <input id="os-h-rate" value={hand.rate} maxLength={10} inputMode="decimal" onChange={handSet('rate')} />
+            </Field>
+            <Field label="GST %" id="os-h-gst">
+              <select id="os-h-gst" value={hand.gst} onChange={handSet('gst')}>
+                {['0', '5', '18'].map((g) => (
+                  <option key={g} value={g}>
+                    {g} %
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <div className="row">
+            <button type="button" className="btn btn-secondary" disabled={busy || !hand.name.trim() || !hand.batch.trim() || !hand.qty.trim()} onClick={checkHand}>
+              Check the item
+            </button>
+          </div>
         </section>
 
         {checked && (

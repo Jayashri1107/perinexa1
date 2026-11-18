@@ -218,6 +218,10 @@ describe('returns to a supplier', () => {
     expect(returnBatchesShown(batches, typed, false).map((b) => b.id)).toEqual(['old', 'fresh', 'other']);
     expect(returnBatchesShown(batches, typed, true).map((b) => b.id)).toEqual(['old', 'fresh']); // "fresh" stays in sight
     expect(returnBatchesShown(batches, {}, true).map((b) => b.id)).toEqual(['old']);
+    // 18 Nov 2026: expired or near expiry (90 days)
+    const soon = [...batches.map((b) => ({ ...b, daysLeft: b.expired ? -5 : 400 })), { id: 'soon', name: 'Soon Tab', expired: false, daysLeft: 60, qtyLeft: 5 }];
+    expect(returnBatchesShown(soon, {}, 'near').map((b) => b.id)).toEqual(['old', 'soon']);
+    expect(returnBatchesShown(soon, {}, 'expired').map((b) => b.id)).toEqual(['old']);
     const chosen = returnChosen(batches, typed);
     expect(chosen.map((x) => [x.b.id, x.qty])).toEqual([['old', 60], ['fresh', 20]]);
     // Every chosen batch is among those shown, whatever the tick box says
@@ -235,7 +239,7 @@ describe('returns to a supplier', () => {
     expect(debitSums([])).toEqual({ taxablePaise: 0, gstPaise: 0, amountPaise: 0 });
   });
   it('has its words: the reasons, and the stock move', () => {
-    expect(Object.keys(SUPPLIER_RETURN_REASONS)).toEqual(['expired', 'damaged', 'recalled', 'excess', 'wrong_item']);
+    expect(Object.keys(SUPPLIER_RETURN_REASONS)).toEqual(['expired', 'near_expiry', 'damaged', 'recalled', 'excess', 'wrong_item']);
     expect(MOVE_LABELS.supplier_return).toBe('Returned to supplier');
     expect(MOVE_LABELS.supplier_return_cancelled).toBe('Return to supplier cancelled');
     expect([unitsLabel(1, 'tablet'), unitsLabel(12, 'bottle')]).toEqual(['1 tablet', '12 bottles']);

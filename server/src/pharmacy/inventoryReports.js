@@ -26,6 +26,7 @@ export const INVENTORY_GROUPS = [
       ['purchase-order', 'Purchase order', ['supplier', 'item', 'detail']],
       ['item-grn', 'Item-wise GRN list', ['supplier', 'item']],
       ['supplier-grn', 'Supplier-wise GRN list', ['supplier']],
+      ['company-grn', 'Company-wise GRN list', ['supplier', 'item', 'detail']], // 18 Nov 2026, the pharmacy's request
     ],
   },
   {
@@ -116,12 +117,39 @@ export async function inventoryReport(tenantId, q, { now = new Date(), seesPatie
     };
   }
 
-  if (key === 'grn' || key === 'item-grn' || key === 'supplier-grn') {
+  if (key === 'grn' || key === 'item-grn' || key === 'supplier-grn' || key === 'company-grn') {
     const list = (await Purchase.find({ tenantId, status: 'active', invoiceDate: { $gte: q.from, $lte: q.to } }).sort({ invoiceDate: 1, number: 1 }).lean()).filter((p) => sameSup(p.supplierId));
     const sups = await supplierNames();
     const lineValue = (l) => l.pack?.taxablePaise ?? Math.round(l.qty * l.ratePaise);
     const lineGst = (l) => l.pack?.gstPaise ?? 0;
     const lines = list.flatMap((p) => p.lines.filter((l) => sameMed(l.medicineId) && batchOk(l.batch)).map((l) => ({ p, l })));
+    // Company-wise (18 Nov 2026): what was bought of each manufacturer (PH4, kept on the purchase line); Summary one row a
+    // company, Detail one row a company and item
+    if (key === 'company-grn') {
+      const by = new Map();
+      for (const { p, l } of lines) {
+        const company = (l.manufacturer ?? '').trim() || 'Not recorded';
+        const k = q.detail ? `${company.toLowerCase()}|${l.medicineId}` : company.toLowerCase();
+        const x = by.get(k) ?? { company, medicine: q.detail ? l.name : '', bills: new Set(), items: new Set(), qty: 0, free: 0, value: 0, gst: 0 };
+        x.bills.add(String(p._id));
+        x.items.add(String(l.medicineId));
+        x.qty += l.qty;
+        x.free += l.freeQty ?? 0;
+        x.value += lineValue(l);
+        x.gst += lineGst(l);
+        by.set(k, x);
+      }
+      const rows = [...by.values()]
+        .map(({ bills, items, ...x }) => ({ ...x, bills: bills.size, items: items.size }))
+        .sort((a, b) => (a.company === 'Not recorded') - (b.company === 'Not recorded') || a.company.localeCompare(b.company) || a.medicine.localeCompare(b.medicine));
+      return {
+        ...base,
+        columns: [col('company', 'Company'), ...(q.detail ? [col('medicine', 'Item')] : [col('items', 'Items', 'num')]), col('bills', 'GRNs', 'num'), col('qty', 'Qty (units)', 'num'), col('free', 'Free', 'num'), col('value', 'Value before GST', 'money'), col('gst', 'GST', 'money')],
+        rows,
+        total: totalOf(rows, ['qty', 'free', 'value', 'gst'], { company: count(new Set(rows.map((r) => r.company)).size, 'company', 'companies') }),
+        note: 'The company is the manufacturer written on the purchase bill line.',
+      };
+    }
     if (key === 'item-grn') {
       const by = new Map();
       for (const { p, l } of lines) {

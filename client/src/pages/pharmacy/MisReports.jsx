@@ -23,12 +23,16 @@ export const MIS_LIST = [
       ['sale-lines', 'Sales bill details'],
       ['collection', 'Sales collection'],
       ['card-collection', 'Card collection'],
+      ['upi-collection', 'UPI collection'],
       ['patient-collection', 'Patient-wise collection'],
       ['by-doctor', 'Doctor-wise sales'], // the existing Sales by doctor report (the pharmacist only – owner's decision 5)
       ['returns', 'Sales return report'],
       ['return-lines', 'Sales return details'],
+      ['patient-returns', 'Sales return patient-wise'],
       ['credit', 'Credit report'],
       ['patient-credit', 'Patient-wise credit'],
+      ['advance', 'Advance amount report'],
+      ['insurance', 'Insurance / cashless patients'],
     ],
   },
   {
@@ -65,6 +69,7 @@ export const INVENTORY_LIST = [
       ['purchase-order', 'Purchase order', ['supplier', 'item', 'detail']],
       ['item-grn', 'Item-wise GRN list', ['supplier', 'item']],
       ['supplier-grn', 'Supplier-wise GRN list', ['supplier']],
+      ['company-grn', 'Company-wise GRN list', ['supplier', 'item', 'detail']],
     ],
   },
   {
@@ -112,6 +117,28 @@ export function misCsv(report) {
 }
 
 const isNum = (c) => c.type === 'money' || c.type === 'num';
+
+/**
+ * The Summary of a Pharmacy MIS report (18 Nov 2026, the pharmacy's request – every report as Details or Summary): its
+ * rows added up day by day – the date, how many rows, and the sums of the money and number columns. null for a report
+ * with no date column (it is already one row per patient or rate).
+ */
+export function daySummary(report) {
+  const dateCol = report.columns.find((c) => c.type === 'date');
+  if (!dateCol) return null;
+  const nums = report.columns.filter(isNum);
+  const by = new Map();
+  for (const r of report.rows) {
+    const d = r[dateCol.k] ?? '';
+    const x = by.get(d) ?? { [dateCol.k]: d, count: 0, ...Object.fromEntries(nums.map((c) => [c.k, 0])) };
+    x.count += 1;
+    for (const c of nums) x[c.k] += r[c.k] ?? 0;
+    by.set(d, x);
+  }
+  const rows = [...by.values()].sort((a, b) => String(a[dateCol.k]).localeCompare(String(b[dateCol.k])));
+  const total = { [dateCol.k]: `${rows.length} day${rows.length === 1 ? '' : 's'}`, count: report.rows.length, ...Object.fromEntries(nums.map((c) => [c.k, rows.reduce((n, r) => n + r[c.k], 0)])) };
+  return { ...report, columns: [dateCol, { k: 'count', label: 'Entries', type: 'num' }, ...nums], rows, total };
+}
 
 function MisTable({ report }) {
   return (
@@ -202,7 +229,10 @@ export function MisReports({ from, to, setFrom, setTo, admin, pharmacist, openDo
   const suppliers = useFetch(uses('supplier') ? '/pharmacy/suppliers' : null);
   const medicines = useFetch(uses('item') ? '/pharmacy/medicines' : null, { active: '1' });
   const [printing, setPrinting] = useState(false);
-  const r = res.data?.key === chosen.k ? res.data : null;
+  const [summed, setSummed] = useState(false); // a Pharmacy MIS report shown as its day-by-day Summary
+  const loaded = res.data?.key === chosen.k ? res.data : null;
+  const summary = chosen.tree === 'pharmacy' && loaded ? daySummary(loaded) : null;
+  const r = summed && summary ? summary : loaded;
   const pick = (k) => {
     if (k === 'by-doctor') return openDoctorSales();
     const next = new URLSearchParams(params);
@@ -212,7 +242,7 @@ export function MisReports({ from, to, setFrom, setTo, admin, pharmacist, openDo
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const canExcel = r && (admin || !r.patients);
   const period = r ? (r.from === r.to ? formatDate(r.from) : `${formatDate(r.from)} to ${formatDate(r.to)}`) : '';
-  const printTitle = `${chosen.label}${uses('detail') ? (f.detail ? ' – detail' : ' – summary') : ''}`;
+  const printTitle = `${chosen.label}${uses('detail') ? (f.detail ? ' – detail' : ' – summary') : summary ? (summed ? ' – summary' : ' – details') : ''}`;
 
   return (
     <div className="ph-mis">
@@ -324,6 +354,19 @@ export function MisReports({ from, to, setFrom, setTo, admin, pharmacist, openDo
                   </button>
                   <button type="button" aria-pressed={f.detail} onClick={() => setF({ ...f, detail: true })}>
                     Detail
+                  </button>
+                </div>
+              </div>
+            )}
+            {summary && (
+              <div className="ph-mis-f">
+                <span>Show</span>
+                <div className="segmented" role="group" aria-label="Details or summary">
+                  <button type="button" aria-pressed={!summed} onClick={() => setSummed(false)}>
+                    Details
+                  </button>
+                  <button type="button" aria-pressed={summed} onClick={() => setSummed(true)}>
+                    Summary
                   </button>
                 </div>
               </div>

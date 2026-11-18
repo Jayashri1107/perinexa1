@@ -120,13 +120,14 @@ const toPaise = (text) => (/^\d+(\.\d{0,2})?$/.test(String(text).trim()) ? Math.
  * body: the invoice about to be made (without the payment); who: { uhid, name };
  * onSave({ payments, paymentRemarks } | { onHospitalBill: true }).
  */
-export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClose }) {
+export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClose, remarks: given = '' }) {
   const ref = useDialogFocus(onClose);
   const [quote, setQuote] = useState(null);
   const [quoteError, setQuoteError] = useState(null);
   const today = hospitalTodayIso();
   const [ways, setWays] = useState(() => Object.fromEntries(WAYS.map((w) => [w.mode, { on: false, amount: '', reference: '', bank: '', date: today, authorisedBy: '', narration: '' }])));
-  const [remarks, setRemarks] = useState('');
+  const [remarks, setRemarks] = useState(given); // the bill page's Remark, if one was typed (18 Nov 2026)
+  const [authorisedBy, setAuthorisedBy] = useState(''); // an OPD bill on credit: who allowed it (18 Nov 2026)
   const [hospital, setHospital] = useState(false); // a registered patient: on her hospital bill
   const [now] = useState(() => new Date());
   useEffect(() => {
@@ -150,7 +151,8 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
   // Nothing ticked: a patient's bill goes on credit (asked first); a walk-in must choose how they pay
   const onCredit = !walkIn && !hospital && chosen.length === 0;
   const [askCredit, setAskCredit] = useState(false); // "Save this bill as credit?" is open
-  const ready = Boolean(quote) && !saving && (onCredit || (!walkIn && hospital) || paysHere);
+  const needsAuthoriser = onCredit && body.kind === 'sale';
+  const ready = Boolean(quote) && !saving && ((onCredit && (!needsAuthoriser || authorisedBy.trim().length >= 2)) || (!walkIn && hospital) || paysHere);
   const set = (mode, change) => setWays((all) => ({ ...all, [mode]: { ...all[mode], ...change } }));
   // Ticking a way fills in what is still to pay; unticking clears it. Paying here and the hospital bill exclude each other.
   const tick = (mode, on) => {
@@ -167,7 +169,7 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
       !walkIn && hospital
         ? { onHospitalBill: true }
         : onCredit
-          ? { onCredit: true, paymentRemarks: remarks.trim() }
+          ? { onCredit: true, paymentRemarks: remarks.trim(), ...(needsAuthoriser ? { creditAuthorisedBy: authorisedBy.trim() } : {}) }
           : {
             payments: chosen.map((w) => {
               const x = ways[w.mode];
@@ -283,6 +285,12 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
                   <p className="ph-pay-choose" role="status">
                     <CircleAlert aria-hidden="true" /> No payment chosen: the bill goes on credit – the patient pays later (Receive payment on the bill). Tick a way above if it is paid now.
                   </p>
+                )}
+                {nothingChosen && needsAuthoriser && (
+                  <label className="ph-pay-field ph-pay-wide">
+                    <span>Credit authorised by (name or staff ID)</span>
+                    <input value={authorisedBy} maxLength={100} autoComplete="off" required aria-required="true" onChange={(e) => setAuthorisedBy(e.target.value)} />
+                  </label>
                 )}
                 {walkIn && Boolean(quote) && chosen.length === 0 && (
                   <p className="ph-pay-choose" role="status">

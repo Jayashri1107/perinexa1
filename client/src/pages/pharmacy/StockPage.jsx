@@ -300,6 +300,42 @@ function CountDialog({ batch, controlled, onClose, onDone }) {
   );
 }
 
+/** MRP adjustment (18 Nov 2026, the pharmacy's request): the batch's MRP set again, with a reason. A batch bought by the
+ * pack takes the pack's MRP; bills already made keep their prices. */
+export function MrpDialog({ batch, onClose, onDone }) {
+  const byPack = Boolean(batch.packMrpPaise && batch.unitsPerPack > 1);
+  const [mrp, setMrp] = useState('');
+  const [reason, setReason] = useState('');
+  const s = useSend(onDone);
+  const paise = /^\d+(\.\d{0,2})?$/.test(mrp.trim()) ? Math.round(Number(mrp) * 100) : null;
+  const now = byPack ? batch.packMrpPaise : batch.mrpPaise;
+  const ok = paise > 0 && paise !== now && reason.trim().length >= 3;
+  return (
+    <Modal id="ph-mrp" title={`Change MRP – batch ${batch.batch}`} onClose={onClose}>
+      <p>
+        MRP now: {money(now)} {byPack ? `a pack of ${batch.unitsPerPack} (${money(batch.mrpPaise)} a unit)` : 'a unit'}. Bills already made keep their prices.
+      </p>
+      <Alert type="error">{s.error}</Alert>
+      <div className="form-grid">
+        <Field label={byPack ? `New MRP of a pack of ${batch.unitsPerPack} ₹` : 'New MRP of a unit ₹'} id="ph-mrp-n" error={s.fields.packMrpPaise || s.fields.mrpPaise}>
+          <input id="ph-mrp-n" inputMode="decimal" value={mrp} maxLength={10} onChange={(e) => setMrp(e.target.value)} />
+        </Field>
+        <Field label="Reason for the change" id="ph-mrp-reason" error={s.fields.reason}>
+          <input id="ph-mrp-reason" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} />
+        </Field>
+      </div>
+      <div className="row">
+        <button type="button" className="btn btn-primary" disabled={!ok || s.busy} onClick={() => s.send(`/pharmacy/batches/${batch.id}/mrp`, { [byPack ? 'packMrpPaise' : 'mrpPaise']: paise, reason: reason.trim() })}>
+          {s.busy ? 'Saving…' : 'Save the MRP'}
+        </button>
+        <button type="button" className="btn btn-link" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 export function MedicineStockPage() {
   const { id } = useParams();
   const { activeMembership } = useAuth();
@@ -370,6 +406,11 @@ export function MedicineStockPage() {
                           Count
                         </button>
                       )}
+                      {desk && b.qtyLeft > 0 && (
+                        <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog({ kind: 'mrp', batch: b })}>
+                          Change MRP
+                        </button>
+                      )}
                       {/* PH5: hold a recalled batch, see who received it, release it */}
                       {desk && !b.hold && (
                         <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog({ kind: 'hold', batch: b })}>
@@ -429,6 +470,7 @@ export function MedicineStockPage() {
       {dialog?.kind === 'hold' && <HoldDialog medicine={d.medicine} batch={dialog.batch} onClose={() => setDialog(null)} onDone={done(`Batch ${dialog.batch.batch} is on hold: it cannot be sold or issued.`)} />}
       {dialog?.kind === 'release' && <ReleaseDialog medicine={d.medicine} batch={dialog.batch} onClose={() => setDialog(null)} onDone={done(`Batch ${dialog.batch.batch} released.`)} />}
       {dialog?.kind === 'recipients' && <RecipientsPrint medicine={d.medicine} batch={dialog.batch} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'mrp' && <MrpDialog batch={dialog.batch} onClose={() => setDialog(null)} onDone={done('MRP changed.')} />}
       {dialog?.kind === 'count' && <CountDialog batch={dialog.batch} controlled={CONTROLLED.includes(d.medicine.schedule)} onClose={() => setDialog(null)} onDone={done('Stock count saved.')} />}
     </>
   );

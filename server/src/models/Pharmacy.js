@@ -271,6 +271,8 @@ const batchSchema = new mongoose.Schema(
     // onto the hold. Every batch with the same number of the same medicine is held together.
     hold: { type: new mongoose.Schema({ reason: { type: String, enum: ['recalled', 'quality', 'other'] }, note: String, ...stamp }, { _id: false }), default: null },
     released: { type: [new mongoose.Schema({ heldReason: String, reason: String, ...stamp }, { _id: false })], default: [] },
+    // MRP adjustment (18 Nov 2026, the pharmacy's request): each change of the batch's MRP, with why and who
+    mrpChanges: { type: [new mongoose.Schema({ fromPaise: Number, toPaise: Number, fromPackPaise: Number, toPackPaise: Number, reason: String, ...stamp }, { _id: false })], default: [] },
     qtyIn: { type: Number, required: true, min: 0 },
     qtyLeft: { type: Number, required: true, min: 0 },
     purchaseId: { type: ObjectId, ref: 'Purchase', default: null },
@@ -333,6 +335,8 @@ const invoiceLineSchema = new mongoose.Schema({
   mrpPaise: { type: Number, required: true },
   // PH2: the line at MRP before the sale's discount, priced from the pack (null on older lines: qty × mrpPaise)
   grossPaise: { type: Number, default: null },
+  // Item-wise discount (18 Nov 2026, the pharmacy's request): this line's own Disc % – null: the bill's Disc %
+  discountPercent: { type: Number, default: null },
   amountPaise: { type: Number, required: true },
   taxablePaise: { type: Number, required: true },
   gstPaise: { type: Number, required: true },
@@ -387,7 +391,7 @@ const invoiceSchema = new mongoose.Schema(
       type: [
         new mongoose.Schema({
           kind: { type: String, enum: ['payment', 'refund'] },
-          mode: { type: String, enum: COUNTER_MODES },
+          mode: { type: String, enum: [...COUNTER_MODES, 'advance'] }, // 'advance': paid from her pharmacy advance (18 Nov 2026)
           amountPaise: Number,
           reference: String,
           bank: { type: String, default: '' },
@@ -400,6 +404,8 @@ const invoiceSchema = new mongoose.Schema(
       default: [],
     },
     paymentRemarks: { type: String, default: '' }, // the Payment window's Remarks
+    // 18 Nov 2026 (the pharmacy's request): an OPD bill put on credit names who allowed it (their name or staff ID)
+    creditAuthorisedBy: { type: String, default: '' },
     // Returns: each a GST credit note (CN-000001)
     returns: { type: [new mongoose.Schema({ number: String, lines: [returnLineSchema], reason: String, ...stamp })], default: [] },
     created: { type: stampSchema, required: true },
@@ -531,3 +537,27 @@ const locationCheckSchema = new mongoose.Schema(
 locationCheckSchema.plugin(tenantScoped);
 locationCheckSchema.index({ tenantId: 1, locationId: 1, createdAt: -1 });
 export const LocationCheck = mongoose.model('LocationCheck', locationCheckSchema);
+
+// Pharmacy advance (18 Nov 2026, the pharmacy's request, agreed through the developer – it changes the decision of
+// 13 Nov 2026 that the pharmacy takes no advance): money a patient leaves with the pharmacy, used later against her
+// pharmacy bills or given back. One entry per deposit, use or refund; her balance is deposits − used − refunded.
+// Nothing is deleted.
+const advanceSchema = new mongoose.Schema(
+  {
+    patientId: { type: ObjectId, ref: 'Patient', required: true },
+    number: { type: String, required: true }, // PA-000001 (a deposit's or refund's receipt; a use carries the bill's number)
+    kind: { type: String, enum: ['deposit', 'used', 'refund'], required: true },
+    amountPaise: { type: Number, required: true, min: 1 },
+    mode: { type: String, enum: [...COUNTER_MODES, ''], default: '' }, // how a deposit was paid or a refund given
+    reference: { type: String, default: '' },
+    invoiceId: { type: ObjectId, ref: 'PharmacyInvoice', default: null }, // a use: the bill it paid
+    invoiceNumber: { type: String, default: '' },
+    reason: { type: String, default: '' }, // a refund's reason
+    created: { type: stampSchema, required: true },
+  },
+  { timestamps: true },
+);
+advanceSchema.plugin(tenantScoped);
+advanceSchema.index({ tenantId: 1, patientId: 1, 'created.at': 1 });
+advanceSchema.index({ tenantId: 1, 'created.at': -1 });
+export const PharmacyAdvance = mongoose.model('PharmacyAdvance', advanceSchema);

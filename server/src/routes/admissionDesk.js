@@ -10,6 +10,7 @@ import { AdmissionRequest } from '../models/AdmissionRequest.js';
 import { Bill } from '../models/Bill.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
+import { patientDues } from '../pharmacy/pharmacyService.js';
 import { Tenant } from '../models/Tenant.js';
 import { User } from '../models/User.js';
 import { isClosed } from '../patients/deathRules.js';
@@ -209,7 +210,8 @@ admissionDeskRouter.get('/to-clear', async (req, res) => {
   for (const s of stays) {
     const p = patients.get(String(s.patientId));
     if (!p || !departmentListed(req, p)) continue; // another department's patient: left out (departments, 9 Nov 2026)
-    list.push({ id: String(s._id), ipdNo: s.ipdNo ?? null, ward: s.ward, bed: s.bed, dischargedAt: s.dischargedAt, balancePaise: await stayBalance(req.tenantId, s._id), patient: { id: String(p._id), fullName: p.fullName, mrn: p.mrn } });
+    // pharmacyDuePaise (18 Nov 2026): her pharmacy bills paid in part or on credit – not on the hospital bill
+    list.push({ id: String(s._id), ipdNo: s.ipdNo ?? null, ward: s.ward, bed: s.bed, dischargedAt: s.dischargedAt, balancePaise: await stayBalance(req.tenantId, s._id), pharmacyDuePaise: (await patientDues(req, s.patientId)).duePaise, patient: { id: String(p._id), fullName: p.fullName, mrn: p.mrn } });
   }
   res.json({ stays: list, canClear: hasRole(req.membership, ...CLEAR_ROLES) });
 });
@@ -225,9 +227,13 @@ admissionDeskRouter.post('/stays/:id/clear', async (req, res) => {
   if (await Bill.exists({ tenantId: req.tenantId, admissionId: stay._id, kind: 'ipd', status: 'open', final: null })) throw conflict('Make the final bill first (Billing → IPD → Final bill).', 'NOT_FINAL');
   const balance = await stayBalance(req.tenantId, stay._id);
   if (balance > 0 && body.note.trim().length < 5) throw invalid({ note: `₹${(balance / 100).toLocaleString('en-IN')} is still due on her bill: write why she may leave (e.g. insurance claim pending).` }, 'The bill is not settled.');
+  // Discharge clearance and the pharmacy (18 Nov 2026, the pharmacy's request): her pharmacy credit still due is said,
+  // and she leaves with it only with a reason, as with the hospital bill
+  const pharmacyDue = (await patientDues(req, patient._id)).duePaise;
+  if (pharmacyDue > 0 && body.note.trim().length < 5) throw invalid({ note: `₹${(pharmacyDue / 100).toLocaleString('en-IN')} is still due at the pharmacy (credit bills): settle it there, or write why she may leave.` }, 'The pharmacy credit is not settled.');
   stay.clearance = { ...stampOf(req), balancePaise: balance, note: body.note.trim(), passNo: await nextPassNo(req.tenantId, req.now) };
   await stay.save();
-  await audit(req, 'DISCHARGE_CLEARED', { details: { patientId: String(patient._id), mrn: patient.mrn, admissionId: String(stay._id), balancePaise: balance } });
+  await audit(req, 'DISCHARGE_CLEARED', { details: { patientId: String(patient._id), mrn: patient.mrn, admissionId: String(stay._id), balancePaise: balance, ...(pharmacyDue > 0 ? { pharmacyDuePaise: pharmacyDue } : {}) } });
   res.json({ papers: papersFor(req, patient, stay, await doctorNameOf(patient)) });
 });
 
