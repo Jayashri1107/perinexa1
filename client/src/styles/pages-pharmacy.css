@@ -1060,27 +1060,78 @@
 .ph-pick-tools { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-2); }
 .ph-pick-scan { flex: 1 1 260px; min-width: 0; }
 .ph-pick-kit-hint { flex-basis: 100%; margin: 0; }
+/* Reports → All topics (18 Nov 2026): how to use it, a search, then the three groups side by side on a wide screen */
+.ph-topics { display: flex; flex-direction: column; gap: var(--space-3); }
+.ph-topics-intro { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.ph-topics-intro p { flex: 1 1 420px; margin: 0; font-size: 0.875rem; color: var(--slate-600); }
+.ph-topics-find { flex: 0 1 320px; width: 100%; }
+.ph-topics-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: var(--space-3); align-items: start; }
+.ph-topics-group { padding: var(--space-3) var(--space-4); }
+.ph-topics-group h2 { margin: 0 0 var(--space-2); font-size: 1rem; }
 .ph-topic-list { list-style: none; margin: 0; padding: 0; }
-.ph-topic-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--card-border); }
+.ph-topic-list li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); padding: 6px 0; border-bottom: 1px solid var(--card-border); }
 .ph-topic-list li:last-child { border-bottom: 0; }
-.ph-credit { margin: 0 0 var(--space-2); }
+.ph-topic-no { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; color: var(--indigo-700); background: var(--mist-100); }
+.ph-topic-text { display: flex; flex-direction: column; min-width: 0; }
+.ph-topic-text strong { font-size: 0.875rem; }
+.ph-topic-text span { font-size: var(--fs-caption); color: var(--slate-600); }
+.ph-topic-none { font-size: var(--fs-caption); color: var(--slate-600); }
+.ph-credit { display: grid; gap: var(--space-1); margin: 0; }
 .ph-credit .is-due { color: var(--status-watch-fg); font-weight: 700; }
 .ph-last-bill { margin: 0 0 var(--space-2); font-size: var(--fs-caption); color: var(--status-stable-fg); font-weight: 600; }
 .ph-total-tick { flex-direction: row; align-items: center; gap: var(--space-1); }
 .ph-inv-paid > .is-total { grid-column: 1 / -1; background: var(--status-watch-bg); }
 .ph-inv-paid > .is-total dd { color: var(--status-watch-fg); }
 
-/* 18 Nov 2026 (the pharmacy): the bill fits the screen, as the earlier Sales Bill – the patient panel on the left stays
-   put at full height; on the right the medicine list scrolls inside its box, and the totals with Save and Close are
-   always in sight, never below the fold. A short or narrow screen keeps the page scrolling as before. */
+/* 18 Nov 2026 (the pharmacy, third look): the Sales bill is one fixed screen – the page itself never scrolls; only the
+   medicine list scrolls, inside its box, which takes all the height left. Smaller text and less space everywhere on
+   it. A narrow or short screen (a tablet, a phone) keeps the page scrolling as before. */
+.ph-counter-head .ph-crumbs ol { margin: 0; }
+.ph-counter-head .ph-title { font-size: 1.25rem; line-height: 1.6rem; }
+.ph-counter-head .ph-subtitle { display: none; }
+.pf-content.ph-counter { font-size: 0.8125rem; gap: var(--space-2); }
+.pf-content.ph-counter > .alert { margin: 0; padding: 6px var(--space-3); font-size: 0.8125rem; }
+.pf-content.ph-counter .ph-counter-main { align-items: stretch; gap: var(--space-3); }
+.pf-content.ph-counter .ph-counter-right { gap: 6px; padding: var(--space-2) var(--space-3); }
+.pf-content.ph-counter .ph-counter-body { gap: var(--space-2); padding: var(--space-2) var(--space-3); }
+.pf-content.ph-counter :is(.ph-counter-left, .ph-counter-right) input:not([type='checkbox']):not([type='radio']),
+.pf-content.ph-counter :is(.ph-counter-left, .ph-counter-right) select { height: 30px; min-height: 0; padding-top: 2px; padding-bottom: 2px; font-size: 0.8125rem; }
+.pf-content.ph-counter .ph-pi-row { gap: var(--space-2); }
+.pf-content.ph-counter .ph-pi-row > span, .pf-content.ph-counter .ph-pi-row > label { font-size: 0.8125rem; }
+.pf-content.ph-counter .ph-pi-chosen input { height: 28px; }
+.pf-content.ph-counter .ph-section-label { font-size: 0.6875rem; margin: 0; }
+.pf-content.ph-counter .ph-counter-left .ph-bill-net { font-size: 1.125rem; min-width: 100px; }
+.pf-content.ph-counter .ph-type-tabs button { min-height: 32px; padding: 4px 8px; font-size: 0.8125rem; }
+.pf-content.ph-counter .ph-item-label, .pf-content.ph-counter .ph-total-field > span { font-size: 0.75rem; }
+.pf-content.ph-counter .btn { min-height: 32px; padding: 4px 12px; font-size: 0.8125rem; }
+.pf-content.ph-counter .ph-counter-right .hint { margin: 0; font-size: 0.75rem; }
+.pf-content.ph-counter .ph-counter-barcode summary { font-size: 0.75rem; }
+.ph-grid-box .ph-grid td { height: 26px; padding-top: 0; padding-bottom: 0; }
+.ph-grid-box .ph-grid :is(input, select) { height: 22px !important; min-height: 0; padding-top: 0 !important; padding-bottom: 0 !important; font-size: 0.75rem !important; }
+.ph-counter-actions { padding-top: 6px; gap: 6px; }
+.ph-counter-actions .ph-items-added { font-size: 0.8125rem; }
 @media (min-width: 1000px) and (min-height: 600px) {
-  .pf-content.ph-counter { --ph-fit: calc(100dvh - 210px); }
-  .pf-content.ph-counter .ph-counter-main { align-items: stretch; }
-  .pf-content.ph-counter .ph-counter-left { position: sticky; top: 12px; height: var(--ph-fit); overflow-y: auto; }
-  .pf-content.ph-counter .ph-counter-right { height: var(--ph-fit); overflow-y: auto; gap: var(--space-2); }
+  .pf-content.ph-counter { --ph-fit: calc(100dvh - 168px); }
+  .pf-content.ph-counter .ph-counter-left,
+  .pf-content.ph-counter .ph-counter-right { height: var(--ph-fit); }
+  /* the patient panel fits its height; anything longer (a long prescription) scrolls with no bar showing */
+  .pf-content.ph-counter .ph-counter-left { overflow-y: auto; scrollbar-width: none; }
+  .pf-content.ph-counter .ph-counter-left::-webkit-scrollbar { display: none; }
+  .pf-content.ph-counter .ph-counter-right { overflow: hidden; }
   .pf-content.ph-counter .ph-counter-right > * { flex: none; }
-  .pf-content.ph-counter .ph-counter-right > .ph-grid-wrap.ph-grid-box { flex: 1 1 0; height: auto; min-height: 140px; }
-  .pf-content.ph-counter .ph-counter-actions { margin-top: auto; padding-top: var(--space-2); }
+  .pf-content.ph-counter .ph-counter-right > .ph-grid-wrap.ph-grid-box { flex: 1 1 0; height: auto; min-height: 110px; }
+  .pf-content.ph-counter .ph-counter-actions { margin-top: auto; }
+}
+/* Under the list: the four boxes that are typed in, then the bill's figures on one line */
+.ph-totals.ph-totals-entry { grid-template-columns: minmax(80px, 0.7fr) minmax(100px, 0.9fr) minmax(0, 1.6fr) minmax(0, 1.6fr); }
+.ph-sumline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-4); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mist-50); font-size: 0.875rem; color: var(--slate-600); }
+.ph-sumline b { margin-left: 4px; color: var(--ink); font-weight: 600; }
+.ph-sum-tick { display: inline-flex; align-items: center; gap: 6px; margin: 0 auto 0 0; color: var(--ink); font-weight: 500; cursor: pointer; }
+.ph-sum-tick input { width: 16px; height: 16px; margin: 0; }
+.ph-sum-net { padding: 2px 10px; border-radius: var(--radius-sm); background: var(--selected-bg, var(--mist-100)); color: var(--indigo-700); }
+.ph-sum-net b { font-size: 1.0625rem; font-weight: 700; color: var(--indigo-700); }
+@container phbill (max-width: 620px) {
+  .ph-totals.ph-totals-entry { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 /* "From a kit" on one short line */
 .ph-kit { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); margin-bottom: 0; }
@@ -1089,3 +1140,96 @@
 .ph-kit .field select { width: auto; min-width: 220px; height: 32px; min-height: 0; padding-top: 2px; padding-bottom: 2px; }
 .ph-kit .field :is(.hint, .field-hint, .help) { display: none; }
 .ph-kit > .hint { margin: 0; }
+
+/* 18 Nov 2026: a patient's account with the pharmacy on Sales bill – credit due and advance left side by side */
+.ph-account { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3); padding: var(--space-3); margin-bottom: var(--space-3); }
+.ph-account-tile { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); min-width: 0; padding: var(--space-3); border-radius: var(--radius-md); background: var(--mist-50); }
+.ph-account-label { font-size: var(--fs-label); font-weight: 500; color: var(--slate-600); }
+.ph-account-amount { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.ph-account-amount.is-due { color: var(--status-watch-fg); }
+.ph-account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-1); }
+
+/* 18 Nov 2026: Return stock to a supplier on one screen */
+.sr-new { gap: var(--space-3); }
+.sr-new .bill-section { padding: var(--space-3) var(--space-4); }
+.sr-new .bill-section h2 { margin: 0 0 var(--space-2); font-size: 1rem; }
+.sr-new-head .form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
+.sr-new-head .field { margin: 0; }
+.sr-new-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); align-items: start; }
+.sr-new-body:has(> .sr-new-note) { grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); }
+.sr-new-scroll { max-height: calc(100dvh - 380px); min-height: 160px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.sr-new-scroll .bill-lines { margin: 0; font-size: 0.8125rem; }
+.sr-new-scroll .bill-lines :is(th, td) { padding: 4px 8px; }
+.sr-new-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--mist-50); }
+.sr-new-scroll .bill-price-input, .sr-new-scroll .ph-num { height: 28px; min-height: 0; padding: 2px 6px; }
+.sr-new-note { position: sticky; top: 12px; }
+.sr-new-note .bill-lines { font-size: 0.8125rem; }
+.sr-new .hint { font-size: var(--fs-caption); margin: var(--space-1) 0 0; }
+@media (max-width: 900px) {
+  .sr-new-head .form-grid, .sr-new-body:has(> .sr-new-note) { grid-template-columns: minmax(0, 1fr); }
+  .sr-new-note { position: static; }
+  .sr-new-scroll { max-height: none; }
+}
+
+/* 18 Nov 2026 (the pharmacy): the Sales bill's first page smaller – a narrow search panel with small text and boxes, the
+   lists in small text with slim rows filling the height (more people in sight), no sideways scrolling */
+.ph-sold { gap: var(--space-2); font-size: 0.8125rem; }
+.ph-sold .ph-sold-results { gap: var(--space-2); }
+.ph-sold .ph-filters { gap: var(--space-2); padding: var(--space-3); }
+.ph-sold .ph-filters .segmented button { min-height: 30px; padding: 3px 8px; font-size: 0.8125rem; }
+.ph-sold .ph-filters .segmented svg { width: 14px; height: 14px; }
+.ph-sold .ph-filter > span { font-size: 0.75rem; }
+.ph-sold .ph-search-btn { min-height: 32px; padding: 4px 12px; font-size: 0.8125rem; width: 100%; }
+.ph-sold .ph-find-form { gap: 6px; }
+.ph-sold .ph-find-form .ph-find-head { margin: 2px 0 0; font-size: 0.75rem; }
+.ph-sold .ph-find-form .ph-filter { grid-template-columns: 76px minmax(0, 1fr); gap: 6px; }
+.ph-sold .ph-find-form .ph-filter > span { font-size: 0.75rem; }
+.ph-sold .ph-find-form .ph-filter :is(input, select) { height: 28px; padding: 2px 8px; font-size: 0.8125rem; }
+.ph-sold .ph-clear-dates { justify-self: start; padding: 0; min-height: 0; }
+.ph-sold .ph-pick-bar, .ph-sold .ph-pick-tools { padding-top: 6px; padding-bottom: 6px; font-size: 0.8125rem; }
+.ph-sold .ph-pick-tools .hint { font-size: 0.75rem; margin: 2px 0 0; }
+.ph-sold .ph-pick-tools :is(input, .btn) { min-height: 32px; height: 32px; padding-top: 2px; padding-bottom: 2px; font-size: 0.8125rem; }
+.ph-sold .btn { font-size: 0.8125rem; }
+@media screen and (min-width: 1000px) {
+  .ph-sold .ph-sold-split { grid-template-columns: 250px minmax(0, 1fr); }
+}
+@media screen and (min-width: 721px) {
+  .ph-sold-results .dt-wrap { height: max(300px, calc(100dvh - 300px)); overflow-x: hidden; }
+  .ph-sold-results .dt { font-size: 0.8125rem; }
+  .ph-sold-results .dt th { padding: 5px 8px; font-size: 0.6875rem; }
+  .ph-sold-results .dt td { height: 30px; padding: 2px 8px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+  .ph-sold-results .dt .pill, .ph-sold-results .dt .status-pill { padding: 1px 8px; font-size: 0.75rem; }
+}
+
+/* 18 Nov 2026 (the pharmacy): one invoice on one screen, as the earlier software – small text, slim rows, little space */
+.ph-inv-page { gap: var(--space-2); font-size: 0.8125rem; }
+.ph-inv-page .ph-inv { gap: var(--space-3); }
+.ph-inv-page .ph-inv-main { padding: var(--space-3) var(--space-4); }
+.ph-inv-page .ph-inv-head { align-items: center; padding-bottom: var(--space-2); margin-bottom: var(--space-2); }
+.ph-inv-page .ph-inv-head > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); }
+.ph-inv-page .ph-inv-kicker { margin: 0; font-size: 0.6875rem; }
+.ph-inv-page .ph-inv-no { font-size: 1.125rem; }
+.ph-inv-page .ph-inv-date { margin: 0; font-size: 0.8125rem; }
+.ph-inv-page .ph-inv .ph-inv-facts { gap: 2px var(--space-3); margin-bottom: var(--space-2); padding: 6px var(--space-3); }
+.ph-inv-page .ph-inv-facts dt { font-size: 0.6875rem; }
+.ph-inv-page .ph-inv-facts dd { font-size: 0.8125rem; }
+.ph-inv-page .ph-inv-lines { font-size: 0.8125rem; }
+.ph-inv-page .ph-inv-lines :is(th, td) { padding: 4px 8px; }
+.ph-inv-page .ph-inv-lines thead th { font-size: 0.6875rem; }
+.ph-inv-page .ph-inv-totals { margin-top: var(--space-2); }
+.ph-inv-page .ph-inv-totals dl { gap: 1px; width: min(100%, 280px); }
+.ph-inv-page .ph-inv-totals dl > div { font-size: 0.8125rem; }
+.ph-inv-page .ph-inv-totals .ph-inv-grand { margin-top: 4px; padding: 4px var(--space-3); font-size: 0.9375rem; }
+.ph-inv-page .ph-inv-side { gap: var(--space-2); top: var(--space-2); }
+.ph-inv-page .ph-inv-card { padding: var(--space-3); }
+.ph-inv-page .ph-inv-card h2 { margin: 0 0 var(--space-2); font-size: 0.875rem; }
+.ph-inv-page .ph-inv-paid { gap: 6px; }
+.ph-inv-page .ph-inv-paid > div { padding: 4px var(--space-2); }
+.ph-inv-page .ph-inv-paid dt { font-size: 0.6875rem; }
+.ph-inv-page .ph-inv-paid dd { font-size: 0.9375rem; }
+.ph-inv-page .ph-inv-receive { margin-top: var(--space-2); min-height: 30px; padding: 2px 10px; font-size: 0.8125rem; }
+.ph-inv-page .ph-inv-list { margin-top: var(--space-2); }
+.ph-inv-page .ph-inv-list li { padding: 4px 0; }
+.ph-inv-page .ph-inv-row { font-size: 0.8125rem; }
+.ph-inv-page .hint { margin: 4px 0 0; font-size: 0.75rem; }
+.ph-counter-head .ph-actions .btn { min-height: 32px; padding: 4px 12px; font-size: 0.8125rem; }

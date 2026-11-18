@@ -15,6 +15,8 @@ import { BarcodeBox, MedicineFinder, PharmacyHeader, ScheduleMark, money, useSen
 import { KitPicker, kitShortfall } from './Kits.jsx';
 import { FindElsewhere, billsPlace, useClickOrDouble } from './RegisterPage.jsx';
 import { PatientInfoBox } from './PatientInfoBox.jsx';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { clearDraft, draftOwner, findDraft, saveDraft } from './billDraft.js';
 
 // Pharmacy → New bill (counter) and → Issue to ward (kind 'issue', admitted patients only): choose OPD, IPD or External
 // (owner, 26 Oct 2026) – an OPD patient from today's register (or found by her number or phone), an admitted patient,
@@ -416,43 +418,56 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const routed = useLocation().state;
   const start = given ?? routed ?? {};
   const issue = kind === 'issue';
-  const [who, setWho] = useState(issue ? 'inpatient' : start.type === 'external' ? 'walkin' : 'patient'); // patient (OPD) | walkin (External) | inpatient (IPD)
-  const [patient, setPatient] = useState(start.patient ?? null);
-  const [customer, setCustomer] = useState({ name: start.customer?.name ?? '', phone: start.customer?.phone ?? '' });
-  const [visitId, setVisitId] = useState(null);
+  // A bill left half made (18 Nov 2026): opened again as it was, when Sales bill or Issue to ward is opened with no one
+  // else chosen (billDraft.js)
+  const { user, activeTenantId } = useAuth();
+  const owner = draftOwner(user, activeTenantId);
+  const [draft] = useState(() => (start.resume || !(start.patient || start.type || start.wardRequest) ? findDraft(kind, owner) : null));
+  const [who, setWho] = useState(draft?.who ?? (issue ? 'inpatient' : start.type === 'external' ? 'walkin' : 'patient')); // patient (OPD) | walkin (External) | inpatient (IPD)
+  const [patient, setPatient] = useState(draft ? draft.patient : (start.patient ?? null));
+  const [customer, setCustomer] = useState(draft?.customer ?? { name: start.customer?.name ?? '', phone: start.customer?.phone ?? '' });
+  const [visitId, setVisitId] = useState(draft?.visitId ?? null);
   // PH7: her allergy line (owner's decision 2: the pharmacist sees her allergies and nothing else of her record)
   const [allergies, setAllergies] = useState(null);
   // PH10: the prescription line whose other brands are being looked at
   const [otherBrands, setOtherBrands] = useState(null);
   // 14 Nov 2026: the patient's doctor (her latest pharmacy bill's, else the one assigned at registration) filled in
-  const [doctor, setDoctor] = useState({ name: start.patient?.doctor ?? '', reg: '' });
+  const [doctor, setDoctor] = useState(draft?.doctor ?? { name: start.patient?.doctor ?? '', reg: '' });
   const doctors = useFetch('/pharmacy/doctors'); // the hospital's doctors for the Doctor name drop-down
-  const [rxSeen, setRxSeen] = useState(false);
+  const [rxSeen, setRxSeen] = useState(draft?.rxSeen ?? false);
   const [lines, setLines] = useState(() =>
-    issue && start.wardRequest
+    draft
+      ? draft.lines
+      : issue && start.wardRequest
       ? start.wardRequest.lines.filter((l) => l.medicine && !l.refused && l.issuedQty < l.qty).map((l) => ({ key: `${l.medicineId}-wr`, medicine: l.medicine, qty: String(l.qty - l.issuedQty), batchId: null, dose: '' }))
       : (start.scanned ?? []).filter((m) => m.active !== false).map((m) => ({ key: `${m.id}-scan`, medicine: m, qty: '1', batchId: null, dose: '' })), // scanned on the first page (18 Nov 2026)
   ); // { key, medicine, qty, batchId }
-  const [kit, setKit] = useState(null); // PH14: the issue was filled from this kit { id, name, note }
+  const [kit, setKit] = useState(draft?.kit ?? null); // PH14: the issue was filled from this kit { id, name, note }
   // PH12: answering a ward request – its open lines fill the issue; its doctor is the prescriber
-  const [wardRequest, setWardRequest] = useState(issue && start.wardRequest ? start.wardRequest : null);
-  const [discount, setDiscount] = useState(''); // Disc % (what the invoice keeps)
-  const [discountAmount, setDiscountAmount] = useState(''); // Disc amount in rupees: the % is worked out from it
-  const [discountReason, setDiscountReason] = useState('');
-  const [itemDisc, setItemDisc] = useState(false); // Item Wise Discount ticked: a Disc % on each line (18 Nov 2026)
-  const [remark, setRemark] = useState(''); // the bill's Remark, carried into the Payment window
+  const [wardRequest, setWardRequest] = useState(draft ? draft.wardRequest : issue && start.wardRequest ? start.wardRequest : null);
+  const [discount, setDiscount] = useState(draft?.discount ?? ''); // Disc % (what the invoice keeps)
+  const [discountAmount, setDiscountAmount] = useState(draft?.discountAmount ?? ''); // Disc amount in rupees: the % is worked out from it
+  const [discountReason, setDiscountReason] = useState(draft?.discountReason ?? '');
+  const [itemDisc, setItemDisc] = useState(draft?.itemDisc ?? false); // Item Wise Discount ticked: a Disc % on each line (18 Nov 2026)
+  const [remark, setRemark] = useState(draft?.remark ?? ''); // the bill's Remark, carried into the Payment window
   const [paying, setPaying] = useState(null); // the Payment window is open: the invoice about to be made
-  const [business, setBusiness] = useState(false);
-  const [buyer, setBuyer] = useState({ name: '', gstin: '', address: '', place: '', pin: '' });
+  const [business, setBusiness] = useState(draft?.business ?? false);
+  const [buyer, setBuyer] = useState(draft?.buyer ?? { name: '', gstin: '', address: '', place: '', pin: '' });
+  // Kept as it changes, while there is something on it; forgotten once saved, closed or started again
+  useEffect(() => {
+    if (patient || customer.name.trim() || lines.length) saveDraft(kind, owner, { who, patient, customer, visitId, doctor, rxSeen, lines, kit, wardRequest, discount, discountAmount, discountReason, itemDisc, remark, business, buyer });
+    else clearDraft(kind);
+  }, [who, patient, customer, visitId, doctor, rxSeen, lines, kit, wardRequest, discount, discountAmount, discountReason, itemDisc, remark, business, buyer]);
   // Saved (9 Nov 2026): the Bill list tab, with this person's bills and the bill's print preview open
-  const s = useSend((res) =>
-    onMade
+  const s = useSend((res) => {
+    clearDraft(kind);
+    return onMade
       ? onMade(res.invoice)
       : navigate('/pharmacy', {
           // how it was settled, for the message "Bill saved – on credit" (13 Nov 2026)
           state: { made: { invoice: { id: res.invoice.id, number: res.invoice.number }, settled: res.invoice.billId ? 'hospital' : (res.invoice.balancePaise ?? 0) > 0 ? 'credit' : 'paid', duePaise: res.invoice.balancePaise ?? 0, name: who === 'walkin' ? res.invoice.customer?.name || customer.name.trim() : (patient?.fullName ?? ''), mrn: who === 'walkin' ? '' : (patient?.mrn ?? ''), type: who === 'walkin' ? 'external' : issue ? 'ipd' : 'opd' } },
-        }),
-  );
+        });
+  });
 
   const addMedicine = (m, qty = 1, dose = '') => setLines((ls) => (ls.some((l) => l.medicine.id === m.id) ? ls : [...ls, { key: `${m.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: null, dose }]));
   // A medicine taken from its batch list: the same batch again adds to its quantity, another batch is a line of its own
@@ -591,7 +606,12 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   }, [marginKey]);
   const entryAmount = entry?.batch && /^\d+$/.test(entry.qty) ? priceOf(entry.batch, Number(entry.qty)) : null;
   // Close: back to the Sales bill page's list (14 Nov 2026: search, bills and new bills on one screen)
-  const close = (embedded || fromList) && onCancel ? onCancel : () => navigate('/pharmacy');
+  // Close: the bill left half made is forgotten
+  const close = () => {
+    clearDraft(kind);
+    if ((embedded || fromList) && onCancel) onCancel();
+    else navigate('/pharmacy');
+  };
   // Medicines added or changed after a discount was given: the % stays, the amount follows it
   useEffect(() => {
     const n = Number(discount);
@@ -601,11 +621,16 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
 
   return (
     <>
-      {!embedded && <PharmacyHeader title="Sales bill" crumb={issue ? 'Issue to ward' : 'New bill'} subtitle={issue ? 'Issue to ward: medicines for an admitted patient, on her stay’s bill.' : undefined} sales />}
+      {!embedded && <PharmacyHeader className="ph-counter-head" title="Sales bill" crumb={issue ? 'Issue to ward' : 'New bill'} subtitle={issue ? 'Issue to ward: medicines for an admitted patient, on her stay’s bill.' : undefined} sales />}
       <div className={embedded ? 'ph-counter is-embedded' : 'pf-content ph-counter'}>
         <Alert type="error" onClose={() => s.setError(null)}>
           {s.error}
         </Alert>
+        {draft && (
+          <Alert type="info">
+            The bill you left is open again as it was. Add the medicine you were missing, then Save – or Close to start a new bill.
+          </Alert>
+        )}
         <div className="ph-counter-main">
           {/* Left, as the store's earlier Sales Bill (7 Nov 2026): the date and time, the bill's net amount, then the patient */}
           <aside className="card ph-counter-left" aria-labelledby="ph-who">
@@ -665,7 +690,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                   Patient information
                 </h2>
                 {(patient || (fromList && who === 'walkin')) && (
-                  <button type="button" className="btn btn-link btn-sm ph-person-change" onClick={(embedded || fromList) && onCancel ? onCancel : reset}>
+                  <button type="button" className="btn btn-link btn-sm ph-person-change" onClick={(embedded || fromList) && onCancel ? close : reset}>
                     Change
                   </button>
                 )}
@@ -688,9 +713,10 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                       <input readOnly tabIndex={-1} className="ph-ro tabular" value={patient.phone} />
                     </label>
                   )}
+                  {/* one more row of her details, the same size as the others (18 Nov 2026) */}
+                  <DuesLine patientId={patient.id} />
                 </div>
               )}
-              {patient && <DuesLine patientId={patient.id} />}
               {who === 'walkin' && (
                 <div className="ph-walkin">
                   <Field label={business ? 'Name of the person collecting' : 'Patient name'} id="ph-cust-name" error={s.fields['customer.name']}>
@@ -1001,34 +1027,9 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                   </p>
                 )}
 
-                {/* 18 Nov 2026, as the earlier Sales Bill: Profit and Total Landed, and Item Wise Discount */}
-                <div className="ph-totals ph-totals-margin">
-                  <label className="ph-total-field">
-                    <span>Profit</span>
-                    <input readOnly className="tabular" value={margin ? (margin.profitPaise / 100).toFixed(2) : ''} />
-                  </label>
-                  <label className="ph-total-field">
-                    <span>Total Landed</span>
-                    <input readOnly className="tabular" value={margin ? (margin.landingPaise / 100).toFixed(2) : ''} />
-                  </label>
-                  <label className="ph-total-field ph-total-tick">
-                    <input
-                      type="checkbox"
-                      checked={itemDisc}
-                      disabled={!lines.length}
-                      onChange={(e) => {
-                        setItemDisc(e.target.checked);
-                        if (!e.target.checked) setLines((ls) => ls.map((x) => ({ ...x, disc: '' })));
-                      }}
-                    />{' '}
-                    Item Wise Discount
-                  </label>
-                </div>
-                <div className="ph-totals">
-                  <label className="ph-total-field">
-                    <span>GST amount</span>
-                    <input readOnly className="tabular" value={(gstPaise / 100).toFixed(2)} />
-                  </label>
+                {/* 18 Nov 2026 (the pharmacy): only what is typed is a box – Disc %, Disc amount, the reason and the Remark;
+                    the bill's figures are one line under them, the Net in bold */}
+                <div className="ph-totals ph-totals-entry">
                   <label className="ph-total-field">
                     <span>Disc %</span>
                     <input inputMode="decimal" className="tabular" value={discount} maxLength={8} disabled={!lines.length} onChange={(e) => changePct(e.target.value.replace(/[^\d.]/g, ''))} />
@@ -1041,18 +1042,39 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                     <span>Conc. reason</span>
                     <input value={discountReason} maxLength={200} disabled={!anyDiscount} onChange={(e) => setDiscountReason(e.target.value)} />
                   </label>
-                  <label className="ph-total-field">
-                    <span>Total amount</span>
-                    <input readOnly className="tabular" value={(grossPaise / 100).toFixed(2)} />
-                  </label>
-                  <label className="ph-total-field ph-total-net">
-                    <span>Net amount</span>
-                    <input readOnly className="tabular" value={(totalPaise / 100).toFixed(2)} />
-                  </label>
                   <label className="ph-total-field ph-total-reason">
                     <span>Remark</span>
                     <input value={remark} maxLength={200} onChange={(e) => setRemark(e.target.value)} />
                   </label>
+                </div>
+                <div className="ph-sumline" aria-label="The bill's figures">
+                  <label className="ph-sum-tick">
+                    <input
+                      type="checkbox"
+                      checked={itemDisc}
+                      disabled={!lines.length}
+                      onChange={(e) => {
+                        setItemDisc(e.target.checked);
+                        if (!e.target.checked) setLines((ls) => ls.map((x) => ({ ...x, disc: '' })));
+                      }}
+                    />{' '}
+                    Item Wise Discount
+                  </label>
+                  <span>
+                    Profit <b className="tabular">{margin ? (margin.profitPaise / 100).toFixed(2) : '–'}</b>
+                  </span>
+                  <span>
+                    Total Landed <b className="tabular">{margin ? (margin.landingPaise / 100).toFixed(2) : '–'}</b>
+                  </span>
+                  <span>
+                    GST <b className="tabular">{(gstPaise / 100).toFixed(2)}</b>
+                  </span>
+                  <span>
+                    Total <b className="tabular">{(grossPaise / 100).toFixed(2)}</b>
+                  </span>
+                  <span className="ph-sum-net">
+                    Net amount <b className="tabular">{(totalPaise / 100).toFixed(2)}</b>
+                  </span>
                 </div>
                 {(s.fields.discountPercent || s.fields.discountReason) && <p className="field-error">{s.fields.discountPercent || s.fields.discountReason}</p>}
                 {pct > 100 && <p className="field-error">The discount cannot be more than the bill.</p>}

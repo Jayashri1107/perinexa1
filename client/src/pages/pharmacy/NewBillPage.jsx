@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import { InvoicesPage } from './InvoicesPage.jsx';
 import { SellPage } from './SellPage.jsx';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { draftOwner, findDraft } from './billDraft.js';
 
 // The Sales bill page (14 Nov 2026, the developer: one screen to search, bill and see the bills): the Bill list's
 // screen – the Search patient panel on the left (patient type, first, middle and last name, mobile, UHID, dates), the
@@ -14,7 +16,9 @@ export function NewBillPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const routed = location.state;
-  const [start, setStart] = useState(() => (routed?.patient || routed?.type === 'external' ? routed : null));
+  const { user, activeTenantId } = useAuth();
+  // 18 Nov 2026: a bill left half made opens again as it was (billDraft.js) – unless someone else was chosen
+  const [start, setStart] = useState(() => (routed?.patient || routed?.type === 'external' ? routed : !routed?.made && findDraft('sale', draftOwner(user, activeTenantId)) ? { resume: true } : null));
   const [n, setN] = useState(0); // a new bill each time someone is chosen
   // 18 Nov 2026 (the pharmacy's request): medicines scanned on the first page wait here and go on the next bill started
   const [scanned, setScanned] = useState([]);

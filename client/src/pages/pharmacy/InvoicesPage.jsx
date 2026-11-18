@@ -79,7 +79,6 @@ export function InvoicesPage({ pick = null }) {
   const [lastText, setLastText] = useState('');
   const [phoneText, setPhoneText] = useState('');
   const [mrnText, setMrnText] = useState(start ?? '');
-  const [dateOn, setDateOn] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [person, setPerson] = useState(() =>
@@ -96,8 +95,10 @@ export function InvoicesPage({ pick = null }) {
   const phone = useDebounced(phoneText.replace(/[^\d]/g, ''), 300);
   const mrn = useDebounced(mrnText.trim(), 300);
   const name = first || middle || last || (phone.length >= 3 ? phone : '');
-  const from = dateOn ? fromDate || day : '';
-  const to = dateOn ? toDate || day : '';
+  // 18 Nov 2026 (the pharmacy): no "Date" tick – a date chosen filters at once; Clear dates takes them off
+  const dated = Boolean(fromDate || toDate);
+  const from = dated ? fromDate || toDate : '';
+  const to = dated ? toDate || day : '';
   // Search (6 Nov 2026, as the store's earlier software): with a type chosen, that type's people – nothing typed needed
   const [searched, setSearched] = useState(false);
   // The whole list (owner's approval, 9 Nov 2026): how many pages of it are shown – "Show more" adds one
@@ -234,7 +235,7 @@ export function InvoicesPage({ pick = null }) {
   return (
     <>
       <PharmacyHeader
-        className="ph-fab"
+        className="ph-fab ph-counter-head"
         title={pick ? 'Sales bill' : desk ? 'Bill list' : 'Sold'}
         crumb={pick ? 'Sales bill' : desk ? 'Bill list' : 'Sold'}
         sales
@@ -300,20 +301,19 @@ export function InvoicesPage({ pick = null }) {
                   <span>UHID</span>
                   <input type="search" value={mrnText} maxLength={40} placeholder="Patient number" onChange={typed(setMrnText)} />
                 </label>
-                <label className="ph-find-tick">
-                  <input
-                    type="checkbox"
-                    checked={dateOn}
-                    onChange={(e) => {
-                      setDateOn(e.target.checked);
-                      setPerson(null);
-                    }}
-                  />{' '}
-                  Date
-                </label>
                 <div className="ph-filter">
                   <span>From date</span>
-                  <DateText aria-label="From date" value={fromDate || day || ''} max={toDate || day} disabled={!dateOn} onChange={(v) => setFromDate(v)} />
+                  <DateText
+                    aria-label="From date"
+                    value={fromDate || day || ''}
+                    max={toDate || day}
+                    onChange={(v) => {
+                      setFromDate(v);
+                      setPerson(null);
+                      setSearched(true);
+                      setBlank(false);
+                    }}
+                  />
                 </div>
                 <div className="ph-filter">
                   <span>To date</span>
@@ -321,13 +321,26 @@ export function InvoicesPage({ pick = null }) {
                     aria-label="To date"
                     value={toDate || day || ''}
                     min={fromDate || undefined}
-                    disabled={!dateOn}
                     onChange={(v) => {
                       setToDate(v);
                       go(v);
+                      setSearched(true);
                     }}
                   />
                 </div>
+                {dated && (
+                  <button
+                    type="button"
+                    className="btn btn-link btn-sm ph-clear-dates"
+                    onClick={() => {
+                      setFromDate('');
+                      setToDate('');
+                      setPerson(null);
+                    }}
+                  >
+                    Clear dates
+                  </button>
+                )}
               </div>
             </section>
             <div className="ph-sold-results">
@@ -345,7 +358,7 @@ export function InvoicesPage({ pick = null }) {
                 </div>
               )}
               {/* 18 Nov 2026 (the pharmacy's request): Barcode, Select kit and the kits on the first page */}
-              {pick && (
+              {pick && !person && (
                 <div className="ph-pick-tools">
                   <div className="ph-pick-scan">
                     <BarcodeBox onPick={pick.onScan} />
@@ -499,26 +512,41 @@ function PersonBills({ person, onClose }) {
           ))}
         </div>
       )}
-      {due > 0 && (
-        <div className="ph-dues ph-dues-row" role="status">
-          <span>
-            <Wallet aria-hidden="true" /> <strong>Credit balance:</strong> {money(due)} due on {dues.data.bills.length} {dues.data.bills.length === 1 ? 'bill' : 'bills'} ({dues.data.bills.map((b) => b.number).join(', ')})
-          </span>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSettling(true)}>
-            Settle credit
-          </button>
-        </div>
-      )}
+      {/* 18 Nov 2026: the patient's account with the pharmacy in one box – credit due, and her advance */}
       {person.mrn && (
-        <AdvancePanel
-          patientId={person.key}
-          name={person.name}
-          duePaise={due}
-          onUsed={() => {
-            dues.reload();
-            res.reload();
-          }}
-        />
+        <section className="card ph-account" aria-label="Credit and advance">
+          <div className="ph-account-tile">
+            <span className="ph-account-label">Credit due</span>
+            <strong className={`ph-account-amount${due > 0 ? ' is-due' : ''}`}>{dues.data ? money(due) : '…'}</strong>
+            {due > 0 ? (
+              <StatusPill tone="watch" icon={Wallet}>
+                Due on {dues.data.bills.map((b) => b.number).join(', ')}
+              </StatusPill>
+            ) : (
+              dues.data && (
+                <StatusPill tone="stable" icon={CircleCheck}>
+                  Nothing due
+                </StatusPill>
+              )
+            )}
+            {due > 0 && (
+              <div className="ph-account-actions">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSettling(true)}>
+                  Settle credit
+                </button>
+              </div>
+            )}
+          </div>
+          <AdvancePanel
+            patientId={person.key}
+            name={person.name}
+            duePaise={due}
+            onUsed={() => {
+              dues.reload();
+              res.reload();
+            }}
+          />
+        </section>
       )}
       {settling && (
         <ReceivePayment
@@ -986,23 +1014,24 @@ function AdvancePanel({ patientId, name, duePaise, onUsed }) {
   });
   const left = adv.data?.balancePaise ?? 0;
   return (
-    <div className="ph-advance" aria-label="Pharmacy advance">
-      <span>
-        <strong>Advance:</strong> {adv.data ? money(left) : '…'} left
-      </span>
-      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDoing('deposit')}>
-        Take advance
-      </button>
-      {left > 0 && duePaise > 0 && (
-        <button type="button" className="btn btn-secondary btn-sm" disabled={use.busy} onClick={() => use.send(`/pharmacy/patients/${patientId}/advance/use`, {})}>
-          Use on bills due
+    <div className="ph-account-tile" aria-label="Pharmacy advance">
+      <span className="ph-account-label">Advance left</span>
+      <strong className="ph-account-amount">{adv.data ? money(left) : '…'}</strong>
+      <div className="ph-account-actions">
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDoing('deposit')}>
+          Take advance
         </button>
-      )}
-      {left > 0 && (
-        <button type="button" className="btn btn-link btn-sm" onClick={() => setDoing('refund')}>
-          Refund
-        </button>
-      )}
+        {left > 0 && duePaise > 0 && (
+          <button type="button" className="btn btn-secondary btn-sm" disabled={use.busy} onClick={() => use.send(`/pharmacy/patients/${patientId}/advance/use`, {})}>
+            Use on bills due
+          </button>
+        )}
+        {left > 0 && (
+          <button type="button" className="btn btn-link btn-sm" onClick={() => setDoing('refund')}>
+            Refund
+          </button>
+        )}
+      </div>
       {(use.error || note) && <span className={use.error ? 'field-error' : 'hint'}>{use.error || note}</span>}
       {doing && (
         <AdvanceDialog
@@ -1161,6 +1190,7 @@ export function InvoicePage() {
   return (
     <>
       <PharmacyHeader
+        className="ph-counter-head"
         title={`Invoice ${v.number}`}
         crumb={v.number}
         actions={
@@ -1175,8 +1205,9 @@ export function InvoicePage() {
         }
       />
       {/* One invoice, laid out as an invoice (13 Nov 2026): the bill on the left – number, date and status, who it is
-          for, the medicines and the totals; beside it how it was paid, what came back and the prescription */}
-      <div className="pf-content bill-page">
+          for, the medicines and the totals; beside it how it was paid, what came back and the prescription. 18 Nov 2026 (the
+          pharmacy): compact, as the earlier software – the whole bill on one screen */}
+      <div className="pf-content bill-page ph-inv-page">
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
