@@ -1233,3 +1233,63 @@
 .ph-inv-page .ph-inv-row { font-size: 0.8125rem; }
 .ph-inv-page .hint { margin: 4px 0 0; font-size: 0.75rem; }
 .ph-counter-head .ph-actions .btn { min-height: 32px; padding: 4px 12px; font-size: 0.8125rem; }
+
+/* 18 Nov 2026 (the pharmacy, second look): the invoice as a proper printed bill, and Paid, Credit and Outstanding one
+   under the other in the Payment card on the right */
+.ph-inv-page .ph-inv { grid-template-columns: minmax(0, 1fr) 280px; }
+.ph-inv-page .ph-inv-main { padding: 0; overflow: hidden; }
+.ph-inv-page .ph-inv-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); margin: 0; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); background: var(--mist-50); }
+.ph-inv-page .ph-inv-id { display: flex; flex-direction: column; gap: 4px; }
+.ph-inv-kind { align-self: flex-start; padding: 2px 10px; border-radius: 999px; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.ph-inv-kind.is-ipd { color: var(--status-admitted-fg); background: var(--status-admitted-bg); }
+.ph-inv-kind.is-opd { color: var(--status-due-fg); background: var(--status-due-bg); }
+.ph-inv-kind.is-ext { color: var(--status-inactive-fg); background: var(--status-inactive-bg); }
+.ph-inv-page .ph-inv-no { margin: 0; font-size: 1.25rem; }
+.ph-inv-no-label { font-size: 0.75rem; font-weight: 500; color: var(--slate-600); }
+.ph-inv-when { display: flex; gap: var(--space-5, 20px); margin: 0; }
+.ph-inv-when > div { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.ph-inv-when dt { font-size: 0.6875rem; color: var(--slate-600); text-transform: uppercase; letter-spacing: 0.04em; }
+.ph-inv-when dd { margin: 0; font-weight: 600; }
+.ph-inv-when .ph-inv-status { justify-content: flex-end; }
+.ph-inv-page .ph-inv .ph-inv-facts { gap: 0; margin: var(--space-3) var(--space-4); padding: 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); overflow: hidden; }
+.ph-inv-page .ph-inv .ph-inv-facts > div { padding: 6px var(--space-3); border-right: 1px solid var(--border); }
+.ph-inv-page .ph-inv .ph-inv-facts > div:last-child { border-right: 0; }
+.ph-inv-page .ph-grn-scroll { margin: 0 var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.ph-inv-page .ph-inv-lines { margin: 0; border-collapse: collapse; }
+.ph-inv-page .ph-inv-lines thead th { background: var(--mist-50); border-bottom: 1px solid var(--border); }
+.ph-inv-page .ph-inv-lines tbody td { border-bottom: 1px solid var(--card-border); }
+.ph-inv-page .ph-inv-lines tbody tr:last-child td { border-bottom: 0; }
+.ph-inv-page .ph-inv-lines tbody tr:nth-child(even) td { background: var(--mist-50); }
+.ph-inv-foot { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); padding: var(--space-3) var(--space-4) var(--space-4); }
+.ph-inv-words { display: flex; flex-direction: column; gap: 2px; min-width: 0; max-width: 55%; }
+.ph-inv-words > span { font-size: 0.6875rem; color: var(--slate-600); text-transform: uppercase; letter-spacing: 0.04em; }
+.ph-inv-words strong { font-weight: 600; }
+.ph-inv-words .ph-inv-why { margin: 4px 0 0; font-size: 0.75rem; color: var(--slate-600); }
+.ph-inv-page .ph-inv-foot .ph-inv-totals { margin: 0; }
+.ph-inv-page .ph-inv-totals dl { width: 280px; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); gap: 3px; }
+.ph-inv-page .ph-inv-totals .ph-inv-grand { margin: 4px calc(-1 * var(--space-3)) calc(-1 * var(--space-2)); padding: 6px var(--space-3); border-radius: 0 0 var(--radius-md) var(--radius-md); border-top: 1px solid var(--border); }
+/* Payment: one figure a row, the label on the left and the amount on the right */
+.ph-inv-page .ph-inv-paid { grid-template-columns: 1fr; gap: 0; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.ph-inv-page .ph-inv-paid > div { display: flex; justify-content: space-between; align-items: center; padding: 8px var(--space-3); border-radius: 0; background: var(--surface); border-bottom: 1px solid var(--card-border); }
+.ph-inv-page .ph-inv-paid > div:last-child { border-bottom: 0; }
+.ph-inv-page .ph-inv-paid dt { font-size: 0.8125rem; }
+.ph-inv-page .ph-inv-paid dd { font-size: 0.9375rem; }
+.ph-inv-page .ph-inv-paid > .is-total { grid-column: auto; background: var(--status-watch-bg); }
+@media (max-width: 900px) {
+  .ph-inv-page .ph-inv { grid-template-columns: minmax(0, 1fr); }
+  .ph-inv-foot { flex-direction: column; }
+  .ph-inv-words { max-width: none; }
+  .ph-inv-page .ph-inv-totals dl { width: 100%; }
+}
+
+/* 18 Nov 2026 (the pharmacy, live look): "Search on the left … New walk-in customer" on the title's line; the search
+   panel as tall as the list beside it, its fields spaced evenly; the barcode bar and the list higher */
+.ph-pick-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2) var(--space-3); font-size: 0.8125rem; }
+.ph-sold .ph-pick-tools { margin-top: 0; }
+@media screen and (min-width: 1000px) {
+  .ph-sold .ph-sold-split { align-items: stretch; }
+  .ph-sold .ph-filters { align-self: stretch; justify-content: flex-start; gap: var(--space-3); }
+  .ph-sold .ph-find-form { gap: 10px; }
+  .ph-sold .ph-find-form .ph-filter :is(input, select) { height: 32px; }
+  .ph-sold-results .dt-wrap { height: max(320px, calc(100dvh - 250px)); }
+}
