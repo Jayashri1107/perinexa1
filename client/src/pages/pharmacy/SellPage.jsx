@@ -621,7 +621,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
 
   return (
     <>
-      {!embedded && <PharmacyHeader title="Sales bill" crumb={issue ? 'Issue to ward' : 'New bill'} subtitle={issue ? 'Issue to ward: medicines for an admitted patient, on her stay’s bill.' : undefined} sales />}
+      {!embedded && <PharmacyHeader className="ph-counter-head" title="Sales bill" crumb={issue ? 'Issue to ward' : 'New bill'} subtitle={issue ? 'Issue to ward: medicines for an admitted patient, on her stay’s bill.' : undefined} sales />}
       <div className={embedded ? 'ph-counter is-embedded' : 'pf-content ph-counter'}>
         <Alert type="error" onClose={() => s.setError(null)}>
           {s.error}
@@ -713,9 +713,10 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                       <input readOnly tabIndex={-1} className="ph-ro tabular" value={patient.phone} />
                     </label>
                   )}
+                  {/* one more row of her details, the same size as the others (18 Nov 2026) */}
+                  <DuesLine patientId={patient.id} />
                 </div>
               )}
-              {patient && <DuesLine patientId={patient.id} />}
               {who === 'walkin' && (
                 <div className="ph-walkin">
                   <Field label={business ? 'Name of the person collecting' : 'Patient name'} id="ph-cust-name" error={s.fields['customer.name']}>
@@ -1026,34 +1027,9 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                   </p>
                 )}
 
-                {/* 18 Nov 2026, as the earlier Sales Bill: Profit and Total Landed, and Item Wise Discount */}
-                <div className="ph-totals ph-totals-margin">
-                  <label className="ph-total-field">
-                    <span>Profit</span>
-                    <input readOnly className="tabular" value={margin ? (margin.profitPaise / 100).toFixed(2) : ''} />
-                  </label>
-                  <label className="ph-total-field">
-                    <span>Total Landed</span>
-                    <input readOnly className="tabular" value={margin ? (margin.landingPaise / 100).toFixed(2) : ''} />
-                  </label>
-                  <label className="ph-total-field ph-total-tick">
-                    <input
-                      type="checkbox"
-                      checked={itemDisc}
-                      disabled={!lines.length}
-                      onChange={(e) => {
-                        setItemDisc(e.target.checked);
-                        if (!e.target.checked) setLines((ls) => ls.map((x) => ({ ...x, disc: '' })));
-                      }}
-                    />{' '}
-                    Item Wise Discount
-                  </label>
-                </div>
-                <div className="ph-totals">
-                  <label className="ph-total-field">
-                    <span>GST amount</span>
-                    <input readOnly className="tabular" value={(gstPaise / 100).toFixed(2)} />
-                  </label>
+                {/* 18 Nov 2026 (the pharmacy): only what is typed is a box – Disc %, Disc amount, the reason and the Remark;
+                    the bill's figures are one line under them, the Net in bold */}
+                <div className="ph-totals ph-totals-entry">
                   <label className="ph-total-field">
                     <span>Disc %</span>
                     <input inputMode="decimal" className="tabular" value={discount} maxLength={8} disabled={!lines.length} onChange={(e) => changePct(e.target.value.replace(/[^\d.]/g, ''))} />
@@ -1066,18 +1042,39 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                     <span>Conc. reason</span>
                     <input value={discountReason} maxLength={200} disabled={!anyDiscount} onChange={(e) => setDiscountReason(e.target.value)} />
                   </label>
-                  <label className="ph-total-field">
-                    <span>Total amount</span>
-                    <input readOnly className="tabular" value={(grossPaise / 100).toFixed(2)} />
-                  </label>
-                  <label className="ph-total-field ph-total-net">
-                    <span>Net amount</span>
-                    <input readOnly className="tabular" value={(totalPaise / 100).toFixed(2)} />
-                  </label>
                   <label className="ph-total-field ph-total-reason">
                     <span>Remark</span>
                     <input value={remark} maxLength={200} onChange={(e) => setRemark(e.target.value)} />
                   </label>
+                </div>
+                <div className="ph-sumline" aria-label="The bill's figures">
+                  <label className="ph-sum-tick">
+                    <input
+                      type="checkbox"
+                      checked={itemDisc}
+                      disabled={!lines.length}
+                      onChange={(e) => {
+                        setItemDisc(e.target.checked);
+                        if (!e.target.checked) setLines((ls) => ls.map((x) => ({ ...x, disc: '' })));
+                      }}
+                    />{' '}
+                    Item Wise Discount
+                  </label>
+                  <span>
+                    Profit <b className="tabular">{margin ? (margin.profitPaise / 100).toFixed(2) : '–'}</b>
+                  </span>
+                  <span>
+                    Total Landed <b className="tabular">{margin ? (margin.landingPaise / 100).toFixed(2) : '–'}</b>
+                  </span>
+                  <span>
+                    GST <b className="tabular">{(gstPaise / 100).toFixed(2)}</b>
+                  </span>
+                  <span>
+                    Total <b className="tabular">{(grossPaise / 100).toFixed(2)}</b>
+                  </span>
+                  <span className="ph-sum-net">
+                    Net amount <b className="tabular">{(totalPaise / 100).toFixed(2)}</b>
+                  </span>
                 </div>
                 {(s.fields.discountPercent || s.fields.discountReason) && <p className="field-error">{s.fields.discountPercent || s.fields.discountReason}</p>}
                 {pct > 100 && <p className="field-error">The discount cannot be more than the bill.</p>}

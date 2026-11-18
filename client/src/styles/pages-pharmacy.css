@@ -1076,24 +1076,62 @@
 .ph-topic-text strong { font-size: 0.875rem; }
 .ph-topic-text span { font-size: var(--fs-caption); color: var(--slate-600); }
 .ph-topic-none { font-size: var(--fs-caption); color: var(--slate-600); }
-.ph-credit { margin: 0 0 var(--space-2); }
+.ph-credit { display: grid; gap: var(--space-1); margin: 0; }
 .ph-credit .is-due { color: var(--status-watch-fg); font-weight: 700; }
 .ph-last-bill { margin: 0 0 var(--space-2); font-size: var(--fs-caption); color: var(--status-stable-fg); font-weight: 600; }
 .ph-total-tick { flex-direction: row; align-items: center; gap: var(--space-1); }
 .ph-inv-paid > .is-total { grid-column: 1 / -1; background: var(--status-watch-bg); }
 .ph-inv-paid > .is-total dd { color: var(--status-watch-fg); }
 
-/* 18 Nov 2026 (the pharmacy): the bill fits the screen, as the earlier Sales Bill – the patient panel on the left stays
-   put at full height; on the right the medicine list scrolls inside its box, and the totals with Save and Close are
-   always in sight, never below the fold. A short or narrow screen keeps the page scrolling as before. */
+/* 18 Nov 2026 (the pharmacy, third look): the Sales bill is one fixed screen – the page itself never scrolls; only the
+   medicine list scrolls, inside its box, which takes all the height left. Smaller text and less space everywhere on
+   it. A narrow or short screen (a tablet, a phone) keeps the page scrolling as before. */
+.ph-counter-head .ph-crumbs ol { margin: 0; }
+.ph-counter-head .ph-title { font-size: 1.25rem; line-height: 1.6rem; }
+.ph-counter-head .ph-subtitle { display: none; }
+.pf-content.ph-counter { font-size: 0.8125rem; gap: var(--space-2); }
+.pf-content.ph-counter > .alert { margin: 0; padding: 6px var(--space-3); font-size: 0.8125rem; }
+.pf-content.ph-counter .ph-counter-main { align-items: stretch; gap: var(--space-3); }
+.pf-content.ph-counter .ph-counter-right { gap: 6px; padding: var(--space-2) var(--space-3); }
+.pf-content.ph-counter .ph-counter-body { gap: var(--space-2); padding: var(--space-2) var(--space-3); }
+.pf-content.ph-counter :is(.ph-counter-left, .ph-counter-right) input:not([type='checkbox']):not([type='radio']),
+.pf-content.ph-counter :is(.ph-counter-left, .ph-counter-right) select { height: 30px; min-height: 0; padding-top: 2px; padding-bottom: 2px; font-size: 0.8125rem; }
+.pf-content.ph-counter .ph-pi-row { gap: var(--space-2); }
+.pf-content.ph-counter .ph-pi-row > span, .pf-content.ph-counter .ph-pi-row > label { font-size: 0.8125rem; }
+.pf-content.ph-counter .ph-pi-chosen input { height: 28px; }
+.pf-content.ph-counter .ph-section-label { font-size: 0.6875rem; margin: 0; }
+.pf-content.ph-counter .ph-counter-left .ph-bill-net { font-size: 1.125rem; min-width: 100px; }
+.pf-content.ph-counter .ph-type-tabs button { min-height: 32px; padding: 4px 8px; font-size: 0.8125rem; }
+.pf-content.ph-counter .ph-item-label, .pf-content.ph-counter .ph-total-field > span { font-size: 0.75rem; }
+.pf-content.ph-counter .btn { min-height: 32px; padding: 4px 12px; font-size: 0.8125rem; }
+.pf-content.ph-counter .ph-counter-right .hint { margin: 0; font-size: 0.75rem; }
+.pf-content.ph-counter .ph-counter-barcode summary { font-size: 0.75rem; }
+.ph-grid-box .ph-grid td { height: 26px; padding-top: 0; padding-bottom: 0; }
+.ph-grid-box .ph-grid :is(input, select) { height: 22px !important; min-height: 0; padding-top: 0 !important; padding-bottom: 0 !important; font-size: 0.75rem !important; }
+.ph-counter-actions { padding-top: 6px; gap: 6px; }
+.ph-counter-actions .ph-items-added { font-size: 0.8125rem; }
 @media (min-width: 1000px) and (min-height: 600px) {
-  .pf-content.ph-counter { --ph-fit: calc(100dvh - 210px); }
-  .pf-content.ph-counter .ph-counter-main { align-items: stretch; }
-  .pf-content.ph-counter .ph-counter-left { position: sticky; top: 12px; height: var(--ph-fit); overflow-y: auto; }
-  .pf-content.ph-counter .ph-counter-right { height: var(--ph-fit); overflow-y: auto; gap: var(--space-2); }
+  .pf-content.ph-counter { --ph-fit: calc(100dvh - 168px); }
+  .pf-content.ph-counter .ph-counter-left,
+  .pf-content.ph-counter .ph-counter-right { height: var(--ph-fit); }
+  /* the patient panel fits its height; anything longer (a long prescription) scrolls with no bar showing */
+  .pf-content.ph-counter .ph-counter-left { overflow-y: auto; scrollbar-width: none; }
+  .pf-content.ph-counter .ph-counter-left::-webkit-scrollbar { display: none; }
+  .pf-content.ph-counter .ph-counter-right { overflow: hidden; }
   .pf-content.ph-counter .ph-counter-right > * { flex: none; }
-  .pf-content.ph-counter .ph-counter-right > .ph-grid-wrap.ph-grid-box { flex: 1 1 0; height: auto; min-height: 140px; }
-  .pf-content.ph-counter .ph-counter-actions { margin-top: auto; padding-top: var(--space-2); }
+  .pf-content.ph-counter .ph-counter-right > .ph-grid-wrap.ph-grid-box { flex: 1 1 0; height: auto; min-height: 110px; }
+  .pf-content.ph-counter .ph-counter-actions { margin-top: auto; }
+}
+/* Under the list: the four boxes that are typed in, then the bill's figures on one line */
+.ph-totals.ph-totals-entry { grid-template-columns: minmax(80px, 0.7fr) minmax(100px, 0.9fr) minmax(0, 1.6fr) minmax(0, 1.6fr); }
+.ph-sumline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-4); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mist-50); font-size: 0.875rem; color: var(--slate-600); }
+.ph-sumline b { margin-left: 4px; color: var(--ink); font-weight: 600; }
+.ph-sum-tick { display: inline-flex; align-items: center; gap: 6px; margin: 0 auto 0 0; color: var(--ink); font-weight: 500; cursor: pointer; }
+.ph-sum-tick input { width: 16px; height: 16px; margin: 0; }
+.ph-sum-net { padding: 2px 10px; border-radius: var(--radius-sm); background: var(--selected-bg, var(--mist-100)); color: var(--indigo-700); }
+.ph-sum-net b { font-size: 1.0625rem; font-weight: 700; color: var(--indigo-700); }
+@container phbill (max-width: 620px) {
+  .ph-totals.ph-totals-entry { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 /* "From a kit" on one short line */
 .ph-kit { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); margin-bottom: 0; }
