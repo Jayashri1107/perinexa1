@@ -39,6 +39,9 @@ export function AskPharmacy({ patient }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [flash, setFlash] = useState(null);
+  // Every hook before the early return below (18 Nov 2026): one after it broke the whole stay page the moment the
+  // requests arrived ("Rendered more hooks than during the previous render")
+  const [cancelling, setCancelling] = useState(null); // { id, reason }
   const d = res.data;
   if (res.error || !d) return null; // not someone who charts for her
   const doctorChosen = orderedById || d.me || '';
@@ -59,7 +62,6 @@ export function AskPharmacy({ patient }) {
     }
     setBusy(false);
   };
-  const [cancelling, setCancelling] = useState(null); // { id, reason }
   const cancel = async () => {
     try {
       await api(`/patients/${patient.id}/ward-requests/${cancelling.id}/cancel`, { method: 'POST', body: { reason: cancelling.reason } });
