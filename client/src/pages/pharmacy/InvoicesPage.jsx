@@ -79,7 +79,6 @@ export function InvoicesPage({ pick = null }) {
   const [lastText, setLastText] = useState('');
   const [phoneText, setPhoneText] = useState('');
   const [mrnText, setMrnText] = useState(start ?? '');
-  const [dateOn, setDateOn] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [person, setPerson] = useState(() =>
@@ -96,8 +95,10 @@ export function InvoicesPage({ pick = null }) {
   const phone = useDebounced(phoneText.replace(/[^\d]/g, ''), 300);
   const mrn = useDebounced(mrnText.trim(), 300);
   const name = first || middle || last || (phone.length >= 3 ? phone : '');
-  const from = dateOn ? fromDate || day : '';
-  const to = dateOn ? toDate || day : '';
+  // 18 Nov 2026 (the pharmacy): no "Date" tick – a date chosen filters at once; Clear dates takes them off
+  const dated = Boolean(fromDate || toDate);
+  const from = dated ? fromDate || toDate : '';
+  const to = dated ? toDate || day : '';
   // Search (6 Nov 2026, as the store's earlier software): with a type chosen, that type's people – nothing typed needed
   const [searched, setSearched] = useState(false);
   // The whole list (owner's approval, 9 Nov 2026): how many pages of it are shown – "Show more" adds one
@@ -234,7 +235,7 @@ export function InvoicesPage({ pick = null }) {
   return (
     <>
       <PharmacyHeader
-        className="ph-fab"
+        className="ph-fab ph-counter-head"
         title={pick ? 'Sales bill' : desk ? 'Bill list' : 'Sold'}
         crumb={pick ? 'Sales bill' : desk ? 'Bill list' : 'Sold'}
         sales
@@ -300,20 +301,19 @@ export function InvoicesPage({ pick = null }) {
                   <span>UHID</span>
                   <input type="search" value={mrnText} maxLength={40} placeholder="Patient number" onChange={typed(setMrnText)} />
                 </label>
-                <label className="ph-find-tick">
-                  <input
-                    type="checkbox"
-                    checked={dateOn}
-                    onChange={(e) => {
-                      setDateOn(e.target.checked);
-                      setPerson(null);
-                    }}
-                  />{' '}
-                  Date
-                </label>
                 <div className="ph-filter">
                   <span>From date</span>
-                  <DateText aria-label="From date" value={fromDate || day || ''} max={toDate || day} disabled={!dateOn} onChange={(v) => setFromDate(v)} />
+                  <DateText
+                    aria-label="From date"
+                    value={fromDate || day || ''}
+                    max={toDate || day}
+                    onChange={(v) => {
+                      setFromDate(v);
+                      setPerson(null);
+                      setSearched(true);
+                      setBlank(false);
+                    }}
+                  />
                 </div>
                 <div className="ph-filter">
                   <span>To date</span>
@@ -321,13 +321,26 @@ export function InvoicesPage({ pick = null }) {
                     aria-label="To date"
                     value={toDate || day || ''}
                     min={fromDate || undefined}
-                    disabled={!dateOn}
                     onChange={(v) => {
                       setToDate(v);
                       go(v);
+                      setSearched(true);
                     }}
                   />
                 </div>
+                {dated && (
+                  <button
+                    type="button"
+                    className="btn btn-link btn-sm ph-clear-dates"
+                    onClick={() => {
+                      setFromDate('');
+                      setToDate('');
+                      setPerson(null);
+                    }}
+                  >
+                    Clear dates
+                  </button>
+                )}
               </div>
             </section>
             <div className="ph-sold-results">
