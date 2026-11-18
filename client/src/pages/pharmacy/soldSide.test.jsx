@@ -26,7 +26,8 @@ describe('the pharmacy bill', () => {
     expect(text).toMatch(/Sr\. Item Name Batch No Expiry MRP Disc Amt Qty Amount/);
     expect(text).toContain('1 Sampleol 650 B100 Aug-2029 350.00 35.00 2.00 665.00');
     // 15 Nov 2026: as the earlier bill – Gross at MRP, Disc, Net
-    expect(text).toContain('Gross 700.00 Disc 35.00 Net 665.00');
+    expect(text).toContain('Gross 700.00 Disc 35.00 Paid Amount');
+    expect(text).not.toContain('Net 665.00'); // 18 Nov 2026: the pharmacy wants no Net line
     expect(text).toContain('GET WELL SOON');
     expect(text).toContain('Subject to Sample Town Jurisdiction');
     expect(text).toContain('Pharmacist Sample Pharmacist');
@@ -39,15 +40,19 @@ describe('the pharmacy bill', () => {
     // 13 Nov 2026: a registered patient may pay at the counter – then the bill is not on the hospital bill
     const paidHere = paper({ ...invoice, billId: null, paidPaise: 66500 });
     expect(paidHere).toContain('Paid Amount 665.00');
-    expect(paidHere).toContain('Bal. Amt 0.00');
-    expect(paper({ ...invoice, billId: null, paidPaise: 30000, balancePaise: 36500 })).toContain('Paid Amount 300.00 Bal. Amt 365.00');
+    expect(paidHere).toContain('Credit Amt 0.00');
+    expect(paper({ ...invoice, billId: null, paidPaise: 30000, balancePaise: 36500 })).toContain('Paid Amount 300.00 Credit Amt 365.00');
     expect(paidHere).not.toContain('Payable at the billing desk');
+    // 18 Nov 2026: earlier bills still due are printed with the total she owes; nothing when none is due
+    expect(paper({ ...invoice, billId: null, paidPaise: 30000, balancePaise: 36500, earlierDuePaise: 20000 })).toContain('Credit Amt 365.00 Previous Credit 200.00 Total Credit 565.00');
+    expect(paidHere).not.toContain('Previous Credit');
   });
 
   it('shows what a walk-in paid, an IPD issue’s type, and no jurisdiction line without a city', () => {
     const walkIn = paper({ ...invoice, patient: null, customer: { name: 'Sample Walkin' }, paidPaise: 66500 }, { ...settings, place: '' });
     expect(walkIn).toContain('Type External');
     expect(walkIn).toContain('Paid Amount 665.00');
+    expect(walkIn).not.toContain('Credit'); // a walk-in never has credit
     expect(walkIn).not.toContain('Jurisdiction');
     expect(paper({ ...invoice, kind: 'issue' })).toContain('Type IPD Patient');
   });

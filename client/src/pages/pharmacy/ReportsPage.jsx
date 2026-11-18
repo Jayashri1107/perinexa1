@@ -16,6 +16,7 @@ import { SupplierDues } from './SupplierAccount.jsx';
 import { DayClosing, FiguresReport } from './PharmacyFigures.jsx';
 import { SalesByDoctorReport } from './SalesByDoctor.jsx';
 import { MisReports } from './MisReports.jsx';
+import { PharmacyTopics } from './PharmacyTopics.jsx';
 import { DateText } from '../../components/DateText.jsx';
 
 // Pharmacy → Reports (laid out for easy reading, owner 26 Oct 2026): a period with quick choices, the period's numbers
@@ -89,6 +90,7 @@ const PERIOD_VIEWS = ['sales', 'purchases', 'registers', 'figures', 'by-doctor',
 
 const VIEWS = [
   ['alerts', 'Stock alerts'],
+  ['topics', 'All topics'], // 18 Nov 2026: every topic of the pharmacy's list, with where it is
   ['list', 'Report list'], // 13 Nov 2026: every report of the earlier software, printable (MisReports.jsx)
   ['sales', 'Sales & GST'],
   ['purchases', 'Purchases'],
@@ -585,6 +587,7 @@ export function ReportsPage() {
         {view === 'figures' && <FiguresReport from={from} to={to} />}
         {view === 'day' && <DayClosing />}
         {view === 'by-doctor' && pharmacist && <SalesByDoctorReport from={from} to={to} />}
+        {view === 'topics' && <PharmacyTopics />}
         {view === 'list' && <MisReports from={from} to={to} setFrom={setFrom} setTo={setTo} admin={admin} pharmacist={pharmacist} openDoctorSales={() => go('by-doctor')} />}
 
         {view === 'registers' && (

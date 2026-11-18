@@ -1,6 +1,7 @@
 import { deflateRawSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { billHeadings, billLines, formLineFromBill, packSizeOf, readCsv, readExpiry, readNumber, readXlsx, stockLines } from './stockFile.js';
+import { handLine } from './OpeningStockPage.jsx';
 
 // Reading the old pharmacy software's stock list for Opening stock. Fake sample stock only.
 
@@ -196,5 +197,13 @@ describe('PH16 – a supplier bill file', () => {
     const med = { id: 'm1', name: 'Sample Para 500', packSize: 15, gstRate: 12 };
     expect(formLineFromBill(lines[0], med)).toEqual({ medicine: med, batch: 'SP101', expiry: '2028-06', conv: '10', qty: '5', freeQty: '1', rate: '42.5', mrp: '60', disc: '2', gst: '5' });
     expect(formLineFromBill(lines[1], med)).toMatchObject({ conv: '15', freeQty: '', disc: '' });
+  });
+});
+
+describe('one item typed by hand (18 Nov 2026)', () => {
+  it('becomes a line of the file: expiry as YYYY-MM, rupees as paise', () => {
+    expect(handLine({ name: ' Sampleol 650 ', batch: 'B1', expiry: '08/27', qty: '40', mrp: '3.50', rate: '2', gst: '5' })).toEqual({ row: 1, name: 'Sampleol 650', batch: 'B1', expiry: '2027-08', qty: 40, mrpPaise: 350, ratePaise: 200, gstRate: 5 });
+    // what cannot be read is sent as typed, for the server to name the problem
+    expect(handLine({ name: 'X', batch: 'B', expiry: 'soon', qty: 'ten', mrp: 'abc', rate: '', gst: '' })).toMatchObject({ expiry: 'soon', qty: 'ten', mrpPaise: 'abc', ratePaise: '', gstRate: null });
   });
 });

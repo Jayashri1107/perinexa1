@@ -10,7 +10,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { WitnessFields, emptyWitness } from '../../components/WitnessFields.jsx';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { toPaise } from '../billing/billingFormat.js';
-import { SUPPLIER_RETURN_REASONS, debitSums, expiryLabel, medicineLabel, momentDay, returnBatchesShown, returnChosen, unitsLabel } from './pharmacyFormat.js';
+import { NEAR_EXPIRY_DAYS, SUPPLIER_RETURN_REASONS, debitSums, expiryLabel, medicineLabel, momentDay, returnBatchesShown, returnChosen, unitsLabel } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { DateText } from '../../components/DateText.jsx';
 
@@ -79,7 +79,7 @@ export function NewSupplierReturnPage() {
   const [supplierId, setSupplierId] = useState(() => (/^[a-f\d]{24}$/i.test(params.get('supplier') ?? '') ? params.get('supplier') : ''));
   const offer = useFetch(supplierId ? '/pharmacy/supplier-returns/batches' : null, { supplierId });
   const [qty, setQty] = useState({}); // batch id → what was typed
-  const [onlyExpired, setOnlyExpired] = useState(false);
+  const [show, setShow] = useState(''); // '' all, 'expired', 'near' (expired or near expiry)
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
   const [witness, setWitness] = useState(emptyWitness);
@@ -89,9 +89,9 @@ export function NewSupplierReturnPage() {
   const batches = data?.batches ?? [];
   // What is sent is every batch with a quantity typed – so the list never hides one of them, and the debit note
   // card below names each before the button.
-  const shown = returnBatchesShown(batches, qty, onlyExpired);
+  const shown = returnBatchesShown(batches, qty, show);
   const chosen = returnChosen(batches, qty);
-  const keptInList = onlyExpired ? chosen.filter((x) => !x.b.expired).length : 0;
+  const keptInList = show ? chosen.filter((x) => !(x.b.expired || (show === 'near' && x.b.daysLeft <= NEAR_EXPIRY_DAYS))).length : 0;
   const bad = chosen.filter((x) => x.qty == null);
   const controlled = chosen.some((x) => x.b.controlled);
   const sums = debitSums(chosen.filter((x) => x.qty != null).map((x) => ({ qty: x.qty, ratePaise: x.b.ratePaise, exactRate: x.b.exactRate, gstRate: x.b.gstRate })));
@@ -143,9 +143,17 @@ export function NewSupplierReturnPage() {
           <section className="card bill-section">
             <div className="row-between">
               <h2>Batches bought from this supplier</h2>
-              <label className="appt-reason">
-                <input type="checkbox" checked={onlyExpired} onChange={(e) => setOnlyExpired(e.target.checked)} /> Show only expired batches
-              </label>
+              <div className="segmented" role="group" aria-label="Which batches">
+                <button type="button" aria-pressed={show === ''} onClick={() => setShow('')}>
+                  All batches
+                </button>
+                <button type="button" aria-pressed={show === 'expired'} onClick={() => setShow('expired')}>
+                  Expired
+                </button>
+                <button type="button" aria-pressed={show === 'near'} onClick={() => setShow('near')}>
+                  Expired or near expiry ({NEAR_EXPIRY_DAYS} days)
+                </button>
+              </div>
             </div>
             {offer.error && <Alert type="error">{offer.error}</Alert>}
             {!data && !offer.error && (
@@ -154,7 +162,7 @@ export function NewSupplierReturnPage() {
               </p>
             )}
             {data && !batches.length && <p className="muted">No stock in hand was bought from this supplier.</p>}
-            {data && batches.length > 0 && !shown.length && <p className="muted">No expired batch from this supplier.</p>}
+            {data && batches.length > 0 && !shown.length && <p className="muted">{show === 'near' ? 'No expired or near-expiry batch from this supplier.' : 'No expired batch from this supplier.'}</p>}
             {shown.length > 0 && (
               <table className="bill-lines ph-return-lines">
                 <thead>
@@ -192,6 +200,7 @@ export function NewSupplierReturnPage() {
                         </td>
                         <td data-label="Batch">
                           {b.batch} · {expiryLabel(b.expiry)} {b.expired && <StatusPill tone="high">Expired</StatusPill>}
+                          {!b.expired && b.daysLeft <= NEAR_EXPIRY_DAYS && <StatusPill tone="watch">Near expiry</StatusPill>}
                         </td>
                         <td data-label="In stock" className="num">
                           {b.qtyLeft}

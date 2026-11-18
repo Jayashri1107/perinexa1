@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { BedDouble, TriangleAlert, CalendarClock, CalendarDays, CircleCheck, CircleX, ClipboardList, Minus, PackageX, Plus, Receipt, Stethoscope, Trash2, UserPlus } from 'lucide-react';
+import { BedDouble, TriangleAlert, Wallet, CalendarClock, CalendarDays, CircleCheck, CircleX, ClipboardList, Minus, PackageX, Plus, Receipt, Stethoscope, Trash2, UserPlus } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Field } from '../../components/ui.jsx';
+import { api } from '../../api.js';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { cleanGstin, gstinProblem, gstinState } from './gstin.js';
@@ -218,6 +219,33 @@ function BatchPicker({ line, onChange, onPrice = null }) {
 }
 
 /** PH7: her allergy line on the counter – the allergy, "None known", or "Not recorded – ask". */
+/** 18 Nov 2026 (the pharmacy's request): what the chosen OPD or IPD patient still owes the pharmacy – her bills put on
+ * credit or paid in part here (not those on a hospital bill). Nothing shows while nothing is due. */
+export function DuesLine({ patientId }) {
+  const res = useFetch(`/pharmacy/patients/${patientId}/dues`);
+  const due = res.data?.duePaise ?? 0;
+  const last = res.data?.lastBill;
+  // As the earlier Sales Bill: Credit Amt in the patient's information, Outstanding under it, and her last bill
+  return (
+    <div className="ph-credit" role="status">
+      <label className="ph-pi-row">
+        <span>Credit Amt</span>
+        <input readOnly tabIndex={-1} className={`ph-ro tabular${due ? ' is-due' : ''}`} value={res.data ? (due / 100).toFixed(2) : '…'} />
+      </label>
+      {due > 0 && (
+        <p className="ph-dues">
+          <Wallet aria-hidden="true" /> <strong>Outstanding: {money(due)}</strong> on {res.data.bills.map((b) => b.number).join(', ')}
+        </p>
+      )}
+      {last && (
+        <p className="ph-last-bill">
+          Last Bill {last.number}, Type: {last.type}, Amt: {money(last.amountPaise)}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function AllergyLine({ text }) {
   if (text == null) return null;
   const status = allergyStatus(text);
@@ -403,7 +431,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const [lines, setLines] = useState(() =>
     issue && start.wardRequest
       ? start.wardRequest.lines.filter((l) => l.medicine && !l.refused && l.issuedQty < l.qty).map((l) => ({ key: `${l.medicineId}-wr`, medicine: l.medicine, qty: String(l.qty - l.issuedQty), batchId: null, dose: '' }))
-      : [],
+      : (start.scanned ?? []).filter((m) => m.active !== false).map((m) => ({ key: `${m.id}-scan`, medicine: m, qty: '1', batchId: null, dose: '' })), // scanned on the first page (18 Nov 2026)
   ); // { key, medicine, qty, batchId }
   const [kit, setKit] = useState(null); // PH14: the issue was filled from this kit { id, name, note }
   // PH12: answering a ward request – its open lines fill the issue; its doctor is the prescriber
@@ -411,6 +439,8 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const [discount, setDiscount] = useState(''); // Disc % (what the invoice keeps)
   const [discountAmount, setDiscountAmount] = useState(''); // Disc amount in rupees: the % is worked out from it
   const [discountReason, setDiscountReason] = useState('');
+  const [itemDisc, setItemDisc] = useState(false); // Item Wise Discount ticked: a Disc % on each line (18 Nov 2026)
+  const [remark, setRemark] = useState(''); // the bill's Remark, carried into the Payment window
   const [paying, setPaying] = useState(null); // the Payment window is open: the invoice about to be made
   const [business, setBusiness] = useState(false);
   const [buyer, setBuyer] = useState({ name: '', gstin: '', address: '', place: '', pin: '' });
@@ -488,11 +518,15 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
     const gross = grossOf(lines);
     setDiscount(text === '' || !Number.isFinite(n) || !gross ? '' : String(Math.round(((n * 100) / gross) * 100 * 10000) / 10000));
   };
+  // Item-wise discount (18 Nov 2026): a line's own Disc % in place of the bill's ('' – the bill's)
+  const linePct = (l) => (l.disc != null && l.disc !== '' && Number.isFinite(Number(l.disc)) ? Number(l.disc) : null);
+  const lineDiscOk = lines.every((l) => linePct(l) == null || (linePct(l) >= 0 && linePct(l) <= 100));
+  const anyDiscount = pct > 0 || lines.some((l) => linePct(l) > 0);
   const qtyOk = lines.length > 0 && lines.every((l) => /^\d+$/.test(l.qty) && Number(l.qty) > 0 && !looseProblem(l.medicine, Number(l.qty)));
   // PH6: a prescription line given in full is sold again only with a reason
   const repeatsOk = lines.every((l) => !l.givenInFull || (l.repeatReason ?? '').trim().length >= 3);
   const whoOk = who === 'walkin' ? customer.name.trim().length >= 2 : Boolean(patient);
-  const ready = qtyOk && repeatsOk && whoOk && (!isBusiness || buyerOk) && (pct === 0 || discountReason.trim().length >= 3) && pct >= 0 && pct <= 100;
+  const ready = qtyOk && repeatsOk && whoOk && (!isBusiness || buyerOk) && (!anyDiscount || discountReason.trim().length >= 3) && pct >= 0 && pct <= 100 && lineDiscOk;
 
   // Save: the Payment window opens with the bill's figures; its Save makes the invoice (a walk-in with how they paid)
   const bodyOf = () => {
@@ -510,6 +544,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
         qty: Number(l.qty),
         ...(l.batchId ? { batchId: l.batchId } : {}),
         ...(l.dose?.trim() ? { dose: l.dose.trim() } : {}),
+        ...(linePct(l) != null ? { discountPercent: linePct(l) } : {}),
         // PH6: the prescription line it is sold from (only with her Perinexa prescription), and why again
         ...(visitId && l.rxItemId ? { rxItemId: l.rxItemId, ...(l.givenInFull ? { repeatReason: (l.repeatReason ?? '').trim() } : {}), ...(l.substitution ? { substitution: l.substitution } : {}) } : {}),
       })),
@@ -531,9 +566,29 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   // Each row's amount at its batch MRP, and the total after the discount (the invoice has the exact figures)
   const rowPaise = (l) => (/^\d+$/.test(l.qty) ? priceOf(l, Number(l.qty)) : null);
   const grossPaise = grossOf(lines);
-  const totalPaise = Math.round(grossPaise * (1 - (Number.isFinite(pct) ? pct : 0) / 100));
+  const billPct = Number.isFinite(pct) ? pct : 0;
+  const rowNet = (l) => Math.round((rowPaise(l) ?? 0) * (1 - (linePct(l) ?? billPct) / 100)); // after its discount
+  const totalPaise = lines.reduce((n, l) => n + rowNet(l), 0);
   // The GST inside the prices (MRP includes GST), after the discount
-  const gstPaise = Math.round(lines.reduce((n, l) => n + ((rowPaise(l) ?? 0) * (1 - (Number.isFinite(pct) ? pct : 0) / 100) * l.medicine.gstRate) / (100 + l.medicine.gstRate), 0));
+  const gstPaise = Math.round(lines.reduce((n, l) => n + (rowNet(l) * l.medicine.gstRate) / (100 + l.medicine.gstRate), 0));
+  // Profit and Total Landed (18 Nov 2026, as the earlier Sales Bill): worked out by the server from the batches' cost
+  // a moment after the bill changes – nothing is taken from the stock
+  const [margin, setMargin] = useState(null); // { landingPaise, profitPaise } | null
+  const marginKey = JSON.stringify([lines.map((l) => [l.medicine.id, l.qty, l.batchId, l.disc]), discount, who, patient?.id]);
+  useEffect(() => {
+    setMargin(null);
+    if (!qtyOk || !whoOk) return undefined;
+    let current = true;
+    const t = setTimeout(() => {
+      api('/pharmacy/invoices/quote', { method: 'POST', body: bodyOf() })
+        .then((res) => current && setMargin({ landingPaise: res.quote.landingPaise, profitPaise: res.quote.profitPaise }))
+        .catch(() => current && setMargin(null));
+    }, 600);
+    return () => {
+      current = false;
+      clearTimeout(t);
+    };
+  }, [marginKey]);
   const entryAmount = entry?.batch && /^\d+$/.test(entry.qty) ? priceOf(entry.batch, Number(entry.qty)) : null;
   // Close: back to the Sales bill page's list (14 Nov 2026: search, bills and new bills on one screen)
   const close = (embedded || fromList) && onCancel ? onCancel : () => navigate('/pharmacy');
@@ -635,6 +690,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                   )}
                 </div>
               )}
+              {patient && <DuesLine patientId={patient.id} />}
               {who === 'walkin' && (
                 <div className="ph-walkin">
                   <Field label={business ? 'Name of the person collecting' : 'Patient name'} id="ph-cust-name" error={s.fields['customer.name']}>
@@ -815,6 +871,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                         <th scope="col">Dose</th>
                         <th scope="col" className="num">GST%</th>
                         <th scope="col" className="num">MRP</th>
+                        {itemDisc && <th scope="col" className="num">Disc %</th>}
                         <th scope="col" className="num">Total</th>
                         <th scope="col">
                           <span className="sr-only">Remove</span>
@@ -824,7 +881,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                     <tbody>
                       {!lines.length && (
                         <tr>
-                          <td colSpan={9} className="muted ph-grid-empty">
+                          <td colSpan={10} className="muted ph-grid-empty">
                             No medicine on the bill yet – type the item name above.
                           </td>
                         </tr>
@@ -874,8 +931,13 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                             <td data-label="MRP" className="num tabular">
                               {l.mrpPaise ? (l.mrpPaise / 100).toFixed(2) : '–'}
                             </td>
+                            {itemDisc && (
+                            <td data-label="Disc %" className="num">
+                              <input className="bill-price-input ph-line-disc" inputMode="decimal" aria-label={`Discount % on ${l.medicine.name}`} placeholder={pct > 0 ? String(pct) : ''} value={l.disc ?? ''} maxLength={6} aria-invalid={(linePct(l) ?? 0) > 100 || undefined} onChange={(e) => setLine(l.key, { disc: e.target.value.replace(/[^\d.]/g, '') })} />
+                            </td>
+                            )}
                             <td data-label="Total" className="num tabular">
-                              {rowPaise(l) != null ? (rowPaise(l) / 100).toFixed(2) : '–'}
+                              {rowPaise(l) != null ? (rowNet(l) / 100).toFixed(2) : '–'}
                             </td>
                             <td>
                               {l.prescribed ? (
@@ -892,7 +954,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                           {/* PH7: her allergy, a look-alike – shown, never asked about (owner, 10 Nov 2026) */}
                           {(patient && allergyClash(l.medicine, allergies)) || l.medicine.lookAlike?.length ? (
                             <tr>
-                              <td colSpan={9} className="ph-warn-row">
+                              <td colSpan={10} className="ph-warn-row">
                                 {patient && allergyClash(l.medicine, allergies) && (
                                   <span className="ph-warn">
                                     <TriangleAlert aria-hidden="true" /> Allergy: her record says “{allergies}” – {l.medicine.name} may be a {allergyClash(l.medicine, allergies)}. Check with her and the doctor before giving.
@@ -909,7 +971,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                           {/* PH6: already given in full – sold again only with a reason */}
                           {l.givenInFull && (
                             <tr>
-                              <td colSpan={9} className="ph-repeat-row">
+                              <td colSpan={10} className="ph-repeat-row">
                                 <label className="ph-repeat">
                                   <span className={(l.repeatReason ?? '').trim().length >= 3 ? 'hint' : 'field-error'}>
                                     {l.medicine.name} was already given in full ({l.sold.map((x) => `${x.qty} on ${x.date}, ${x.number}`).join('; ')}). Why is it sold again?
@@ -921,7 +983,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                           )}
                           {l.prescribed && l.medicine.inStock < Number(l.qty) && (
                             <tr>
-                              <td colSpan={9} className="field-error ph-prescribed-short">
+                              <td colSpan={10} className="field-error ph-prescribed-short">
                                 {l.medicine.name}: not enough in stock. It stays on the bill, so the invoice can be made once it is received.
                               </td>
                             </tr>
@@ -939,6 +1001,29 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                   </p>
                 )}
 
+                {/* 18 Nov 2026, as the earlier Sales Bill: Profit and Total Landed, and Item Wise Discount */}
+                <div className="ph-totals ph-totals-margin">
+                  <label className="ph-total-field">
+                    <span>Profit</span>
+                    <input readOnly className="tabular" value={margin ? (margin.profitPaise / 100).toFixed(2) : ''} />
+                  </label>
+                  <label className="ph-total-field">
+                    <span>Total Landed</span>
+                    <input readOnly className="tabular" value={margin ? (margin.landingPaise / 100).toFixed(2) : ''} />
+                  </label>
+                  <label className="ph-total-field ph-total-tick">
+                    <input
+                      type="checkbox"
+                      checked={itemDisc}
+                      disabled={!lines.length}
+                      onChange={(e) => {
+                        setItemDisc(e.target.checked);
+                        if (!e.target.checked) setLines((ls) => ls.map((x) => ({ ...x, disc: '' })));
+                      }}
+                    />{' '}
+                    Item Wise Discount
+                  </label>
+                </div>
                 <div className="ph-totals">
                   <label className="ph-total-field">
                     <span>GST amount</span>
@@ -954,7 +1039,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                   </label>
                   <label className="ph-total-field ph-total-reason">
                     <span>Conc. reason</span>
-                    <input value={discountReason} maxLength={200} disabled={!(pct > 0)} onChange={(e) => setDiscountReason(e.target.value)} />
+                    <input value={discountReason} maxLength={200} disabled={!anyDiscount} onChange={(e) => setDiscountReason(e.target.value)} />
                   </label>
                   <label className="ph-total-field">
                     <span>Total amount</span>
@@ -964,11 +1049,18 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                     <span>Net amount</span>
                     <input readOnly className="tabular" value={(totalPaise / 100).toFixed(2)} />
                   </label>
+                  <label className="ph-total-field ph-total-reason">
+                    <span>Remark</span>
+                    <input value={remark} maxLength={200} onChange={(e) => setRemark(e.target.value)} />
+                  </label>
                 </div>
                 {(s.fields.discountPercent || s.fields.discountReason) && <p className="field-error">{s.fields.discountPercent || s.fields.discountReason}</p>}
                 {pct > 100 && <p className="field-error">The discount cannot be more than the bill.</p>}
                 {/* 15 Nov 2026: a discount needs its reason – said here, so Save being off is never a mystery */}
                 {pct > 0 && pct <= 100 && discountReason.trim().length < 3 && <p className="field-error">Write the concession reason (at least 3 letters) – the bill saves once it is written.</p>}
+                {lines.some((l) => (linePct(l) ?? 0) > 100) && <p className="field-error">A line’s discount cannot be more than 100 %.</p>}
+                {/* the bill's Disc % above is for every line without its own; a line's Disc % is for that line only */}
+                {lines.some((l) => linePct(l) > 0) && discountReason.trim().length < 3 && <p className="field-error">Write the concession reason for the item discount (at least 3 letters).</p>}
                 <p className="hint">
                   {who === 'walkin' ? 'Save opens the Payment window: the customer pays here, by cash, cheque, card, NEFT / RTGS or online, or in parts.' : issue ? 'The invoice goes on her stay’s bill.' : 'Save opens the Payment window: the hospital bill, paid here in full or in part, or credit (paid later).'} Prices are the batch MRP (GST included).
                 </p>
@@ -978,6 +1070,9 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
               <span className="ph-items-added">Total items added: {lines.length}</span>
               <Link className="btn btn-secondary" to="/pharmacy/reports">
                 <CalendarClock aria-hidden="true" /> Expiry list
+              </Link>
+              <Link className="btn btn-secondary" to="/pharmacy/invoices">
+                Bill List
               </Link>
               <button type="button" className="btn btn-primary" disabled={!ready || s.busy} onClick={save}>
                 <Receipt aria-hidden="true" /> {issue ? 'Save the issue' : 'Save'}
@@ -1006,6 +1101,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
             saving={s.busy}
             error={s.error}
             onSave={submit}
+            remarks={remark}
             onClose={() => setPaying(null)}
           />
         )}
