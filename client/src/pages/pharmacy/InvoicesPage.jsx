@@ -244,6 +244,14 @@ export function InvoicesPage({ pick = null }) {
             <Link className="btn btn-secondary" to="/pharmacy">
               <Plus aria-hidden="true" /> New bill
             </Link>
+          ) : pick ? (
+            // 18 Nov 2026 (the pharmacy): the way in, on the title's line – so the list starts higher
+            <div className="ph-pick-head">
+              <span className="muted">Search on the left and click a name to make their bill – or a walk-in customer:</span>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={pick.onWalkIn}>
+                <UserPlus aria-hidden="true" /> New walk-in customer
+              </button>
+            </div>
           ) : undefined
         }
       />
@@ -348,14 +356,6 @@ export function InvoicesPage({ pick = null }) {
                 <Alert type="success" onClose={() => setMade(null)}>
                   {made}
                 </Alert>
-              )}
-              {pick && (
-                <div className="ph-pick-bar">
-                  <span className="muted">Search on the left and click a name to make their bill – or a walk-in customer:</span>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={pick.onWalkIn}>
-                    <UserPlus aria-hidden="true" /> New walk-in customer
-                  </button>
-                </div>
               )}
               {/* 18 Nov 2026 (the pharmacy's request): Barcode, Select kit and the kits on the first page */}
               {pick && !person && (
@@ -1213,15 +1213,28 @@ export function InvoicePage() {
         </Alert>
         <div className="ph-inv">
           <section className="card ph-inv-main" aria-labelledby="ph-inv-no">
+            {/* 18 Nov 2026 (the pharmacy): laid out as a printed invoice – a band with what it is, its number, date and
+                state; the patient's details in ruled cells; the medicines in a ruled table; the sums in a box with the
+                amount in words beside it */}
             <header className="ph-inv-head">
-              <div>
-                <p className="ph-inv-kicker">{v.kind === 'issue' ? 'Issue to ward · IPD' : v.patient ? 'Counter sale · OPD' : 'Counter sale · External'}</p>
+              <div className="ph-inv-id">
+                <span className={`ph-inv-kind is-${v.kind === 'issue' ? 'ipd' : v.patient ? 'opd' : 'ext'}`}>{v.kind === 'issue' ? 'Issue to ward · IPD' : v.patient ? 'Counter sale · OPD' : 'Counter sale · External'}</span>
                 <h2 id="ph-inv-no" className="ph-inv-no">
-                  {v.number}
+                  <span className="ph-inv-no-label">Bill no.</span> {v.number}
                 </h2>
-                <p className="ph-inv-date">{formatDateTime(v.date)}</p>
               </div>
-              <InvoiceStatus invoice={v} />
+              <dl className="ph-inv-when">
+                <div>
+                  <dt>Date</dt>
+                  <dd>{formatDateTime(v.date)}</dd>
+                </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd>
+                    <InvoiceStatus invoice={v} />
+                  </dd>
+                </div>
+              </dl>
             </header>
             <dl className="ph-inv-facts">
               {[
@@ -1271,37 +1284,50 @@ export function InvoicePage() {
                 </tbody>
               </table>
             </div>
-            <div className="ph-inv-totals">
-              <dl>
-                {v.discountPercent > 0 && (
+            <div className="ph-inv-foot">
+              <div className="ph-inv-words">
+                <span>Amount in words</span>
+                <strong>{amountInWords(Math.max(0, v.netPaise))}</strong>
+                {v.discountPercent > 0 && <p className="ph-inv-why">Concession {v.discountPercent}%: {v.discountReason}</p>}
+              </div>
+              <div className="ph-inv-totals">
+                <dl>
+                  {v.grossPaise > v.totalPaise && (
+                    <>
+                      <div>
+                        <dt>Gross (at MRP)</dt>
+                        <dd>{paper(v.grossPaise)}</dd>
+                      </div>
+                      <div>
+                        <dt>Discount</dt>
+                        <dd>−{paper(v.grossPaise - v.totalPaise)}</dd>
+                      </div>
+                    </>
+                  )}
                   <div>
-                    <dt>Discount {v.discountPercent}%</dt>
-                    <dd className="ph-inv-why">{v.discountReason}</dd>
+                    <dt>Taxable value</dt>
+                    <dd>{paper(v.taxablePaise)}</dd>
                   </div>
-                )}
-                <div>
-                  <dt>Taxable value</dt>
-                  <dd>{paper(v.taxablePaise)}</dd>
-                </div>
-                <div>
-                  <dt>CGST</dt>
-                  <dd>{paper(v.cgstPaise)}</dd>
-                </div>
-                <div>
-                  <dt>SGST</dt>
-                  <dd>{paper(v.sgstPaise)}</dd>
-                </div>
-                {v.returnedPaise > 0 && (
                   <div>
-                    <dt>Returned</dt>
-                    <dd>−{paper(v.returnedPaise)}</dd>
+                    <dt>CGST</dt>
+                    <dd>{paper(v.cgstPaise)}</dd>
                   </div>
-                )}
-                <div className="ph-inv-grand">
-                  <dt>Total</dt>
-                  <dd>{paper(v.netPaise)}</dd>
-                </div>
-              </dl>
+                  <div>
+                    <dt>SGST</dt>
+                    <dd>{paper(v.sgstPaise)}</dd>
+                  </div>
+                  {v.returnedPaise > 0 && (
+                    <div>
+                      <dt>Returned</dt>
+                      <dd>−{paper(v.returnedPaise)}</dd>
+                    </div>
+                  )}
+                  <div className="ph-inv-grand">
+                    <dt>Net total</dt>
+                    <dd>{paper(v.netPaise)}</dd>
+                  </div>
+                </dl>
+              </div>
             </div>
           </section>
 
