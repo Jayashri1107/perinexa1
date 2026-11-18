@@ -258,6 +258,11 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   ticked by default – the owner chose this over leaving them unticked – and are only marked "Private" in the print box.
   The wording is built in, approved per hospital by a doctor (`Tenant.consentRiskWording`, with a fingerprint of the
   text), and says DRAFT on paper until then; the hospital cannot edit it. Last section of `docs/CONSENT_FORMS.md`.
+- **Vaccination reminders name the vaccine** (18 Nov 2026, branch `vaccine-reminders`): the day before a baby's
+  vaccination falls due, the parents get "<hospital>: your child's vaccination (<vaccines>) is due on <date>…" – the
+  only automatic message that says what is due (the 4 Oct 2026 rule "never name what is due" still holds for the
+  other messages and for reception's lists). The owner also lifted the feature freeze for this and for **nurses
+  marking a vaccination as given** (nothing else on the care plan changes for a nurse).
 - **Fake data only.** Test patient P-000003 in "Sunrise General Hospital (Demo)" is fake but uses the owner's own phone
   number and address: never copy those anywhere shared.
 

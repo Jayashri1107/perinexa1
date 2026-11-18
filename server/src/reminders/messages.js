@@ -49,6 +49,29 @@ export function careDueMessage({ hospital, phone, lang = 'en' }) {
 }
 
 /**
+ * The vaccination reminder (owner, 18 Nov 2026): the day before a baby's vaccination falls due. Unlike every other
+ * automatic message it NAMES what is due – the vaccines and the day – at the owner's decision. It still never says
+ * the baby's name. vaccines: the names as the care plan has them, without the age ("OPV-1, Pentavalent-1, …").
+ * DRAFT: the Marathi and Hindi wording must be checked by fluent speakers before use.
+ */
+export function vaccineDueMessage({ hospital, phone, day, vaccines, lang = 'en' }) {
+  const d = dateWords(day, lang);
+  const call = phone ? phone : '';
+  if (lang === 'mr') return `${hospital}: आपल्या बाळाचे लसीकरण (${vaccines}) ${d} रोजी आहे.${call ? ` वेळ घेण्यासाठी ${call} वर फोन करा.` : ' वेळ घेण्यासाठी रुग्णालयाशी संपर्क करा.'} संदेश थांबवण्यासाठी STOP पाठवा.`;
+  if (lang === 'hi') return `${hospital}: आपके बच्चे का टीकाकरण (${vaccines}) ${d} को है।${call ? ` समय लेने के लिए ${call} पर फ़ोन करें।` : ' समय लेने के लिए अस्पताल से संपर्क करें।'} संदेश रोकने के लिए STOP भेजें।`;
+  return `${hospital}: your child's vaccination (${vaccines}) is due on ${d}.${call ? ` Please call ${call} to book.` : ' Please contact the hospital to book.'} Reply STOP to stop these messages.`;
+}
+
+/**
+ * The vaccines of care-plan items, for the vaccination reminder: each item's name without its age at the front
+ * ("6 weeks: OPV-1, Pentavalent-1" → "OPV-1, Pentavalent-1"), joined; at most `max` characters (an SMS stays short).
+ */
+export function vaccineNames(names, max = 160) {
+  const text = names.map((n) => String(n).replace(/^[^:]{1,30}:\s*/, '').trim()).filter(Boolean).join(', ');
+  return text.length <= max ? text : `${text.slice(0, max - 1).replace(/[,\s]+[^,]*$/, '')}…`;
+}
+
+/**
  * "We missed you" (4 Oct 2026): a booked appointment passed and nobody came. The hospital, the day of the
  * appointment and the phone number – never the doctor, the visit type or why she was coming.
  * DRAFT: the Marathi and Hindi wording must be checked by fluent speakers before use.

@@ -1,5 +1,49 @@
 # Progress
 
+## Vaccination reminder the day before; nurses mark vaccines as given (18 Nov 2026, branch `vaccine-reminders`)
+
+Asked for by a hospital and approved by the owner on 18 Nov 2026 as an exception to the feature freeze.
+
+- **The day before a baby's vaccination falls due** (the first day of its window on the care plan), the hourly
+  round queues: "<hospital>: your child's vaccination (OPV-1, Pentavalent-1, Rotavirus-1, fIPV-1, PCV-1) is due on
+  12 Nov 2026. Please call <phone> to book. Reply STOP to stop these messages." It **names the vaccines**: the
+  owner's decision, and the only automatic message that does. Never the baby's name.
+  - Only for babies, only from a care plan whose schedule a doctor approved, and only under the agreement on the
+    baby's own record (SMS or WhatsApp: the hospital's WhatsApp Business number when it is set up). Not when the
+    baby is booked from today on (the appointment reminder goes instead) or in hospital (nor the mother on the
+    baby's record). Once per baby and due day, all the vaccines of that day in one message. Not counted by the
+    14-day rule of the other two messages. Sent between 10:00 and 19:00 like them; it can still go out on the
+    morning of the due day, then it is too old.
+  - A waiting one is cancelled when the vaccine was marked given (or the baby booked, admitted, the agreement
+    withdrawn) – as the other general messages are.
+  - Calendar → Reminders shows it as "Vaccination reminder · due <date>"; on a sensitive record only her doctor and
+    RMOs see the row (it names the vaccines). Hospital admin → Patient messages and the patient's Reminders and portal
+    dialog now describe it.
+  - ⚠️ **DRAFT**: the Marathi and Hindi wording (`vaccineDueMessage` in `server/src/reminders/messages.js`). Before
+    real sending, the new SMS wording needs DLT registration and a WhatsApp template. Parents who agreed before 18 Nov
+    were not told that this message names the vaccines: the settings page says to ask them again. The vaccination
+    dates still come from the newborn template, a draft until a doctor approves it.
+  - The one setting: `VACCINE_DUE_DAYS_BEFORE` in `server/src/reminders/reminderRules.js` (1).
+- **Nurses may mark a vaccination as given** on the baby's care plan: "Mark given" (today, with the batch number or
+  "Sticker pasted in the file") or "Given elsewhere" (an earlier dose, with its date – backdated entries). The rest
+  of the plan stays view-only for a nurse, and the server refuses every other change; a sensitive record's plan
+  stays hidden from nurses as before. Audit log: the same "Care plan changed" entry as for a doctor.
+- Files: `server/src/reminders/generalReminders.js` (`queueVaccineDue`), `messages.js`, `reminderRules.js`,
+  `reminderService.js`, `server/src/careplans/overdue.js` (`dueOnPlanItems`), `plansService.js`, `planView.js`,
+  `server/src/routes/reminderOutbox.js`, `client/src/pages/patients/CarePlanTab.jsx`,
+  `client/src/pages/reminders/outboxFormat.js`, the two settings pages; tests in
+  `server/tests/reminders-general.test.js` and `client/src/pages/reminders/outboxFormat.test.js`.
+
+### How to test (fake data only)
+1. Hospital admin → Patient messages → switch on automatic reminders.
+2. Register a fake baby born 41 days ago; open the record once. As a nurse, open the care plan: the birth doses show
+   **Mark given** – mark them given elsewhere with the birth date. Other items have no buttons.
+3. Baby's page → More → Reminders and portal → the parents agree (SMS), with a mobile number.
+4. Calendar → Reminders → **Send due reminders now** (between 10:00 and 19:00): "1 vaccination reminder"; the row
+   reads "Vaccination reminder · due <tomorrow>" with the 6-week vaccines named in the text.
+5. As the nurse, mark the 6-week vaccines given; open Calendar → Reminders again: the row is gone (cancelled as no
+   longer needed).
+
 ## High-risk factors on every consent form (14 Nov 2026, from the other Perinexa copy; branch `consent-risk-factors`)
 Brought from `girishsolanke/perinexa` (branch `consent-risk-factors`, commits 1499f254 and f17fc46b of 14 Nov 2026, the
 owner's request – an exception to the feature pause) on 15 Nov 2026, by applying its changes onto perinexa1's code. The

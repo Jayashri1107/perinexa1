@@ -251,19 +251,45 @@ function StatusCell({ item, plan, patient }) {
   );
 }
 
+// A nurse's row (owner, 18 Nov 2026): the care plan is view-only for her, except that she may mark a vaccination as
+// given – today with the batch, or an earlier dose with its date (given elsewhere). The server allows nothing else.
+function NurseVaccineActions({ item, onAction }) {
+  if (item.kind !== 'vaccination' || itemState(item) !== 'open' || item.status === 'not_applicable') return null;
+  const name = item.name;
+  return (
+    <div className="plan-actions">
+      <button type="button" className="btn btn-secondary btn-sm" aria-label={`Mark ${name} given`} onClick={() => onAction('done', item)}>
+        <Check aria-hidden="true" /> Mark given
+      </button>
+      <MenuButton
+        label="More"
+        ariaLabel={`More actions for ${name}`}
+        className="btn btn-secondary btn-sm"
+        align="end"
+        items={[
+          { label: 'Given elsewhere', icon: Check, onSelect: () => onAction('done', item, { elsewhere: true }) },
+          { label: 'Details', icon: Info, onSelect: () => onAction('details', item) },
+        ]}
+      />
+    </div>
+  );
+}
+
 /**
  * The items table (also used inside the folded sections). rows: from planRows(). Editors get the Actions
  * column; for everyone else a click on a row opens the item's details.
  */
 function ItemsTable({ plan, patient, rows: allRows, caption, emptyText, onAction }) {
   const editable = plan.canEdit;
+  const nurseVaccines = !editable && Boolean(plan.canRecordVaccines);
+  const withActions = editable || nurseVaccines;
   // Phones: a few items at a time; a heading stays with the first item under it
   const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
   const items = allRows.filter((r) => r.item);
   const { shown, pager } = usePagedRows(items, { initial: 8, sizes: [8, 16, 32], label: 'items', resetKey: caption });
   const onPage = new Set(shown ?? items);
   const rows = onPhone ? allRows.filter((r, i) => (r.item ? onPage.has(r) : onPage.has(allRows.slice(i + 1).find((x) => x.item)))) : allRows;
-  const cols = editable ? 4 : 3;
+  const cols = withActions ? 4 : 3;
   const openDetails = (item) => onAction('details', item);
   return (
     <>
@@ -278,7 +304,7 @@ function ItemsTable({ plan, patient, rows: allRows, caption, emptyText, onAction
           <th scope="col" className="plan-col-status">
             Status
           </th>
-          {editable && (
+          {withActions && (
             <th scope="col" className="plan-col-actions">
               <span className="sr-only">Actions</span>
             </th>
@@ -324,6 +350,11 @@ function ItemsTable({ plan, patient, rows: allRows, caption, emptyText, onAction
               {editable && (
                 <td className="actions plan-cell-actions">
                   <RowActions item={it} plan={plan} decision={r.decision} onAction={onAction} />
+                </td>
+              )}
+              {nurseVaccines && (
+                <td className="actions plan-cell-actions">
+                  <NurseVaccineActions item={it} onAction={onAction} />
                 </td>
               )}
             </tr>
@@ -520,7 +551,11 @@ function PlanNotes({ plan, patient, closed, editor, canEditDetails }) {
         . Use Include anyway or Add item only for what the template has no item for.
       </li>
     ),
-    plan.readOnly && !closed && <li key="view">View only – the treating doctor or an RMO updates the plan.</li>,
+    plan.readOnly && !closed && (
+      <li key="view">
+        {plan.canRecordVaccines ? 'View only, except vaccinations: you can mark a vaccine as given. The treating doctor or an RMO updates the rest of the plan.' : 'View only – the treating doctor or an RMO updates the plan.'}
+      </li>
+    ),
   ].filter(Boolean);
   if (!notes.length) return null;
   return (

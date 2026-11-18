@@ -69,7 +69,11 @@ export class SyncConflict extends HttpError {
 /** Who may see and change this patient's care plan: { view, edit, level } (from the patient access rules). */
 export function carePlanAccess(req, patient) {
   const a = patientAccess(req, patient);
-  return { view: a.view.has('pregnancy'), edit: a.editClinical, level: a.level, emergencyNote: a.emergencyNote };
+  const view = a.view.has('pregnancy');
+  // vaccines: may mark a vaccination as given (with its date and batch) – everyone who may change the plan, and a
+  // nurse who may see it (owner, 18 Nov 2026). Nothing else on the plan changes for a nurse.
+  const vaccines = Boolean(a.editClinical || (view && hasRole(req.membership, 'nurse')));
+  return { view, edit: a.editClinical, vaccines, level: a.level, emergencyNote: a.emergencyNote };
 }
 
 /** 403 unless this person may see the care plan. Returns carePlanAccess. */
@@ -81,12 +85,14 @@ export function assertCanView(req, patient) {
   throw forbidden('This is a sensitive record: care plans are only visible to the treating doctor and RMOs.');
 }
 
+const EDIT_REFUSAL = "Only the patient's doctor or an RMO can change the care plan.";
+
 /** 403 unless this person may change the care plan (the treating or an unassigned doctor, or an RMO). */
 export function assertCanEdit(req, patient) {
   const a = assertCanView(req, patient);
   if (a.edit) return a;
   if (a.emergencyNote) throw forbidden("This is another doctor's patient: you can view the care plan but not change it.");
-  throw forbidden("Only the patient's doctor or an RMO can change the care plan.");
+  throw forbidden(EDIT_REFUSAL);
 }
 
 // ---------- Small helpers ----------
@@ -981,9 +987,10 @@ export async function reminderItems(ctx, patient) {
  * Loads the patient (current risk), checks this person may change the plan, syncs, and finds the current
  * plan. planLevel: a change to the whole plan, refused while the plan is paused.
  */
-async function editablePlan(ctx, patientId, { planLevel }) {
+async function editablePlan(ctx, patientId, { planLevel, vaccineOnly = false }) {
   const loaded = await loadPatientById(ctx, patientId);
-  assertCanEdit(ctx.req, loaded);
+  // A nurse marking a vaccination as given (vaccineOnly): the caller checks that the item is a vaccination
+  if (!(vaccineOnly && assertCanView(ctx.req, loaded).vaccines)) assertCanEdit(ctx.req, loaded);
   const { plan, patient } = await syncPlan(ctx, loaded._id);
   if (!plan) {
     const latest = await CarePlan.findOne({ tenantId: ctx.tenantId, patientId: loaded._id, careType: loaded.careType }).sort({ createdAt: -1 });
@@ -1007,9 +1014,9 @@ function auditChange(ctx, patient, plan, { change, itemId: id, visitId }) {
  * so two people changing different items both succeed. Saves and audits; returns { patient, plan, result }
  * (changePlan answers with the plan; moving many plans at once only counts).
  */
-async function savePlanChange(ctx, patientId, { planLevel }, work) {
+async function savePlanChange(ctx, patientId, { planLevel, vaccineOnly = false }, work) {
   for (let attempt = 1; ; attempt += 1) {
-    const { patient, plan, facts } = await editablePlan(ctx, patientId, { planLevel });
+    const { patient, plan, facts } = await editablePlan(ctx, patientId, { planLevel, vaccineOnly });
     const result = await work({ plan, patient, facts });
     if (!result.changed) return { patient, plan, result };
     try {
@@ -1356,8 +1363,10 @@ function applyIntent(ctx, plan, it, intent) {
 export function applyItemAction(ctx, patientId, id, intent) {
   // Editing an item a doctor added changes the plan's content, like adding one: active plans only (a paused plan
   // answers 409 PLAN_PAUSED). Every other item action works on a paused plan too.
-  return changePlan(ctx, patientId, { planLevel: intent.action === 'edit' }, ({ plan, facts }) => {
+  // A nurse may mark a vaccination as given (owner, 18 Nov 2026) – that one action, on vaccinations only
+  return changePlan(ctx, patientId, { planLevel: intent.action === 'edit', vaccineOnly: intent.action === 'done' }, ({ plan, patient, facts }) => {
     const it = findItem(plan, id);
+    if (it.kind !== 'vaccination' && !carePlanAccess(ctx.req, patient).edit) throw forbidden(EDIT_REFUSAL);
     if (isIdenticalRepeat(it, intent)) return { changed: false };
     checkRev(it, intent.rev);
     checkState(it, intent);

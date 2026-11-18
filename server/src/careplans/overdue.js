@@ -149,6 +149,41 @@ export async function dueSoonPlanItems(tenantId, { now = new Date(), kindsFor, c
 }
 
 /**
+ * Patients whose current, active care plan has an open item whose due window OPENS on `day` (the vaccination
+ * reminder the day before, owner 18 Nov 2026). Unlike dueSoonPlanItems a plan with an overdue item is NOT left out:
+ * a baby behind on one dose still hears about the next one. options: now, kindsFor, day, patientIds, limit.
+ * Same rows as overduePlanItems (items: those due from that day), the plans in no particular order.
+ */
+export async function dueOnPlanItems(tenantId, { now = new Date(), kindsFor, day, careTypes = TEMPLATE_CARE_TYPES, patientIds = null, limit = 1000 }) {
+  const on = utcDay(day);
+  const types = careTypes.filter((t) => kindsFor(t).length);
+  if (!types.length || (patientIds && !patientIds.length)) return { rows: [], cut: false };
+  const kinds = [...new Set(types.flatMap((t) => kindsFor(t)))];
+  const oid = (v) => new mongoose.Types.ObjectId(String(v._id ?? v));
+  const plans = await CarePlan.find(
+    {
+      tenantId,
+      current: true,
+      status: 'active',
+      careType: { $in: types },
+      ...(patientIds ? { patientId: { $in: patientIds.map(oid) } } : {}),
+      items: { $elemMatch: { kind: { $in: kinds }, state: 'open', 'auto.phase': 'open', 'auto.dueFrom': on } },
+    },
+    { _id: 1 },
+  )
+    .sort({ _id: 1 })
+    .limit(limit + 1)
+    .lean();
+  const cut = plans.length > limit;
+  const rows = await planRows(tenantId, plans.slice(0, limit).map((p) => p._id), now, (plan, statuses) =>
+    (plan.items ?? []).filter(
+      (it) => kindsFor(plan.careType).includes(it.kind) && it.state === 'open' && ['due', 'upcoming'].includes(statuses.get(it)?.status) && it.auto?.dueFrom && utcDay(it.auto.dueFrom).getTime() === on.getTime(),
+    ),
+  );
+  return { rows, cut };
+}
+
+/**
  * The rows of overduePlanItems and dueSoonPlanItems, for these plan ids (kept in their order): each plan brought up
  * to date when it is behind its patient, then pick(plan, statuses) chooses its items ([] leaves the plan out).
  */

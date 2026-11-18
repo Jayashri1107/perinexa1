@@ -6,7 +6,7 @@ import { ReminderMessage } from '../models/ReminderMessage.js';
 import { Tenant } from '../models/Tenant.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
-import { cancelStaleGeneral, queueCareDue, queueMissedAppointments } from './generalReminders.js';
+import { cancelStaleGeneral, queueCareDue, queueMissedAppointments, queueVaccineDue } from './generalReminders.js';
 import { appointmentMessage } from './messages.js';
 import { mobileNumber } from './phone.js';
 import { GENERAL_KINDS } from './reminderRules.js';
@@ -182,7 +182,7 @@ async function generalStep(fn, fallback) {
 /**
  * One round for one hospital: cancel the waiting general messages that are no longer true, queue tomorrow's
  * appointment reminders, the "we missed you" and the "something is due" messages, then send what is due.
- * Returns counts only: { queued, missed, careDue, heldBack, dropped, waiting, sent, failed, toSend } – heldBack:
+ * Returns counts only: { queued, missed, careDue, vaccineDue, heldBack, dropped, waiting, sent, failed, toSend } – heldBack:
  * patients with something overdue who got no message only because their care plan is still a draft (no doctor
  * approved it); waiting: general messages kept for the morning (it is outside the hours they go out).
  */
@@ -193,12 +193,15 @@ export async function runForTenant(tenant, now = new Date()) {
   const queued = await queueAppointmentReminders(tenant, now);
   // "We missed you" first: it is tied to a day; the 14-day rule then holds the other one back for this patient.
   const missed = checked ? await generalStep(() => queueMissedAppointments(tenant, now), 0) : 0;
-  const { added: careDue, heldBack } = checked ? await generalStep(() => queueCareDue(tenant, now), { added: 0, heldBack: 0 }) : { added: 0, heldBack: 0 };
+  const { added: careDue, heldBack: careHeld } = checked ? await generalStep(() => queueCareDue(tenant, now), { added: 0, heldBack: 0 }) : { added: 0, heldBack: 0 };
+  // The day before a baby's vaccination falls due (owner, 18 Nov 2026)
+  const { added: vaccineDue, heldBack: vaccineHeld } = checked ? await generalStep(() => queueVaccineDue(tenant, now), { added: 0, heldBack: 0 }) : { added: 0, heldBack: 0 };
+  const heldBack = careHeld + vaccineHeld;
   // In the evening and at night the general messages wait (queued) for the next morning's round
   const inHours = generalHours(now);
   const today = hospitalToday(now);
   const waiting = inHours ? 0 : await ReminderMessage.countDocuments({ tenantId: tenant._id, status: 'queued', kind: { $in: GENERAL_KINDS }, sendOn: { $lte: today }, dueOn: { $gte: today } });
-  return { queued, missed, careDue, heldBack, dropped: dropped ?? 0, waiting, ...(await sendDueReminders(tenant, now, { withGeneral: checked && inHours })) };
+  return { queued, missed, careDue, vaccineDue, heldBack, dropped: dropped ?? 0, waiting, ...(await sendDueReminders(tenant, now, { withGeneral: checked && inHours })) };
 }
 
 /** The hourly round: every hospital with reminders switched on, from the sending hour. */

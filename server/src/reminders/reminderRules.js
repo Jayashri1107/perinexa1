@@ -5,7 +5,14 @@
 
 // The general kinds of message in the outbox (models/ReminderMessage.js): a care-plan item is overdue; a booked
 // appointment passed and nobody came.
-export const GENERAL_KINDS = ['care_due', 'missed'];
+// Since 18 Nov 2026 also 'vaccine_due': the day before a baby's vaccination falls due, a message that NAMES the
+// vaccines and the day (owner's decision of 18 Nov 2026 – the only automatic message that says what is due).
+export const GENERAL_KINDS = ['care_due', 'missed', 'vaccine_due'];
+// The kinds the GENERAL_EVERY_DAYS rule counts. The vaccination reminder is tied to its day and is not held back by
+// (nor does it hold back) the other two.
+export const THROTTLED_KINDS = ['care_due', 'missed'];
+// The vaccination reminder goes this many days before the vaccination's due day (owner, 18 Nov 2026: one day).
+export const VACCINE_DUE_DAYS_BEFORE = 1;
 // At most one general message (of either kind) in any this-many days – per patient AND per mobile number: a mother
 // and her baby (or twins) on one number get one message, not the same words twice.
 export const GENERAL_EVERY_DAYS = 14;

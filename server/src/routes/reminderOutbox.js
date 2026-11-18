@@ -49,6 +49,8 @@ function maySeeMessage(req, patient, message) {
   const access = patientAccess(req, patient);
   if (!access.view.has('phone')) return false;
   if (message.kind === 'care_due' && patient.sensitive && !CARE_DUE_ROW_FOR_SENSITIVE) return access.view.has('pregnancy');
+  // The vaccination reminder names the vaccines: on a sensitive record, the medical view only
+  if (message.kind === 'vaccine_due' && patient.sensitive) return access.view.has('pregnancy');
   return true;
 }
 
