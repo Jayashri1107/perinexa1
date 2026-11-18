@@ -1,5 +1,50 @@
 # Progress
 
+## The pharmacy's list of 16 Nov 2026: credit, advance, reports, MRP, discharge clearance (18 Nov 2026, branch `pharm-credit-1118`)
+The pharmacy department's handwritten list (four pages) and its note on Search sale return and Details / Summary,
+built by the developer with Claude Code. Items that already existed were not rebuilt (Sale bill, Search sale bill,
+Current stock, Item movement, Batch adjustment, Add stock, Doctor-wise sale, the GRN and supplier reports, Non-moving
+items, Vendor payment status, New item and New supplier, Item ledger, no credit for External bills).
+- **Every topic in one place**: Reports → **All topics** lists each line of the pharmacy's sheet, in its groups and
+  order, with where it is and an **Open** button (`PharmacyTopics.jsx`).
+- **The printed bill** (the pharmacist's request): no **Net** line; Gross, Disc, **Paid Amount** and **Credit Amt**;
+  for a patient with earlier bills still due, **Previous Credit** and **Total Credit**. A walk-in's bill has no credit lines.
+- **Credit balance**: choosing an OPD or IPD patient on the bill shows **Credit balance: ₹… due on n earlier bills**
+  (`GET /api/pharmacy/patients/:id/dues`; `earlierDuePaise` on `GET /invoices/:id`). Bills on the hospital bill do not count.
+- **Credit authorised by**: an OPD bill on credit needs the name or staff ID of who allowed it (Payment window; kept as
+  `creditAuthorisedBy`). The Payment window's **Remarks** are now kept on a credit bill too (they were lost).
+- **Settlement**: on Sold → a patient's bills, **Settle credit** takes one payment against all her bills due, oldest
+  first (`POST /patients/:id/settle`, audited `PHARMACY_DUES_SETTLED`).
+- **Pharmacy advance** (the developer's decision of 18 Nov 2026, for the owner – it changes "the pharmacy takes no
+  advance" of 13 Nov): on a patient's bills, **Take advance**, **Use on bills due** (oldest first, a payment of mode
+  "advance"), **Refund** with a reason; receipts PA-000001 (`PharmacyAdvance`, in the hospital export). The collection
+  reports count deposits and refunds, not the bills paid from the advance. New report **Advance amount report**.
+- **Reports** (Reports → Report list): **UPI collection**, **Sales return patient-wise**, **Insurance / cashless
+  patients** (pharmacy bills on a hospital bill with insurance or a cashless approval), **Company-wise GRN list**
+  (manufacturer on the purchase line; Summary or Detail), and a **Details / Summary** switch on every Pharmacy MIS
+  report with dates (Summary adds the rows up day by day).
+- **Search sale return**: a credit-note number (CN-…) in Sold's search finds its bill.
+- **Billing page**: a **Disc %** on each medicine line (in place of the bill's Disc % for that line; a discount
+  still needs the concession reason); **Cost and profit** shows the landing amount and profit only when pressed.
+- **First page**: OPD and IPD show their patient list at once (25 a page); **Barcode** (a medicine scanned waits for
+  the next bill started), **Select kit** (kits stay for IPD issues: it opens the IPD list) and **Kits (add or see)**.
+- **MRP adjustment**: Stock → a medicine → **Change MRP** on a batch, with a reason (kept on the batch, audited
+  `PHARMACY_MRP_CHANGED`); bills already made keep their prices.
+- **Opening balance, one item**: Stock → Import opening stock → **Or add one item by hand**, checked and brought in
+  like a line of the file.
+- **Purchase return**: **Expired or near expiry (90 days)** choice and a **Near expiry** reason.
+- **Discharge clearance**: new menu item **Discharge clearance** (pharmacist) lists those discharged and not yet
+  cleared, with their pharmacy credit due; the desk's **Clear for leaving** shows **Pharmacy ₹… due** and asks why
+  she may leave while it is due.
+- **Not built, to ask the pharmacy**: "Right claim patient report" (meaning unclear), "Generic name add" as its own
+  list (the generic name is a field of each medicine), an Expenses report in the pharmacy (Daily expenses is in
+  Billing), sale returns across several bills at once (returns stay one bill at a time; the patient-wise report lists them).
+- **How to test (fake data only)**: as the pharmacist, Sales bill → OPD → a sample patient → add a medicine → Save →
+  Payment window with nothing ticked → type a name in **Credit authorised by** → Save. Start a second bill for the
+  same patient: the **Credit balance** line shows the first bill; print it: Credit Amt, Previous Credit and Total Credit (no Net line). On
+  Sold → her name → **Take advance** ₹100 → **Use on bills due**; then **Settle credit** for the rest. Reports →
+  Report list → Advance amount report, UPI collection, Sales collection → **Summary**.
+
 ## High-risk factors on every consent form (14 Nov 2026, from the other Perinexa copy; branch `consent-risk-factors`)
 Brought from `girishsolanke/perinexa` (branch `consent-risk-factors`, commits 1499f254 and f17fc46b of 14 Nov 2026, the
 owner's request – an exception to the feature pause) on 15 Nov 2026, by applying its changes onto perinexa1's code. The

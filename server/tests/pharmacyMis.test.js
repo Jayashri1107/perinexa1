@@ -77,6 +77,7 @@ describe('pharmacy MIS reports', () => {
     ]);
     expect(col.summary).toEqual([{ label: 'Cash', paise: 3000 }]);
     expect(ok(await mis('card-collection')).rows).toEqual([]);
+    expect(ok(await mis('upi-collection')).rows).toEqual([]); // 18 Nov 2026: paid by cash only
 
     const pc = ok(await mis('patient-collection'));
     expect(pc.rows.map((r) => [r.name, r.paid, r.hospital])).toEqual([['Sample MIS Mother', 0, 3000], ['Sample Walk In', 3000, 0]]); // the most first, then by name
@@ -88,6 +89,7 @@ describe('pharmacy MIS reports', () => {
     expect(ok(await mis('h1-returns')).rows.map((r) => [r.medicine, r.qty])).toEqual([['Sample MIS H1 Tab', 1]]);
     expect(ok(await mis('antitb-sales')).rows.map((r) => r.medicine)).toEqual(['Sample MIS TB Tab']);
     expect(ok(await mis('returns')).rows).toHaveLength(1);
+    expect(ok(await mis('patient-returns')).rows.map((r) => [r.name, r.count, r.amount])).toEqual([['Sample Walk In', 1, 1500]]); // 18 Nov 2026
 
     const gst = ok(await mis('gst-summary'));
     expect(gst.patients).toBe(false);
@@ -118,7 +120,7 @@ describe('inventory MIS reports', () => {
   it('GRN, item- and supplier-wise lists, current stock, stock date-wise and non-moving items, with the filters', async () => {
     const supA = ok(await ph('post', '/suppliers', { name: 'Sample Inv Supplier A' }), 201).supplier;
     const supB = ok(await ph('post', '/suppliers', { name: 'Sample Inv Supplier B' }), 201).supplier;
-    const sold = await medicine({ name: 'Sample Inv Sold Tab' });
+    const sold = await medicine({ name: 'Sample Inv Sold Tab', manufacturer: 'Sample Pharma Ltd' });
     const idle = await medicine({ name: 'Sample Inv Idle Tab' });
     await bill(supA, sold, { qty: 100, batch: 'SOLD-1' });
     await bill(supB, idle, { qty: 50, batch: 'IDLE-1' });
@@ -136,6 +138,9 @@ describe('inventory MIS reports', () => {
       ['Sample Inv Sold Tab', 100, 1000],
     ]);
     expect(ok(await inv('supplier-grn')).total).toMatchObject({ bills: 2, net: 157500 });
+    // 18 Nov 2026: company-wise – the manufacturer on the purchase line; one with none is listed last
+    expect(ok(await inv('company-grn')).rows.map((r) => [r.company, r.items, r.qty])).toEqual([['Sample Pharma Ltd', 1, 100], ['Not recorded', 1, 50]]);
+    expect(ok(await inv('company-grn', '&detail=1')).rows.map((r) => [r.company, r.medicine])).toEqual([['Sample Pharma Ltd', 'Sample Inv Sold Tab'], ['Not recorded', 'Sample Inv Idle Tab']]);
 
     const stock = ok(await inv('current-stock'));
     expect(stock.rows.map((r) => [r.medicine, r.qty, r.costValue])).toEqual([

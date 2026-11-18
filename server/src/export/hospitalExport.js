@@ -92,7 +92,7 @@ import { OpdSchedule } from '../models/OpdSchedule.js';
 import { Patient } from '../models/Patient.js';
 import { PatientConsent } from '../models/PatientConsent.js';
 import { PatientNote } from '../models/PatientNote.js';
-import { Kit, LocationCheck, Medicine, StockLocation, NoSubstitute, PharmacyDayClose, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierPayment, SupplierReturn } from '../models/Pharmacy.js';
+import { Kit, LocationCheck, Medicine, StockLocation, NoSubstitute, PharmacyAdvance, PharmacyDayClose, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierPayment, SupplierReturn } from '../models/Pharmacy.js';
 import { PrescriptionDesign } from '../models/PrescriptionDesign.js';
 import { PrescriptionSet } from '../models/PrescriptionSet.js';
 import { PriceItem } from '../models/PriceItem.js';
@@ -162,6 +162,7 @@ export const KINDS = [
   { file: 'pharmacy-purchase-orders.json', model: PurchaseOrder, what: 'Pharmacy: purchase orders.' },
   { file: 'pharmacy-supplier-returns.json', model: SupplierReturn, what: 'Pharmacy: stock returned to suppliers.' },
   { file: 'pharmacy-invoices.json', model: PharmacyInvoice, what: 'Pharmacy: sales and issues to patients, with their tax invoices and returns.' },
+  { file: 'pharmacy-advances.json', model: PharmacyAdvance, what: 'Pharmacy: advances patients left with the pharmacy – deposits, uses on bills and refunds (18 Nov 2026).' },
   { file: 'pharmacy-no-substitute.json', model: NoSubstitute, what: 'Pharmacy: the medicines the doctors listed as never to be substituted (PH10).' },
   { file: 'pharmacy-supplier-payments.json', model: SupplierPayment, what: 'Pharmacy: payments to suppliers (PH11).' },
   { file: 'pharmacy-kits.json', model: Kit, what: 'Pharmacy: the kits (PH14).' },

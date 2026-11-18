@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BedDouble, Building2, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, FileJson, History, Plus, Printer, RotateCcw, Search, Stethoscope, UserPlus, Users } from 'lucide-react';
+import { BedDouble, Building2, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, FileJson, History, Plus, Printer, RotateCcw, Search, Stethoscope, UserPlus, Users, Wallet } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -14,7 +14,7 @@ import { addDaysIso } from '../appointments/appointmentFormat.js';
 import { TallyMarks } from '../billing/TallyPage.jsx';
 import { amountInWords } from '../billing/amountWords.js';
 import { MODE_LABELS, expiryLabel, soldItems } from './pharmacyFormat.js';
-import { Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
+import { BarcodeBox, Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { TypePill, billsPlace } from './RegisterPage.jsx';
 import { DateText } from '../../components/DateText.jsx';
 
@@ -37,6 +37,8 @@ const lineName = (l) => `${l.name}${l.schedule ? ` (${l.schedule === 'narcotic' 
 const buyerAddress = (b) => [b.address, [b.place, b.pin].filter(Boolean).join(' '), b.state && `${b.state} (${b.stateCode})`].filter(Boolean).join(', ');
 
 const TYPE_CHOICES = [['all', 'All', Users], ['opd', 'OPD', Stethoscope], ['ipd', 'IPD', BedDouble], ['external', 'External', UserPlus]];
+// A payment's mode in words – 'advance': paid from the patient's pharmacy advance (18 Nov 2026)
+const modeWord = (mode) => (mode === 'advance' ? 'the advance' : MODE_LABELS[mode] ?? mode);
 const typeOf = (v) => (v.kind === 'issue' ? 'ipd' : v.patient ? 'opd' : 'external');
 /** A bill fits an amount by its first digits (12 finds 12, 120 and 1,200), and "hospital" means a patient's bill. */
 export const billFits = (v, { type = 'all', doctor = '', amount = '', paidBy = '' }) =>
@@ -100,6 +102,7 @@ export function InvoicesPage({ pick = null }) {
   const [searched, setSearched] = useState(false);
   // The whole list (owner's approval, 9 Nov 2026): how many pages of it are shown – "Show more" adds one
   const [pages, setPages] = useState(1);
+  const [kitHint, setKitHint] = useState(false);
   // A type just chosen (All, OPD, IPD or External, 7 Nov 2026): the list stays empty until Search is pressed
   const [blank, setBlank] = useState(false);
   const looking = desk && Boolean(name || mrn || searched);
@@ -151,6 +154,18 @@ export function InvoicesPage({ pick = null }) {
     setPhoneText('');
     setMrnText('');
   };
+  // The patient type chosen. 18 Nov 2026 (the pharmacy's request): OPD and IPD show their patient list at once, without Show
+  const chooseType = (k) => {
+    setType(k);
+    setPerson(null);
+    setMade(null);
+    clearPerson();
+    setKitHint(false);
+    const listNow = k === 'opd' || k === 'ipd';
+    setSearched(listNow);
+    setPages(1);
+    setBlank(!listNow);
+  };
   const closePerson = () => {
     setBlank(false);
     setPerson(null);
@@ -162,7 +177,7 @@ export function InvoicesPage({ pick = null }) {
   const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
   const bills = res.data?.invoices?.filter((v) => !desk || billFits(v, { type }));
   const filtering = desk && (type !== 'all' || text);
-  const billSearch = <input type="search" className="bill-search-plain" aria-label="Find a bill" placeholder="Bill number or a medicine" value={text} onChange={(e) => setText(e.target.value)} />;
+  const billSearch = <input type="search" className="bill-search-plain" aria-label="Find a bill" placeholder="Bill or return (CN) number, or a medicine" value={text} onChange={(e) => setText(e.target.value)} />;
   const dayNav = day && (
     <div className="appt-daynav" role="group" aria-label="Day">
       <button type="button" className="icon-btn" onClick={() => go(addDaysIso(day, -1))} aria-label="Previous day">
@@ -243,14 +258,7 @@ export function InvoicesPage({ pick = null }) {
                       key={k}
                       type="button"
                       aria-pressed={type === k}
-                      onClick={() => {
-                        setType(k);
-                        setPerson(null);
-                        setMade(null);
-                        setSearched(false);
-                        clearPerson();
-                        setBlank(true);
-                      }}
+                      onClick={() => chooseType(k)}
                     >
                       <Icon aria-hidden="true" /> {label}
                     </button>
@@ -334,6 +342,29 @@ export function InvoicesPage({ pick = null }) {
                   <button type="button" className="btn btn-secondary btn-sm" onClick={pick.onWalkIn}>
                     <UserPlus aria-hidden="true" /> New walk-in customer
                   </button>
+                </div>
+              )}
+              {/* 18 Nov 2026 (the pharmacy's request): Barcode, Select kit and the kits on the first page */}
+              {pick && (
+                <div className="ph-pick-tools">
+                  <div className="ph-pick-scan">
+                    <BarcodeBox onPick={pick.onScan} />
+                    {pick.scanned.length > 0 && (
+                      <p className="hint">
+                        For the next bill: {pick.scanned.map((m) => m.name).join(', ')}.{' '}
+                        <button type="button" className="btn btn-link btn-sm" onClick={pick.clearScanned}>
+                          Clear
+                        </button>
+                      </p>
+                    )}
+                  </div>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => { chooseType('ipd'); setKitHint(true); }}>
+                    Select kit
+                  </button>
+                  <Link className="btn btn-link btn-sm" to="/formulary/kits">
+                    Kits (add or see)
+                  </Link>
+                  {kitHint && <p className="hint ph-pick-kit-hint">A kit is issued to an admitted patient: choose her in the IPD list, then pick the kit on the issue.</p>}
                 </div>
               )}
               {person ? (
@@ -427,7 +458,11 @@ export function PeopleFound({ found, people, onPick, onBills = null, onMore = nu
 function PersonBills({ person, onClose }) {
   const [billId, setBillId] = useState(person.bills[0].id);
   const [printing, setPrinting] = useState(false);
+  const [settling, setSettling] = useState(false);
   const res = useFetch(`/pharmacy/invoices/${billId}`);
+  // 18 Nov 2026: what a registered patient still owes the pharmacy, settled here in one payment
+  const dues = useFetch(person.mrn ? `/pharmacy/patients/${person.key}/dues` : null);
+  const due = dues.data?.duePaise ?? 0;
   const v = res.data?.invoice;
   // A bill just made on Sold: its print preview opens by itself, once
   const printedNow = useRef(false);
@@ -463,6 +498,38 @@ function PersonBills({ person, onClose }) {
             </button>
           ))}
         </div>
+      )}
+      {due > 0 && (
+        <div className="ph-dues ph-dues-row" role="status">
+          <span>
+            <Wallet aria-hidden="true" /> <strong>Credit balance:</strong> {money(due)} due on {dues.data.bills.length} {dues.data.bills.length === 1 ? 'bill' : 'bills'} ({dues.data.bills.map((b) => b.number).join(', ')})
+          </span>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSettling(true)}>
+            Settle credit
+          </button>
+        </div>
+      )}
+      {person.mrn && (
+        <AdvancePanel
+          patientId={person.key}
+          name={person.name}
+          duePaise={due}
+          onUsed={() => {
+            dues.reload();
+            res.reload();
+          }}
+        />
+      )}
+      {settling && (
+        <ReceivePayment
+          settle={{ patientId: person.key, name: person.name, duePaise: due, count: dues.data.bills.length }}
+          onClose={() => setSettling(false)}
+          onDone={() => {
+            setSettling(false);
+            dues.reload();
+            res.reload();
+          }}
+        />
       )}
       {person.billCount > person.bills.length && (
         <p className="hint">
@@ -565,7 +632,8 @@ export function BillPaper({ invoice: v, settings }) {
           ))}
         </tbody>
       </table>
-      {/* 15 Nov 2026, as the earlier bill: Gross (at MRP), Disc, Net, then Paid Amount and Bal. Amt */}
+      {/* 15 Nov 2026, as the earlier bill: Gross (at MRP), Disc, then Paid Amount. 18 Nov 2026 (the pharmacy): no Net line;
+          a patient's bill shows its Credit Amt beside Paid Amount, then her earlier credit and the total she owes */}
       <div className="ph-slip-sums">
         <div>
           <span>Gross</span>
@@ -574,10 +642,6 @@ export function BillPaper({ invoice: v, settings }) {
         <div>
           <span>Disc</span>
           <span>{plain(Math.max(0, gross - v.totalPaise))}</span>
-        </div>
-        <div>
-          <span>Net</span>
-          <span>{plain(v.totalPaise)}</span>
         </div>
         {v.returnedPaise > 0 && (
           <div>
@@ -593,10 +657,25 @@ export function BillPaper({ invoice: v, settings }) {
               <span>Paid Amount</span>
               <span>{plain(v.paidPaise ?? 0)}</span>
             </div>
-            <div>
-              <span>Bal. Amt</span>
-              <span>{plain(Math.max(0, v.balancePaise ?? 0))}</span>
-            </div>
+            {/* a walk-in (External) pays the whole bill: never credit */}
+            {v.patient && (
+              <div className="ph-slip-credit">
+                <span>Credit Amt</span>
+                <span>{plain(Math.max(0, v.balancePaise ?? 0))}</span>
+              </div>
+            )}
+            {v.patient && v.earlierDuePaise > 0 && (
+              <>
+                <div>
+                  <span>Previous Credit</span>
+                  <span>{plain(v.earlierDuePaise)}</span>
+                </div>
+                <div className="ph-slip-credit">
+                  <span>Total Credit</span>
+                  <span>{plain(Math.max(0, v.balancePaise ?? 0) + v.earlierDuePaise)}</span>
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
@@ -697,7 +776,7 @@ function InvoicePrint({ invoice: v, settings, stay, creditNote = null, onClose }
               <strong>{amountInWords(due)}</strong>
             </div>
             <div className="pdoc-small">
-              {creditNote ? 'Credited against the bill above.' : v.billId ? 'Payable at the billing desk with the hospital bill.' : v.payments.map((p) => `${p.kind === 'refund' ? 'Refunded' : 'Paid'} ${paper(p.amountPaise)} by ${MODE_LABELS[p.mode]}`).join('; ')}
+              {creditNote ? 'Credited against the bill above.' : v.billId ? 'Payable at the billing desk with the hospital bill.' : v.payments.map((p) => `${p.kind === 'refund' ? 'Refunded' : 'Paid'} ${paper(p.amountPaise)} by ${modeWord(p.mode)}`).join('; ')}
             </div>
           </div>
           <table className="ph-bill-sums">
@@ -892,18 +971,126 @@ function BusinessBuyer({ invoice: v, einvoice }) {
 }
 
 /** A bill on credit paid later (13 Nov 2026): how, how much (what is due by default) and the reference. */
-function ReceivePayment({ invoice: v, onClose, onDone }) {
+/**
+ * Pharmacy advance (18 Nov 2026, the pharmacy's request): what the patient has left with the pharmacy; take a deposit,
+ * use it on her bills still due (oldest first), or refund what is left.
+ */
+function AdvancePanel({ patientId, name, duePaise, onUsed }) {
+  const adv = useFetch(`/pharmacy/patients/${patientId}/advance`);
+  const [doing, setDoing] = useState(null); // 'deposit' | 'refund'
+  const [note, setNote] = useState(null);
+  const use = useSend((r) => {
+    setNote(`${money(r.paid.reduce((n, p) => n + p.amountPaise, 0))} of the advance put on ${r.paid.map((p) => p.number).join(', ')}.`);
+    adv.reload();
+    onUsed();
+  });
+  const left = adv.data?.balancePaise ?? 0;
+  return (
+    <div className="ph-advance" aria-label="Pharmacy advance">
+      <span>
+        <strong>Advance:</strong> {adv.data ? money(left) : '…'} left
+      </span>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDoing('deposit')}>
+        Take advance
+      </button>
+      {left > 0 && duePaise > 0 && (
+        <button type="button" className="btn btn-secondary btn-sm" disabled={use.busy} onClick={() => use.send(`/pharmacy/patients/${patientId}/advance/use`, {})}>
+          Use on bills due
+        </button>
+      )}
+      {left > 0 && (
+        <button type="button" className="btn btn-link btn-sm" onClick={() => setDoing('refund')}>
+          Refund
+        </button>
+      )}
+      {(use.error || note) && <span className={use.error ? 'field-error' : 'hint'}>{use.error || note}</span>}
+      {doing && (
+        <AdvanceDialog
+          refund={doing === 'refund'}
+          patientId={patientId}
+          name={name}
+          leftPaise={left}
+          onClose={() => setDoing(null)}
+          onDone={(r) => {
+            setDoing(null);
+            setNote(doing === 'refund' ? `Refunded – receipt ${r.number}.` : `Advance taken – receipt ${r.number}.`);
+            adv.reload();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function AdvanceDialog({ refund, patientId, name, leftPaise, onClose, onDone }) {
   const [mode, setMode] = useState('cash');
-  const [amount, setAmount] = useState(((v.balancePaise ?? 0) / 100).toFixed(2));
+  const [amount, setAmount] = useState(refund ? (leftPaise / 100).toFixed(2) : '');
+  const [extra, setExtra] = useState(''); // a deposit's reference, a refund's reason
+  const s = useSend(onDone);
+  const paise = /^\d+(\.\d{0,2})?$/.test(amount.trim()) ? Math.round(Number(amount) * 100) : null;
+  const cardWrong = !refund && mode === 'card' && extra.trim() !== '' && !/^\d{4}$/.test(extra.trim());
+  const ok = paise > 0 && (!refund || (paise <= leftPaise && extra.trim().length >= 3)) && !cardWrong;
+  return (
+    <Modal id="ph-advance" title={refund ? `Refund advance – ${name}` : `Take advance – ${name}`} onClose={onClose}>
+      <Alert type="error">{s.error}</Alert>
+      {refund && <p className="hint">Advance left: {money(leftPaise)}.</p>}
+      <div className="form-grid">
+        <Field label={refund ? 'Given back by' : 'Paid by'} id="adv-mode">
+          <select id="adv-mode" value={mode} onChange={(e) => setMode(e.target.value)}>
+            {Object.entries(MODE_LABELS).map(([k, label]) => (
+              <option key={k} value={k}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Amount ₹" id="adv-amount" error={s.fields.amountPaise}>
+          <input id="adv-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        </Field>
+        {refund ? (
+          <Field label="Reason for the refund" id="adv-reason" error={s.fields.reason}>
+            <input id="adv-reason" value={extra} maxLength={200} onChange={(e) => setExtra(e.target.value)} />
+          </Field>
+        ) : (
+          mode !== 'cash' && (
+            <Field label={mode === 'card' ? 'Card no (last 4 digits)' : mode === 'cheque' ? 'Cheque no' : 'Transaction id'} id="adv-ref" error={cardWrong ? 'Only the last 4 digits of the card.' : s.fields.reference}>
+              <input id="adv-ref" value={extra} maxLength={mode === 'card' ? 4 : 80} autoComplete="off" onChange={(e) => setExtra(mode === 'card' ? e.target.value.replace(/\D/g, '') : e.target.value)} />
+            </Field>
+          )
+        )}
+      </div>
+      <div className="row">
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={!ok || s.busy}
+          onClick={() => s.send(refund ? `/pharmacy/patients/${patientId}/advance/refund` : `/pharmacy/patients/${patientId}/advance`, refund ? { amountPaise: paise, mode, reason: extra.trim() } : { amountPaise: paise, mode, ...(extra.trim() && mode !== 'cash' ? { reference: extra.trim() } : {}) })}
+        >
+          {s.busy ? 'Saving…' : refund ? 'Save the refund' : 'Save the advance'}
+        </button>
+        <button type="button" className="btn btn-link" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function ReceivePayment({ invoice: v = null, settle = null, onClose, onDone }) {
+  // One bill's payment, or (settle: { patientId, name, duePaise, count }) a settlement of all a patient owes – 18 Nov 2026
+  const due = settle ? settle.duePaise : (v.balancePaise ?? 0);
+  const [mode, setMode] = useState('cash');
+  const [amount, setAmount] = useState((due / 100).toFixed(2));
   const [reference, setReference] = useState('');
-  const s = useSend((res) => onDone(res.invoice));
+  const s = useSend((res) => onDone(settle ? res : res.invoice));
   const paise = /^\d+(\.\d{0,2})?$/.test(amount.trim()) ? Math.round(Number(amount) * 100) : null;
   const cardWrong = mode === 'card' && reference.trim() !== '' && !/^\d{4}$/.test(reference.trim());
-  const ok = paise > 0 && paise <= (v.balancePaise ?? 0) && !cardWrong;
+  const ok = paise > 0 && paise <= due && !cardWrong;
+  const path = settle ? `/pharmacy/patients/${settle.patientId}/settle` : `/pharmacy/invoices/${v.id}/payments`;
   return (
-    <Modal id="ph-receive" title={`Receive payment – ${v.number}`} onClose={onClose}>
+    <Modal id="ph-receive" title={settle ? `Settle credit – ${settle.name}` : `Receive payment – ${v.number}`} onClose={onClose}>
       <Alert type="error">{s.error}</Alert>
-      <p className="hint">Due on this bill: {money(v.balancePaise ?? 0)}.</p>
+      <p className="hint">{settle ? `Due on ${settle.count} ${settle.count === 1 ? 'bill' : 'bills'}: ${money(due)}. The payment is put on the oldest bill first.` : `Due on this bill: ${money(due)}.`}</p>
       <div className="form-grid">
         <Field label="Paid by" id="rp-mode">
           <select id="rp-mode" value={mode} onChange={(e) => setMode(e.target.value)}>
@@ -924,7 +1111,7 @@ function ReceivePayment({ invoice: v, onClose, onDone }) {
         )}
       </div>
       <div className="row">
-        <button type="button" className="btn btn-primary" disabled={!ok || s.busy} onClick={() => s.send(`/pharmacy/invoices/${v.id}/payments`, { payments: [{ mode, amountPaise: paise, ...(reference.trim() ? { reference: reference.trim() } : {}) }] })}>
+        <button type="button" className="btn btn-primary" disabled={!ok || s.busy} onClick={() => s.send(path, { payments: [{ mode, amountPaise: paise, ...(reference.trim() ? { reference: reference.trim() } : {}) }] })}>
           {s.busy ? 'Saving…' : 'Save payment'}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>
@@ -1100,10 +1287,24 @@ export function InvoicePage() {
                     <dt>Paid</dt>
                     <dd>{money(v.paidPaise ?? 0)}</dd>
                   </div>
+                  {/* 18 Nov 2026 (the pharmacy, as the earlier software): this bill's credit, her earlier credit, and
+                      all she owes the pharmacy (Outstanding); a walk-in pays in full and has no credit */}
                   <div>
-                    <dt>Balance</dt>
-                    <dd>{money(v.balancePaise ?? 0)}</dd>
+                    <dt>{v.patient ? 'Credit Amt' : 'Balance'}</dt>
+                    <dd>{money(Math.max(0, v.balancePaise ?? 0))}</dd>
                   </div>
+                  {v.patient && v.earlierDuePaise > 0 && (
+                    <div>
+                      <dt>Previous credit</dt>
+                      <dd>{money(v.earlierDuePaise)}</dd>
+                    </div>
+                  )}
+                  {v.patient && (
+                    <div className="is-total">
+                      <dt>Outstanding</dt>
+                      <dd>{money(Math.max(0, v.balancePaise ?? 0) + (v.earlierDuePaise ?? 0))}</dd>
+                    </div>
+                  )}
                 </dl>
               )}
               {desk && !v.billId && (v.balancePaise ?? 0) > 0 && (
@@ -1116,7 +1317,7 @@ export function InvoicePage() {
                   {v.payments.map((p, i) => (
                     <li key={`p${i}`}>
                       <div className="ph-inv-row">
-                        <strong>{p.kind === 'refund' ? `Refund · ${MODE_LABELS[p.mode]}` : MODE_LABELS[p.mode]}</strong>
+                        <strong>{p.kind === 'refund' ? `Refund · ${modeWord(p.mode)}` : modeWord(p.mode)}</strong>
                         <span className="tabular">
                           {p.kind === 'refund' ? '−' : ''}
                           {money(p.amountPaise)}
@@ -1129,6 +1330,7 @@ export function InvoicePage() {
                   ))}
                 </ul>
               )}
+              {v.creditAuthorisedBy && <p className="hint">Credit authorised by: {v.creditAuthorisedBy}</p>}
               {v.paymentRemarks && <p className="hint">Remarks: {v.paymentRemarks}</p>}
             </section>
             {v.returns.length > 0 && (

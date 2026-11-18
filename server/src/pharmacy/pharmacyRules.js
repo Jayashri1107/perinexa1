@@ -50,8 +50,8 @@ export const ORDER_SUGGEST_TIMES = 2;
 export const MAX_ORDER_LINES = 200;
 
 // Why stock goes back to a supplier (expired stock may go back: unlike a sale, there is no expiry check).
-export const SUPPLIER_RETURN_REASONS = ['expired', 'damaged', 'recalled', 'excess', 'wrong_item'];
-export const SUPPLIER_RETURN_REASON_LABELS = { expired: 'Expired', damaged: 'Damaged', recalled: 'Recalled', excess: 'Excess stock', wrong_item: 'Wrong item' };
+export const SUPPLIER_RETURN_REASONS = ['expired', 'near_expiry', 'damaged', 'recalled', 'excess', 'wrong_item'];
+export const SUPPLIER_RETURN_REASON_LABELS = { expired: 'Expired', near_expiry: 'Near expiry', damaged: 'Damaged', recalled: 'Recalled', excess: 'Excess stock', wrong_item: 'Wrong item' };
 
 // Barcodes: the number under the bars on a pack (EAN, UPC, GTIN – digits; some packs use letters too). Kept without
 // spaces, letters in capitals; found by exact match only; one barcode belongs to one medicine in a hospital.

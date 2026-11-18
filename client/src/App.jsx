@@ -99,6 +99,7 @@ const NewBillPage = screen(loadNewBill, 'NewBillPage');
 const SellPage = screen(load27, 'SellPage');
 const loadWardRequests = () => import('./pages/pharmacy/WardRequests.jsx');
 const WardRequestsPage = screen(loadWardRequests, 'WardRequestsPage');
+const DischargeClearancePage = screen(() => import('./pages/pharmacy/DischargeClearance.jsx'), 'DischargeClearancePage');
 const load28 = () => import('./pages/pharmacy/StockPage.jsx');
 const MedicineStockPage = screen(load28, 'MedicineStockPage');
 const StockPage = screen(load28, 'StockPage');
@@ -690,6 +691,7 @@ export function App() {
                   <Route path="supplier-returns/:id" element={<SupplierReturnPage />} />
                   <Route path="medicines" element={<MedicinesPage />} />
                   <Route path="kits" element={<KitsPage />} /> {/* PH14: the hospital admin's way to the kits */}
+                  <Route path="discharge-clearance" element={<DischargeClearancePage />} /> {/* 18 Nov 2026 */}
                   <Route path="ward-requests" element={<WardRequestsPage />} /> {/* PH12: what the wards asked for */}
                   <Route path="places" element={<StockPlacesPage />} /> {/* PH13: the pharmacist's and the hospital admin's way to the places */}
                   <Route path="suppliers" element={<SuppliersPage />} />

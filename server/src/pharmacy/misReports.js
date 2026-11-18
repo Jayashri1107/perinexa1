@@ -7,7 +7,7 @@
 //   total    one row of sums under the table (null: none)
 //   summary  short figures above the table, e.g. what came in by each payment mode
 //   patients true when it holds patient or customer names (then it is audited, and only the admin gets the Excel file)
-// "Advance report" of the earlier software is left out: the pharmacy takes no advance in Perinexa.
+// "Advance report": the pharmacy advance (18 Nov 2026 – before then the pharmacy took no advance in Perinexa).
 // "Doctor wise sales" is the existing Sales by doctor report (the pharmacist only – owner's decision 5).
 
 import { isoDay, timeIn, toHospitalDate } from '../careplans/dates.js';
@@ -29,11 +29,15 @@ export const MIS_GROUPS = [
       ['sale-lines', 'Sales bill details'],
       ['collection', 'Sales collection'],
       ['card-collection', 'Card collection'],
+      ['upi-collection', 'UPI collection'], // 18 Nov 2026, the pharmacy's request
       ['patient-collection', 'Patient-wise collection'],
       ['returns', 'Sales return report'],
       ['return-lines', 'Sales return details'],
+      ['patient-returns', 'Sales return patient-wise'], // 18 Nov 2026, the pharmacy's request
       ['credit', 'Credit report'],
       ['patient-credit', 'Patient-wise credit'],
+      ['advance', 'Advance amount report'], // 18 Nov 2026
+      ['insurance', 'Insurance / cashless patients'], // 18 Nov 2026
     ],
   },
   {
@@ -62,9 +66,9 @@ export const MIS_TITLES = Object.fromEntries(MIS_GROUPS.flatMap((g) => g.reports
 // The reports that hold no patient or customer names
 const NO_NAMES = new Set(['grn-gst', 'grn-return-gst', 'gst-summary']);
 // Which data each report needs (the route loads only that)
-export const misNeeds = (key) => ({ invoices: !['grn-gst', 'grn-return-gst'].includes(key), purchases: ['grn-gst', 'gst-summary'].includes(key), supplierReturns: ['grn-return-gst', 'gst-summary'].includes(key) });
+export const misNeeds = (key) => ({ bills: key === 'insurance', advances: ['advance', 'collection', 'card-collection', 'upi-collection'].includes(key), invoices: !['grn-gst', 'grn-return-gst', 'advance'].includes(key), purchases: ['grn-gst', 'gst-summary'].includes(key), supplierReturns: ['grn-return-gst', 'gst-summary'].includes(key) });
 
-const MODE_LABELS = { cash: 'Cash', upi: 'UPI', card: 'Card', cheque: 'Cheque', neft: 'NEFT' };
+const MODE_LABELS = { cash: 'Cash', upi: 'UPI', card: 'Card', cheque: 'Cheque', neft: 'NEFT', advance: 'Advance' };
 const day = (at) => isoDay(toHospitalDate(at));
 const col = (k, label, type = 'text') => ({ k, label, type });
 const totalOf = (rows, keys, first = {}) => ({ ...first, ...Object.fromEntries(keys.map((k) => [k, rows.reduce((s, r) => s + (r[k] ?? 0), 0)])) });
@@ -144,23 +148,73 @@ export function misReport(key, data, { from, to }) {
     };
   }
 
-  if (key === 'collection' || key === 'card-collection') {
+  if (key === 'collection' || key === 'card-collection' || key === 'upi-collection') {
     const rows = invoices.flatMap((inv) => {
       const who = personOf(inv, patients);
       return (inv.payments ?? [])
-        .filter((x) => inRange(x.at) && (key === 'collection' || x.mode === 'card'))
+        // a bill paid from the advance moves no money: the advance was counted when it was deposited
+        .filter((x) => inRange(x.at) && x.mode !== 'advance' && (key === 'collection' || x.mode === (key === 'upi-collection' ? 'upi' : 'card')))
         .map((x) => ({ at: new Date(x.at), date: day(x.at), time: timeIn(x.at), bill: inv.number, name: who.name, ref: who.ref, mode: MODE_LABELS[x.mode] ?? x.mode ?? '', reference: [x.reference, x.bank].filter(Boolean).join(' · '), received: x.kind === 'refund' ? 0 : x.amountPaise, refunded: x.kind === 'refund' ? x.amountPaise : 0, byName: x.byName ?? '' }));
     });
+    // Advance deposits and refunds (18 Nov 2026) are money taken or given back at the counter
+    for (const e of data.advances ?? []) {
+      if (e.kind === 'used' || !inRange(e.created.at) || (key !== 'collection' && e.mode !== (key === 'upi-collection' ? 'upi' : 'card'))) continue;
+      const who = personOf({ patientId: e.patientId }, patients);
+      rows.push({ at: new Date(e.created.at), date: day(e.created.at), time: timeIn(e.created.at), bill: `Advance ${e.number}`, name: who.name, ref: who.ref, mode: MODE_LABELS[e.mode] ?? e.mode, reference: e.reference ?? '', received: e.kind === 'deposit' ? e.amountPaise : 0, refunded: e.kind === 'refund' ? e.amountPaise : 0, byName: e.created.byName ?? '' });
+    }
     rows.sort((a, b) => a.at - b.at);
     const out = rows.map(({ at, ...r }) => ({ ...r, net: r.received - r.refunded }));
     const modes = [...new Set(out.map((r) => r.mode))].sort();
     return {
       ...base,
-      columns: [col('date', 'Date', 'date'), col('time', 'Time'), col('bill', 'Bill no.'), col('name', 'Customer'), col('ref', 'Phone'), col('mode', 'Mode'), col('reference', key === 'card-collection' ? 'Card (last 4) / bank' : 'Reference'), col('received', 'Received', 'money'), col('refunded', 'Refunded', 'money'), col('net', 'Net', 'money'), col('byName', 'Taken by')],
+      columns: [col('date', 'Date', 'date'), col('time', 'Time'), col('bill', 'Bill no.'), col('name', 'Customer'), col('ref', 'Phone'), col('mode', 'Mode'), col('reference', key === 'card-collection' ? 'Card (last 4) / bank' : key === 'upi-collection' ? 'Transaction id / app' : 'Reference'), col('received', 'Received', 'money'), col('refunded', 'Refunded', 'money'), col('net', 'Net', 'money'), col('byName', 'Taken by')],
       rows: out,
       total: totalOf(out, ['received', 'refunded', 'net'], { date: `${out.length} payment${out.length === 1 ? '' : 's'}` }),
       summary: modes.map((m) => ({ label: m, paise: out.filter((r) => r.mode === m).reduce((s, r) => s + r.net, 0) })),
       note: 'Payments taken at the counter for walk-in sales. Bills of registered patients go on the hospital bill and are paid there.',
+    };
+  }
+
+  // Insurance / cashless patients (18 Nov 2026, the pharmacy's request): the period's pharmacy bills that went on a
+  // hospital bill with insurance or a cashless approval recorded – the medicines the claim covers. data.bills: those
+  // hospital bills by id.
+  if (key === 'insurance') {
+    const bills = data.bills ?? new Map();
+    const rows = made
+      .filter((inv) => inv.billId && bills.has(String(inv.billId)))
+      .map((inv) => {
+        const hb = bills.get(String(inv.billId));
+        const who = personOf(inv, patients);
+        const ins = hb.insurance ?? {};
+        return { date: day(inv.created.at), bill: inv.number, type: inv.kind === 'issue' ? 'IPD' : 'OPD', name: who.name, ref: who.ref, hospitalBill: hb.number, insurer: ins.insurer || ins.pmjayId ? ins.insurer || 'PM-JAY' : '', tpa: ins.tpa ?? '', preAuth: ins.preAuthNumber ?? '', claim: ins.claimNumber ?? '', approved: hb.claim?.approvedPaise ?? null, net: billMoney(inv).net };
+      });
+    return {
+      ...base,
+      columns: [col('date', 'Date', 'date'), col('bill', 'Bill no.'), col('type', 'Type'), col('name', 'Patient'), col('ref', 'Number'), col('hospitalBill', 'Hospital bill'), col('insurer', 'Insurer / scheme'), col('tpa', 'TPA'), col('preAuth', 'Pre-auth no.'), col('claim', 'Claim no.'), col('approved', 'Approved on the hospital bill', 'money'), col('net', 'Pharmacy net', 'money')],
+      rows,
+      total: totalOf(rows, ['net'], { date: `${rows.length} bill${rows.length === 1 ? '' : 's'}` }),
+      note: 'Pharmacy bills on a hospital bill that has insurance or a cashless approval. The claim itself is made at the billing desk.',
+    };
+  }
+
+  // Advance amount report (18 Nov 2026): every deposit, use and refund of the period, and each one's sums
+  if (key === 'advance') {
+    const KIND = { deposit: 'Deposit', used: 'Used on a bill', refund: 'Refund' };
+    const rows = (data.advances ?? [])
+      .filter((e) => inRange(e.created.at))
+      .sort((a, b) => new Date(a.created.at) - new Date(b.created.at))
+      .map((e) => {
+        const who = personOf({ patientId: e.patientId }, patients);
+        return { date: day(e.created.at), time: timeIn(e.created.at), number: e.kind === 'used' ? '' : e.number, name: who.name, ref: who.ref, kind: KIND[e.kind], mode: MODE_LABELS[e.mode] ?? '', bill: e.invoiceNumber ?? '', deposit: e.kind === 'deposit' ? e.amountPaise : 0, used: e.kind === 'used' ? e.amountPaise : 0, refund: e.kind === 'refund' ? e.amountPaise : 0, note: e.reason || e.reference || '', byName: e.created.byName ?? '' };
+      });
+    const total = totalOf(rows, ['deposit', 'used', 'refund'], { date: `${rows.length} entr${rows.length === 1 ? 'y' : 'ies'}` });
+    return {
+      ...base,
+      columns: [col('date', 'Date', 'date'), col('time', 'Time'), col('number', 'Receipt no.'), col('name', 'Patient'), col('ref', 'Number'), col('kind', 'Entry'), col('mode', 'Mode'), col('bill', 'Bill no.'), col('deposit', 'Deposited', 'money'), col('used', 'Used', 'money'), col('refund', 'Refunded', 'money'), col('note', 'Reference / reason'), col('byName', 'By')],
+      rows,
+      total,
+      summary: [{ label: 'Deposited', paise: total.deposit }, { label: 'Used on bills', paise: total.used }, { label: 'Refunded', paise: total.refund }],
+      note: 'The balance a patient has left is on her bills on Sold (Advance).',
     };
   }
 
@@ -201,6 +255,27 @@ export function misReport(key, data, { from, to }) {
       rows,
       total: totalOf(rows, ['bills', 'net', 'paid', 'hospital', 'due'], { name: `${rows.length} ${rows.length === 1 ? 'person' : 'people'}` }),
       note: key === 'patient-credit' ? 'Bills of the period not paid at the counter, by person: registered patients pay them on the hospital bill.' : 'Bills of the period by person, after returns.',
+    };
+  }
+
+  // Patient-wise (18 Nov 2026): each patient's or customer's returns in the period, the most first
+  if (key === 'patient-returns') {
+    const by = new Map();
+    for (const { inv, r } of creditNotes) {
+      const who = personOf(inv, patients);
+      const x = by.get(who.key) ?? { name: who.name, ref: who.ref, notes: [], bills: new Set(), items: 0, amount: 0 };
+      x.notes.push(r.number);
+      x.bills.add(inv.number);
+      x.items += r.lines.length;
+      x.amount += sum(r.lines).amountPaise;
+      by.set(who.key, x);
+    }
+    const rows = [...by.values()].map(({ notes, bills, ...x }) => ({ ...x, count: notes.length, notes: notes.join(', '), bills: [...bills].join(', ') })).sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name));
+    return {
+      ...base,
+      columns: [col('name', 'Patient / customer'), col('ref', 'Number / phone'), col('count', 'Returns', 'num'), col('notes', 'Credit notes'), col('bills', 'Against bills'), col('items', 'Items', 'num'), col('amount', 'Amount', 'money')],
+      rows,
+      total: totalOf(rows, ['count', 'items', 'amount'], { name: `${rows.length} ${rows.length === 1 ? 'person' : 'people'}` }),
     };
   }
 
