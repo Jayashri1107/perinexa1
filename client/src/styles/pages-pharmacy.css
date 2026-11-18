@@ -1170,3 +1170,33 @@
   .sr-new-note { position: static; }
   .sr-new-scroll { max-height: none; }
 }
+
+/* 18 Nov 2026 (the pharmacy): the Sales bill's first page smaller – a narrow search panel with small text and boxes, the
+   lists in small text with slim rows filling the height (more people in sight), no sideways scrolling */
+.ph-sold { gap: var(--space-2); font-size: 0.8125rem; }
+.ph-sold .ph-sold-results { gap: var(--space-2); }
+.ph-sold .ph-filters { gap: var(--space-2); padding: var(--space-3); }
+.ph-sold .ph-filters .segmented button { min-height: 30px; padding: 3px 8px; font-size: 0.8125rem; }
+.ph-sold .ph-filters .segmented svg { width: 14px; height: 14px; }
+.ph-sold .ph-filter > span { font-size: 0.75rem; }
+.ph-sold .ph-search-btn { min-height: 32px; padding: 4px 12px; font-size: 0.8125rem; width: 100%; }
+.ph-sold .ph-find-form { gap: 6px; }
+.ph-sold .ph-find-form .ph-find-head { margin: 2px 0 0; font-size: 0.75rem; }
+.ph-sold .ph-find-form .ph-filter { grid-template-columns: 76px minmax(0, 1fr); gap: 6px; }
+.ph-sold .ph-find-form .ph-filter > span { font-size: 0.75rem; }
+.ph-sold .ph-find-form .ph-filter :is(input, select) { height: 28px; padding: 2px 8px; font-size: 0.8125rem; }
+.ph-sold .ph-clear-dates { justify-self: start; padding: 0; min-height: 0; }
+.ph-sold .ph-pick-bar, .ph-sold .ph-pick-tools { padding-top: 6px; padding-bottom: 6px; font-size: 0.8125rem; }
+.ph-sold .ph-pick-tools .hint { font-size: 0.75rem; margin: 2px 0 0; }
+.ph-sold .ph-pick-tools :is(input, .btn) { min-height: 32px; height: 32px; padding-top: 2px; padding-bottom: 2px; font-size: 0.8125rem; }
+.ph-sold .btn { font-size: 0.8125rem; }
+@media screen and (min-width: 1000px) {
+  .ph-sold .ph-sold-split { grid-template-columns: 250px minmax(0, 1fr); }
+}
+@media screen and (min-width: 721px) {
+  .ph-sold-results .dt-wrap { height: max(300px, calc(100dvh - 300px)); overflow-x: hidden; }
+  .ph-sold-results .dt { font-size: 0.8125rem; }
+  .ph-sold-results .dt th { padding: 5px 8px; font-size: 0.6875rem; }
+  .ph-sold-results .dt td { height: 30px; padding: 2px 8px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+  .ph-sold-results .dt .pill, .ph-sold-results .dt .status-pill { padding: 1px 8px; font-size: 0.75rem; }
+}
