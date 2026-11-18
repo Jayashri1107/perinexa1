@@ -59,12 +59,26 @@ admin never seeing patient data" as never-weaken. Also inconsistent:
 *Needed:* the owner chooses, in writing, between (a) no patient data for platform users (remove the reads, keep the
 setup paths) and (b) the 12 Oct decision, with `CLAUDE.md` changed to match. Either way the comments and the platform
 admin's reach are made consistent with the choice.
+**Owner's decision, 17 Nov 2026 (given in a Claude chat; please confirm with the owner): a third option – only with the
+hospital's consent.** Built on branch `owner-decisions-1117`: a platform user reaches a hospital's setup and staff, and
+its patients, bills, pharmacy, lab and analytics lists only while that hospital's own admin allows **support access**
+(Hospital admin → Support access: a reason, 2 / 8 / 24 / 72 hours, ended early at any time; `SUPPORT_ACCESS_GRANTED` /
+`_ENDED` in its audit log). Platform → Patients and the hospital view's patient list show only hospitals with it open.
+During it the 12 Oct rules apply (super admin like staff, platform admin reads). `platformHospitalGuard`,
+`utils/platformAccess.js`, `tests/support-access.test.js`; `CLAUDE.md` and handover section 9 changed to match.
 
 **H4 – No two-step sign-in for staff.** Open.
 No TOTP or other second factor anywhere in `server/src`. With H3 as it stands, one phished super-admin password opens
 every hospital's records.
 *Fix:* TOTP (authenticator app) required for super admin, platform admins and hospital admins, offered to everyone.
 Needs the developer's and owner's agreement on the library (a new dependency).
+**Built 17 Nov 2026 (branch `owner-decisions-1117`; the owner chose an authenticator app over SMS):** RFC 6238 with
+Node's own crypto – no new dependency (`server/src/auth/totp.js`, checked against the RFC's test values). Required for
+super admins, platform admins and hospital admins when `TWO_STEP_FOR_ADMINS` is on – the default on the live server –
+so **each of them sets up an authenticator app at their next sign-in after the deploy**. Anyone else may turn it on under
+My settings → Security. Secret encrypted (key from `JWT_SECRET`), 8 recovery codes as hashes, a code works once, its
+own 3-try lock; "Switch back to super admin" asks the code too; the super admin resets it for a lost phone (user page).
+Changing `JWT_SECRET` leaves only the recovery codes working for those who had it on. `tests/two-step.test.js`.
 
 ## Medium
 
@@ -126,12 +140,20 @@ hospital admin – whether admins see bills is the owner's decision (L5).
 `routes/fertilityPlans.js` (section text up to 8,000 characters, switch notes, cycle notes) never calls the PC-PNDT
 check. The Act also covers sex selection before conception, so "patient requests male child" can be saved and printed.
 *Needed:* the owner's OK to add the same check as the history sheet.
+**Owner's decision, 17 Nov 2026: yes.** Built on branch `owner-decisions-1117`. The pregnancy word list would refuse the
+approved library itself ("male factor", "sexual health", "47,XXY"), so fertility text uses a narrower list – words for a
+child of one sex and sex selection (`SEX_SELECTION_WORDS` in `utils/pcpndt.js`, **DRAFT until the owner reads it**) – on
+the plan's title, sections, switch and outcome notes and every cycle-sheet text.
 
 **M7 – Hospital admins can export patient names in bulk.** Owner decides.
 `routes/billing.js:1048` (admin and billing) and `routes/pharmacy.js:1740` (admin) return up to a year as CSV with
 MRN, full name and each item or medicine – against the rule at `routes/exports.js:9-10` that an admin sees no patient
 data. A pharmacy sales file can show a named patient next to HIV medicines, which defeats the neutral test name. Both
 are audited. *Needed:* the owner decides who may download these; numbers only for admins is the safer default.
+**Owner's decision, 17 Nov 2026: allowed with a reason.** Built on branch `owner-decisions-1117`: the billing export
+and the pharmacy sales file need a reason (5–200 characters), written to the audit entry; the supplier files need none.
+Still open for the owner: the pharmacy sales file can name a patient next to HIV medicines (the neutral test name does
+not cover medicines).
 
 **M8 – Startup data changes run on every start, without a lock, inside the deploy's one-minute window.** Open. *Plausible.*
 `server/src/index.js:39-108` runs six data-changing steps before `listen()`, on every start of every copy, without

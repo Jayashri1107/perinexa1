@@ -10,6 +10,7 @@ import { LOGIN_EMAIL_KEY, useAuth } from '../auth/AuthContext.jsx';
 import { FullPageSpinner } from '../auth/guards.jsx';
 import { PasswordInput } from '../components/PasswordInput.jsx';
 import { Alert, Field } from '../components/ui.jsx';
+import { RecoveryCodes, TwoStepSetup } from '../components/TwoStep.jsx';
 import { HospitalEntry } from './portal/PortalAccount.jsx';
 import { portal } from './portal/portalApi.js';
 import { asName } from '../personName.js';
@@ -52,7 +53,7 @@ function keepEmail(value) {
 }
 
 export function LoginPage() {
-  const { user, loading, login, logoutReason, timeoutMinutes } = useAuth();
+  const { user, loading, login, loginTwoStep, startSession, logoutReason, timeoutMinutes } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [remembered] = useState(rememberedEmail);
@@ -63,6 +64,10 @@ export function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const lock = useLockCountdown(); // 3 wrong passwords: 2 minutes to wait
+  // Two-step sign-in (health check H4): the server's { step, ticket, secret?, uri? } after the right password; then the
+  // session with the recovery codes, held until they are noted (the first sign-in where it is set up)
+  const [twoStep, setTwoStep] = useState(null);
+  const [held, setHeld] = useState(null);
   // First start: no super admin yet – this page creates the first one (nothing is kept in a settings file)
   const [needsSetup, setNeedsSetup] = useState(false);
   const [needsCode, setNeedsCode] = useState(false); // the live server asks for its one-time SETUP_CODE
@@ -83,6 +88,17 @@ export function LoginPage() {
   if (loading) return <FullPageSpinner />;
   if (user) return <Navigate to={user.mustChangePassword ? '/change-password' : '/'} replace />;
 
+  const goOn = (loggedIn) => {
+    const from = location.state?.from?.pathname || '/';
+    navigate(loggedIn.mustChangePassword ? '/change-password' : from, { replace: true });
+  };
+  const sendCode = async (code) => {
+    const data = await loginTwoStep(twoStep.ticket, code);
+    if (data.recoveryCodes) return setHeld(data); // shown first; the session starts when they are noted
+    startSession(data);
+    goOn(data.user);
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -91,8 +107,12 @@ export function LoginPage() {
     try {
       const loggedIn = await login(email, password);
       keepEmail(remember ? email.trim() : '');
-      const from = location.state?.from?.pathname || '/';
-      navigate(loggedIn.mustChangePassword ? '/change-password' : from, { replace: true });
+      if (loggedIn.twoStep) {
+        setTwoStep(loggedIn.twoStep);
+        setPassword('');
+        return;
+      }
+      goOn(loggedIn);
     } catch (err) {
       if (!lock.catchLock(err)) setError(err.message);
       setFieldErrors(err.fields);
@@ -107,11 +127,33 @@ export function LoginPage() {
 
   return (
     <AuthFrame>
-      {needsSetup ? (
+      {held ? (
+        <RecoveryCodes
+          codes={held.recoveryCodes}
+          onDone={() => {
+            startSession(held);
+            goOn(held.user);
+          }}
+        />
+      ) : twoStep ? (
+        <TwoStepStep
+          twoStep={twoStep}
+          onCode={sendCode}
+          onRestart={() => {
+            setTwoStep(null);
+            setError(null);
+          }}
+        />
+      ) : needsSetup ? (
         <FirstSuperAdminForm
           needsCode={needsCode}
           onDone={async (account) => {
             const loggedIn = await login(account.email, account.password);
+            if (loggedIn.twoStep) {
+              setNeedsSetup(false);
+              setTwoStep(loggedIn.twoStep);
+              return;
+            }
             navigate(loggedIn.mustChangePassword ? '/change-password' : '/', { replace: true });
           }}
         />
@@ -166,6 +208,61 @@ export function LoginPage() {
         </>
       )}
     </AuthFrame>
+  );
+}
+
+/**
+ * The second step of signing in (health check H4): the 6-digit code from the authenticator app, or a recovery code.
+ * The first time for someone who must use it (an admin), the app is set up here first.
+ */
+function TwoStepStep({ twoStep, onCode, onRestart }) {
+  const [code, setCode] = useState('');
+  const [error, setError] = useState(null);
+  const [fieldError, setFieldError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const lock = useLockCountdown();
+  const submit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setFieldError(null);
+    setBusy(true);
+    try {
+      await onCode(code);
+    } catch (err) {
+      if (err.code === 'TWO_STEP_TICKET_ENDED') return onRestart();
+      if (!lock.catchLock(err)) setError(err.message);
+      setFieldError(err.fields?.code ?? null);
+      setCode('');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const setup = twoStep.step === 'setup';
+  return (
+    <form onSubmit={submit} noValidate>
+      <header className="auth1-head">
+        <h1>{setup ? 'Set up two-step sign-in' : 'Two-step sign-in'}</h1>
+        <p className="muted">
+          {setup
+            ? 'Your role needs a second step when you sign in: a code from an authenticator app on your phone. This is set up once.'
+            : 'Type the 6-digit code from the authenticator app on your phone.'}
+        </p>
+      </header>
+      <Alert type="error">{lock.seconds ? null : error}</Alert>
+      <LockNotice seconds={lock.seconds} />
+      {setup && <TwoStepSetup secret={twoStep.secret} uri={twoStep.uri} />}
+      <Field label={setup ? 'Code from the app' : 'Code'} id="two-step-code" error={fieldError} hint={setup ? null : 'Lost your phone? Type one of your recovery codes instead.'} keepHint>
+        <input id="two-step-code" inputMode={setup ? 'numeric' : 'text'} autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} maxLength={20} required autoFocus />
+      </Field>
+      <button type="submit" className="btn btn-primary btn-block auth1-submit" disabled={busy || lock.seconds > 0 || !code.trim()}>
+        {busy ? 'Checking…' : setup ? 'Turn on and sign in' : 'Sign in'}
+      </button>
+      <p className="auth1-foot">
+        <button type="button" className="btn btn-link" onClick={onRestart}>
+          Start again with email and password
+        </button>
+      </p>
+    </form>
   );
 }
 

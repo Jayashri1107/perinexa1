@@ -353,7 +353,8 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
           repeatReason: l.rxItemId ? (l.repeatReason ?? '').trim() : '',
           substitution: substitutions.get(lineNo) ?? null,
           costPaise: part.batch.costPaise ?? null, // PH15
-          ...lineMoney({ qty: part.qty, mrpPaise: part.batch.mrpPaise, gstRate: m.gstRate, discountPercent: pct, grossPaise: grossOf(part.batch, part.qty) }),
+          discountPercent: l.discountPercent ?? null, // 18 Nov 2026: item-wise discount
+          ...lineMoney({ qty: part.qty, mrpPaise: part.batch.mrpPaise, gstRate: m.gstRate, discountPercent: l.discountPercent ?? pct, grossPaise: grossOf(part.batch, part.qty) }),
         });
       }
     }
@@ -376,6 +377,9 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     return {
       totalPaise: total,
       atMrpPaise: lines.reduce((n, l) => n + (l.grossPaise ?? l.qty * l.mrpPaise), 0),
+      // 18 Nov 2026 (the pharmacy's request): the landing amount (what the stock cost) and the profit, for the pharmacist
+      landingPaise: lines.reduce((n, l) => n + Math.round(l.qty * (l.costPaise ?? 0)), 0),
+      profitPaise: total - lines.reduce((n, l) => n + Math.round(l.qty * (l.costPaise ?? 0)), 0),
       lines: lines.map((l) => ({ medicineId: String(l.medicineId), name: l.name, batch: l.batch, expiry: l.expiry, qty: l.qty, mrpPaise: l.mrpPaise, amountPaise: l.amountPaise })),
     };
   }
@@ -404,7 +408,9 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     discountPercent: pct,
     discountReason: pct ? (body.discountReason ?? '') : '',
     payments: counterPaid, // a registered patient may pay here too (13 Nov 2026)
-    paymentRemarks: counterPaid.length ? (body.paymentRemarks ?? '') : '',
+    // the Remarks are kept on a bill paid here or on credit (18 Nov 2026: they were lost on a credit bill)
+    paymentRemarks: counterPaid.length || body.onCredit ? (body.paymentRemarks ?? '') : '',
+    creditAuthorisedBy: body.onCredit ? (body.creditAuthorisedBy ?? '') : '',
     created: stampOf(req),
   });
 
@@ -534,6 +540,7 @@ export function invoiceView(inv, { patient = null, today = new Date() } = {}) {
       returnedQty: l.returnedQty ?? 0,
       canReturn: (l.returnedQty ?? 0) < l.qty && !isExpired(l, today),
       mrpPaise: l.mrpPaise,
+      discountPercent: l.discountPercent ?? null,
       dose: l.dose ?? '',
       // PH10: given in place of the brand the doctor wrote
       substitution: l.substitution ? { prescribed: l.substitution.prescribed, agreedByName: l.substitution.agreedByName } : null,
@@ -545,6 +552,7 @@ export function invoiceView(inv, { patient = null, today = new Date() } = {}) {
     returns: (inv.returns ?? []).map((r) => ({ number: r.number, at: r.at, byName: r.byName ?? '', reason: r.reason ?? '', amountPaise: sum(r.lines).amountPaise, lines: r.lines.map((x) => ({ lineId: String(x.lineId), qty: x.qty, amountPaise: x.amountPaise })) })),
     payments: (inv.payments ?? []).map((p) => ({ kind: p.kind, mode: p.mode, amountPaise: p.amountPaise, reference: p.reference ?? '', bank: p.bank ?? '', on: p.on ? isoDay(p.on) : null, authorisedBy: p.authorisedBy ?? '', narration: p.narration ?? '', at: p.at, byName: p.byName ?? '' })),
     paymentRemarks: inv.paymentRemarks ?? '',
+    creditAuthorisedBy: inv.creditAuthorisedBy ?? '',
     ...invoiceTotals(inv),
     byName: inv.created?.byName ?? '',
   };
@@ -556,6 +564,24 @@ export async function invoiceViews(req, invoices) {
   const patients = new Map((ids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: ids } }, { fullName: 1, mrn: 1, phone: 1 }).lean() : []).map((p) => [String(p._id), p]));
   const today = hospitalToday(req.now);
   return invoices.map((i) => invoiceView(i, { patient: i.patientId ? patients.get(String(i.patientId)) : null, today }));
+}
+
+/**
+ * What a patient still owes the pharmacy (18 Nov 2026, the pharmacy's request): her bills paid here in part or put on
+ * credit – not those on a hospital bill – with a balance left, oldest first. except: an invoice left out (the one being
+ * printed, whose own balance the bill shows).
+ */
+export async function patientDues(req, patientId, { except = null } = {}) {
+  const invoices = await PharmacyInvoice.find(
+    { tenantId: req.tenantId, patientId, billId: null, ...(except ? { _id: { $ne: except } } : {}) },
+    { number: 1, lines: 1, returns: 1, payments: 1, billId: 1, created: 1, createdAt: 1 },
+  )
+    .sort({ 'created.at': 1, _id: 1 })
+    .lean();
+  const bills = invoices
+    .map((i) => ({ id: String(i._id), number: i.number, date: i.created?.at ?? i.createdAt, balancePaise: invoiceTotals(i).balancePaise ?? 0 }))
+    .filter((b) => b.balancePaise > 0);
+  return { duePaise: bills.reduce((n, b) => n + b.balancePaise, 0), bills };
 }
 
 /** Days until a date (negative once passed). */

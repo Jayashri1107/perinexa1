@@ -301,6 +301,7 @@ const PHARMACIST_MENU = [
   // New bill and Sold as one Sales bill page with two tabs (9 Nov 2026); a bill opened from the list stays under it
   { key: 'pharmacy', label: 'Sales bill', icon: ReceiptText, to: '/pharmacy', end: true, activeFor: ['/pharmacy/issue', '/pharmacy/invoices'] },
   { key: 'pharmacy-ward-requests', label: 'Ward requests', icon: BedDouble, to: '/pharmacy/ward-requests' }, // PH12
+  { key: 'pharmacy-discharge', label: 'Discharge clearance', icon: ListChecks, to: '/pharmacy/discharge-clearance' }, // 18 Nov 2026
   { key: 'pharmacy-suppliers', label: 'Suppliers', icon: Truck, to: '/pharmacy/suppliers' },
   { key: 'pharmacy-purchases', label: 'Purchase bills', icon: PackagePlus, to: '/pharmacy/purchases', activeFor: ['/pharmacy/orders', '/pharmacy/supplier-returns'] },
   { key: 'pharmacy-stock', label: 'Stock', icon: Boxes, to: '/pharmacy/stock', activeFor: ['/pharmacy/places'] },
@@ -434,6 +435,8 @@ export const HOSPITAL_ADMIN = {
     { label: 'NICU units', to: '/admin/nicu-units', end: true },
     // The scan bridge's key: the ultrasound machine's pictures and readings (docs/USG_MACHINE_PLAN.md)
     { label: 'Ultrasound machine', to: '/admin/ultrasound-machine', end: true },
+    // Whether Perinexa's own staff may open this hospital's patient records, for a few hours (health check H3)
+    { label: 'Support access', to: '/admin/support-access', end: true },
   ],
 };
 

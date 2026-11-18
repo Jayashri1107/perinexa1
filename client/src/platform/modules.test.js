@@ -55,7 +55,7 @@ describe('My settings and Hospital admin', () => {
     expect(isPrescriber([{ roles: ['admin'] }])).toBe(false);
   });
   it('Hospital admin holds Staff, Audit log and Print letterhead', () => {
-    expect(moduleByKey('hospital-admin').tabs.map((t) => t.label)).toEqual(['Staff', 'Audit log', 'Print letterhead', 'Patient messages', 'OPD timings', 'Beds', 'ABDM', 'Referrals', 'NICU units', 'Ultrasound machine']);
+    expect(moduleByKey('hospital-admin').tabs.map((t) => t.label)).toEqual(['Staff', 'Audit log', 'Print letterhead', 'Patient messages', 'OPD timings', 'Beds', 'ABDM', 'Referrals', 'NICU units', 'Ultrasound machine', 'Support access']);
     expect(moduleByKey('hospital-admin').tabs.find((t) => t.label === 'NICU units').to).toBe('/admin/nicu-units'); // units and beds only, never a patient (Build 13)
     expect(moduleByKey('hospital-admin').tabs.find((t) => t.label === 'Referrals').to).toBe('/admin/referrals'); // the settings only, never a referral
     expect(moduleByKey('hospital-admin').tabs.find((t) => t.label === 'Ultrasound machine').to).toBe('/admin/ultrasound-machine'); // the bridge key only, never a patient
@@ -92,7 +92,7 @@ describe('the left menu by role', () => {
     expect(moduleByKey('referrals').tabs.map((t) => t.to)).toEqual(['/referrals', '/referrals/doctors', '/referrals/review', '/referrals/slip']);
     // The pharmacist (owner, 26 Oct 2026): the pharmacy's sections in the sidebar; New bill and Sold as one Sales bill
     // page with two tabs (9 Nov 2026)
-    expect(menu(['pharmacist'])).toEqual(['Today', 'Sales bill', 'Ward requests', 'Suppliers', 'Purchase bills', 'Stock', 'Medicines', 'Reports', 'Pharmacy settings', 'Formulary', 'Incidents']);
+    expect(menu(['pharmacist'])).toEqual(['Today', 'Sales bill', 'Ward requests', 'Discharge clearance', 'Suppliers', 'Purchase bills', 'Stock', 'Medicines', 'Reports', 'Pharmacy settings', 'Formulary', 'Incidents']);
     expect(menu(['pharmacist', 'receptionist'])).toContain('Patients');
     expect(hospitalModules(['pharmacist']).find((m) => m.label === 'Sales bill').activeFor).toEqual(['/pharmacy/issue', '/pharmacy/invoices']);
     expect(hospitalModules(['admin']).find((m) => m.label === 'Pharmacy').to).toBe('/pharmacy/stock'); // the counter is for pharmacists

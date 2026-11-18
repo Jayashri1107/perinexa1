@@ -75,6 +75,16 @@ export function UserWorkspace() {
       setTempPassword({ email: user.email, password: res.temporaryPassword });
     });
 
+  // A lost phone (health check H4): two-step sign-in off and signed out; at the next sign-in they set it up again
+  const resetTwoStep = () =>
+    run(
+      { title: `Reset two-step sign-in for ${user.name}?`, text: 'For a lost phone. They will be logged out, and set up the authenticator app again at their next sign-in. Check who is asking before you do this.', confirmLabel: 'Reset two-step sign-in', danger: true },
+      async () => {
+        await api(`/platform/users/${id}/reset-two-step`, { method: 'POST' });
+        setFlash(`Two-step sign-in reset for ${user.name}.`);
+      },
+    );
+
   const toggleSuperAdmin = () =>
     run(
       user.isSuperAdmin
@@ -133,6 +143,11 @@ export function UserWorkspace() {
               <button type="button" className="btn btn-secondary" onClick={resetPassword} disabled={busy || isSelf}>
                 Reset password
               </button>
+              {user.twoStep?.enabled && (
+                <button type="button" className="btn btn-secondary" onClick={resetTwoStep} disabled={busy || isSelf}>
+                  Reset two-step sign-in
+                </button>
+              )}
               {viewerIsSuper && !user.isPlatformAdmin && (
                 <button type="button" className="btn btn-secondary" onClick={toggleSuperAdmin} disabled={busy || isSelf}>
                   {user.isSuperAdmin ? 'Remove super admin' : 'Make super admin'}

@@ -1,5 +1,94 @@
 # Progress
 
+## Vaccination reminder the day before; nurses mark vaccines as given (18 Nov 2026, branch `vaccine-reminders`)
+
+Asked for by a hospital and approved by the owner on 18 Nov 2026 as an exception to the feature freeze.
+
+- **The day before a baby's vaccination falls due** (the first day of its window on the care plan), the hourly
+  round queues: "<hospital>: your child's vaccination (OPV-1, Pentavalent-1, Rotavirus-1, fIPV-1, PCV-1) is due on
+  12 Nov 2026. Please call <phone> to book. Reply STOP to stop these messages." It **names the vaccines**: the
+  owner's decision, and the only automatic message that does. Never the baby's name.
+  - Only for babies, only from a care plan whose schedule a doctor approved, and only under the agreement on the
+    baby's own record (SMS or WhatsApp: the hospital's WhatsApp Business number when it is set up). Not when the
+    baby is booked from today on (the appointment reminder goes instead) or in hospital (nor the mother on the
+    baby's record). Once per baby and due day, all the vaccines of that day in one message. Not counted by the
+    14-day rule of the other two messages. Sent between 10:00 and 19:00 like them; it can still go out on the
+    morning of the due day, then it is too old.
+  - A waiting one is cancelled when the vaccine was marked given (or the baby booked, admitted, the agreement
+    withdrawn) – as the other general messages are.
+  - Calendar → Reminders shows it as "Vaccination reminder · due <date>"; on a sensitive record only her doctor and
+    RMOs see the row (it names the vaccines). Hospital admin → Patient messages and the patient's Reminders and portal
+    dialog now describe it.
+  - ⚠️ **DRAFT**: the Marathi and Hindi wording (`vaccineDueMessage` in `server/src/reminders/messages.js`). Before
+    real sending, the new SMS wording needs DLT registration and a WhatsApp template. Parents who agreed before 18 Nov
+    were not told that this message names the vaccines: the settings page says to ask them again. The vaccination
+    dates still come from the newborn template, a draft until a doctor approves it.
+  - The one setting: `VACCINE_DUE_DAYS_BEFORE` in `server/src/reminders/reminderRules.js` (1).
+- **Nurses may mark a vaccination as given** on the baby's care plan: "Mark given" (today, with the batch number or
+  "Sticker pasted in the file") or "Given elsewhere" (an earlier dose, with its date – backdated entries). The rest
+  of the plan stays view-only for a nurse, and the server refuses every other change; a sensitive record's plan
+  stays hidden from nurses as before. Audit log: the same "Care plan changed" entry as for a doctor.
+- Files: `server/src/reminders/generalReminders.js` (`queueVaccineDue`), `messages.js`, `reminderRules.js`,
+  `reminderService.js`, `server/src/careplans/overdue.js` (`dueOnPlanItems`), `plansService.js`, `planView.js`,
+  `server/src/routes/reminderOutbox.js`, `client/src/pages/patients/CarePlanTab.jsx`,
+  `client/src/pages/reminders/outboxFormat.js`, the two settings pages; tests in
+  `server/tests/reminders-general.test.js` and `client/src/pages/reminders/outboxFormat.test.js`.
+
+### How to test (fake data only)
+1. Hospital admin → Patient messages → switch on automatic reminders.
+2. Register a fake baby born 41 days ago; open the record once. As a nurse, open the care plan: the birth doses show
+   **Mark given** – mark them given elsewhere with the birth date. Other items have no buttons.
+3. Baby's page → More → Reminders and portal → the parents agree (SMS), with a mobile number.
+4. Calendar → Reminders → **Send due reminders now** (between 10:00 and 19:00): "1 vaccination reminder"; the row
+   reads "Vaccination reminder · due <tomorrow>" with the 6-week vaccines named in the text.
+5. As the nurse, mark the 6-week vaccines given; open Calendar → Reminders again: the row is gone (cancelled as no
+   longer needed).
+
+## The pharmacy's list of 16 Nov 2026: credit, advance, reports, MRP, discharge clearance (18 Nov 2026, branch `pharm-credit-1118`)
+The pharmacy department's handwritten list (four pages) and its note on Search sale return and Details / Summary,
+built by the developer with Claude Code. Items that already existed were not rebuilt (Sale bill, Search sale bill,
+Current stock, Item movement, Batch adjustment, Add stock, Doctor-wise sale, the GRN and supplier reports, Non-moving
+items, Vendor payment status, New item and New supplier, Item ledger, no credit for External bills).
+- **Every topic in one place**: Reports → **All topics** lists each line of the pharmacy's sheet, in its groups and
+  order, with where it is and an **Open** button (`PharmacyTopics.jsx`).
+- **The printed bill** (the pharmacist's request): no **Net** line; Gross, Disc, **Paid Amount** and **Credit Amt**;
+  for a patient with earlier bills still due, **Previous Credit** and **Total Credit**. A walk-in's bill has no credit lines.
+- **Credit balance**: choosing an OPD or IPD patient on the bill shows **Credit balance: ₹… due on n earlier bills**
+  (`GET /api/pharmacy/patients/:id/dues`; `earlierDuePaise` on `GET /invoices/:id`). Bills on the hospital bill do not count.
+- **Credit authorised by**: an OPD bill on credit needs the name or staff ID of who allowed it (Payment window; kept as
+  `creditAuthorisedBy`). The Payment window's **Remarks** are now kept on a credit bill too (they were lost).
+- **Settlement**: on Sold → a patient's bills, **Settle credit** takes one payment against all her bills due, oldest
+  first (`POST /patients/:id/settle`, audited `PHARMACY_DUES_SETTLED`).
+- **Pharmacy advance** (the developer's decision of 18 Nov 2026, for the owner – it changes "the pharmacy takes no
+  advance" of 13 Nov): on a patient's bills, **Take advance**, **Use on bills due** (oldest first, a payment of mode
+  "advance"), **Refund** with a reason; receipts PA-000001 (`PharmacyAdvance`, in the hospital export). The collection
+  reports count deposits and refunds, not the bills paid from the advance. New report **Advance amount report**.
+- **Reports** (Reports → Report list): **UPI collection**, **Sales return patient-wise**, **Insurance / cashless
+  patients** (pharmacy bills on a hospital bill with insurance or a cashless approval), **Company-wise GRN list**
+  (manufacturer on the purchase line; Summary or Detail), and a **Details / Summary** switch on every Pharmacy MIS
+  report with dates (Summary adds the rows up day by day).
+- **Search sale return**: a credit-note number (CN-…) in Sold's search finds its bill.
+- **Billing page**: a **Disc %** on each medicine line (in place of the bill's Disc % for that line; a discount
+  still needs the concession reason); **Cost and profit** shows the landing amount and profit only when pressed.
+- **First page**: OPD and IPD show their patient list at once (25 a page); **Barcode** (a medicine scanned waits for
+  the next bill started), **Select kit** (kits stay for IPD issues: it opens the IPD list) and **Kits (add or see)**.
+- **MRP adjustment**: Stock → a medicine → **Change MRP** on a batch, with a reason (kept on the batch, audited
+  `PHARMACY_MRP_CHANGED`); bills already made keep their prices.
+- **Opening balance, one item**: Stock → Import opening stock → **Or add one item by hand**, checked and brought in
+  like a line of the file.
+- **Purchase return**: **Expired or near expiry (90 days)** choice and a **Near expiry** reason.
+- **Discharge clearance**: new menu item **Discharge clearance** (pharmacist) lists those discharged and not yet
+  cleared, with their pharmacy credit due; the desk's **Clear for leaving** shows **Pharmacy ₹… due** and asks why
+  she may leave while it is due.
+- **Not built, to ask the pharmacy**: "Right claim patient report" (meaning unclear), "Generic name add" as its own
+  list (the generic name is a field of each medicine), an Expenses report in the pharmacy (Daily expenses is in
+  Billing), sale returns across several bills at once (returns stay one bill at a time; the patient-wise report lists them).
+- **How to test (fake data only)**: as the pharmacist, Sales bill → OPD → a sample patient → add a medicine → Save →
+  Payment window with nothing ticked → type a name in **Credit authorised by** → Save. Start a second bill for the
+  same patient: the **Credit balance** line shows the first bill; print it: Credit Amt, Previous Credit and Total Credit (no Net line). On
+  Sold → her name → **Take advance** ₹100 → **Use on bills due**; then **Settle credit** for the rest. Reports →
+  Report list → Advance amount report, UPI collection, Sales collection → **Summary**.
+
 ## High-risk factors on every consent form (14 Nov 2026, from the other Perinexa copy; branch `consent-risk-factors`)
 Brought from `girishsolanke/perinexa` (branch `consent-risk-factors`, commits 1499f254 and f17fc46b of 14 Nov 2026, the
 owner's request – an exception to the feature pause) on 15 Nov 2026, by applying its changes onto perinexa1's code. The

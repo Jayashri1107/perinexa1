@@ -144,6 +144,12 @@ export const AUDIT_LABELS = {
   USER_ACTIVATED: 'Account reactivated',
   USER_DEACTIVATED: 'Account deactivated',
   PASSWORD_RESET: 'Password reset',
+  TWO_STEP_ENABLED: 'Two-step sign-in turned on',
+  TWO_STEP_DISABLED: 'Two-step sign-in turned off',
+  TWO_STEP_RESET: 'Two-step sign-in reset (lost phone)',
+  TWO_STEP_RECOVERY_USED: 'Signed in with a recovery code',
+  SUPPORT_ACCESS_GRANTED: 'Support access allowed for Perinexa staff',
+  SUPPORT_ACCESS_ENDED: 'Support access ended early',
   SUPER_ADMIN_GRANTED: 'Made super admin',
   SUPER_ADMIN_REVOKED: 'Super admin removed',
   PLATFORM_ADMIN_CHANGED: 'Platform admin rights changed',
@@ -224,6 +230,11 @@ export const AUDIT_LABELS = {
   PHARMACY_REGISTER_VIEWED: 'Pharmacy register opened',
   PHARMACY_MIS_VIEWED: 'Pharmacy report opened',
   PHARMACY_PAYMENT_RECEIVED: 'Payment received on a pharmacy bill',
+  PHARMACY_DUES_SETTLED: 'Pharmacy credit settled',
+  PHARMACY_ADVANCE_TAKEN: 'Pharmacy advance taken',
+  PHARMACY_ADVANCE_REFUNDED: 'Pharmacy advance refunded',
+  PHARMACY_ADVANCE_USED: 'Pharmacy advance used on bills',
+  PHARMACY_MRP_CHANGED: 'Batch MRP changed',
   PHARMACY_PATIENT_LOOKED_UP: 'Patient looked up in the pharmacy',
   PHARMACY_EXPORTED: 'Pharmacy export downloaded',
   TENANT_SETTINGS_UPDATED: 'Letterhead changed',
@@ -662,6 +673,12 @@ export const AUDIT_TONES = {
   MEMBER_GROUP_CHANGED: 'info',
   MEMBER_PAGES_CHANGED: 'info',
   PASSWORD_RESET: 'info',
+  TWO_STEP_ENABLED: 'info',
+  TWO_STEP_DISABLED: 'warn',
+  TWO_STEP_RESET: 'warn',
+  TWO_STEP_RECOVERY_USED: 'warn',
+  SUPPORT_ACCESS_GRANTED: 'warn',
+  SUPPORT_ACCESS_ENDED: 'info',
   PATIENT_VIEWED: 'patient',
   PATIENT_RECORD_COPIED: 'patient',
   PATIENT_RECORD_COPY_PRINTED: 'patient',
@@ -1044,6 +1061,7 @@ const MIS_WORDS = {
   returns: 'Sales return report', 'return-lines': 'Sales return details', credit: 'Credit report', 'patient-credit': 'Patient-wise credit', 'sales-gst': 'Sales GST report',
   'sales-return-gst': 'Sales return GST report', 'h1-sales': 'Sales – Schedule H1', 'narcotic-sales': 'Sales – narcotic (NDPS)', 'antitb-sales': 'Sales – anti-TB',
   'antitb-returns': 'Sales returns – anti-TB', 'h1-returns': 'Sales returns – Schedule H1',
+  'upi-collection': 'UPI collection', 'patient-returns': 'Sales return patient-wise', advance: 'Advance amount report', insurance: 'Insurance / cashless patients',
 };
 const PHARMACY_EXPORT_WORDS = { sales: 'Sales with GST', purchases: 'Purchases', supplier_returns: 'Returns to suppliers' };
 const invoiceOf = (d) => (d.number ? `Invoice ${d.number}` : 'An invoice');
@@ -1861,6 +1879,14 @@ export function describeAudit(entry) {
       return d.what === 'credit_note' ? `Credit note of ${d.number ? `invoice ${d.number}` : 'an invoice'}` : invoiceOf(d);
     case 'PHARMACY_REGISTER_VIEWED':
       return joined(`${SCHEDULE_WORDS[d.type] ?? 'Drug'} register`, periodOf(d));
+    case 'PHARMACY_DUES_SETTLED':
+    case 'PHARMACY_ADVANCE_USED':
+      return joined(d.amountPaise != null ? rupeesOf(d.amountPaise) : '', d.invoices?.length ? `on ${d.invoices.map((x) => x.number).join(', ')}` : '', d.duePaise ? `${rupeesOf(d.duePaise)} still due` : '');
+    case 'PHARMACY_ADVANCE_TAKEN':
+    case 'PHARMACY_ADVANCE_REFUNDED':
+      return joined(d.number ? `receipt ${d.number}` : '', d.amountPaise != null ? rupeesOf(d.amountPaise) : '', d.reason ?? '');
+    case 'PHARMACY_MRP_CHANGED':
+      return joined(d.batch ? `batch ${d.batch}` : '', d.fromPaise != null && d.toPaise != null ? `${rupeesOf(d.fromPaise)} → ${rupeesOf(d.toPaise)} a unit` : '', d.reason ?? '');
     case 'PHARMACY_PAYMENT_RECEIVED':
       return joined(invoiceOf(d), d.amountPaise != null ? rupeesOf(d.amountPaise) : '', d.duePaise ? `${rupeesOf(d.duePaise)} still due` : '');
     case 'PHARMACY_MIS_VIEWED':

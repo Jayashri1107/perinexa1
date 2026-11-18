@@ -84,7 +84,7 @@ works out each child's schedule and sends reminders by itself.
 | 25 | **Follow-ups coming up**: everyone with a next visit today, tomorrow and this week (booked, or only written as "next visit on" by the doctor), marked as follow-up, so reception can confirm or remind | Shows bookings, never the reason for the visit. Sensitive records as on the calendar |
 | 26 | **Follow-ups for every type of care**: today the due and overdue lists come only from antenatal care plans; gynaecology, infertility and general patients appear only after a missed booked day | **Owner decision:** which care types' plan windows reception may see |
 | 27 | **Babies' vaccinations due soon**: babies with a vaccination due in the next 7 days and nothing booked, so reception books them before they are late; and babies overdue for longer than 6 weeks, who drop off reception's list today (they stay only on the baby's care plan) | **Owner decision:** reception sees "a check-up or test is due", never the vaccine (privacy rule of 4 Oct 2026); showing vaccine names to reception would reverse it. A draft schedule still says "ask the doctor before calling" |
-| 28 | **(clinical) Vaccination reminders sent by themselves** to the parents in their language (Marathi, Hindi and others) until the schedule ends | Wording approved by the owner. Which channel (SMS, WhatsApp) and the parents' consent. The message names no vaccine unless the owner agrees |
+| 28 | **(clinical) Vaccination reminders sent by themselves** to the parents in their language (Marathi, Hindi and others) until the schedule ends | **Built 18 Nov 2026** (branch `vaccine-reminders`): the day before each due day, naming the vaccines (owner's decision), by SMS or WhatsApp under the parents' agreement. Still open: Marathi and Hindi wording checked by fluent speakers; other languages |
 | 29 | **Vaccine stock**: vaccines ordered, given and left, and what to order | Belongs with the pharmacy stock. Who keeps it (owner) |
 
 ## Keep in mind
@@ -213,3 +213,12 @@ questions still open: `docs/PHARMACY_BUILD_NOTE.md` (read against perinexa1's ow
 purchases to Tally (PH3), Stage C (PH11, PH15, PH24, PH17, PH16, PH26), Stage D (PH13,
 PH12, PH14, PH8).
 
+
+## Perinexa Android app (17 Nov 2026 – the owner wants it published; the app itself exists)
+Correction of the note first written here: the app was already made on 31 Oct and 5 Nov 2026 – `mobile/` (Capacitor,
+`com.perinexa.app`, it opens https://app.perinexa.com; Back, Print, files, camera and microphone; `mobile/README.md`).
+The owner approved going ahead with Android first. What remains is publishing it: install `mobile/`'s packages and try
+a test build on a phone; the signing (upload) key kept out of git; a 1024-pixel logo; a privacy policy address;
+patients deleting their own portal account (a Google Play rule for apps where people can sign up); the Google Play
+organisation account and its forms (data safety, health apps, a sample login for the reviewers). Real patients only
+after the go-live checklist, as for the website.

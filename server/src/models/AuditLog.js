@@ -12,6 +12,12 @@ export const AUDIT_ACTIONS = [
   'USER_ACTIVATED',
   'USER_DEACTIVATED',
   'PASSWORD_RESET',
+  // Two-step sign-in with an authenticator app (health check H4, 17 Nov 2026): turned on or off, reset by an admin for a
+  // lost phone, or a recovery code used to sign in
+  'TWO_STEP_ENABLED', 'TWO_STEP_DISABLED', 'TWO_STEP_RESET', 'TWO_STEP_RECOVERY_USED',
+  // A hospital admin allowed Perinexa's staff to open its patient records for a few hours, or ended it early (health
+  // check H3, 17 Nov 2026)
+  'SUPPORT_ACCESS_GRANTED', 'SUPPORT_ACCESS_ENDED',
   'SUPER_ADMIN_GRANTED',
   'SUPER_ADMIN_REVOKED',
   'PLATFORM_ADMIN_CHANGED',
@@ -166,6 +172,13 @@ export const AUDIT_ACTIONS = [
   'PHARMACY_REGISTER_VIEWED',
   'PHARMACY_MIS_VIEWED', // a pharmacy MIS report with patient or customer names (13 Nov 2026)
   'PHARMACY_PAYMENT_RECEIVED', // a bill on credit paid later at the counter (13 Nov 2026)
+  // 18 Nov 2026 (the pharmacy's request): a patient's credit settled in one payment; the pharmacy advance taken,
+  // refunded and used on her bills; a batch's MRP changed
+  'PHARMACY_DUES_SETTLED',
+  'PHARMACY_ADVANCE_TAKEN',
+  'PHARMACY_ADVANCE_REFUNDED',
+  'PHARMACY_ADVANCE_USED',
+  'PHARMACY_MRP_CHANGED',
   'PHARMACY_EXPORTED',
   // The pharmacy's daily register (26 Oct 2026): someone from another day found by her number or phone
   'PHARMACY_PATIENT_LOOKED_UP',
@@ -575,6 +588,8 @@ export const AUDIT_CATEGORIES = {
     'LOGIN_RATE_LIMITED',
     'PASSWORD_RESET',
     'PASSWORD_CHANGED',
+    'TWO_STEP_ENABLED', 'TWO_STEP_DISABLED', 'TWO_STEP_RESET', 'TWO_STEP_RECOVERY_USED',
+    'SUPPORT_ACCESS_GRANTED', 'SUPPORT_ACCESS_ENDED',
     'USER_ACTIVATED',
     'USER_DEACTIVATED',
     'SUPER_ADMIN_GRANTED',
@@ -672,6 +687,11 @@ export const AUDIT_CATEGORIES = {
     'PHARMACY_REGISTER_VIEWED',
     'PHARMACY_MIS_VIEWED',
     'PHARMACY_PAYMENT_RECEIVED',
+    'PHARMACY_DUES_SETTLED',
+    'PHARMACY_ADVANCE_TAKEN',
+    'PHARMACY_ADVANCE_REFUNDED',
+    'PHARMACY_ADVANCE_USED',
+    'PHARMACY_MRP_CHANGED',
     'PHARMACY_EXPORTED',
     'PHARMACY_ORDER_CREATED',
     'PHARMACY_ORDER_CHANGED',

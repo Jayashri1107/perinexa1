@@ -8,7 +8,8 @@ import { Appointment } from '../models/Appointment.js';
 import { Arrival } from '../models/Arrival.js';
 import { Membership, hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
-import { Medicine, NoSubstitute, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierPayment, SupplierReturn, SUPPLIER_PAYMENT_MODES, PharmacyDayClose } from '../models/Pharmacy.js';
+import { Medicine, NoSubstitute, PharmacyAdvance, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierPayment, SupplierReturn, SUPPLIER_PAYMENT_MODES, PharmacyDayClose } from '../models/Pharmacy.js';
+import { Bill } from '../models/Bill.js';
 import { Tenant } from '../models/Tenant.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
@@ -40,14 +41,15 @@ import {
   SUPPLIER_RETURN_REASON_LABELS,
   cleanBarcode,
 } from '../pharmacy/pharmacyRules.js';
-import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, invoiceTotals, invoiceViews, isExpired, returnItems, stockOf, writeOff, usableMatch, HOLD_REASONS, padded } from '../pharmacy/pharmacyService.js';
+import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, invoiceTotals, invoiceViews, isExpired, patientDues, returnItems, stockOf, writeOff, usableMatch, HOLD_REASONS, padded } from '../pharmacy/pharmacyService.js';
 import { isDuplicate } from '../patients/duplicateRules.js';
+import { advanceOf, depositAdvance, refundAdvance, useAdvance } from '../pharmacy/advance.js';
 import { isClosed } from '../patients/deathRules.js';
 import { NOT_CANCELLED, returnTotals } from '../pharmacy/supplierReturnsService.js';
 import { checkOpening, nameKey, openingSchema, saveOpening } from '../pharmacy/openingStock.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
+import { escapeRegex, exportReason, objectId, parse, requiredDateOnly } from '../utils/validate.js';
 import { pharmacyOrdersRouter } from './pharmacyOrders.js';
 import { pharmacyRegisterRouter } from './pharmacyRegister.js';
 import { pharmacySupplierReturnsRouter } from './pharmacySupplierReturns.js';
@@ -827,6 +829,26 @@ pharmacyRouter.post('/batches/:id/writeoff', async (req, res) => {
   res.json({ batch: batchView(after, today(req)) });
 });
 
+// MRP adjustment (18 Nov 2026, the pharmacy's request): a batch's MRP set again – a pack's MRP for a batch bought by the
+// pack (the unit's is worked out from it, rounded down as on a purchase), else the unit's. With a reason; kept on the
+// batch and audited. Its copies at other places (PH13) change with it; bills already made keep their prices.
+pharmacyRouter.post('/batches/:id/mrp', async (req, res) => {
+  desk(req);
+  const body = parse(z.object({ mrpPaise: z.number().int().min(1).max(100_000_000).optional(), packMrpPaise: z.number().int().min(1).max(100_000_000).optional(), reason: reason('Changing the MRP') }).strict(), req.body);
+  const { b, m } = await loadBatch(req);
+  const byPack = b.packMrpPaise && b.unitsPerPack > 1;
+  if (byPack ? !body.packMrpPaise : !body.mrpPaise) throw Object.assign(new HttpError(400, byPack ? `Write the MRP of one pack of ${b.unitsPerPack}.` : 'Write the MRP of one unit.', 'VALIDATION'), { fields: { [byPack ? 'packMrpPaise' : 'mrpPaise']: 'Write the new MRP.' } });
+  const toUnit = byPack ? Math.floor(body.packMrpPaise / b.unitsPerPack) : body.mrpPaise;
+  if (toUnit < 1) throw new HttpError(400, 'The MRP of one unit would be less than 1 paisa.', 'VALIDATION');
+  if (toUnit === b.mrpPaise && (!byPack || body.packMrpPaise === b.packMrpPaise)) throw new HttpError(400, 'The MRP is the same as now: nothing to change.', 'VALIDATION');
+  const change = { fromPaise: b.mrpPaise, toPaise: toUnit, ...(byPack ? { fromPackPaise: b.packMrpPaise, toPackPaise: body.packMrpPaise } : {}), reason: body.reason, ...stampOf(req) };
+  const set = { mrpPaise: toUnit, ...(byPack ? { packMrpPaise: body.packMrpPaise } : {}) };
+  await StockBatch.updateMany({ tenantId: req.tenantId, $or: [{ _id: b._id }, { fromBatchId: b._id }] }, { $set: set, $push: { mrpChanges: change } });
+  await audit(req, 'PHARMACY_MRP_CHANGED', { details: { medicineId: String(m._id), batchId: String(b._id), batch: b.batch, fromPaise: b.mrpPaise, toPaise: toUnit, ...(byPack ? { fromPackPaise: b.packMrpPaise, toPackPaise: body.packMrpPaise } : {}), reason: body.reason } });
+  const after = await StockBatch.findOne({ tenantId: req.tenantId, _id: b._id }).lean();
+  res.json({ batch: batchView(after, today(req)) });
+});
+
 pharmacyRouter.post('/batches/:id/count', async (req, res) => {
   desk(req);
   // A controlled medicine's count: the second person signs in (Group C, PX-X-06) – never a typed name
@@ -913,6 +935,20 @@ export function allergyFor(patient) {
 }
 
 // A patient's recent prescriptions – the medicines only, matched to the stock list by name (pharmacist).
+// 18 Nov 2026 (the pharmacy's request): what an OPD or IPD patient still owes the pharmacy, shown at the counter when
+// she is chosen – her bills paid in part or put on credit, not those on a hospital bill
+pharmacyRouter.get('/patients/:id/dues', async (req, res) => {
+  desk(req);
+  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: idParam(req) }, { _id: 1 }).lean();
+  if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  // Her last bill, as the earlier software's "Last Bill, Type: Credit, Amt" (18 Nov 2026): on the hospital bill, on
+  // credit (something still due here), or paid
+  const last = await PharmacyInvoice.findOne({ tenantId: req.tenantId, patientId: patient._id }).sort({ 'created.at': -1, _id: -1 }).lean();
+  const t = last ? invoiceTotals(last) : null;
+  const lastBill = last ? { number: last.number, date: last.created?.at ?? last.createdAt, type: last.billId ? 'Hospital bill' : t.balancePaise > 0 ? 'Credit' : 'Paid', amountPaise: last.billId ? t.netPaise : t.balancePaise > 0 ? t.balancePaise : t.netPaise } : null;
+  res.json({ ...(await patientDues(req, patient._id)), lastBill });
+});
+
 pharmacyRouter.get('/patients/:id/prescriptions', async (req, res) => {
   desk(req);
   // PH7 (owner's decision 2, 10 Nov 2026): the pharmacist sees her allergies – medical.allergies and nothing else of
@@ -1037,6 +1073,8 @@ const invoiceFields = z
             // PH6: the prescription line it is sold from, and why it is sold again when already given in full
             rxItemId: objectId.optional(),
             repeatReason: z.string().trim().max(200).default(''),
+            // 18 Nov 2026: item-wise discount – this line's Disc %, in place of the bill's
+            discountPercent: z.number().min(0).max(100).optional(),
             // PH10: another brand than the doctor wrote – which doctor agreed (one of the hospital's, or a typed name)
             substitution: z.object({ agreedById: objectId.optional(), agreedByName: z.string().trim().max(150).default('') }).strict().optional(),
           })
@@ -1054,6 +1092,8 @@ const invoiceFields = z
     // A registered (OPD or IPD) patient's bill with no payment chosen (15 Nov 2026, the developer): on credit – paid later
     // on the invoice (Receive payment). A walk-in (External) customer pays in full; no credit.
     onCredit: z.literal(true).optional(),
+    // 18 Nov 2026 (the pharmacy's request): an OPD bill on credit needs who authorised it
+    creditAuthorisedBy: z.string().trim().max(100).default(''),
     // A walk-in sale to a business that gives its GSTIN (for its tax invoice and the e-invoice file). Its state is
     // read from the GSTIN's first two digits.
     buyer: z
@@ -1077,12 +1117,13 @@ const invoiceFields = z
   .strict()
   .refine((b) => !b.buyer || (!b.patientId && b.kind === 'sale'), { message: 'A business buyer is for a walk-in sale at the counter, not for a patient.', path: ['buyer'] })
   .refine((b) => Boolean(b.patientId) !== Boolean(b.customer), { message: 'Choose the patient, or write a walk-in customer’s name.', path: ['patientId'] })
-  .refine((b) => !b.discountPercent || b.discountReason.length >= MIN_REASON, { message: 'Please write why the discount is given.', path: ['discountReason'] })
+  .refine((b) => !(b.discountPercent || b.lines.some((l) => l.discountPercent)) || b.discountReason.length >= MIN_REASON, { message: 'Please write why the discount is given.', path: ['discountReason'] })
   .refine((b) => b.kind === 'sale' || b.patientId, { message: 'Medicines are issued to an admitted patient.', path: ['patientId'] })
   // A registered patient's invoice goes on her hospital bill, or is paid here (13 Nov 2026) – not both; a walk-in has no hospital bill
   .refine((b) => !b.onHospitalBill || b.patientId, { message: 'Only a registered patient’s bill can go on a hospital bill.', path: ['onHospitalBill'] })
   .refine((b) => !(b.onHospitalBill && (b.payment || b.payments)), { message: 'Choose the hospital bill or a payment here, not both.', path: ['payments'] })
   .refine((b) => !b.onCredit || b.patientId, { message: 'A walk-in (External) customer pays the whole bill now – credit is only for OPD and IPD patients.', path: ['onCredit'] })
+  .refine((b) => !(b.onCredit && b.kind === 'sale') || b.creditAuthorisedBy.length >= 2, { message: 'An OPD bill on credit needs the name or ID of the person who authorised the credit.', path: ['creditAuthorisedBy'] })
   .refine((b) => !(b.onCredit && b.onHospitalBill), { message: 'Choose the hospital bill or credit, not both.', path: ['onCredit'] })
   .refine((b) => !(b.onCredit && (b.payment || b.payments)), { message: 'A bill on credit has no payment now.', path: ['payments'] })
   .refine((b) => !(b.payment && b.payments), { message: 'Send the payment once.', path: ['payments'] });
@@ -1133,7 +1174,8 @@ pharmacyRouter.get('/invoices', async (req, res) => {
   else if (q.search) {
     const rx = new RegExp(escapeRegex(q.search), 'i');
     const pids = (await Patient.find({ tenantId: req.tenantId, $or: [{ fullName: rx }, { mrn: rx }, { phone: rx }] }, { _id: 1 }).limit(200).lean()).map((p) => p._id);
-    filter.$or = [{ number: rx }, { 'customer.name': rx }, { 'buyer.name': rx }, { patientId: { $in: pids } }, { 'lines.name': rx }, { 'lines.generic': rx }];
+    // 18 Nov 2026 (Search sale return): a return's credit-note number (CN-000001) finds its bill
+    filter.$or = [{ number: rx }, { 'returns.number': rx }, { 'customer.name': rx }, { 'buyer.name': rx }, { patientId: { $in: pids } }, { 'lines.name': rx }, { 'lines.generic': rx }];
   } else {
     const day = q.date ?? today(req);
     filter['created.at'] = { $gte: hospitalDayStart(day), $lt: hospitalDayStart(addDays(day, 1)) };
@@ -1337,6 +1379,8 @@ pharmacyRouter.get('/invoices/:id', async (req, res) => {
   await audit(req, 'PHARMACY_INVOICE_VIEWED', { details: { invoiceId: String(inv._id), number: inv.number } });
   const settings = await settingsOf(req.tenantId);
   const view = await oneView(req, inv);
+  // 18 Nov 2026: the patient's other bills still due here, printed under this bill's own balance
+  if (inv.patientId && !inv.billId) view.earlierDuePaise = (await patientDues(req, inv.patientId, { except: inv._id })).duePaise;
   res.json({
     invoice: view,
     settings,
@@ -1424,6 +1468,92 @@ pharmacyRouter.post('/invoices/:id/payments', async (req, res) => {
   await inv.save();
   await audit(req, 'PHARMACY_PAYMENT_RECEIVED', { details: { invoiceId: String(inv._id), number: inv.number, amountPaise: paying, duePaise: due - paying } });
   res.json({ invoice: await oneView(req, inv) });
+});
+
+// Settlement (18 Nov 2026, the pharmacy's request): one payment against all a patient still owes the pharmacy, put on
+// her bills oldest first. Never more than is due; bills on a hospital bill are paid at the billing desk.
+pharmacyRouter.post('/patients/:id/settle', async (req, res) => {
+  desk(req);
+  const body = parse(z.object({ payments: z.array(paymentPart).min(1).max(5), remarks: z.string().trim().max(200).default('') }).strict(), req.body);
+  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: idParam(req) }, { _id: 1 }).lean();
+  if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  const dues = await patientDues(req, patient._id);
+  const paying = body.payments.reduce((n, p) => n + p.amountPaise, 0);
+  if (dues.duePaise <= 0) throw new HttpError(400, 'Nothing is due from this patient.', 'NOTHING_DUE');
+  if (paying > dues.duePaise) throw Object.assign(new HttpError(400, `Only ₹${(dues.duePaise / 100).toFixed(2)} is due from this patient.`, 'VALIDATION'), { fields: { payments: 'The amounts paid are more than what is due.' } });
+  const invoices = new Map((await PharmacyInvoice.find({ tenantId: req.tenantId, _id: { $in: dues.bills.map((b) => b.id) } })).map((i) => [String(i._id), i]));
+  const left = dues.bills.map((b) => ({ ...b }));
+  const touched = new Map();
+  for (const p of body.payments) {
+    let rest = p.amountPaise;
+    for (const b of left) {
+      if (!rest) break;
+      const part = Math.min(rest, b.balancePaise);
+      if (!part) continue;
+      const inv = invoices.get(b.id);
+      inv.payments.push({ kind: 'payment', mode: p.mode, amountPaise: part, reference: p.reference ?? '', bank: p.bank ?? '', on: p.on ?? null, authorisedBy: p.authorisedBy ?? '', narration: p.narration || 'Settlement', ...stampOf(req) });
+      b.balancePaise -= part;
+      rest -= part;
+      touched.set(b.id, (touched.get(b.id) ?? 0) + part);
+    }
+  }
+  for (const id of touched.keys()) {
+    const inv = invoices.get(id);
+    if (body.remarks) inv.paymentRemarks = [inv.paymentRemarks, body.remarks].filter(Boolean).join(' · ');
+    await inv.save();
+  }
+  await audit(req, 'PHARMACY_DUES_SETTLED', { details: { patientId: String(patient._id), amountPaise: paying, duePaise: dues.duePaise - paying, invoices: [...touched].map(([id, amountPaise]) => ({ invoiceId: id, number: invoices.get(id).number, amountPaise })) } });
+  res.json(await patientDues(req, patient._id));
+});
+
+// Pharmacy advance (18 Nov 2026, the pharmacy's request): a registered patient's deposit, used on her bills, refunded
+const advancePatient = async (req) => {
+  desk(req);
+  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: idParam(req) }, { _id: 1, fullName: 1, mrn: 1 }).lean();
+  if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  return patient;
+};
+pharmacyRouter.get('/patients/:id/advance', async (req, res) => {
+  const patient = await advancePatient(req);
+  res.json(await advanceOf(req, patient._id));
+});
+pharmacyRouter.post('/patients/:id/advance', async (req, res) => {
+  const patient = await advancePatient(req);
+  const body = parse(z.object({ amountPaise: z.number().int().min(1, 'Write the amount.').max(100_000_000), mode: z.enum(COUNTER_MODES), reference: z.string().trim().max(80).default('') }).strict().refine((b) => b.mode !== 'card' || !b.reference || /^\d{4}$/.test(b.reference), { message: 'Write only the last 4 digits of the card.', path: ['reference'] }), req.body);
+  const entry = await depositAdvance(req, patient._id, body);
+  await audit(req, 'PHARMACY_ADVANCE_TAKEN', { details: { patientId: String(patient._id), number: entry.number, amountPaise: body.amountPaise, mode: body.mode } });
+  res.status(201).json({ number: entry.number, ...(await advanceOf(req, patient._id)) });
+});
+pharmacyRouter.post('/patients/:id/advance/refund', async (req, res) => {
+  const patient = await advancePatient(req);
+  const body = parse(z.object({ amountPaise: z.number().int().min(1, 'Write the amount.').max(100_000_000), mode: z.enum(COUNTER_MODES), reason: reason('Refunding the advance') }).strict(), req.body);
+  const entry = await refundAdvance(req, patient._id, body);
+  await audit(req, 'PHARMACY_ADVANCE_REFUNDED', { details: { patientId: String(patient._id), number: entry.number, amountPaise: body.amountPaise, mode: body.mode, reason: body.reason } });
+  res.json({ number: entry.number, ...(await advanceOf(req, patient._id)) });
+});
+pharmacyRouter.post('/patients/:id/advance/use', async (req, res) => {
+  const patient = await advancePatient(req);
+  parse(z.object({}).strict(), req.body ?? {});
+  const paid = await useAdvance(req, patient._id);
+  await audit(req, 'PHARMACY_ADVANCE_USED', { details: { patientId: String(patient._id), amountPaise: paid.reduce((n, p) => n + p.amountPaise, 0), invoices: paid } });
+  res.json({ paid, ...(await advanceOf(req, patient._id)), dues: await patientDues(req, patient._id) });
+});
+
+// Discharge clearance (18 Nov 2026, the pharmacy's request): those discharged in the last 7 days and not yet cleared
+// for leaving by the desk, with what each still owes the pharmacy – settled here before she leaves.
+pharmacyRouter.get('/discharge-clearance', async (req, res) => {
+  desk(req);
+  const since = hospitalDayStart(addDays(today(req), -7));
+  const stays = await Admission.find({ tenantId: req.tenantId, status: 'discharged', clearance: null, dischargedAt: { $gte: since } }, { patientId: 1, ward: 1, bed: 1, ipdNo: 1, dischargedAt: 1 }).sort({ dischargedAt: 1 }).limit(200).lean();
+  const patients = new Map((stays.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: stays.map((s) => s.patientId) } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
+  const list = [];
+  for (const s of stays) {
+    const p = patients.get(String(s.patientId));
+    if (!p) continue;
+    const dues = await patientDues(req, p._id);
+    list.push({ id: String(s._id), ipdNo: s.ipdNo ?? null, ward: s.ward ?? '', bed: s.bed ?? '', dischargedAt: s.dischargedAt, duePaise: dues.duePaise, bills: dues.bills.map((b) => b.number), patient: { id: String(p._id), fullName: p.fullName, mrn: p.mrn } });
+  }
+  res.json({ stays: list });
 });
 
 pharmacyRouter.post('/invoices/:id/printed', async (req, res) => {
@@ -1653,12 +1783,15 @@ pharmacyRouter.get('/reports/mis', async (req, res) => {
   const need = misNeeds(q.report);
   const inPeriod = { $gte: from, $lt: to };
   const invoices = need.invoices ? await PharmacyInvoice.find({ tenantId: req.tenantId, $or: [{ 'created.at': inPeriod }, { 'returns.at': inPeriod }, { 'payments.at': inPeriod }] }).lean() : [];
-  const pids = [...new Set(invoices.map((i) => i.patientId && String(i.patientId)).filter(Boolean))];
+  const advances = need.advances ? await PharmacyAdvance.find({ tenantId: req.tenantId, 'created.at': inPeriod }).lean() : [];
+  const pids = [...new Set([...invoices, ...advances].map((i) => i.patientId && String(i.patientId)).filter(Boolean))];
   const patients = new Map((pids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
   const purchases = need.purchases ? await Purchase.find({ tenantId: req.tenantId, status: 'active', invoiceDate: { $gte: q.from, $lte: q.to } }).lean() : [];
   const supplierReturns = need.supplierReturns ? await SupplierReturn.find({ tenantId: req.tenantId, ...NOT_CANCELLED, 'created.at': inPeriod }).lean() : [];
   const suppliers = new Map((purchases.length || supplierReturns.length ? await Supplier.find({ tenantId: req.tenantId }, { name: 1, gstin: 1 }).lean() : []).map((s) => [String(s._id), s]));
-  const report = misReport(q.report, { invoices, patients, purchases, supplierReturns, suppliers }, { from, to });
+  const billIds = need.bills ? [...new Set(invoices.map((i) => i.billId && String(i.billId)).filter(Boolean))] : [];
+  const bills = new Map((billIds.length ? await Bill.find({ tenantId: req.tenantId, _id: { $in: billIds }, $or: [{ 'insurance.insurer': { $nin: ['', null] } }, { 'insurance.pmjayId': { $nin: ['', null] } }, { claim: { $ne: null } }] }, { number: 1, insurance: 1, claim: 1 }).lean() : []).map((b) => [String(b._id), b]));
+  const report = misReport(q.report, { invoices, patients, purchases, supplierReturns, suppliers, advances, bills }, { from, to });
   if (report.patients) await audit(req, 'PHARMACY_MIS_VIEWED', { details: { report: q.report, from: isoDay(q.from), to: isoDay(q.to), rows: report.rows.length } });
   res.json({ ...report, from: isoDay(q.from), to: isoDay(q.to), settings: await settingsOf(req.tenantId) });
 });
@@ -1740,7 +1873,16 @@ const rs = (p) => (p / 100).toFixed(2);
 
 pharmacyRouter.get('/export', async (req, res) => {
   if (!hasRole(req.membership, ...PHARMACY_EXPORT_ROLES)) throw forbidden('The export is for the hospital admin.');
-  const q = parse(z.object({ from: requiredDateOnly('From'), to: requiredDateOnly('To'), what: z.enum(['sales', 'purchases', 'supplier_returns', 'supplier_payments']) }).strict(), req.query);
+  // The sales file names patients next to their medicines, so it needs a reason (health check M7); the supplier files do not
+  const q = parse(
+    z
+      .object({ from: requiredDateOnly('From'), to: requiredDateOnly('To'), what: z.enum(['sales', 'purchases', 'supplier_returns', 'supplier_payments']), reason: exportReason.optional() })
+      .strict()
+      .superRefine((b, ctx) => {
+        if (b.what === 'sales' && !b.reason) ctx.addIssue({ code: 'custom', path: ['reason'], message: 'Say why you need this file (at least 5 characters)' });
+      }),
+    req.query,
+  );
   const [from, to] = period(q);
   let rows;
   if (q.what === 'sales') {
@@ -1775,7 +1917,7 @@ pharmacyRouter.get('/export', async (req, res) => {
     rows = [['Purchase', 'Supplier', 'Invoice', 'Invoice date', 'Status', 'Medicine', 'Manufacturer', 'Batch', 'Expiry', 'Qty', 'Free', 'Rate', 'MRP', 'Value', 'Purchase order']];
     for (const v of views) for (const l of v.lines) rows.push([v.number, v.supplier, v.invoiceNo, v.invoiceDate, v.status, l.name, l.manufacturer ?? '', l.batch, l.expiry, l.qty, l.freeQty, rs(l.ratePaise), rs(l.mrpPaise), rs(l.ratePaise * l.qty), v.order?.number ?? '']);
   }
-  await audit(req, 'PHARMACY_EXPORTED', { details: { what: q.what, from: isoDay(q.from), to: isoDay(q.to), rows: rows.length - 1 } });
+  await audit(req, 'PHARMACY_EXPORTED', { details: { what: q.what, from: isoDay(q.from), to: isoDay(q.to), rows: rows.length - 1, ...(q.reason ? { reason: q.reason } : {}) } });
   res.set('Content-Type', 'text/csv; charset=utf-8');
   res.set('Content-Disposition', `attachment; filename="perinexa-pharmacy-${q.what.replace('_', '-')}-${isoDay(q.from)}-to-${isoDay(q.to)}.csv"`);
   res.send(csv(rows));

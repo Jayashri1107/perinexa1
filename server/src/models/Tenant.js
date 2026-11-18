@@ -205,6 +205,15 @@ const tenantSchema = new mongoose.Schema(
       updatedByName: { type: String, default: '' },
       updatedAt: { type: Date, default: null },
     },
+    // Support access (health check H3; owner's decision of 17 Nov 2026 – utils/platformAccess.js): until when Perinexa's
+    // own staff (super admins, platform admins) may open this hospital's patient records, allowed by its admin.
+    platformAccess: {
+      until: { type: Date, default: null },
+      reason: { type: String, trim: true, maxlength: 200, default: '' },
+      grantedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      grantedByName: { type: String, default: '' },
+      grantedAt: { type: Date, default: null },
+    },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true },

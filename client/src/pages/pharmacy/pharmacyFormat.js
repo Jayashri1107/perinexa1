@@ -99,7 +99,7 @@ export function orderLook(order) {
   return ORDER_LOOKS[order?.status] ?? { tone: 'neutral', label: order?.status ?? '' };
 }
 
-export const SUPPLIER_RETURN_REASONS = { expired: 'Expired', damaged: 'Damaged', recalled: 'Recalled', excess: 'Excess stock', wrong_item: 'Wrong item' };
+export const SUPPLIER_RETURN_REASONS = { expired: 'Expired', near_expiry: 'Near expiry', damaged: 'Damaged', recalled: 'Recalled', excess: 'Excess stock', wrong_item: 'Wrong item' };
 
 /** A barcode as it is kept and looked up: no spaces, capitals (the same as the server). */
 export const cleanBarcode = (text) => String(text ?? '').replace(/\s+/g, '').toUpperCase();
@@ -330,7 +330,11 @@ export function returnChosen(batches, typed) {
  * The batches a new return lists. "Show only expired batches" leaves out the others – but never a batch with a
  * quantity typed beside it: what will go back is always on the screen.
  */
-export const returnBatchesShown = (batches, typed, onlyExpired) => batches.filter((b) => !onlyExpired || b.expired || String(typed[b.id] ?? '').trim() !== '');
+// show: false (all), true or 'expired', or 'near' – expired or expiring within NEAR_EXPIRY_DAYS (18 Nov 2026, the
+// pharmacy's request: purchase return of expiry or near-expiry stock)
+export const NEAR_EXPIRY_DAYS = 90;
+const fitsShow = (b, show) => !show || b.expired || (show === 'near' && b.daysLeft != null && b.daysLeft <= NEAR_EXPIRY_DAYS);
+export const returnBatchesShown = (batches, typed, show) => batches.filter((b) => fitsShow(b, show) || String(typed[b.id] ?? '').trim() !== '');
 
 /** The sums of a return to a supplier being put together: [{ qty, ratePaise, gstRate }] → taxable, GST, total (paise). */
 export function debitSums(rows) {

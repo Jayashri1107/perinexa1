@@ -17,7 +17,7 @@ import { Patient } from '../src/models/Patient.js';
 import { ReminderMessage } from '../src/models/ReminderMessage.js';
 import { Tenant } from '../src/models/Tenant.js';
 import { WorkDone } from '../src/models/WorkDone.js';
-import { careDueMessage, missedMessage } from '../src/reminders/messages.js';
+import { careDueMessage, missedMessage, vaccineDueMessage, vaccineNames } from '../src/reminders/messages.js';
 import { queueCareDue } from '../src/reminders/generalReminders.js';
 import { runReminders, sendDueReminders } from '../src/reminders/reminderService.js';
 import { TEST_SENDER, setTestSender, testSent } from '../src/reminders/sender.js';
@@ -369,6 +369,96 @@ describe('a check-up or test is due', () => {
   });
 });
 
+describe('the vaccination reminder the day before (owner, 18 Nov 2026)', () => {
+  const SIX_WEEKS = "Sample Hospital: your child's vaccination (OPV-1, Pentavalent-1, Rotavirus-1, fIPV-1, PCV-1) is due on 12 Nov 2026. Please call 020 0000 0000 to book. Reply STOP to stop these messages.";
+  // A baby born on 1 Oct 2026 whose birth doses were given: the 6-week vaccines fall due on 12 Nov.
+  const givenAtBirth = async (fields) => {
+    const b = await baby(fields);
+    await act(b, (await plan(b)).items.find((i) => i.key === 'nb_vacc_birth'), { action: 'done', on: '2026-10-01', vaccine: { batch: 'BCG-SAMPLE-1' } });
+    return b;
+  };
+
+  it('names the vaccines and the day, in three languages', () => {
+    expect(vaccineNames(['6 weeks: OPV-1, Pentavalent-1, Rotavirus-1, fIPV-1, PCV-1'])).toBe('OPV-1, Pentavalent-1, Rotavirus-1, fIPV-1, PCV-1');
+    expect(vaccineDueMessage({ hospital: 'Sample Hospital', phone: '020 0000 0000', day: D('2026-11-12'), vaccines: 'OPV-1, Pentavalent-1, Rotavirus-1, fIPV-1, PCV-1' })).toBe(SIX_WEEKS);
+    for (const lang of ['mr', 'hi']) {
+      const text = vaccineDueMessage({ hospital: 'Sample Hospital', phone: '020 0000 0000', day: D('2026-11-12'), vaccines: 'OPV-1', lang });
+      expect(text).toContain('Sample Hospital');
+      expect(text).toContain('OPV-1');
+      expect(text).toContain('020 0000 0000');
+      expect(text).toContain('STOP');
+      expect(text).toMatch(/12 (नोव्हें|नवं) 2026/);
+    }
+    expect(vaccineNames(['x: ' + 'A'.repeat(200)]).length).toBeLessThanOrEqual(160);
+  });
+
+  it('goes the day before the due day, once, to the number on the baby’s record', async () => {
+    const b = await givenAtBirth();
+    await consent(b, { consent: true, channel: 'sms', language: 'en' }, 'reception');
+    await switchOn();
+    await round('2026-11-10');
+    expect(await messages({ kind: 'vaccine_due' })).toHaveLength(0);
+    await round('2026-11-11');
+    await round('2026-11-11');
+    const all = await messages({ kind: 'vaccine_due' });
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({ to: '+919123456789', channel: 'sms', status: 'sent', text: SIX_WEEKS, aboutOn: D('2026-11-12') });
+    expect(String(all[0].patientId)).toBe(b.id);
+    expect(all[0].text).not.toMatch(/Baby/);
+    await round('2026-11-12');
+    expect(await messages({ kind: 'vaccine_due' })).toHaveLength(1);
+  });
+
+  it('not when the baby is booked, nor without the baby’s own agreement, nor from a draft plan', async () => {
+    const booked = await givenAtBirth({ fullName: 'Baby Booked', phone: '90000 00011' });
+    const noConsent = await givenAtBirth({ fullName: 'Baby Without', phone: '90000 00012' });
+    await consent(booked);
+    await appointment(booked, '2026-11-12');
+    await switchOn();
+    await round('2026-11-11');
+    expect(await messages({ kind: 'vaccine_due' })).toHaveLength(0);
+    expect(String(noConsent.id)).toBeTruthy();
+
+    // A draft schedule: held back
+    await CarePlanTemplate.updateMany({ tenantId: hospital._id, careType: 'newborn' }, { $set: { approvals: [], approvedVersion: null, approvedBy: null, approvedAt: null } });
+    const draft = await givenAtBirth({ fullName: 'Baby Draft', phone: '90000 00013' });
+    await consent(draft);
+    const res = await runReminders(noon('2026-11-11'));
+    expect(res[0].vaccineDue).toBe(0);
+    expect(await messages({ kind: 'vaccine_due' })).toHaveLength(0);
+  });
+
+  it('a waiting one is cancelled when the vaccine is marked given meanwhile – a nurse may do that', async () => {
+    setTestSender(null); // no provider: it waits to be sent by hand
+    const b = await givenAtBirth();
+    await consent(b);
+    await switchOn();
+    await round('2026-11-11');
+    expect((await openList()).map((m) => [m.kind, m.status])).toEqual([['vaccine_due', 'to_send']]);
+    on('2026-11-11');
+    const view = await plan(b, 'nurse');
+    expect(view).toMatchObject({ readOnly: true, canRecordVaccines: true });
+    // A nurse may not change anything else
+    const other = view.items.find((i) => i.kind !== 'vaccination' && !i.done);
+    const refused = await (await as('nurse')).patch(`/api/patients/${b.id}/care-plan/items/${other.id}`).send({ rev: other.rev, action: 'done', on: '2026-11-11' });
+    expect(refused.status).toBe(403);
+    const move = view.items.find((i) => i.key === 'nb_vacc_6w');
+    // …but she may mark the vaccination as given (the doses were given on 11 Nov)
+    await act(b, move, { action: 'done', on: '2026-11-11', vaccine: { batch: 'PENTA-SAMPLE-1' } }, 'nurse');
+    expect((await plan(b)).items.find((i) => i.key === 'nb_vacc_6w').done).toBeTruthy();
+    expect(await openList()).toEqual([]);
+    expect((await messages({ kind: 'vaccine_due' }))[0]).toMatchObject({ status: 'cancelled', error: 'No longer needed' });
+  });
+
+  it('a nurse sees no sensitive baby’s care plan, so cannot mark its vaccines either', async () => {
+    const b = await givenAtBirth();
+    expect((await (await as('drA')).patch(`/api/patients/${b.id}/sensitive`).send({ sensitive: true })).status).toBe(200);
+    const item = (await plan(b)).items.find((i) => i.key === 'nb_vacc_6w');
+    const res = await (await as('nurse')).patch(`/api/patients/${b.id}/care-plan/items/${item.id}`).send({ rev: item.rev, action: 'done', on: '2026-10-01', vaccine: { batch: 'X-1' } });
+    expect(res.status).toBe(403);
+  });
+});
+
 describe('babies', () => {
   it("a baby's overdue vaccination goes to the number on the baby's record, under the baby's own agreement", async () => {
     const mum = await register({ careType: 'postnatal', fullName: 'Mother Sample', phone: '98765 43210' });
@@ -569,7 +659,7 @@ describe('the outbox (Calendar → Reminders)', () => {
     expect((await (await as('nurse')).post('/api/reminders/run')).status).toBe(403);
     const run = await (await as('drA')).post('/api/reminders/run');
     expect(run.status, JSON.stringify(run.body)).toBe(200);
-    expect(run.body).toEqual({ queued: 0, missed: 1, careDue: 1, heldBack: 0, dropped: 0, waiting: 0, sent: 0, failed: 0, toSend: 2 });
+    expect(run.body).toEqual({ queued: 0, missed: 1, careDue: 1, vaccineDue: 0, heldBack: 0, dropped: 0, waiting: 0, sent: 0, failed: 0, toSend: 2 });
 
     const open = (await (await as('reception')).get('/api/reminders?list=open')).body.messages;
     expect(open.map((m) => [m.patient.fullName, m.kind, m.status]).sort()).toEqual([
@@ -593,7 +683,7 @@ describe('the outbox (Calendar → Reminders)', () => {
     const entry = await AuditLog.findOne({ tenantId: hospital._id, action: 'REMINDER_SENT_BY_HAND' }).lean();
     expect(entry.details).toEqual({ patientId: p.id, mrn: p.mrn });
     const ran = await AuditLog.findOne({ tenantId: hospital._id, action: 'REMINDERS_RUN' }).lean();
-    expect(ran.details).toEqual({ queued: 0, missed: 1, careDue: 1, heldBack: 0, dropped: 0, waiting: 0, sent: 0, failed: 0, toSend: 2 });
+    expect(ran.details).toEqual({ queued: 0, missed: 1, careDue: 1, vaccineDue: 0, heldBack: 0, dropped: 0, waiting: 0, sent: 0, failed: 0, toSend: 2 });
     // A message sent by hand counts for the 14 days too
     await round('2026-10-28');
     expect(await messages({ patientId: p.id })).toHaveLength(1);
@@ -739,7 +829,7 @@ describe('the outbox (Calendar → Reminders)', () => {
     });
     const run = await (await as('drA')).post('/api/reminders/run');
     expect(run.status, JSON.stringify(run.body)).toBe(200);
-    expect(run.body).toEqual({ queued: 1, missed: 0, careDue: 0, heldBack: 0, dropped: 0, waiting: 0, sent: 0, failed: 0, toSend: 1 });
+    expect(run.body).toEqual({ queued: 1, missed: 0, careDue: 0, vaccineDue: 0, heldBack: 0, dropped: 0, waiting: 0, sent: 0, failed: 0, toSend: 1 });
     expect((await openList()).map((m) => [m.patient.fullName, m.kind])).toEqual([['Tomorrow Sample', 'appointment']]); // never shown unchecked
     const refused = await (await as('reception')).post(`/api/reminders/${general._id}/sent-by-hand`);
     expect(refused.status).toBe(503);

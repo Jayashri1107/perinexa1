@@ -248,9 +248,9 @@ describe('returns to a supplier', () => {
     expect(shown).toMatch(/Return Tab · Sampleol 10 mg Invoice SUP-77 · [^R]*RA1 · Sep 2026 Expired 60 ₹5 12%/);
     expect(shown).toContain('Schedule X');
     expect(shown).toContain('Expired stock may be returned.');
-    expect(shown).toContain('Show only expired batches');
+    expect(shown).toContain('All batches Expired Expired or near expiry (90 days)'); // 18 Nov 2026: three choices in place of the tick box
     expect(shown).toContain('This supplier is in another state: the debit note shows IGST.');
-    for (const reason of ['Expired', 'Damaged', 'Recalled', 'Excess stock', 'Wrong item']) expect(html).toContain(`>${reason}</option>`);
+    for (const reason of ['Expired', 'Near expiry', 'Damaged', 'Recalled', 'Excess stock', 'Wrong item']) expect(html).toContain(`>${reason}</option>`);
     expect(html).toContain('aria-label="Return how many of Return Tab, batch RA1"');
     brand(html);
     // Before a supplier is chosen: no batches yet
@@ -351,7 +351,7 @@ describe('returns to a supplier', () => {
     // One report at a time (owner, 26 Oct 2026): the tab is in the address
     const view = (v) => at(`/pharmacy/reports?view=${v}`, '/pharmacy/reports', <ReportsPage />);
     const first = at('/pharmacy/reports', '/pharmacy/reports', <ReportsPage />);
-    expect(text(first)).toContain('Stock alerts Report list Sales & GST Purchases Registers Profit and stock Day closing Export'); // Export: the admin only
+    expect(text(first)).toContain('Stock alerts All topics Report list Sales & GST Purchases Registers Profit and stock Day closing Export'); // Export: the admin only
     expect(text(first)).toContain('Bought from suppliers ₹35,000');
     brand(first);
     const purchases = text(view('purchases'));

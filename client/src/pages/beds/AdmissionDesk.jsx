@@ -276,7 +276,7 @@ export function ClearDialog({ stay, onClose, onCleared }) {
   const [note, setNote] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
-  const dues = stay.balancePaise > 0;
+  const dues = stay.balancePaise > 0 || stay.pharmacyDuePaise > 0;
   const send = async () => {
     setBusy(true);
     setError(null);
@@ -290,7 +290,8 @@ export function ClearDialog({ stay, onClose, onCleared }) {
   };
   return (
     <Modal id="clear" title={`Clear ${stay.patient.fullName} for leaving`} onClose={onClose}>
-      <p>{dues ? `${rupees(stay.balancePaise)} is still due on her bill.` : 'Her bill is settled.'}</p>
+      <p>{stay.balancePaise > 0 ? `${rupees(stay.balancePaise)} is still due on her bill.` : 'Her bill is settled.'}</p>
+      {stay.pharmacyDuePaise > 0 && <p>{rupees(stay.pharmacyDuePaise)} is still due at the pharmacy (credit bills): settle it there, or write why she may leave.</p>}
       <Alert type="error">{error}</Alert>
       <Field label={dues ? 'Why may she leave? (e.g. insurance claim pending)' : 'Note (optional)'} id="clear-note">
         <input id="clear-note" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} autoFocus />
@@ -333,6 +334,11 @@ export function ToClearSection({ onCleared }) {
                     ) : (
                       <StatusPill tone="stable" icon={ClipboardCheck}>
                         Bill settled
+                      </StatusPill>
+                    )}
+                    {s.pharmacyDuePaise > 0 && (
+                      <StatusPill tone="watch" icon={TriangleAlert}>
+                        Pharmacy {rupees(s.pharmacyDuePaise)} due
                       </StatusPill>
                     )}
                     {/* The discharge details and the final bill come first (docs/IPD_DISCHARGE_BILLING_PLAN.md) */}

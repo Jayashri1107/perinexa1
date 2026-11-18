@@ -13,7 +13,8 @@ import { GENERAL_KINDS } from '../reminders/reminderRules.js';
 //  - 'care_due': a care-plan item is overdue and nothing is booked ("A check-up or test is due …");
 //  - 'missed':   a booked appointment passed and nobody came ("we missed you …"; ref = the appointment's id, so
 //                each appointment gets one at most; aboutOn = the day of that appointment).
-// For these two, dueOn is the LAST day the message may still go out (it waits a few days to be sent by hand); a
+//  - 'vaccine_due': the day before a baby's vaccination falls due (18 Nov 2026; ref and aboutOn = that due day).
+// For these, dueOn is the LAST day the message may still go out (it waits a few days to be sent by hand); a
 // 'missed' message is once per appointment AND day (ref + aboutOn), so an appointment moved to a new day counts anew.
 
 const { ObjectId } = mongoose.Schema.Types;

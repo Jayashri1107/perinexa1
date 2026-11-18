@@ -174,6 +174,9 @@ export function PatientMessagesDialog({ patient, onDone, onCancel }) {
             The same agreement covers two more messages, to the mobile number on this record: "A check-up or test is due at {'<'}hospital{'>'}. Please call {'<'}phone{'>'} to book." when
             something in the care plan is overdue and nothing is booked, and "we missed you at your appointment on {'<'}date{'>'}" the day after an appointment nobody came to. They never say what
             is due or why; at most one of them in 14 days.
+            {isBaby
+              ? ` For a baby also, the day before a vaccination falls due: "<hospital>: your child's vaccination (<vaccines>) is due on <date>. Please call <phone> to book." – this message names the vaccines.`
+              : ''}
             {isBaby ? " A baby's messages go only under the agreement recorded here, on the baby's own record – the mother's agreement does not count for the baby." : ''}
           </p>
           {['off', 'sms', 'whatsapp'].map((c) => (

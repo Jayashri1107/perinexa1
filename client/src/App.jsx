@@ -74,6 +74,7 @@ const load20 = () => import('./pages/abdm/PatientAbhaTab.jsx');
 const PatientAbhaTab = screen(load20, 'PatientAbhaTab');
 const load21 = () => import('./pages/abdm/ScanShare.jsx');
 const AbdmSettingsPage = screen(load21, 'AbdmSettingsPage');
+const SupportAccessPage = screen(() => import('./pages/admin/SupportAccessPage.jsx'), 'SupportAccessPage');
 const load22 = () => import('./pages/pharmacy/InvoicesPage.jsx');
 const InvoicePage = screen(load22, 'InvoicePage');
 const InvoicesPage = screen(load22, 'InvoicesPage');
@@ -98,6 +99,7 @@ const NewBillPage = screen(loadNewBill, 'NewBillPage');
 const SellPage = screen(load27, 'SellPage');
 const loadWardRequests = () => import('./pages/pharmacy/WardRequests.jsx');
 const WardRequestsPage = screen(loadWardRequests, 'WardRequestsPage');
+const DischargeClearancePage = screen(() => import('./pages/pharmacy/DischargeClearance.jsx'), 'DischargeClearancePage');
 const load28 = () => import('./pages/pharmacy/StockPage.jsx');
 const MedicineStockPage = screen(load28, 'MedicineStockPage');
 const StockPage = screen(load28, 'StockPage');
@@ -689,6 +691,7 @@ export function App() {
                   <Route path="supplier-returns/:id" element={<SupplierReturnPage />} />
                   <Route path="medicines" element={<MedicinesPage />} />
                   <Route path="kits" element={<KitsPage />} /> {/* PH14: the hospital admin's way to the kits */}
+                  <Route path="discharge-clearance" element={<DischargeClearancePage />} /> {/* 18 Nov 2026 */}
                   <Route path="ward-requests" element={<WardRequestsPage />} /> {/* PH12: what the wards asked for */}
                   <Route path="places" element={<StockPlacesPage />} /> {/* PH13: the pharmacist's and the hospital admin's way to the places */}
                   <Route path="suppliers" element={<SuppliersPage />} />
@@ -797,6 +800,7 @@ export function App() {
                   <Route path="opd-timings" element={<OpdTimingsPage admin />} />
                   <Route path="beds" element={<BedSetupPage />} />
                   <Route path="abdm" element={<AbdmSettingsPage />} />
+                  <Route path="support-access" element={<SupportAccessPage />} />
                   {/* The referral settings: centres, desk number, consultants' direct lines, working hours, holidays */}
                   <Route path="referrals" element={<ReferralSettingsPage />} />
                   {/* Build 13 – NICU units: level of care, admission floor, NICU beds, one more admission */}

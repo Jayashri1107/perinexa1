@@ -306,6 +306,8 @@ export function planView(plan, { today, now = null, patient, srcT, stdT, access,
     canClose: editClinical && ['active', 'paused'].includes(plan.status) && !viewingEarlier,
     canReopen: editClinical && closed && !hasCurrentPlan,
     readOnly: !canEdit,
+    // A nurse (read-only otherwise) may mark a vaccination as given (owner, 18 Nov 2026)
+    canRecordVaccines: !canEdit && Boolean(access?.vaccines) && !closed && !viewingEarlier,
   };
 }
 

@@ -17,6 +17,7 @@ export const KIND_LABELS = {
   cancelled: 'Appointment cancelled',
   care_due: 'Check-up or test due',
   missed: 'Missed appointment',
+  vaccine_due: 'Vaccination reminder',
 };
 export const GENERAL_KINDS = ['care_due', 'missed'];
 
@@ -29,6 +30,7 @@ export function messageAbout(m) {
   const kind = KIND_LABELS[m.kind] ? m.kind : 'appointment';
   if (kind === 'care_due') return `${KIND_LABELS.care_due} · can be sent until ${day(m.dueOn)}`;
   if (kind === 'missed') return `${KIND_LABELS.missed} · of ${day(m.aboutOn)}`;
+  if (kind === 'vaccine_due') return `${KIND_LABELS.vaccine_due} · due ${day(m.aboutOn)}`;
   return `${KIND_LABELS[kind]} · appointment ${day(m.dueOn)}`;
 }
 
@@ -43,15 +45,16 @@ export function runNotice(r) {
     count(r.queued ?? 0, 'new reminder for tomorrow', 'new reminders for tomorrow'),
     r.missed ? count(r.missed, 'for a missed appointment', 'for missed appointments') : null,
     r.careDue ? count(r.careDue, 'for a check-up or test due', 'for check-ups or tests due') : null,
+    r.vaccineDue ? count(r.vaccineDue, 'vaccination reminder', 'vaccination reminders') : null,
   ].filter(Boolean);
   const result = [`${r.sent ?? 0} sent`, `${r.toSend ?? 0} to send by hand`, r.failed ? `${r.failed} failed` : null].filter(Boolean);
   const notes = [
     r.dropped ? `${count(r.dropped, 'waiting message was', 'waiting messages were')} cancelled as no longer needed.` : null,
     r.waiting
-      ? `${count(r.waiting, 'message for a check-up or test due or a missed appointment waits', 'messages for a check-up or test due or a missed appointment wait')} until the morning: these are not sent in the evening or at night.`
+      ? `${count(r.waiting, 'message for a check-up, test or vaccination, or a missed appointment, waits', 'messages for a check-up, test or vaccination, or a missed appointment, wait')} until the morning: these are not sent in the evening or at night.`
       : null,
     r.heldBack
-      ? `${count(r.heldBack, 'patient has', 'patients have')} something overdue but got no message: their care plan is still a draft (a doctor approves it in Clinic library → To approve).`
+      ? `${count(r.heldBack, 'patient has', 'patients have')} something overdue or a vaccination due but got no message: their care plan is still a draft (a doctor approves it in Clinic library → To approve).`
       : null,
   ].filter(Boolean);
   return [`Done: ${added.join(', ')}; ${result.join(', ')}.`, ...notes].join(' ');

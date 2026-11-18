@@ -34,12 +34,18 @@
 //  - none for a record marked as a duplicate of another (patients/duplicateRules.js): none is queued, and one still
 //    waiting is cancelled;
 //  - every query carries the hospital's tenantId; nothing is written to the log.
+//
+// Since 18 Nov 2026 a third one, "vaccine_due" (owner's decision): the day before a baby's vaccination falls due,
+// "<hospital>: your child's vaccination (<vaccines>) is due on <date> …". It is the only automatic message that
+// names what is due. Babies only, from an APPROVED plan, under the agreement on the baby's own record; not when
+// the baby is booked from today on (the appointment reminder goes instead) or in hospital; once per baby and due
+// day; not counted by the 14-day rule. A waiting one is cancelled when the vaccine was marked given meanwhile.
 
 import mongoose from 'mongoose';
 import { cycleTestDue } from '../fertility/cycleReminders.js';
 import { bookedAhead, statesFor, statusOf } from '../appointments/appointmentService.js';
 import { addDays, dayZero, hospitalDayStart, hospitalToday, isoDay, sameDay, toHospitalDate, utcDay } from '../careplans/dates.js';
-import { overduePlanItems } from '../careplans/overdue.js';
+import { dueOnPlanItems, overduePlanItems } from '../careplans/overdue.js';
 import { closedForPregnancy } from '../careplans/plansService.js';
 import { Admission } from '../models/Admission.js';
 import { Appointment } from '../models/Appointment.js';
@@ -50,7 +56,7 @@ import { Patient } from '../models/Patient.js';
 import { ReminderMessage } from '../models/ReminderMessage.js';
 import { Visit } from '../models/Visit.js';
 import { WorkDone } from '../models/WorkDone.js';
-import { careDueMessage, missedMessage } from './messages.js';
+import { careDueMessage, missedMessage, vaccineDueMessage, vaccineNames } from './messages.js';
 import { DUPLICATE_MESSAGE_REASON, isDuplicate } from '../patients/duplicateRules.js';
 import { CLOSED_MESSAGE_REASON, IN_USE, isClosed } from '../patients/deathRules.js';
 import { mobileNumber } from './phone.js';
@@ -65,6 +71,8 @@ import {
   GENERAL_MAX_PATIENTS,
   GENERAL_VALID_DAYS,
   MISSED_LOOKBACK_DAYS,
+  THROTTLED_KINDS,
+  VACCINE_DUE_DAYS_BEFORE,
 } from './reminderRules.js';
 
 // What is read of a patient here: the number, her agreement, and what the rules above need – nothing medical is
@@ -109,7 +117,7 @@ async function recentlyMessaged(tenantId, patients, today) {
   const rows = await ReminderMessage.find(
     {
       tenantId,
-      kind: { $in: GENERAL_KINDS },
+      kind: { $in: THROTTLED_KINDS },
       status: { $ne: 'cancelled' },
       $and: [{ $or: [{ patientId: { $in: patients.map((p) => p._id) } }, { to: { $in: numbers } }] }, { $or: [{ sendOn: { $gte: since } }, { sentAt: { $gte: hospitalDayStart(since) } }] }],
     },
@@ -374,6 +382,70 @@ export async function queueCareDue(tenant, now = new Date()) {
   return { added, heldBack };
 }
 
+// ---------- "Your child's vaccination is due" (18 Nov 2026) ----------
+
+// A baby's plan, vaccinations only (the vaccination reminder).
+const babyVaccines = (careType) => (careType === 'newborn' ? ['vaccination'] : []);
+// The day the vaccination reminder is about: the due day it is sent before.
+const vaccineDay = (today) => addDays(today, VACCINE_DUE_DAYS_BEFORE);
+
+/**
+ * Queues the vaccination reminder for babies whose current, approved care plan has a vaccination falling due
+ * VACCINE_DUE_DAYS_BEFORE days from today. One message per baby and due day (ref = that day), naming every vaccine
+ * due that day; one per mobile number per round. Returns { added, heldBack } (heldBack: draft plans).
+ */
+export async function queueVaccineDue(tenant, now = new Date()) {
+  const tenantId = tenant._id;
+  const today = hospitalToday(now);
+  const day = vaccineDay(today);
+  const agreed = (await Patient.find({ tenantId, careType: 'newborn', 'reminders.consent': true, ...IN_USE }, PATIENT_FIELDS).limit(GENERAL_MAX_PATIENTS).lean()).filter((p) => mobileNumber(p.phone));
+  if (!agreed.length) return { added: 0, heldBack: 0 };
+  const { rows } = await dueOnPlanItems(tenantId, { now, kindsFor: babyVaccines, day, patientIds: agreed.map((p) => p._id), limit: GENERAL_MAX_PATIENTS });
+  const rowOf = new Map(rows.map((r) => [idOf(r.patient), r]));
+  const patients = agreed.filter((p) => rowOf.has(idOf(p)));
+  if (!patients.length) return { added: 0, heldBack: 0 };
+  const ids = patients.map((p) => p._id);
+  const ref = isoDay(day);
+  const [admitted, booked, earlier] = await Promise.all([
+    inHospitalNow(tenantId, patients),
+    bookedAhead(tenantId, ids, today),
+    ReminderMessage.find({ tenantId, kind: 'vaccine_due', ref, patientId: { $in: ids } }, { patientId: 1 }).lean(),
+  ]);
+  const had = new Set(earlier.map((m) => String(m.patientId)));
+  const words = hospitalWords(tenant);
+  const numbers = new Set();
+  let added = 0;
+  let heldBack = 0;
+  for (const p of patients) {
+    const id = idOf(p);
+    const to = mobileNumber(p.phone);
+    if (had.has(id) || numbers.has(to) || admitted.has(id) || booked.has(id)) continue;
+    const row = rowOf.get(id);
+    if (!maySend(row)) {
+      heldBack += 1;
+      continue;
+    }
+    const language = p.reminders.language ?? 'en';
+    const ok = await insertMessage({
+      tenantId,
+      patientId: p._id,
+      kind: 'vaccine_due',
+      ref,
+      aboutOn: day,
+      dueOn: day, // it may still go out on the morning of the due day; after that it is too old
+      sendOn: today,
+      channel: p.reminders.channel ?? 'sms',
+      language,
+      to,
+      text: vaccineDueMessage({ ...words, day, vaccines: vaccineNames(row.items.map((it) => it.name)), lang: language }),
+    });
+    if (!ok) continue;
+    numbers.add(to);
+    added += 1;
+  }
+  return { added, heldBack };
+}
+
 // ---------- Messages that are no longer true ----------
 
 /**
@@ -407,6 +479,7 @@ export async function cancelStaleGeneral(tenant, now = new Date()) {
   const patients = await Patient.find({ tenantId, _id: { $in: ids } }, PATIENT_FIELDS).lean();
   const byId = new Map(patients.map((p) => [idOf(p), p]));
   const careDueIds = [...new Set(open.filter((m) => m.kind === 'care_due').map((m) => m.patientId))];
+  const vaccineOpen = open.filter((m) => m.kind === 'vaccine_due');
   const missedOpen = open.filter((m) => m.kind === 'missed');
   const refs = missedOpen.map((m) => m.ref).filter((ref) => mongoose.isValidObjectId(ref));
   const appts = refs.length ? await Appointment.find({ tenantId, _id: { $in: refs } }, APPOINTMENT_FIELDS).lean() : [];
@@ -421,6 +494,13 @@ export async function cancelStaleGeneral(tenant, now = new Date()) {
     staysFor(tenantId, [...new Set(missedOpen.map((m) => String(m.patientId)))], earliest, made.length ? new Date(Math.min(...made.map((t) => new Date(t).getTime()))) : null),
     overduePlanItems(tenantId, { now, kindsFor: careDueKinds, patientIds: careDueIds, skipPostDates: true, limit: GENERAL_MAX_PATIENTS }),
   ]);
+  // The vaccination reminders still true: the same vaccines still open and due from that day (one look per day)
+  const vaccinesOn = new Map(); // "<patientId>:<day>" -> the row
+  for (const ref of [...new Set(vaccineOpen.map((m) => m.ref))]) {
+    const pids = vaccineOpen.filter((m) => m.ref === ref).map((m) => m.patientId);
+    const { rows: vrows } = await dueOnPlanItems(tenantId, { now, kindsFor: babyVaccines, day: utcDay(vaccineOpen.find((m) => m.ref === ref).aboutOn), patientIds: pids, limit: GENERAL_MAX_PATIENTS });
+    for (const r of vrows.filter(maySend)) vaccinesOn.set(`${idOf(r.patient)}:${ref}`, r);
+  }
   const stillDue = new Set([...overdue.rows.filter(maySend).map((r) => idOf(r.patient)), ...(await cycleTestDue(tenantId, careDueIds, today))]);
   const words = hospitalWords(tenant);
   let cancelled = 0;
@@ -434,7 +514,9 @@ export async function cancelStaleGeneral(tenant, now = new Date()) {
     else if (isClosed(p)) reason = CLOSED_MESSAGE_REASON;
     else if (!to) reason = 'No mobile number on the record any more';
     else if (admitted.has(id) || booked.has(id)) reason = NO_LONGER_NEEDED;
-    else if (m.kind === 'missed') {
+    else if (m.kind === 'vaccine_due') {
+      if (!vaccinesOn.has(`${id}:${m.ref}`)) reason = NO_LONGER_NEEDED;
+    } else if (m.kind === 'missed') {
       const appt = apptOf.get(m.ref);
       const gone = !appt || appt.status !== 'booked' || !sameDay(appt.on, m.aboutOn); // cancelled since, or moved to another day
       if (gone || missedOvertaken(p, appt, { closed, came, stays: stays.get(id) ?? [] })) reason = NO_LONGER_NEEDED;
@@ -452,7 +534,12 @@ export async function cancelStaleGeneral(tenant, now = new Date()) {
     // Still true: it goes to the number, by the channel and in the language that are on the record NOW
     const channel = p.reminders.channel ?? 'sms';
     const language = p.reminders.language ?? 'en';
-    const text = m.kind === 'missed' ? missedMessage({ ...words, day: utcDay(m.aboutOn), lang: language }) : careDueMessage({ ...words, lang: language });
+    const text =
+      m.kind === 'missed'
+        ? missedMessage({ ...words, day: utcDay(m.aboutOn), lang: language })
+        : m.kind === 'vaccine_due'
+          ? vaccineDueMessage({ ...words, day: utcDay(m.aboutOn), vaccines: vaccineNames(vaccinesOn.get(`${id}:${m.ref}`).items.map((it) => it.name)), lang: language })
+          : careDueMessage({ ...words, lang: language });
     if (m.to !== to || m.channel !== channel || m.language !== language || m.text !== text) {
       m.to = to;
       m.channel = channel;

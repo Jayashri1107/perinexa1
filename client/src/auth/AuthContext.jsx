@@ -44,6 +44,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [timeoutMinutes, setTimeoutMinutes] = useState(30);
   const [logoutReason, setLogoutReason] = useState(null);
+  const [twoStepRequired, setTwoStepRequired] = useState(false); // two-step sign-in must stay on (an admin)
   const [tenantNotice, setTenantNotice] = useState(null); // e.g. "Switched to X in another tab"
   const [secondsLeft, setSecondsLeft] = useState(null); // countdown shown in the idle warning
   const channel = useRef(null);
@@ -57,6 +58,7 @@ export function AuthProvider({ children }) {
     setRoleMode(data.roleMode === 'admin' ? 'admin' : null);
     setActiveTenantId(data.activeTenantId ?? null);
     if (data.sessionTimeoutMinutes) setTimeoutMinutes(data.sessionTimeoutMinutes);
+    setTwoStepRequired(Boolean(data.twoStepRequired));
   }, []);
 
   const endSession = useCallback((reason) => {
@@ -202,12 +204,20 @@ export function AuthProvider({ children }) {
     };
   }, [user, timeoutMinutes, logout]);
 
+  // Signing in. With two-step sign-in (health check H4) the server answers { twoStep: { step, ticket, ... } } instead of a
+  // session: the sign-in page then asks for the code (loginTwoStep) – nothing is applied until a session exists.
   const login = async (email, password) => {
     const data = await api('/auth/login', { method: 'POST', body: { email, password } });
+    if (data.twoStep) return { twoStep: data.twoStep };
+    startSession(data);
+    return data.user;
+  };
+  // The second step. The answer is the session, plus the recovery codes the first time (shown before startSession).
+  const loginTwoStep = (ticket, code) => api('/auth/login/two-step', { method: 'POST', body: { ticket, code } });
+  const startSession = (data) => {
     writeLastActivity(Date.now());
     setLogoutReason(null);
     applySession(data);
-    return data.user;
   };
 
   const switchTenant = async (tenantId) => {
@@ -251,18 +261,18 @@ export function AuthProvider({ children }) {
     if (!email) return;
     if (!linkedEmail) {
       await api(`/platform/users/${user.id}/linked-account`, { method: 'PATCH', body: { email } });
+      let first;
       try {
-        await login(email, password);
+        first = await login(email, password);
       } catch (err) {
         await api(`/platform/users/${user.id}/linked-account`, { method: 'PATCH', body: { email: null } }).catch(() => {});
         throw err;
       }
+      if (!first?.twoStep) return;
+    } else if (password && !(await login(email, password))?.twoStep) {
       return;
     }
-    if (password) {
-      await login(email, password);
-      return;
-    }
+    // No password, or the doctor account has two-step sign-in on: signed out here, its email filled in on the sign-in
     try {
       sessionStorage.setItem(LOGIN_EMAIL_KEY, email);
     } catch {
@@ -284,8 +294,8 @@ export function AuthProvider({ children }) {
     setTenantNotice(null);
     channel.current?.postMessage({ type: 'account' });
   };
-  const switchToSuperAdmin = async (password) => {
-    const data = await api('/auth/switch-to-super-admin', { method: 'POST', body: { password } });
+  const switchToSuperAdmin = async (password, code = undefined) => {
+    const data = await api('/auth/switch-to-super-admin', { method: 'POST', body: { password, ...(code ? { code } : {}) } });
     applySession(data);
     setTenantNotice(null);
     channel.current?.postMessage({ type: 'account' });
@@ -308,6 +318,9 @@ export function AuthProvider({ children }) {
     setUser,
     loading,
     login,
+    loginTwoStep,
+    startSession,
+    twoStepRequired,
     logout,
     logoutReason,
     timeoutMinutes,

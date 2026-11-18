@@ -16,6 +16,7 @@ import { SupplierDues } from './SupplierAccount.jsx';
 import { DayClosing, FiguresReport } from './PharmacyFigures.jsx';
 import { SalesByDoctorReport } from './SalesByDoctor.jsx';
 import { MisReports } from './MisReports.jsx';
+import { PharmacyTopics } from './PharmacyTopics.jsx';
 import { DateText } from '../../components/DateText.jsx';
 
 // Pharmacy → Reports (laid out for easy reading, owner 26 Oct 2026): a period with quick choices, the period's numbers
@@ -89,6 +90,7 @@ const PERIOD_VIEWS = ['sales', 'purchases', 'registers', 'figures', 'by-doctor',
 
 const VIEWS = [
   ['alerts', 'Stock alerts'],
+  ['topics', 'All topics'], // 18 Nov 2026: every topic of the pharmacy's list, with where it is
   ['list', 'Report list'], // 13 Nov 2026: every report of the earlier software, printable (MisReports.jsx)
   ['sales', 'Sales & GST'],
   ['purchases', 'Purchases'],
@@ -492,10 +494,13 @@ export function ReportsPage() {
   const reg = useFetch(view === 'registers' ? '/pharmacy/reports/register' : null, { type, from, to });
   const [printing, setPrinting] = useState(false);
   const [exportError, setExportError] = useState(null);
+  // The sales file names patients next to their medicines, so it needs a reason, kept in the audit log (health check M7)
+  const [reason, setReason] = useState('');
   const download = async (what) => {
     setExportError(null);
+    if (what === 'sales' && reason.trim().length < 5) return setExportError('Say why you need this file (at least 5 characters).');
     try {
-      const { blob, name } = await apiFile('/pharmacy/export', { query: { from, to, what } });
+      const { blob, name } = await apiFile('/pharmacy/export', { query: { from, to, what, ...(what === 'sales' ? { reason: reason.trim() } : {}) } });
       downloadFile(blob, name);
     } catch (err) {
       setExportError(err.message);
@@ -582,6 +587,7 @@ export function ReportsPage() {
         {view === 'figures' && <FiguresReport from={from} to={to} />}
         {view === 'day' && <DayClosing />}
         {view === 'by-doctor' && pharmacist && <SalesByDoctorReport from={from} to={to} />}
+        {view === 'topics' && <PharmacyTopics />}
         {view === 'list' && <MisReports from={from} to={to} setFrom={setFrom} setTo={setTo} admin={admin} pharmacist={pharmacist} openDoctorSales={() => go('by-doctor')} />}
 
         {view === 'registers' && (
@@ -617,6 +623,9 @@ export function ReportsPage() {
             <h2 id="rep-export">Export for the accountant</h2>
             <p className="hint">Files that open in Excel, for the period above. They hold patient names: keep them safe. Cancelled purchases and cancelled returns are listed too, marked in the Status column.</p>
             <Alert type="error">{exportError}</Alert>
+            <Field label="Reason for the sales file" id="ph-exp-reason" hint="Needed for Sales with GST, which names patients. Kept in the audit log." keepHint>
+              <input id="ph-exp-reason" value={reason} maxLength={200} placeholder="GST return for the CA" onChange={(e) => setReason(e.target.value)} />
+            </Field>
             <div className="row">
               <button type="button" className="btn btn-secondary" onClick={() => download('sales')}>
                 <Download aria-hidden="true" /> Sales with GST

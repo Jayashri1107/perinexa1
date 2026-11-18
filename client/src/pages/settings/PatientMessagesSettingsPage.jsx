@@ -107,10 +107,17 @@ export function PatientMessagesSettingsPage() {
                 "A check-up or test is due at {'<'}hospital{'>'}. Please call {'<'}phone{'>'} to book." – when something in her care plan (a test, a scan, a vaccination, a check-up) became overdue in
                 the last 6 weeks and nothing is booked. Only from care plans a doctor has approved (Clinic library → To approve);
               </li>
-              <li>"we missed you at your appointment on {'<'}date{'>'}" – the day after a booked appointment nobody came to.</li>
+              <li>"we missed you at your appointment on {'<'}date{'>'}" – the day after a booked appointment nobody came to;</li>
+              <li>
+                for a baby, the day before a vaccination falls due: "{'<'}hospital{'>'}: your child's vaccination ({'<'}vaccines{'>'}) is due on {'<'}date{'>'}. Please call {'<'}phone{'>'} to book."
+                – this one names the vaccines. Not when the baby is already booked or in hospital, and only from care plans a doctor has approved.
+              </li>
             </ul>
             <p className="hint">
-              The last two never say what is due or why. A patient – and a mobile number – gets at most one of them in 14 days, and none while she is in hospital, is already booked or has come,
+              Parents who agreed before 18 Nov 2026 were not told that the vaccination reminder names the vaccines: ask them again.
+            </p>
+            <p className="hint">
+              The check-up and missed-appointment messages never say what is due or why. A patient – and a mobile number – gets at most one of them in 14 days, and none while she is in hospital, is already booked or has come,
               or her record is closed. They are not sent in the evening or at night. A baby's messages go to the number on the baby's own record, only when the agreement is recorded on the baby's
               record. The Marathi and Hindi wording is a draft: have it checked by a fluent speaker before use.{' '}
               {provider

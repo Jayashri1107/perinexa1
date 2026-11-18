@@ -21,3 +21,24 @@ export const safeText = (label, max) =>
     .trim()
     .max(max, `${label} is too long`)
     .refine((t) => !mentionsFetalSex(t), PCPNDT_MESSAGE);
+
+// Fertility treatment (before a pregnancy): the PCPNDT Act also forbids choosing the sex of a child before conception
+// (owner's decision of 17 Nov 2026, health check M6). The pregnancy list above cannot be used here: a fertility plan
+// rightly says "male factor", "male infertility", "sexual health" and a karyotype such as 47,XXY (the male work-up).
+// So this list is narrower: words for a child of one sex, and sex selection itself. DRAFT until the owner has read it.
+export const SEX_SELECTION_WORDS =
+  /\b(?:boys?|girls?|sons?|daughters?|lad(?:ka|ke|ki|kiyan|kiyaan)|lar(?:ka|ke|ki))\b|\b(?:male|female)\s+(?:child|children|baby|babies|issue|offspring|fo?etus(?:es)?|embryos?)\b|\b(?:sex|gender)\s*(?:-\s*)?(?:selection|selective|determination|preference|choice)\b|\bsex\s+of\s+(?:the\s+|a\s+|her\s+)?(?:child|baby|fo?etus|embryos?)\b|\bgender\b/i;
+// The approved library's own phrases (fertility/protocols.js: IVF and donor cautions, fertility preservation)
+const LIBRARY_PHRASES = /\bno sex selection\b|\bmen and boys\b|\bwomen and girls\b/gi;
+export const mentionsSexSelection = (t) => Boolean(t) && SEX_SELECTION_WORDS.test(String(t).replace(LIBRARY_PHRASES, ' '));
+
+export const SEX_SELECTION_MESSAGE =
+  'Please remove words about the sex of a future child – choosing it is not allowed (PCPNDT Act). Clinical words such as “male factor” are fine.';
+
+/** Free text for fertility plans and cycle sheets: trimmed, at most `max` characters, no sex selection. */
+export const fertilityText = (label, max) =>
+  z
+    .string()
+    .trim()
+    .max(max, `${label} is too long`)
+    .refine((t) => !mentionsSexSelection(t), SEX_SELECTION_MESSAGE);

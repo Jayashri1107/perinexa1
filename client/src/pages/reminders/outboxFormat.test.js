@@ -13,6 +13,8 @@ describe('messageAbout', () => {
     // An answer from before kinds were sent reads as an appointment reminder
     expect(messageAbout({ dueOn: '2026-10-02T00:00:00.000Z' })).toBe('Appointment reminder · appointment 2 Oct 2026');
     for (const kind of GENERAL_KINDS) expect(KIND_LABELS[kind]).not.toMatch(/vaccin|scan|blood|pregnan|antenatal/i);
+    // The vaccination reminder (owner, 18 Nov 2026) is the one message that says what is due
+    expect(messageAbout({ kind: 'vaccine_due', dueOn: '2026-11-12T00:00:00.000Z', aboutOn: '2026-11-12T00:00:00.000Z' })).toBe('Vaccination reminder · due 12 Nov 2026');
   });
 });
 
@@ -24,17 +26,21 @@ describe('runNotice', () => {
     );
   });
 
+  it('counts the vaccination reminders', () => {
+    expect(runNotice({ queued: 0, vaccineDue: 2, sent: 2, toSend: 0 })).toBe('Done: 0 new reminders for tomorrow, 2 vaccination reminders; 2 sent, 0 to send by hand.');
+  });
+
   it('says when waiting messages were cancelled, and when a draft care plan held a message back', () => {
     expect(runNotice({ queued: 0, missed: 0, careDue: 0, heldBack: 2, dropped: 1, sent: 0, failed: 0, toSend: 0 })).toBe(
-      'Done: 0 new reminders for tomorrow; 0 sent, 0 to send by hand. 1 waiting message was cancelled as no longer needed. 2 patients have something overdue but got no message: their care plan is still a draft (a doctor approves it in Clinic library → To approve).',
+      'Done: 0 new reminders for tomorrow; 0 sent, 0 to send by hand. 1 waiting message was cancelled as no longer needed. 2 patients have something overdue or a vaccination due but got no message: their care plan is still a draft (a doctor approves it in Clinic library → To approve).',
     );
   });
 
   it('says when the general messages wait for the morning', () => {
     expect(runNotice({ queued: 0, missed: 1, careDue: 1, heldBack: 0, dropped: 0, waiting: 2, sent: 0, failed: 0, toSend: 0 })).toBe(
-      'Done: 0 new reminders for tomorrow, 1 for a missed appointment, 1 for a check-up or test due; 0 sent, 0 to send by hand. 2 messages for a check-up or test due or a missed appointment wait until the morning: these are not sent in the evening or at night.',
+      'Done: 0 new reminders for tomorrow, 1 for a missed appointment, 1 for a check-up or test due; 0 sent, 0 to send by hand. 2 messages for a check-up, test or vaccination, or a missed appointment, wait until the morning: these are not sent in the evening or at night.',
     );
-    expect(runNotice({ queued: 0, waiting: 1, sent: 0, toSend: 0 })).toContain('1 message for a check-up or test due or a missed appointment waits until the morning');
+    expect(runNotice({ queued: 0, waiting: 1, sent: 0, toSend: 0 })).toContain('1 message for a check-up, test or vaccination, or a missed appointment, waits until the morning');
   });
 });
 

@@ -16,6 +16,8 @@ export function NewBillPage() {
   const routed = location.state;
   const [start, setStart] = useState(() => (routed?.patient || routed?.type === 'external' ? routed : null));
   const [n, setN] = useState(0); // a new bill each time someone is chosen
+  // 18 Nov 2026 (the pharmacy's request): medicines scanned on the first page wait here and go on the next bill started
+  const [scanned, setScanned] = useState([]);
 
   // A bill just saved comes back here (this same page) with its print preview: the list shows again. Not on the
   // page's first load (the start above has read it already).
@@ -32,7 +34,8 @@ export function NewBillPage() {
   }, [location.key]);
 
   const choose = (next) => {
-    setStart(next);
+    setStart(scanned.length ? { ...next, scanned } : next);
+    setScanned([]);
     setN((x) => x + 1);
   };
   const back = () => {
@@ -45,13 +48,19 @@ export function NewBillPage() {
     const patient = { id: x.key, fullName: x.name, mrn: x.mrn, doctor: x.doctor ?? '' };
     try {
       const { inpatients } = await api('/pharmacy/inpatients');
-      if (inpatients.some((s) => s.patient.id === x.key)) return navigate('/pharmacy/issue', { state: { patient } });
+      if (inpatients.some((s) => s.patient.id === x.key)) return navigate('/pharmacy/issue', { state: { patient, ...(scanned.length ? { scanned } : {}) } });
     } catch {
       // the counter sale is still right for someone not known to be admitted
     }
     return choose({ patient });
   };
 
-  if (!start) return <InvoicesPage key={`list-${n}`} pick={{ onPick, onWalkIn: () => choose({ type: 'external' }) }} />;
+  const onScan = (m) => {
+    if (!m.active) return { error: `${m.name} is no longer in use (Medicines → Use again).` };
+    if (scanned.some((x) => x.id === m.id)) return `${m.name} is already waiting for the bill.`;
+    setScanned((xs) => [...xs, m]);
+    return `${m.name} will go on the next bill – choose the patient or a walk-in customer.`;
+  };
+  if (!start) return <InvoicesPage key={`list-${n}`} pick={{ onPick, onWalkIn: () => choose({ type: 'external' }), onScan, scanned, clearScanned: () => setScanned([]) }} />;
   return <SellPage key={`bill-${n}`} kind="sale" start={start} fromList onCancel={back} />;
 }
