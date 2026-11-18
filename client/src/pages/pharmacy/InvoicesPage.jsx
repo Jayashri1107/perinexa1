@@ -345,7 +345,7 @@ export function InvoicesPage({ pick = null }) {
                 </div>
               )}
               {/* 18 Nov 2026 (the pharmacy's request): Barcode, Select kit and the kits on the first page */}
-              {pick && (
+              {pick && !person && (
                 <div className="ph-pick-tools">
                   <div className="ph-pick-scan">
                     <BarcodeBox onPick={pick.onScan} />
@@ -499,26 +499,41 @@ function PersonBills({ person, onClose }) {
           ))}
         </div>
       )}
-      {due > 0 && (
-        <div className="ph-dues ph-dues-row" role="status">
-          <span>
-            <Wallet aria-hidden="true" /> <strong>Credit balance:</strong> {money(due)} due on {dues.data.bills.length} {dues.data.bills.length === 1 ? 'bill' : 'bills'} ({dues.data.bills.map((b) => b.number).join(', ')})
-          </span>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSettling(true)}>
-            Settle credit
-          </button>
-        </div>
-      )}
+      {/* 18 Nov 2026: the patient's account with the pharmacy in one box – credit due, and her advance */}
       {person.mrn && (
-        <AdvancePanel
-          patientId={person.key}
-          name={person.name}
-          duePaise={due}
-          onUsed={() => {
-            dues.reload();
-            res.reload();
-          }}
-        />
+        <section className="card ph-account" aria-label="Credit and advance">
+          <div className="ph-account-tile">
+            <span className="ph-account-label">Credit due</span>
+            <strong className={`ph-account-amount${due > 0 ? ' is-due' : ''}`}>{dues.data ? money(due) : '…'}</strong>
+            {due > 0 ? (
+              <StatusPill tone="watch" icon={Wallet}>
+                Due on {dues.data.bills.map((b) => b.number).join(', ')}
+              </StatusPill>
+            ) : (
+              dues.data && (
+                <StatusPill tone="stable" icon={CircleCheck}>
+                  Nothing due
+                </StatusPill>
+              )
+            )}
+            {due > 0 && (
+              <div className="ph-account-actions">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSettling(true)}>
+                  Settle credit
+                </button>
+              </div>
+            )}
+          </div>
+          <AdvancePanel
+            patientId={person.key}
+            name={person.name}
+            duePaise={due}
+            onUsed={() => {
+              dues.reload();
+              res.reload();
+            }}
+          />
+        </section>
       )}
       {settling && (
         <ReceivePayment
@@ -986,23 +1001,24 @@ function AdvancePanel({ patientId, name, duePaise, onUsed }) {
   });
   const left = adv.data?.balancePaise ?? 0;
   return (
-    <div className="ph-advance" aria-label="Pharmacy advance">
-      <span>
-        <strong>Advance:</strong> {adv.data ? money(left) : '…'} left
-      </span>
-      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDoing('deposit')}>
-        Take advance
-      </button>
-      {left > 0 && duePaise > 0 && (
-        <button type="button" className="btn btn-secondary btn-sm" disabled={use.busy} onClick={() => use.send(`/pharmacy/patients/${patientId}/advance/use`, {})}>
-          Use on bills due
+    <div className="ph-account-tile" aria-label="Pharmacy advance">
+      <span className="ph-account-label">Advance left</span>
+      <strong className="ph-account-amount">{adv.data ? money(left) : '…'}</strong>
+      <div className="ph-account-actions">
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDoing('deposit')}>
+          Take advance
         </button>
-      )}
-      {left > 0 && (
-        <button type="button" className="btn btn-link btn-sm" onClick={() => setDoing('refund')}>
-          Refund
-        </button>
-      )}
+        {left > 0 && duePaise > 0 && (
+          <button type="button" className="btn btn-secondary btn-sm" disabled={use.busy} onClick={() => use.send(`/pharmacy/patients/${patientId}/advance/use`, {})}>
+            Use on bills due
+          </button>
+        )}
+        {left > 0 && (
+          <button type="button" className="btn btn-link btn-sm" onClick={() => setDoing('refund')}>
+            Refund
+          </button>
+        )}
+      </div>
       {(use.error || note) && <span className={use.error ? 'field-error' : 'hint'}>{use.error || note}</span>}
       {doing && (
         <AdvanceDialog

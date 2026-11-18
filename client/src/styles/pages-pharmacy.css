@@ -1060,9 +1060,22 @@
 .ph-pick-tools { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-2); }
 .ph-pick-scan { flex: 1 1 260px; min-width: 0; }
 .ph-pick-kit-hint { flex-basis: 100%; margin: 0; }
+/* Reports → All topics (18 Nov 2026): how to use it, a search, then the three groups side by side on a wide screen */
+.ph-topics { display: flex; flex-direction: column; gap: var(--space-3); }
+.ph-topics-intro { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.ph-topics-intro p { flex: 1 1 420px; margin: 0; font-size: 0.875rem; color: var(--slate-600); }
+.ph-topics-find { flex: 0 1 320px; width: 100%; }
+.ph-topics-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: var(--space-3); align-items: start; }
+.ph-topics-group { padding: var(--space-3) var(--space-4); }
+.ph-topics-group h2 { margin: 0 0 var(--space-2); font-size: 1rem; }
 .ph-topic-list { list-style: none; margin: 0; padding: 0; }
-.ph-topic-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--card-border); }
+.ph-topic-list li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); padding: 6px 0; border-bottom: 1px solid var(--card-border); }
 .ph-topic-list li:last-child { border-bottom: 0; }
+.ph-topic-no { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; color: var(--indigo-700); background: var(--mist-100); }
+.ph-topic-text { display: flex; flex-direction: column; min-width: 0; }
+.ph-topic-text strong { font-size: 0.875rem; }
+.ph-topic-text span { font-size: var(--fs-caption); color: var(--slate-600); }
+.ph-topic-none { font-size: var(--fs-caption); color: var(--slate-600); }
 .ph-credit { margin: 0 0 var(--space-2); }
 .ph-credit .is-due { color: var(--status-watch-fg); font-weight: 700; }
 .ph-last-bill { margin: 0 0 var(--space-2); font-size: var(--fs-caption); color: var(--status-stable-fg); font-weight: 600; }
@@ -1089,3 +1102,33 @@
 .ph-kit .field select { width: auto; min-width: 220px; height: 32px; min-height: 0; padding-top: 2px; padding-bottom: 2px; }
 .ph-kit .field :is(.hint, .field-hint, .help) { display: none; }
 .ph-kit > .hint { margin: 0; }
+
+/* 18 Nov 2026: a patient's account with the pharmacy on Sales bill – credit due and advance left side by side */
+.ph-account { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3); padding: var(--space-3); margin-bottom: var(--space-3); }
+.ph-account-tile { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); min-width: 0; padding: var(--space-3); border-radius: var(--radius-md); background: var(--mist-50); }
+.ph-account-label { font-size: var(--fs-label); font-weight: 500; color: var(--slate-600); }
+.ph-account-amount { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.ph-account-amount.is-due { color: var(--status-watch-fg); }
+.ph-account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-1); }
+
+/* 18 Nov 2026: Return stock to a supplier on one screen */
+.sr-new { gap: var(--space-3); }
+.sr-new .bill-section { padding: var(--space-3) var(--space-4); }
+.sr-new .bill-section h2 { margin: 0 0 var(--space-2); font-size: 1rem; }
+.sr-new-head .form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
+.sr-new-head .field { margin: 0; }
+.sr-new-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); align-items: start; }
+.sr-new-body:has(> .sr-new-note) { grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); }
+.sr-new-scroll { max-height: calc(100dvh - 380px); min-height: 160px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.sr-new-scroll .bill-lines { margin: 0; font-size: 0.8125rem; }
+.sr-new-scroll .bill-lines :is(th, td) { padding: 4px 8px; }
+.sr-new-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--mist-50); }
+.sr-new-scroll .bill-price-input, .sr-new-scroll .ph-num { height: 28px; min-height: 0; padding: 2px 6px; }
+.sr-new-note { position: sticky; top: 12px; }
+.sr-new-note .bill-lines { font-size: 0.8125rem; }
+.sr-new .hint { font-size: var(--fs-caption); margin: var(--space-1) 0 0; }
+@media (max-width: 900px) {
+  .sr-new-head .form-grid, .sr-new-body:has(> .sr-new-note) { grid-template-columns: minmax(0, 1fr); }
+  .sr-new-note { position: static; }
+  .sr-new-scroll { max-height: none; }
+}
