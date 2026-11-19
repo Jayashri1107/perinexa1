@@ -1329,6 +1329,38 @@
 .ph-found-list .dt { border-collapse: collapse; }
 .ph-found-list .dt :is(th, td) { border-right: 1px solid var(--border); }
 .ph-found-list .dt :is(th, td):last-child { border-right: 0; }
-.ph-found-list .dt thead th { border-bottom: 1px solid var(--border); color: var(--ink); font-weight: 600; }
+/* The header row as the hospital bill's service table: dark indigo with white headings (19 Nov 2026) */
+.ph-found-list .dt thead th { background: var(--indigo-800); color: var(--on-solid); font-weight: 600; text-transform: none; letter-spacing: 0; border-bottom: 0; border-right-color: var(--indigo-600); }
+.ph-found-list .dt thead th:first-child, .ph-found-list .dt thead th:last-child { border-radius: 0; }
 .ph-found-list .dt tbody tr:nth-child(even) td { background: var(--mist-50); }
 .ph-found-list .dt tbody tr:hover td { background: var(--indigo-100); }
+
+/* 19 Nov 2026 (the developer: "in a single view, no scroll bar"): Add a medicine – four fields a row, small hints */
+.modal:has(.ph-med-grid) { max-width: 1120px; padding: var(--space-6); }
+.ph-med-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 var(--space-3); }
+.ph-med-grid .field { margin-bottom: var(--space-3); }
+.ph-med-grid .field :is(input, select) { height: 36px; min-height: 0; }
+.ph-med-grid .field .hint { margin-top: 2px; font-size: 0.75rem; line-height: 1.3; }
+.modal:has(.ph-med-grid) .row { margin-top: var(--space-3); }
+@media (max-width: 1000px) { .ph-med-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* 19 Nov 2026 (the developer: "redesign this page"): Kits – a search line, then the kits as cards side by side, each with
+   its lines in a small ruled table and the stock beside each line */
+.kit-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.kit-bar .kit-search { flex: 0 1 380px; }
+.kit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: var(--space-4); align-items: start; }
+.kit-card { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); }
+.kit-card.is-stopped { background: var(--mist-50); }
+.kit-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.kit-card-head h2 { margin: 0; font-size: var(--fs-h3); }
+.kit-card-sub { margin: 0; font-size: var(--fs-caption); }
+.kit-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.kit-card .kit-table thead th { padding: 6px 8px; background: var(--indigo-800); color: var(--on-solid); font-weight: 600; text-align: left; white-space: nowrap; border: 0; }
+.kit-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.kit-card .kit-table :is(th, td).num { width: 5.5rem; text-align: right; white-space: nowrap; }
+.kit-table tbody tr:nth-child(even) td { background: var(--mist-50); }
+.kit-table tr.is-short td { color: var(--status-watch-fg); }
+.kit-short-icon { width: 14px; height: 14px; margin-right: 4px; vertical-align: -2px; }
+.kit-card-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: auto; padding-top: var(--space-2); }
+.kit-card-foot .hint { margin: 0; }
+.kit-card-actions { display: inline-flex; gap: var(--space-2); }
