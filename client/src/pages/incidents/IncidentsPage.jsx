@@ -47,7 +47,7 @@ function ReportDialog({ onDone, onCancel }) {
     }
   };
   return (
-    <FormDialog id="inc-report" title="Report an incident" submitLabel="Report" busy={busy} onSubmit={submit} onCancel={onCancel}>
+    <FormDialog id="inc-report" title="Report an incident" submitLabel="Report" busy={busy} onSubmit={submit} onCancel={onCancel} grid>
       <p className="hint">Write what happened, not who is to blame. An incident is never shown on the patient&apos;s record.</p>
       <Alert type="error">{error?.message}</Alert>
       <Field label="When it happened" id="inc-at" error={fe('occurredAt')}>
@@ -59,7 +59,7 @@ function ReportDialog({ onDone, onCancel }) {
       <Pick id="inc-kind" label="Kind of incident" value={f.kind} onChange={set('kind')} options={INCIDENT_KINDS} error={fe('kind')} />
       <Pick id="inc-sev" label="Degree of harm" value={f.severity} onChange={set('severity')} options={SEVERITIES} error={fe('severity')} />
       <Field label="What happened" id="inc-desc" error={fe('description')}>
-        <textarea id="inc-desc" rows={4} maxLength={4000} value={f.description} onChange={set('description')} />
+        <textarea id="inc-desc" rows={3} maxLength={4000} value={f.description} onChange={set('description')} />
       </Field>
       <Field label="What was done at once (optional)" id="inc-now" error={fe('immediateAction')}>
         <textarea id="inc-now" rows={2} maxLength={2000} value={f.immediateAction} onChange={set('immediateAction')} />

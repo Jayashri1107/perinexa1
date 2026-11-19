@@ -5,6 +5,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { toPaise } from '../billing/billingFormat.js';
 import { money, useSend } from './pharmacyUi.jsx';
 import { DateText } from '../../components/DateText.jsx';
+import { usePagedRows } from '../../components/DataTable.jsx';
 
 // PH15 (docs/PHARMACY_BUILD_NOTE.md): the pharmacy's missing reports and the day's closing, on Reports.
 // Counts and amounts only – no patient list. "Use by ward" comes with stock outside the pharmacy (PH13).
@@ -39,6 +40,17 @@ function Table({ caption, head, rows, empty }) {
   );
 }
 
+/** A long list a page at a time (19 Nov 2026, the developer): the rows from items, the app's page bar under it. */
+function PagedTable({ items, renderRow, label, ...table }) {
+  const { shown, pager } = usePagedRows(items, { initial: 25, sizes: [25, 50, 100], label });
+  return (
+    <>
+      <Table {...table} rows={(shown ?? []).map(renderRow)} />
+      {pager}
+    </>
+  );
+}
+
 export function FiguresReport({ from, to }) {
   const res = useFetch('/pharmacy/reports/figures', { from, to });
   const d = res.data;
@@ -51,11 +63,13 @@ export function FiguresReport({ from, to }) {
         <p className="hint">
           Sales before GST, net of returns, less what the stock cost. All medicines: sales {money(d.profit.salesPaise)}, cost {money(d.profit.costPaise)}, profit <strong>{money(d.profit.profitPaise)}</strong>.
         </p>
-        <Table
+        <PagedTable
           caption="Profit by medicine"
+          label="medicines"
           head={[['Medicine'], ['Qty', 1], ['Sales', 1], ['Cost', 1], ['Profit', 1], ['Margin', 1]]}
           empty="No sales in this period."
-          rows={d.profit.rows.slice(0, 50).map((r) => (
+          items={d.profit.rows}
+          renderRow={(r) => (
             <tr key={r.medicineId}>
               <td>{r.name}</td>
               <td className="num">{r.qty}</td>
@@ -64,17 +78,19 @@ export function FiguresReport({ from, to }) {
               <td className="num">{money(r.profitPaise)}</td>
               <td className="num">{r.marginPercent == null ? '—' : `${r.marginPercent}%`}</td>
             </tr>
-          ))}
+          )}
         />
       </section>
       <section className="card bill-section" aria-labelledby="fig-slow">
         <h2 id="fig-slow">Slow and non-moving stock (today)</h2>
         <p className="hint">Usable stock not sold or issued for 90 days (slow) or 180 days (non-moving), at cost: {money(d.nonMoving.valuePaise)}. Expired and held stock is shown apart.</p>
-        <Table
+        <PagedTable
           caption="Slow and non-moving stock"
+          label="medicines"
           head={[['Medicine'], ['Last sold'], ['Qty', 1], ['Value at cost', 1], ['Expired or held', 1]]}
           empty="None – every medicine in stock moved in the last 90 days."
-          rows={d.nonMoving.rows.slice(0, 50).map((r) => (
+          items={d.nonMoving.rows}
+          renderRow={(r) => (
             <tr key={r.medicineId}>
               <td>
                 {r.name}{' '}
@@ -87,7 +103,7 @@ export function FiguresReport({ from, to }) {
               <td className="num">{money(r.valuePaise)}</td>
               <td className="num">{r.heldOrExpiredPaise ? money(r.heldOrExpiredPaise) : '—'}</td>
             </tr>
-          ))}
+          )}
         />
       </section>
       <section className="card bill-section" aria-labelledby="fig-loss">
@@ -100,16 +116,18 @@ export function FiguresReport({ from, to }) {
       <section className="card bill-section" aria-labelledby="fig-out">
         <h2 id="fig-out">Days out of stock</h2>
         <p className="hint">About: worked out from the stock after every change (expired stock still counts as stock). Period: {d.outOfStock.periodDays} days.</p>
-        <Table
+        <PagedTable
           caption="Days out of stock"
+          label="medicines"
           head={[['Medicine'], ['Days out of stock', 1]]}
           empty="No medicine was out of stock in this period."
-          rows={d.outOfStock.rows.slice(0, 50).map((r) => (
+          items={d.outOfStock.rows}
+          renderRow={(r) => (
             <tr key={r.medicineId}>
               <td>{r.name}</td>
               <td className="num">{r.days}</td>
             </tr>
-          ))}
+          )}
         />
       </section>
       <section className="card bill-section" aria-labelledby="fig-rx">

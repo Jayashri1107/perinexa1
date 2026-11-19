@@ -672,3 +672,15 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 .date-text-pick:hover { background: var(--mist-50); color: var(--indigo-700); }
 .date-text-pick svg { width: 16px; height: 16px; }
 .date-text-native { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+
+/* 19 Nov 2026 (the developer: "in a single view, no scroll bar"): a form dialog with its fields two a row (FormDialog grid) */
+.modal.fd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; column-gap: var(--space-4); max-width: 760px; padding: var(--space-6); }
+.fd-grid > :is(h2, p, .alert, fieldset, .row) { grid-column: 1 / -1; }
+.fd-grid > .field:has(textarea) { grid-column: 1 / -1; }
+.fd-grid .field { margin-bottom: var(--space-3); }
+.fd-grid > fieldset { margin-bottom: var(--space-3); }
+.fd-grid > fieldset > .hint { margin: 0; }
+.fd-grid .row { margin-top: var(--space-3); }
+@media (max-width: 719px) { .modal.fd-grid { grid-template-columns: minmax(0, 1fr); } }
+.fd-grid > .field:has(.datetime-input) { grid-column: 1 / -1; }
+.fd-grid > p.hint { margin: 0 0 var(--space-3); }

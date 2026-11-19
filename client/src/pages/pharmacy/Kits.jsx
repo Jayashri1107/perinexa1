@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CircleSlash, PackagePlus, Plus, Trash2 } from 'lucide-react';
+import { CircleAlert, CircleCheck, CircleSlash, PackagePlus, Plus, Trash2 } from 'lucide-react';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Field, StatusPill, useDebounced } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -95,62 +95,123 @@ export function KitsPage({ tabs }) {
   const res = useFetch('/pharmacy-kits');
   const [editing, setEditing] = useState(null); // { kit } – kit null for a new one
   const [flash, setFlash] = useState(null);
+  const [find, setFind] = useState('');
   const stop = useSend(() => {
     setFlash('The kit is stopped.');
     res.reload();
   });
   const d = res.data;
+  const q = find.trim().toLowerCase();
+  const kits = (d?.kits ?? []).filter((k) => !q || k.name.toLowerCase().includes(q) || k.lines.some((l) => medicineText(l.medicine).toLowerCase().includes(q)));
+  // 19 Nov 2026 (the developer: "redesign this page"): the kits as cards side by side – the name, how many lines and
+  // whether all is in stock at the top; the lines in a small table with the stock beside each; the actions at the foot
   return (
     <>
-      <PageHeader tabs={tabs} title="Kits" documentTitle="Kits" help="Named sets of medicines and items (a delivery kit, a caesarean kit). Made by a doctor or the hospital admin; the pharmacist issues from them." />
+      <PageHeader
+        tabs={tabs}
+        title="Kits"
+        documentTitle="Kits"
+        help="Named sets of medicines and items (a delivery kit, a caesarean kit). Made by a doctor or the hospital admin; the pharmacist issues from them."
+        actions={
+          d?.canEdit ? (
+            <button type="button" className="btn btn-primary" onClick={() => setEditing({ kit: null })}>
+              <PackagePlus aria-hidden="true" /> New kit
+            </button>
+          ) : undefined
+        }
+      />
       <div className="pf-content lab-stack">
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
         <Alert type="error">{res.error ?? stop.error}</Alert>
-        {d?.canEdit && (
-          <p>
-            <button type="button" className="btn btn-primary" onClick={() => setEditing({ kit: null })}>
-              <PackagePlus aria-hidden="true" /> New kit
-            </button>
-          </p>
-        )}
         {d && !d.kits.length && <p className="muted">No kits yet. Perinexa ships none: a doctor or the hospital admin makes them.</p>}
-        {(d?.kits ?? []).map((k) => (
-          <section key={k.id} className="card">
-            <h2>
-              {k.name}{' '}
-              {!k.active && (
-                <StatusPill tone="inactive" icon={CircleSlash}>
-                  Stopped
-                </StatusPill>
-              )}
-            </h2>
-            {k.note && <p className="hint">{k.note}</p>}
-            <ul className="plain-list">
-              {k.lines.map((l) => (
-                <li key={l.medicine.id}>
-                  {l.qty} × {medicineText(l.medicine)}
-                  {!l.medicine.active && <span className="muted"> – no longer used</span>}
-                  {'inStock' in l && l.inStock < l.qty && <span className="ph-warn"> In stock: {l.inStock}</span>}
-                </li>
-              ))}
-            </ul>
-            <p className="hint">{k.updatedByName ? `Last changed by ${k.updatedByName}.` : ''}</p>
-            {d.canEdit && (
-              <div className="row">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditing({ kit: k })}>
-                  Change
-                </button>
-                {k.active ? (
-                  <button type="button" className="btn btn-link btn-sm" disabled={stop.busy} onClick={() => stop.send(`/pharmacy-kits/${k.id}`, { name: k.name, note: k.note, active: false, lines: k.lines.map((l) => ({ medicineId: l.medicine.id, qty: l.qty })) }, 'PUT')}>
-                    Stop using
-                  </button>
-                ) : null}
-              </div>
-            )}
-          </section>
-        ))}
+        {d?.kits.length > 0 && (
+          <div className="kit-bar">
+            <input type="search" className="kit-search" aria-label="Find a kit" placeholder="Find a kit, a medicine or an item" value={find} onChange={(e) => setFind(e.target.value)} />
+            <span className="muted">
+              {kits.length} of {d.kits.length} {d.kits.length === 1 ? 'kit' : 'kits'}
+            </span>
+          </div>
+        )}
+        {d?.kits.length > 0 && !kits.length && <p className="muted">No kit matches.</p>}
+        <div className="kit-grid">
+          {kits.map((k) => {
+            const { short } = kitShortfall(k);
+            const counted = k.lines.some((l) => 'inStock' in l);
+            return (
+              <section key={k.id} className={`card kit-card${k.active ? '' : ' is-stopped'}`} aria-labelledby={`kit-${k.id}`}>
+                <header className="kit-card-head">
+                  <h2 id={`kit-${k.id}`}>{k.name}</h2>
+                  <div className="kit-card-pills">
+                    {!k.active ? (
+                      <StatusPill tone="inactive" icon={CircleSlash}>
+                        Stopped
+                      </StatusPill>
+                    ) : counted && short.length > 0 ? (
+                      <StatusPill tone="watch" icon={CircleAlert}>
+                        {short.length} short
+                      </StatusPill>
+                    ) : counted ? (
+                      <StatusPill tone="stable" icon={CircleCheck}>
+                        All in stock
+                      </StatusPill>
+                    ) : null}
+                  </div>
+                </header>
+                <p className="kit-card-sub muted">
+                  {k.lines.length} {k.lines.length === 1 ? 'line' : 'lines'}
+                  {k.note ? ` · ${k.note}` : ''}
+                </p>
+                <table className="kit-table">
+                  <caption className="sr-only">What is in {k.name}</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" className="num">Qty</th>
+                      <th scope="col">Medicine or item</th>
+                      {counted && <th scope="col" className="num">In stock</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {k.lines.map((l) => {
+                      const low = 'inStock' in l && l.medicine.active !== false && l.inStock < l.qty;
+                      return (
+                        <tr key={l.medicine.id} className={low ? 'is-short' : undefined}>
+                          <td className="num tabular">{l.qty}</td>
+                          <td>
+                            {medicineText(l.medicine)}
+                            {l.medicine.active === false && <span className="muted"> – no longer used</span>}
+                          </td>
+                          {counted && (
+                            <td className="num tabular">
+                              {low && <CircleAlert className="kit-short-icon" aria-label="Short" />}
+                              {l.inStock ?? '–'}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <footer className="kit-card-foot">
+                  <span className="hint">{k.updatedByName ? `Last changed by ${k.updatedByName}` : ''}</span>
+                  {d.canEdit && (
+                    <span className="kit-card-actions">
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditing({ kit: k })}>
+                        Change
+                      </button>
+                      {k.active && (
+                        <button type="button" className="btn btn-link btn-sm" disabled={stop.busy} onClick={() => stop.send(`/pharmacy-kits/${k.id}`, { name: k.name, note: k.note, active: false, lines: k.lines.map((l) => ({ medicineId: l.medicine.id, qty: l.qty })) }, 'PUT')}>
+                          Stop using
+                        </button>
+                      )}
+                    </span>
+                  )}
+                </footer>
+              </section>
+            );
+          })}
+        </div>
       </div>
       {editing && (
         <KitDialog

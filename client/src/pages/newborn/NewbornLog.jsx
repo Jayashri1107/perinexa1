@@ -39,7 +39,7 @@ function RecordDialog({ patientId, item, kind, onDone, onCancel }) {
   };
   const fe = (k) => error?.fields?.[k];
   return (
-    <FormDialog id="nb-record" title={item.label} submitLabel="Save" busy={busy} onSubmit={submit} onCancel={onCancel}>
+    <FormDialog id="nb-record" title={item.label} submitLabel="Save" busy={busy} onSubmit={submit} onCancel={onCancel} grid>
       <Alert type="error">{error?.message}</Alert>
       {kind === 'screen' && (
         <Field label="What happened" id="nb-status" error={fe('status')}>
