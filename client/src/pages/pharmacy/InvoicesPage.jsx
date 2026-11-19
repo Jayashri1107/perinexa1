@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BedDouble, Building2, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, FileJson, History, Plus, Printer, RotateCcw, Search, Stethoscope, UserPlus, Users, Wallet } from 'lucide-react';
+import { ArrowLeft, BedDouble, Building2, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, FileJson, History, Plus, Printer, RotateCcw, Search, Stethoscope, UserPlus, Users, Wallet } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -81,8 +81,10 @@ export function InvoicesPage({ pick = null }) {
   const [mrnText, setMrnText] = useState(start ?? '');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  // 19 Nov 2026 (the developer): back from a bill opened here, the same person and bill are shown again – kept in this
+  // page's own browser history entry (as the router keeps its state), never in stored data
   const [person, setPerson] = useState(() =>
-    madeNow ? { key: madeNow.invoice.id, name: madeNow.name, mrn: madeNow.mrn ?? '', type: madeNow.type, billCount: 1, bills: [{ id: madeNow.invoice.id, number: madeNow.invoice.number, at: new Date().toISOString() }], printNow: true } : null,
+    madeNow ? { key: madeNow.invoice.id, name: madeNow.name, mrn: madeNow.mrn ?? '', type: madeNow.type, billCount: 1, bills: [{ id: madeNow.invoice.id, number: madeNow.invoice.number, at: new Date().toISOString() }], printNow: true } : (routed?.salesShown ?? null),
   );
   const go = (d) => {
     setParams({ date: d }, { replace: true });
@@ -136,6 +138,9 @@ export function InvoicesPage({ pick = null }) {
   const [paidCount, setPaidCount] = useState(0);
   // The bill shown on the right: "Open the bill" sits beside Take advance in the left panel (19 Nov 2026)
   const [shownBillId, setShownBillId] = useState(null);
+  useEffect(() => {
+    keepInHistory(person ? { ...person, printNow: false, openBill: shownBillId ?? person.openBill ?? null } : null);
+  }, [person, shownBillId]);
   const typed = (set) => (e) => {
     set(e.target.value);
     setPerson(null);
@@ -477,9 +482,19 @@ export function PeopleFound({ found, people, onPick, onBills = null, onMore = nu
   );
 }
 
+/** Writes the person shown on the Sales bill into this page's browser history entry, so Back finds them again. */
+function keepInHistory(shown) {
+  try {
+    const h = window.history.state ?? {};
+    window.history.replaceState({ ...h, usr: { ...(h.usr ?? {}), salesShown: shown } }, '');
+  } catch {
+    // no history to write to (a test page): nothing is kept
+  }
+}
+
 /** One person's bills: the newest shown as it prints, across the page, the others a click away. */
 function PersonBills({ person, paidCount = 0, onShown, onClose }) {
-  const [billId, setBillId] = useState(person.bills[0].id);
+  const [billId, setBillId] = useState(() => (person.bills.some((b) => b.id === person.openBill) ? person.openBill : person.bills[0].id));
   useEffect(() => {
     onShown?.(billId);
   }, [billId, onShown]);
@@ -1211,6 +1226,7 @@ function InvoiceStatus({ invoice: v }) {
 export function InvoicePage() {
   const { id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { activeMembership } = useAuth();
   const res = useFetch(`/pharmacy/invoices/${id}`);
   const [invoice, setInvoice] = useState(null);
@@ -1231,6 +1247,10 @@ export function InvoicePage() {
         crumb={v.number}
         actions={
           <>
+            {/* 19 Nov 2026 (the developer): Back goes to the page this bill was opened from, as it was */}
+            <button type="button" className="btn btn-link" onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate(desk ? '/pharmacy' : '/pharmacy/invoices'))}>
+              <ArrowLeft aria-hidden="true" /> Back
+            </button>
             {desk && v.lines.some((l) => l.canReturn) && (
               <button type="button" className="btn btn-secondary" onClick={() => setReturning(true)}>
                 <RotateCcw aria-hidden="true" /> Take back
