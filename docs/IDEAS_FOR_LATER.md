@@ -221,5 +221,5 @@ The owner approved going ahead with Android first. What remains is publishing it
 a test build on a phone; the signing (upload) key kept out of git; a 1024-pixel logo; a privacy policy address;
 patients deleting their own portal account (a Google Play rule for apps where people can sign up); the Google Play
 organisation account and its forms (data safety, health apps, a sample login for the reviewers) – deleting an account:
-plan in `docs/ACCOUNT_DELETION_PLAN.md` (19 Nov 2026, waiting for the owner's answers). Real patients only
+built on branch `account-deletion` (19 Nov 2026, `docs/ACCOUNT_DELETION_PLAN.md`; the owner to confirm the answers). Real patients only
 after the go-live checklist, as for the website.

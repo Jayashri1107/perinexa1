@@ -1,8 +1,29 @@
 # Patients deleting their own portal account – plan (19 Nov 2026)
 
-**Status: plan only, nothing built.** Needed before the Android app goes on Google Play (`mobile/README.md`,
-`docs/IDEAS_FOR_LATER.md` → "Perinexa Android app"). It needs the owner's answers in section 5 and the developer's
-agreement as an exception to the feature freeze (it is a store requirement, not a new feature idea).
+**Status: built 19 Nov 2026 on branch `account-deletion`, with the recommended answer to each question in section 5 –
+waiting for the owner to confirm them, and for the developer to read and merge it.** Needed before the Android app
+goes on Google Play (`mobile/README.md`, `docs/IDEAS_FOR_LATER.md` → "Perinexa Android app"). Built at the request of
+the person at the keyboard as an exception to the feature freeze (a store requirement, not a new feature idea).
+
+**What was built:**
+- **Her side:** Portal → My profile → My details → **Delete my account** (`PortalProfile.jsx`, `DeleteAccount`): what is
+  deleted and what the hospital keeps, then her password (an account with an email) or an OTP to her mobile; done, she
+  lands on the sign-in page with "Your account is deleted". Words in English, Marathi and Hindi (Marathi and Hindi DRAFT,
+  `docs/TRANSLATIONS_TO_CHECK.md`). Not shown to a patient signed in with a paper code (no account of hers).
+- **Server:** `POST /api/portal/account/delete/otp` and `POST /api/portal/account/delete` (`routes/portalSignup.js`,
+  `eraseAccount`): wrong tries count towards the same 3-tries lock as signing in; the personal fields are unset, status
+  `deleted` with a `deleted` stamp (`models/PatientAccount.js`); every portal access of her record and of the account
+  is revoked; audit `PORTAL_ACCOUNT_DELETED` (ids only) and `PORTAL_ACCOUNT_DELETE_REFUSED`.
+- **Reception (question 5):** Patients → Online sign-ups → Recently handled → **Delete account**, with "How you checked
+  who she is" (`POST /api/patient-accounts/:id/delete`). Reception, doctors and RMOs – the people who already approve
+  sign-ups – rather than the hospital admin, who does not see sign-ups. A deleted account shows as "Account deleted, by
+  the patient / by <name>", with no name or contact details.
+- **Tests:** `server/tests/portal-signup.test.js` → "deleting her account" (erasing, signing out on two phones, the record
+  untouched, signing up again, OTP, the lock, a paper code, reception, another hospital); `portal.test.jsx` (the words).
+
+**Not done yet:** a *pending* account cannot sign in, so it has no in-app button – reception rejects it, then deletes it
+from Recently handled; the web page **perinexa.com/delete-account** and the privacy-policy section (section 4, website
+repository); not tried on a phone.
 
 ## 1. Why
 

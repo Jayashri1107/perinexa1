@@ -272,6 +272,8 @@ export function MyCare({ data, booking, onChanged, onSignOut, onLanguage = null,
           <ProfilePage
             lang={lang}
             canChangePassword={Boolean(data.canChangePassword)}
+            canDeleteAccount={Boolean(data.canDeleteAccount)}
+            onAccountDeleted={() => onSignOut?.('deleted')}
             onPasswordDone={() => setSection('home')}
             plan={data.plan ? <HomeCards data={data} booking={null} onChanged={onChanged} lang={lang} withBooking={false} withAppointment={false} /> : null}
           />
@@ -446,7 +448,7 @@ export function PortalPage() {
     };
   }, [hospitalKey]);
   const [state, setState] = useState({ step: 'loading', recorded: null }); // loading | signin | in
-  const [notice, setNotice] = useState(null); // 'timedOut' | 'signedOut'
+  const [notice, setNotice] = useState(null); // 'timedOut' | 'signedOut' | 'accountDeleted'
   const [chosen, setChosen] = useState(rememberedPortalLanguage); // the language chosen on this phone or computer
   const choose = (l) => {
     setChosen(l);
@@ -476,13 +478,15 @@ export function PortalPage() {
   }, [state]);
   // Signing out (owner, 17 Oct 2026): from her own account, back to Perinexa's sign-in page (Patient, her hospital
   // chosen) saying so; with a paper code, the code sign-in page here, saying so
-  const signOut = async () => {
-    await portal('/logout', { method: 'POST' }).catch(() => {});
+  // how: 'deleted' – she has just deleted her account (the server already ended the session)
+  const signOut = async (how) => {
+    const deleted = how === 'deleted';
+    if (!deleted) await portal('/logout', { method: 'POST' }).catch(() => {});
     if (hospitalKey) {
-      navigate('/login#patient', { replace: true, state: { patientSignedOut: { key: hospitalKey } } });
+      navigate('/login#patient', { replace: true, state: { patientSignedOut: { key: hospitalKey, ...(deleted ? { deleted: true } : {}) } } });
       return;
     }
-    setNotice('signedOut');
+    setNotice(deleted ? 'accountDeleted' : 'signedOut');
     setState(signInState);
   };
   return (

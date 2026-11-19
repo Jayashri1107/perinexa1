@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CircleCheck, CircleX, Clock, ScanLine, Send, UserRound } from 'lucide-react';
+import { CircleCheck, CircleX, Clock, ScanLine, Send, Trash2, UserRound } from 'lucide-react';
 import { Alert, Field, StatusPill, formatDate } from '../../components/ui.jsx';
 import { ChangePassword } from './PortalAccount.jsx';
 import { RecordsTab } from './PortalRecords.jsx';
@@ -11,7 +11,7 @@ import { asName } from '../../personName.js';
 // My profile (owner, 19 Oct 2026): her details – the contact details she changes herself, and a request to reception
 // for her name, age, mobile or email (reception checks who she is) – and, in tabs, her visits, care plan, sonography
 // reports, lab reports and prescriptions (the same rules as their own pages: signed or reviewed only, as on paper),
-// and her password.
+// and her password. At the end of My details: deleting her account (19 Nov 2026).
 
 export const PROFILE_TABS = ['details', 'visits', 'plan', 'scans', 'lab', 'prescriptions', 'password'];
 
@@ -30,7 +30,7 @@ function useProfile() {
 const fieldErrors = (err) => err?.fields ?? {};
 
 /** Her details: what the hospital has, the contact details she changes, and a request for the rest. */
-function Details({ lang }) {
+function Details({ lang, canDeleteAccount = false, withPassword = false, onAccountDeleted }) {
   const w = accountWords(lang);
   const h = w.home;
   const t = w.myProfile;
@@ -203,7 +203,108 @@ function Details({ lang }) {
           </form>
         )}
       </section>
+
+      {canDeleteAccount && <DeleteAccount lang={lang} hospital={data.hospital} withPassword={withPassword} onDeleted={onAccountDeleted} />}
     </div>
+  );
+}
+
+/**
+ * Delete my account (Google Play rule, 19 Nov 2026 – docs/ACCOUNT_DELETION_PLAN.md): what goes and what the hospital
+ * keeps, then her password (an account with an email) or an OTP to her mobile. Done: she is signed out.
+ */
+export function DeleteAccount({ lang, hospital, withPassword, onDeleted }) {
+  const w = accountWords(lang);
+  const t = w.deleteAccount;
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [sent, setSent] = useState(null); // { sentTo, practiceOtp? }
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState(null);
+  const reset = () => {
+    setOpen(false);
+    setPassword('');
+    setOtp('');
+    setSent(null);
+    setProblem(null);
+  };
+  const sendOtp = async () => {
+    setBusy(true);
+    setProblem(null);
+    try {
+      setSent(await portal('/account/delete/otp', { method: 'POST', body: {} }));
+    } catch (err) {
+      setProblem(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const confirm = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setProblem(null);
+    try {
+      await portal('/account/delete', { method: 'POST', body: withPassword ? { password } : { otp } });
+      onDeleted?.();
+    } catch (err) {
+      setProblem(err);
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="card portal-card" aria-labelledby="pp-delete">
+      <h2 id="pp-delete">
+        <Trash2 aria-hidden="true" /> {t.title}
+      </h2>
+      <p>{t.lead}</p>
+      <p>{t.keeps(hospital)}</p>
+      <p className="hint">{t.again}</p>
+      {!open && (
+        <div className="row">
+          <button type="button" className="btn btn-secondary" onClick={() => setOpen(true)}>
+            {t.start}
+          </button>
+        </div>
+      )}
+      {open && (
+        <form onSubmit={confirm} noValidate>
+          <Alert type="error">{problem ? portalError(problem, lang) : null}</Alert>
+          {withPassword ? (
+            <Field label={t.confirmPassword} id="pp-delete-password">
+              <input id="pp-delete-password" type="password" autoComplete="current-password" maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)} />
+            </Field>
+          ) : !sent ? (
+            <>
+              <p className="hint">{t.confirmOtp}</p>
+              <div className="row">
+                <button type="button" className="btn btn-secondary" onClick={sendOtp} disabled={busy}>
+                  {t.sendOtp}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="hint">{t.otpSentTo(sent.sentTo)}</p>
+              {sent.practiceOtp && <Alert type="info">{w.practiceOtp(sent.practiceOtp)}</Alert>}
+              <Field label={w.otp} id="pp-delete-otp">
+                <input id="pp-delete-otp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+              </Field>
+            </>
+          )}
+          <div className="row">
+            {(withPassword || sent) && (
+              <button type="submit" className="btn btn-danger" disabled={busy || (withPassword ? !password : otp.length !== 6)}>
+                {busy ? t.deleting : t.confirm}
+              </button>
+            )}
+            <button type="button" className="btn btn-link" onClick={reset} disabled={busy}>
+              {t.cancel}
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
   );
 }
 
@@ -264,9 +365,10 @@ function Scans({ lang }) {
 
 /**
  * My profile, with its tabs. plan: her care plan as the Home page shows it (rendered by the caller).
- * canChangePassword: her own account with an email.
+ * canChangePassword: her own account with an email. canDeleteAccount: her own account (not a paper code);
+ * onAccountDeleted: after it is deleted (she is signed out).
  */
-export function ProfilePage({ lang, plan, canChangePassword, onPasswordDone }) {
+export function ProfilePage({ lang, plan, canChangePassword, canDeleteAccount = false, onAccountDeleted, onPasswordDone }) {
   const t = accountWords(lang).myProfile;
   const tabs = PROFILE_TABS.filter((k) => k !== 'password' || canChangePassword);
   const [tab, setTab] = useState('details');
@@ -279,7 +381,7 @@ export function ProfilePage({ lang, plan, canChangePassword, onPasswordDone }) {
           </button>
         ))}
       </div>
-      {tab === 'details' && <Details lang={lang} />}
+      {tab === 'details' && <Details lang={lang} canDeleteAccount={canDeleteAccount} withPassword={canChangePassword} onAccountDeleted={onAccountDeleted} />}
       {tab === 'visits' && <RecordsTab tab="visits" lang={lang} />}
       {tab === 'plan' && (plan ?? <p className="muted">{t.noPlan}</p>)}
       {tab === 'scans' && <Scans lang={lang} />}

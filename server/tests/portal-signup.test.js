@@ -487,3 +487,118 @@ describe('her records in the portal', () => {
     for (const kind of ['prescriptions', 'visits', 'lab', 'bills', 'summary', 'appointments', 'profile', 'scans']) expect((await request(app).get(`/api/portal/records/${kind}`)).status).toBe(401);
   });
 });
+
+// Deleting a portal account (Google Play rule, 19 Nov 2026 – docs/ACCOUNT_DELETION_PLAN.md): she deletes it herself
+// after her password or an OTP, or reception deletes it when she cannot sign in. Everything she typed is erased; her
+// hospital record stays untouched; every portal session of her record ends; she may sign up again.
+describe('deleting her account', () => {
+  const PERSONAL = ['fullName', 'ageYears', 'mobile', 'email', 'passwordHash', 'address', 'careType', 'lmpSaid', 'otp', 'reviewed'];
+
+  async function signedIn() {
+    const key = await signupOn();
+    const p = await register();
+    await signUp(key);
+    await approve(await waitingId(), p.id);
+    const agent = request.agent(app);
+    expect((await passwordSignIn(agent, key)).status).toBe(200);
+    return { key, p, agent };
+  }
+
+  it('with her password: erases her details, signs her out everywhere, leaves her record; she can sign up again', async () => {
+    const { key, p, agent } = await signedIn();
+    const other = request.agent(app);
+    expect((await passwordSignIn(other, key)).status).toBe(200); // a second phone
+    expect((await agent.get('/api/portal/me')).body.canDeleteAccount).toBe(true);
+    const before = await Patient.findOne({ tenantId: hospital._id, _id: p.id }).lean();
+
+    expect((await agent.post('/api/portal/account/delete').send({})).status).toBe(400);
+    expect((await agent.post('/api/portal/account/delete').send({ password: 'NotRight99' })).status).toBe(401);
+    expect(await PatientAccount.countDocuments({ tenantId: hospital._id, status: 'approved' })).toBe(1);
+
+    const res = await agent.post('/api/portal/account/delete').send({ password: SIGNUP.password });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const stub = await PatientAccount.findOne({ tenantId: hospital._id }).lean();
+    expect(stub).toMatchObject({ status: 'deleted', deleted: { by: 'patient' } });
+    expect(String(stub.patientId)).toBe(p.id);
+    for (const k of PERSONAL) expect(stub[k] ?? null, k).toBeNull();
+    expect(JSON.stringify(stub)).not.toMatch(/Sample Mother|9876543210|sample\.mother|Sample Road/);
+    // signed out on both phones; she can no longer sign in
+    expect((await agent.get('/api/portal/me')).status).toBe(401);
+    expect((await other.get('/api/portal/me')).status).toBe(401);
+    expect((await passwordSignIn(request.agent(app), key)).status).toBe(401);
+    // her hospital record is not touched
+    const after = await Patient.findOne({ tenantId: hospital._id, _id: p.id }).lean();
+    expect(after.fullName).toBe(before.fullName);
+    expect(after.phone).toBe(before.phone);
+    // reception sees only that it was deleted, and when
+    const handled = (await (await as('reception')).get('/api/patient-accounts').query({ status: 'handled' })).body.accounts;
+    expect(handled).toEqual([expect.objectContaining({ status: 'deleted', deleted: expect.objectContaining({ by: 'patient' }) })]);
+    expect(JSON.stringify(handled)).not.toContain('9876543210');
+    // the audit log has ids only
+    const log = await AuditLog.findOne({ action: 'PORTAL_ACCOUNT_DELETED' }).lean();
+    expect(log.details).toMatchObject({ accountId: String(stub._id), by: 'patient' });
+    expect(JSON.stringify(log)).not.toMatch(/Sample Mother|9876543210/);
+    // she may sign up again with the same mobile and email
+    expect((await signUp(key)).status).toBe(201);
+    expect(await PatientAccount.countDocuments({ tenantId: hospital._id, status: 'pending' })).toBe(1);
+  });
+
+  it('without an email: confirmed with an OTP; a wrong OTP refuses', async () => {
+    const key = await signupOn();
+    const p = await register();
+    await signUp(key, { email: '', password: undefined });
+    await approve(await waitingId(), p.id);
+    const agent = request.agent(app);
+    const sent = await agent.post(`/api/portal/h/${key}/otp`).send({ mobile: '9876543210' });
+    expect((await agent.post(`/api/portal/h/${key}/otp/verify`).send({ mobile: '9876543210', otp: sent.body.practiceOtp })).status).toBe(200);
+    expect((await agent.post('/api/portal/account/delete').send({ password: 'Sample1234' })).status).toBe(401);
+    const otp = await agent.post('/api/portal/account/delete/otp').send({});
+    expect(otp.status, JSON.stringify(otp.body)).toBe(200);
+    expect(otp.body).toMatchObject({ sentTo: '******3210', practiceOtp: expect.stringMatching(/^\d{6}$/) });
+    const bad = otp.body.practiceOtp === '000000' ? '111111' : '000000';
+    expect((await agent.post('/api/portal/account/delete').send({ otp: bad })).status).toBe(401);
+    expect((await agent.post('/api/portal/account/delete').send({ otp: otp.body.practiceOtp })).status).toBe(200);
+    expect((await PatientAccount.findOne({ tenantId: hospital._id }).lean()).status).toBe('deleted');
+    expect((await agent.get('/api/portal/me')).status).toBe(401);
+  });
+
+  it('three wrong passwords lock it, as signing in does', async () => {
+    const { agent } = await signedIn();
+    for (let i = 0; i < 2; i += 1) expect((await agent.post('/api/portal/account/delete').send({ password: 'NotRight99' })).status).toBe(401);
+    expect((await agent.post('/api/portal/account/delete').send({ password: 'NotRight99' })).body.error.code).toBe('PORTAL_LOCKED');
+    expect((await agent.post('/api/portal/account/delete').send({ password: SIGNUP.password })).body.error.code).toBe('PORTAL_LOCKED');
+    expect((await PatientAccount.findOne({ tenantId: hospital._id }).lean()).status).toBe('approved');
+  });
+
+  it('a paper-code session has no account to delete; no session: 401', async () => {
+    expect((await request(app).post('/api/portal/account/delete').send({ password: 'x' })).status).toBe(401);
+    await settings({});
+    const p = await register();
+    const code = (await (await as('reception')).post(`/api/patients/${p.id}/portal-access`)).body.code;
+    const agent = request.agent(app);
+    expect((await agent.post('/api/portal/login').send({ code, digits: '3210' })).status).toBe(200);
+    expect((await agent.get('/api/portal/me')).body.canDeleteAccount).toBe(false);
+    expect((await agent.post('/api/portal/account/delete').send({ password: 'x' })).body.error.code).toBe('NO_ACCOUNT');
+  });
+
+  it('reception deletes it for a patient who cannot sign in, writing how they checked; never another hospital', async () => {
+    const { p, agent } = await signedIn();
+    const id = (await PatientAccount.findOne({ tenantId: hospital._id }).lean())._id.toString();
+    const how = { reason: 'Checked her Aadhaar at the desk' };
+    expect((await (await as('lab')).post(`/api/patient-accounts/${id}/delete`).send(how)).status).toBe(403);
+    expect((await (await as('reception')).post(`/api/patient-accounts/${id}/delete`).send({ reason: 'x' })).status).toBe(400);
+    // another hospital's reception: not found
+    const otherHospital = await createTenant('Other Hospital');
+    const outsider = await createUser({ name: 'Other reception' });
+    await addMember(outsider, otherHospital, 'receptionist');
+    expect((await (await loginAs(outsider, { app })).post(`/api/patient-accounts/${id}/delete`).send(how)).status).toBe(404);
+    expect((await PatientAccount.findOne({ tenantId: hospital._id, _id: id }).lean()).status).toBe('approved');
+
+    const res = await (await as('reception')).post(`/api/patient-accounts/${id}/delete`).send(how);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.account).toMatchObject({ status: 'deleted', deleted: { by: 'staff', byName: 'Sample reception', reason: how.reason } });
+    expect((await agent.get('/api/portal/me')).status).toBe(401);
+    expect((await Patient.findOne({ tenantId: hospital._id, _id: p.id }).lean()).fullName).toBeTruthy();
+    expect((await (await as('reception')).post(`/api/patient-accounts/${id}/delete`).send(how)).body.error.code).toBe('HANDLED');
+  });
+});
