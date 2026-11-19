@@ -1099,7 +1099,8 @@ function MedicineDialog({ medicine, lists, onClose, onDone }) {
   return (
     <Modal id="ph-med" title={medicine ? `Change ${medicine.name}` : 'Add a medicine'} onClose={onClose} wide>
       <Alert type="error">{s.error}</Alert>
-      <div className="form-grid">
+      {/* 19 Nov 2026 (the developer: "in a single view, no scroll bar"): four fields a row in a wider window */}
+      <div className="form-grid ph-med-grid">
         <Field label="Brand name (as on the pack)" id="med-name" error={s.fields.name}>
           <input id="med-name" value={m.name} maxLength={120} onChange={f('name')} autoFocus />
         </Field>

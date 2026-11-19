@@ -1,14 +1,16 @@
 import { useDialogFocus } from '../../components/ui.jsx';
 
 // A small form in a dialog (Clinical Requirements Group A pages): a title, the fields, one primary button and Cancel.
-export function FormDialog({ id, title, children, submitLabel, busy = false, onSubmit, onCancel }) {
+// grid (19 Nov 2026, the developer: "in a single view, no scroll bar"): a wider dialog with the fields two a row; a
+// fieldset, a note, a text box and the buttons take the whole row
+export function FormDialog({ id, title, children, submitLabel, busy = false, onSubmit, onCancel, grid = false }) {
   const ref = useDialogFocus(onCancel);
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <form
         ref={ref}
         tabIndex={-1}
-        className="modal"
+        className={grid ? 'modal fd-grid' : 'modal'}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${id}-title`}
