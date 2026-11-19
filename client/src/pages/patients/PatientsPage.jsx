@@ -27,6 +27,9 @@ import { ServiceChargeDialog } from '../billing/ServiceChargeDialog.jsx';
 // history – so going back to the list keeps it. Only for the same person and hospital; gone after a reload.
 let lastSearch = { key: null, text: '' };
 
+// "Pregnant · 10 w 0 d" breaks only at the dots, never inside "10 w 0 d" (a narrow Care now column, 19 Nov 2026)
+const keepTogether = (text) => String(text ?? '').split(' · ').map((part) => part.replace(/ /g, ' ')).join(' · ');
+
 export function PatientsPage() {
   const { user, activeMembership } = useAuth();
   const navigate = useNavigate();
@@ -120,9 +123,11 @@ export function PatientsPage() {
       key: 'now',
       header: 'Care now',
       sortKey: 'pregnancy.effectiveEdd',
+      // may wrap onto a second line, so the row fits a laptop screen with the quick actions in view (19 Nov 2026)
+      className: 'wrap-cell',
       render: (p) => (
         <>
-          <span className="pt-now">{careNowText(p)}</span>
+          <span className="pt-now">{keepTogether(careNowText(p))}</span>
           {p.careType === 'antenatal' && p.pregnancy?.effectiveEdd && <div className="cell-sub">Due {formatDate(p.pregnancy.effectiveEdd)}</div>}
         </>
       ),

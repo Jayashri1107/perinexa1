@@ -85,13 +85,27 @@ export function TemplatesPage() {
       ),
     },
     { key: 'type', header: 'Care', width: 120, render: (t) => CARE_TYPE_TEMPLATE_LABELS[t.careType] },
-    { key: 'owner', header: 'Kind', width: 200, render: (t) => <KindCell template={t} meId={user.id} /> },
+    { key: 'owner', header: 'Kind', width: 160, render: (t) => <KindCell template={t} meId={user.id} /> },
     { key: 'status', header: 'Status', width: 150, render: (t) => <TemplateStatusBadge template={t} /> },
     { key: 'items', header: 'Items', width: 80, align: 'right', render: (t) => t.itemCount },
     // Current plans built from it (a count only): active or paused plans of records in use
     { key: 'used', header: 'Current plans', width: 120, align: 'right', render: (t) => <span className="tabular">{t.usedBy ?? 0}</span> },
-    { key: 'approved', header: 'Approved by', width: 220, render: (t) => <ApprovedBy template={t} /> },
-    { key: 'updated', header: 'Last changed', width: 170, render: (t) => formatDateTime(t.updatedAt) },
+    { key: 'approved', header: 'Approved by', width: 170, render: (t) => <ApprovedBy template={t} /> },
+    // the date, with the time under it – the table fits a laptop screen (19 Nov 2026)
+    {
+      key: 'updated',
+      header: 'Last changed',
+      width: 120,
+      render: (t) => {
+        const [day, time] = formatDateTime(t.updatedAt).split(', ');
+        return (
+          <>
+            {day}
+            {time && <div className="cell-sub tabular">{time}</div>}
+          </>
+        );
+      },
+    },
   ];
 
   const anyDraft = data?.templates.some((t) => t.kind === 'standard' && t.status === 'draft');
