@@ -1141,13 +1141,16 @@
 .ph-kit .field :is(.hint, .field-hint, .help) { display: none; }
 .ph-kit > .hint { margin: 0; }
 
-/* 18 Nov 2026: a patient's account with the pharmacy on Sales bill – credit due and advance left side by side */
-.ph-account { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3); padding: var(--space-3); margin-bottom: var(--space-3); }
-.ph-account-tile { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); min-width: 0; padding: var(--space-3); border-radius: var(--radius-md); background: var(--mist-50); }
-.ph-account-label { font-size: var(--fs-label); font-weight: 500; color: var(--slate-600); }
-.ph-account-amount { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
-.ph-account-amount.is-due { color: var(--status-watch-fg); }
-.ph-account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-1); }
+/* 19 Nov 2026: a patient's credit due and advance left, under the dates in the Sales bill's left panel – a blue band */
+.ph-acct { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 2px; margin-top: var(--space-1); padding: var(--space-2); border-radius: var(--radius-md); background: var(--status-due-bg); }
+.ph-acct-adv { display: flex; flex-direction: column; gap: 2px; padding-top: var(--space-1); border-top: 1px solid var(--surface); }
+.ph-acct-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--space-2); }
+.ph-acct-label { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 500; color: var(--ink); }
+.ph-acct-label svg, .ph-acct-note svg { width: 14px; height: 14px; color: var(--status-due-fg); }
+.ph-acct-amount { margin-left: auto; font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--status-due-fg); }
+.ph-acct-note { display: inline-flex; align-items: center; gap: 4px; margin: 0; font-size: 0.75rem; color: var(--status-due-fg); overflow-wrap: anywhere; }
+.ph-acct-more { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+.ph-acct .ph-acct-act { min-height: 0; padding: 0; font-size: 0.75rem; }
 
 /* 18 Nov 2026: Return stock to a supplier on one screen */
 .sr-new { gap: var(--space-3); }

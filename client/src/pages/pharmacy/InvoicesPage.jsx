@@ -132,6 +132,8 @@ export function InvoicesPage({ pick = null }) {
     return `Bill ${madeNow.invoice.number} saved${how ? ` – ${how}` : ''}.`;
   });
   const [opening, setOpening] = useState(null);
+  // A payment taken in the left panel (credit settled, advance used): the bill shown reloads
+  const [paidCount, setPaidCount] = useState(0);
   const typed = (set) => (e) => {
     set(e.target.value);
     setPerson(null);
@@ -349,6 +351,8 @@ export function InvoicesPage({ pick = null }) {
                     Clear dates
                   </button>
                 )}
+                {/* 19 Nov 2026 (the pharmacy's request): the patient's credit due and advance under the dates, not in cards */}
+                {person?.mrn && <PersonAccount key={person.key} person={person} onPaid={() => setPaidCount((n) => n + 1)} />}
               </div>
             </section>
             <div className="ph-sold-results">
@@ -381,7 +385,7 @@ export function InvoicesPage({ pick = null }) {
                 </div>
               )}
               {person ? (
-                <PersonBills key={person.key} person={person} onClose={closePerson} />
+                <PersonBills key={person.key} person={person} paidCount={paidCount} onClose={closePerson} />
               ) : looking ? (
                 <PeopleFound
                   found={found}
@@ -468,15 +472,16 @@ export function PeopleFound({ found, people, onPick, onBills = null, onMore = nu
 }
 
 /** One person's bills: the newest shown as it prints, across the page, the others a click away. */
-function PersonBills({ person, onClose }) {
+function PersonBills({ person, paidCount = 0, onClose }) {
   const [billId, setBillId] = useState(person.bills[0].id);
   const [printing, setPrinting] = useState(false);
-  const [settling, setSettling] = useState(false);
   const res = useFetch(`/pharmacy/invoices/${billId}`);
-  // 18 Nov 2026: what a registered patient still owes the pharmacy, settled here in one payment
-  const dues = useFetch(person.mrn ? `/pharmacy/patients/${person.key}/dues` : null);
-  const due = dues.data?.duePaise ?? 0;
   const v = res.data?.invoice;
+  // A payment taken in the left panel: the bill shown here shows it
+  const reloadBill = res.reload;
+  useEffect(() => {
+    if (paidCount) reloadBill();
+  }, [paidCount, reloadBill]);
   // A bill just made on Sold: its print preview opens by itself, once
   const printedNow = useRef(false);
   useEffect(() => {
@@ -511,53 +516,6 @@ function PersonBills({ person, onClose }) {
             </button>
           ))}
         </div>
-      )}
-      {/* 18 Nov 2026: the patient's account with the pharmacy in one box – credit due, and her advance */}
-      {person.mrn && (
-        <section className="card ph-account" aria-label="Credit and advance">
-          <div className="ph-account-tile">
-            <span className="ph-account-label">Credit due</span>
-            <strong className={`ph-account-amount${due > 0 ? ' is-due' : ''}`}>{dues.data ? money(due) : '…'}</strong>
-            {due > 0 ? (
-              <StatusPill tone="watch" icon={Wallet}>
-                Due on {dues.data.bills.map((b) => b.number).join(', ')}
-              </StatusPill>
-            ) : (
-              dues.data && (
-                <StatusPill tone="stable" icon={CircleCheck}>
-                  Nothing due
-                </StatusPill>
-              )
-            )}
-            {due > 0 && (
-              <div className="ph-account-actions">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSettling(true)}>
-                  Settle credit
-                </button>
-              </div>
-            )}
-          </div>
-          <AdvancePanel
-            patientId={person.key}
-            name={person.name}
-            duePaise={due}
-            onUsed={() => {
-              dues.reload();
-              res.reload();
-            }}
-          />
-        </section>
-      )}
-      {settling && (
-        <ReceivePayment
-          settle={{ patientId: person.key, name: person.name, duePaise: due, count: dues.data.bills.length }}
-          onClose={() => setSettling(false)}
-          onDone={() => {
-            setSettling(false);
-            dues.reload();
-            res.reload();
-          }}
-        />
       )}
       {person.billCount > person.bills.length && (
         <p className="hint">
@@ -998,6 +956,62 @@ function BusinessBuyer({ invoice: v, einvoice }) {
   );
 }
 
+/**
+ * The patient's account with the pharmacy (18 Nov 2026; under the dates in the left panel since 19 Nov 2026): credit
+ * due on her bills, settled in one payment, and her advance.
+ */
+function PersonAccount({ person, onPaid }) {
+  const [settling, setSettling] = useState(false);
+  const dues = useFetch(`/pharmacy/patients/${person.key}/dues`);
+  const due = dues.data?.duePaise ?? 0;
+  return (
+    <section className="ph-acct" aria-label="Credit and advance">
+      <div className="ph-acct-row">
+        <span className="ph-acct-label">
+          <Wallet aria-hidden="true" /> Credit due
+        </span>
+        <strong className="ph-acct-amount">{dues.data ? money(due) : '…'}</strong>
+        {due > 0 && (
+          <button type="button" className="btn btn-link btn-sm ph-acct-act" onClick={() => setSettling(true)}>
+            Settle credit
+          </button>
+        )}
+      </div>
+      {dues.data && (
+        <p className="ph-acct-note">
+          {due > 0 ? (
+            <>Due on {dues.data.bills.map((b) => b.number).join(', ')}</>
+          ) : (
+            <>
+              <CircleCheck aria-hidden="true" /> Nothing due
+            </>
+          )}
+        </p>
+      )}
+      <AdvancePanel
+        patientId={person.key}
+        name={person.name}
+        duePaise={due}
+        onUsed={() => {
+          dues.reload();
+          onPaid();
+        }}
+      />
+      {settling && (
+        <ReceivePayment
+          settle={{ patientId: person.key, name: person.name, duePaise: due, count: dues.data.bills.length }}
+          onClose={() => setSettling(false)}
+          onDone={() => {
+            setSettling(false);
+            dues.reload();
+            onPaid();
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
 /** A bill on credit paid later (13 Nov 2026): how, how much (what is due by default) and the reference. */
 /**
  * Pharmacy advance (18 Nov 2026, the pharmacy's request): what the patient has left with the pharmacy; take a deposit,
@@ -1014,25 +1028,29 @@ function AdvancePanel({ patientId, name, duePaise, onUsed }) {
   });
   const left = adv.data?.balancePaise ?? 0;
   return (
-    <div className="ph-account-tile" aria-label="Pharmacy advance">
-      <span className="ph-account-label">Advance left</span>
-      <strong className="ph-account-amount">{adv.data ? money(left) : '…'}</strong>
-      <div className="ph-account-actions">
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDoing('deposit')}>
+    <div className="ph-acct-adv" aria-label="Pharmacy advance">
+      <div className="ph-acct-row">
+        <span className="ph-acct-label">
+          <Wallet aria-hidden="true" /> Advance left
+        </span>
+        <strong className="ph-acct-amount">{adv.data ? money(left) : '…'}</strong>
+        <button type="button" className="btn btn-link btn-sm ph-acct-act" onClick={() => setDoing('deposit')}>
           Take advance
         </button>
-        {left > 0 && duePaise > 0 && (
-          <button type="button" className="btn btn-secondary btn-sm" disabled={use.busy} onClick={() => use.send(`/pharmacy/patients/${patientId}/advance/use`, {})}>
-            Use on bills due
-          </button>
-        )}
-        {left > 0 && (
-          <button type="button" className="btn btn-link btn-sm" onClick={() => setDoing('refund')}>
+      </div>
+      {left > 0 && (
+        <div className="ph-acct-more">
+          {duePaise > 0 && (
+            <button type="button" className="btn btn-link btn-sm ph-acct-act" disabled={use.busy} onClick={() => use.send(`/pharmacy/patients/${patientId}/advance/use`, {})}>
+              Use on bills due
+            </button>
+          )}
+          <button type="button" className="btn btn-link btn-sm ph-acct-act" onClick={() => setDoing('refund')}>
             Refund
           </button>
-        )}
-      </div>
-      {(use.error || note) && <span className={use.error ? 'field-error' : 'hint'}>{use.error || note}</span>}
+        </div>
+      )}
+      {(use.error || note) && <span className={use.error ? 'field-error' : 'ph-acct-note'}>{use.error || note}</span>}
       {doing && (
         <AdvanceDialog
           refund={doing === 'refund'}
