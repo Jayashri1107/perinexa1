@@ -14,7 +14,7 @@ import { addDaysIso } from '../appointments/appointmentFormat.js';
 import { TallyMarks } from '../billing/TallyPage.jsx';
 import { amountInWords } from '../billing/amountWords.js';
 import { MODE_LABELS, expiryLabel, soldItems } from './pharmacyFormat.js';
-import { BarcodeBox, Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
+import { BarcodeBox, Modal, PharmacyHeader, PharmacyLetterhead, money, useSend } from './pharmacyUi.jsx';
 import { TypePill, billsPlace } from './RegisterPage.jsx';
 import { DateText } from '../../components/DateText.jsx';
 
@@ -132,6 +132,10 @@ export function InvoicesPage({ pick = null }) {
     return `Bill ${madeNow.invoice.number} saved${how ? ` – ${how}` : ''}.`;
   });
   const [opening, setOpening] = useState(null);
+  // A payment taken in the left panel (credit settled, advance used): the bill shown reloads
+  const [paidCount, setPaidCount] = useState(0);
+  // The bill shown on the right: "Open the bill" sits beside Take advance in the left panel (19 Nov 2026)
+  const [shownBillId, setShownBillId] = useState(null);
   const typed = (set) => (e) => {
     set(e.target.value);
     setPerson(null);
@@ -237,7 +241,8 @@ export function InvoicesPage({ pick = null }) {
       <PharmacyHeader
         className="ph-fab ph-counter-head"
         title={pick ? 'Sales bill' : desk ? 'Bill list' : 'Sold'}
-        crumb={pick ? 'Sales bill' : desk ? 'Bill list' : 'Sold'}
+        // 19 Nov 2026 (the developer): the page's name once, in bold – the small path line keeps only "Pharmacy"
+        crumb={pick ? undefined : desk ? 'Bill list' : 'Sold'}
         sales
         actions={
           desk && !pick ? (
@@ -349,6 +354,8 @@ export function InvoicesPage({ pick = null }) {
                     Clear dates
                   </button>
                 )}
+                {/* 19 Nov 2026 (the pharmacy's request): the patient's credit due and advance under the dates, not in cards */}
+                {person?.mrn && <PersonAccount key={person.key} person={person} billId={shownBillId} onPaid={() => setPaidCount((n) => n + 1)} />}
               </div>
             </section>
             <div className="ph-sold-results">
@@ -381,7 +388,7 @@ export function InvoicesPage({ pick = null }) {
                 </div>
               )}
               {person ? (
-                <PersonBills key={person.key} person={person} onClose={closePerson} />
+                <PersonBills key={person.key} person={person} paidCount={paidCount} onShown={setShownBillId} onClose={closePerson} />
               ) : looking ? (
                 <PeopleFound
                   found={found}
@@ -413,10 +420,11 @@ export function InvoicesPage({ pick = null }) {
 /** The people a search found: nothing is listed until a search. Clicking someone opens a new bill for them. */
 export function PeopleFound({ found, people, onPick, onBills = null, onMore = null, opening = null }) {
   return (
-    <section className="card ph-found" aria-label="People found">
+    // 19 Nov 2026 (the developer): the list is one card – the table's own – with the tip above it, not a card in a card
+    <section className={people.length ? 'ph-found ph-found-list' : 'card ph-found'} aria-label="People found">
       {found.error && <Alert type="error">{found.error}</Alert>}
       {found.data && !people.length && <p className="muted">Nobody matches.</p>}
-      {people.length > 0 && <p className="hint">Click a name to make a new bill for them. Those to bill today and those with bills come first.</p>}
+      {people.length > 0 && <p className="hint ph-found-tip">Click a name to make a new bill for them. Those to bill today and those with bills come first.</p>}
       {/* 14 Nov 2026: a table like the day's bills – the same headings, text and rows, with the doctor */}
       {people.length > 0 && (
         <DataTable
@@ -427,15 +435,16 @@ export function PeopleFound({ found, people, onPick, onBills = null, onMore = nu
           rowClassName={(x) => (opening === x.key ? 'is-opening' : undefined)}
           columns={[
             { key: 'name', header: 'Patient / customer', render: (x) => <strong className="ph-found-name" title={x.name}>{x.name}</strong> },
-            { key: 'mrn', header: 'UHID', render: (x) => <span className="tabular">{x.mrn || '–'}</span> },
-            { key: 'type', header: 'Type', render: (x) => (x.type ? <TypePill type={x.type} /> : '–') },
-            { key: 'doctor', header: 'Doctor', render: (x) => x.doctor || '–' },
-            { key: 'bills', header: 'Bills', render: (x) => (x.billCount > 0 ? `${x.billCount} bill${x.billCount === 1 ? '' : 's'}` : 'No pharmacy bill yet') },
-            { key: 'last', header: 'Last bill', render: (x) => <span className="tabular">{x.lastAt ? slipDate(x.lastAt) : '–'}</span> },
+            { key: 'mrn', header: 'UHID', width: '88px', render: (x) => (x.mrn ? <span className="tabular">{x.mrn}</span> : <span className="muted">–</span>) },
+            { key: 'type', header: 'Type', width: '104px', render: (x) => (x.type ? <TypePill type={x.type} /> : <span className="muted">–</span>) },
+            { key: 'doctor', header: 'Doctor', width: '22%', render: (x) => (x.doctor ? <span className="ph-found-doctor" title={x.doctor}>{x.doctor}</span> : <span className="muted">–</span>) },
+            { key: 'bills', header: 'Bills', width: '80px', render: (x) => (x.billCount > 0 ? `${x.billCount} bill${x.billCount === 1 ? '' : 's'}` : <span className="muted">None yet</span>) },
+            { key: 'last', header: 'Last bill', width: '92px', render: (x) => (x.lastAt ? <span className="tabular">{slipDate(x.lastAt)}</span> : <span className="muted">–</span>) },
             {
               key: 'open',
               header: <span className="sr-only">Their bills</span>,
               align: 'right',
+              width: '72px',
               render: (x) =>
                 x.billCount > 0 && onBills ? (
                   <button
@@ -454,7 +463,8 @@ export function PeopleFound({ found, people, onPick, onBills = null, onMore = nu
           ]}
         />
       )}
-      {found.data && people.length > 0 && <p className="hint ph-found-count">{people.length} {people.length === 1 ? 'person' : 'people'} listed{found.data.more ? ' so far' : ''}.</p>}
+      {/* The table's page bar counts the rows; only a list the server cut short says so */}
+      {found.data?.more && people.length > 0 && <p className="hint ph-found-count">{people.length} people listed so far.</p>}
       {found.data?.more &&
         (onMore ? (
           <button type="button" className="btn btn-secondary ph-found-more" disabled={found.loading} onClick={onMore}>
@@ -468,15 +478,19 @@ export function PeopleFound({ found, people, onPick, onBills = null, onMore = nu
 }
 
 /** One person's bills: the newest shown as it prints, across the page, the others a click away. */
-function PersonBills({ person, onClose }) {
+function PersonBills({ person, paidCount = 0, onShown, onClose }) {
   const [billId, setBillId] = useState(person.bills[0].id);
+  useEffect(() => {
+    onShown?.(billId);
+  }, [billId, onShown]);
   const [printing, setPrinting] = useState(false);
-  const [settling, setSettling] = useState(false);
   const res = useFetch(`/pharmacy/invoices/${billId}`);
-  // 18 Nov 2026: what a registered patient still owes the pharmacy, settled here in one payment
-  const dues = useFetch(person.mrn ? `/pharmacy/patients/${person.key}/dues` : null);
-  const due = dues.data?.duePaise ?? 0;
   const v = res.data?.invoice;
+  // A payment taken in the left panel: the bill shown here shows it
+  const reloadBill = res.reload;
+  useEffect(() => {
+    if (paidCount) reloadBill();
+  }, [paidCount, reloadBill]);
   // A bill just made on Sold: its print preview opens by itself, once
   const printedNow = useRef(false);
   useEffect(() => {
@@ -495,9 +509,12 @@ function PersonBills({ person, onClose }) {
           <button type="button" className="btn btn-secondary" disabled={!v} onClick={() => setPrinting(true)}>
             <Printer aria-hidden="true" /> Print
           </button>
-          <Link className="btn btn-secondary" to={`/pharmacy/invoices/${billId}`}>
-            Open the bill
-          </Link>
+          {/* A registered patient's "Open the bill" is in the left panel, beside Take advance (19 Nov 2026) */}
+          {!person.mrn && (
+            <Link className="btn btn-secondary" to={`/pharmacy/invoices/${billId}`}>
+              Open the bill
+            </Link>
+          )}
           <button type="button" className="btn btn-link" onClick={onClose}>
             Back to the day’s bills
           </button>
@@ -511,53 +528,6 @@ function PersonBills({ person, onClose }) {
             </button>
           ))}
         </div>
-      )}
-      {/* 18 Nov 2026: the patient's account with the pharmacy in one box – credit due, and her advance */}
-      {person.mrn && (
-        <section className="card ph-account" aria-label="Credit and advance">
-          <div className="ph-account-tile">
-            <span className="ph-account-label">Credit due</span>
-            <strong className={`ph-account-amount${due > 0 ? ' is-due' : ''}`}>{dues.data ? money(due) : '…'}</strong>
-            {due > 0 ? (
-              <StatusPill tone="watch" icon={Wallet}>
-                Due on {dues.data.bills.map((b) => b.number).join(', ')}
-              </StatusPill>
-            ) : (
-              dues.data && (
-                <StatusPill tone="stable" icon={CircleCheck}>
-                  Nothing due
-                </StatusPill>
-              )
-            )}
-            {due > 0 && (
-              <div className="ph-account-actions">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSettling(true)}>
-                  Settle credit
-                </button>
-              </div>
-            )}
-          </div>
-          <AdvancePanel
-            patientId={person.key}
-            name={person.name}
-            duePaise={due}
-            onUsed={() => {
-              dues.reload();
-              res.reload();
-            }}
-          />
-        </section>
-      )}
-      {settling && (
-        <ReceivePayment
-          settle={{ patientId: person.key, name: person.name, duePaise: due, count: dues.data.bills.length }}
-          onClose={() => setSettling(false)}
-          onDone={() => {
-            setSettling(false);
-            dues.reload();
-            res.reload();
-          }}
-        />
       )}
       {person.billCount > person.bills.length && (
         <p className="hint">
@@ -998,12 +968,69 @@ function BusinessBuyer({ invoice: v, einvoice }) {
   );
 }
 
+/**
+ * The patient's account with the pharmacy (18 Nov 2026; under the dates in the left panel since 19 Nov 2026): credit
+ * due on her bills, settled in one payment, and her advance.
+ */
+function PersonAccount({ person, billId, onPaid }) {
+  const [settling, setSettling] = useState(false);
+  const dues = useFetch(`/pharmacy/patients/${person.key}/dues`);
+  const due = dues.data?.duePaise ?? 0;
+  return (
+    <section className="ph-acct" aria-label="Credit and advance">
+      <div className="ph-acct-row">
+        <span className="ph-acct-label">
+          <Wallet aria-hidden="true" /> Credit due
+        </span>
+        <strong className="ph-acct-amount">{dues.data ? money(due) : '…'}</strong>
+        {due > 0 && (
+          <button type="button" className="btn btn-link btn-sm ph-acct-act" onClick={() => setSettling(true)}>
+            Settle credit
+          </button>
+        )}
+      </div>
+      {dues.data && (
+        <p className="ph-acct-note">
+          {due > 0 ? (
+            <>Due on {dues.data.bills.map((b) => b.number).join(', ')}</>
+          ) : (
+            <>
+              <CircleCheck aria-hidden="true" /> Nothing due
+            </>
+          )}
+        </p>
+      )}
+      <AdvancePanel
+        patientId={person.key}
+        name={person.name}
+        duePaise={due}
+        billId={billId}
+        onUsed={() => {
+          dues.reload();
+          onPaid();
+        }}
+      />
+      {settling && (
+        <ReceivePayment
+          settle={{ patientId: person.key, name: person.name, duePaise: due, count: dues.data.bills.length }}
+          onClose={() => setSettling(false)}
+          onDone={() => {
+            setSettling(false);
+            dues.reload();
+            onPaid();
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
 /** A bill on credit paid later (13 Nov 2026): how, how much (what is due by default) and the reference. */
 /**
  * Pharmacy advance (18 Nov 2026, the pharmacy's request): what the patient has left with the pharmacy; take a deposit,
  * use it on her bills still due (oldest first), or refund what is left.
  */
-function AdvancePanel({ patientId, name, duePaise, onUsed }) {
+function AdvancePanel({ patientId, name, duePaise, billId = null, onUsed }) {
   const adv = useFetch(`/pharmacy/patients/${patientId}/advance`);
   const [doing, setDoing] = useState(null); // 'deposit' | 'refund'
   const [note, setNote] = useState(null);
@@ -1014,25 +1041,34 @@ function AdvancePanel({ patientId, name, duePaise, onUsed }) {
   });
   const left = adv.data?.balancePaise ?? 0;
   return (
-    <div className="ph-account-tile" aria-label="Pharmacy advance">
-      <span className="ph-account-label">Advance left</span>
-      <strong className="ph-account-amount">{adv.data ? money(left) : '…'}</strong>
-      <div className="ph-account-actions">
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDoing('deposit')}>
+    <div className="ph-acct-adv" aria-label="Pharmacy advance">
+      <div className="ph-acct-row">
+        <span className="ph-acct-label">
+          <Wallet aria-hidden="true" /> Advance left
+        </span>
+        <strong className="ph-acct-amount">{adv.data ? money(left) : '…'}</strong>
+      </div>
+      <div className="ph-acct-more">
+        <button type="button" className="btn btn-link btn-sm ph-acct-act" onClick={() => setDoing('deposit')}>
           Take advance
         </button>
+        {billId && (
+          <Link className="btn btn-link btn-sm ph-acct-act" to={`/pharmacy/invoices/${billId}`}>
+            Open the bill
+          </Link>
+        )}
         {left > 0 && duePaise > 0 && (
-          <button type="button" className="btn btn-secondary btn-sm" disabled={use.busy} onClick={() => use.send(`/pharmacy/patients/${patientId}/advance/use`, {})}>
+          <button type="button" className="btn btn-link btn-sm ph-acct-act" disabled={use.busy} onClick={() => use.send(`/pharmacy/patients/${patientId}/advance/use`, {})}>
             Use on bills due
           </button>
         )}
         {left > 0 && (
-          <button type="button" className="btn btn-link btn-sm" onClick={() => setDoing('refund')}>
+          <button type="button" className="btn btn-link btn-sm ph-acct-act" onClick={() => setDoing('refund')}>
             Refund
           </button>
         )}
       </div>
-      {(use.error || note) && <span className={use.error ? 'field-error' : 'hint'}>{use.error || note}</span>}
+      {(use.error || note) && <span className={use.error ? 'field-error' : 'ph-acct-note'}>{use.error || note}</span>}
       {doing && (
         <AdvanceDialog
           refund={doing === 'refund'}
@@ -1212,122 +1248,18 @@ export function InvoicePage() {
           {flash}
         </Alert>
         <div className="ph-inv">
-          <section className="card ph-inv-main" aria-labelledby="ph-inv-no">
-            {/* 18 Nov 2026 (the pharmacy): laid out as a printed invoice – a band with what it is, its number, date and
-                state; the patient's details in ruled cells; the medicines in a ruled table; the sums in a box with the
-                amount in words beside it */}
-            <header className="ph-inv-head">
-              <div className="ph-inv-id">
-                <span className={`ph-inv-kind is-${v.kind === 'issue' ? 'ipd' : v.patient ? 'opd' : 'ext'}`}>{v.kind === 'issue' ? 'Issue to ward · IPD' : v.patient ? 'Counter sale · OPD' : 'Counter sale · External'}</span>
-                <h2 id="ph-inv-no" className="ph-inv-no">
-                  <span className="ph-inv-no-label">Bill no.</span> {v.number}
-                </h2>
-              </div>
-              <dl className="ph-inv-when">
-                <div>
-                  <dt>Date</dt>
-                  <dd>{formatDateTime(v.date)}</dd>
-                </div>
-                <div>
-                  <dt>Status</dt>
-                  <dd>
-                    <InvoiceStatus invoice={v} />
-                  </dd>
-                </div>
-              </dl>
-            </header>
-            <dl className="ph-inv-facts">
-              {[
-                [v.patient ? 'Patient' : 'Customer', v.patient ? v.patient.fullName : whoOf(v)],
-                ...(v.patient ? [['Patient number', v.patient.mrn]] : v.customer?.phone ? [['Phone', v.customer.phone]] : []),
-                ['Doctor', v.doctor?.name ? `${v.doctor.name}${v.doctor.reg ? ` · Reg. ${v.doctor.reg}` : ''}` : '–'],
-                ['Billed by', v.byName || '–'],
-              ].map(([k, val]) => (
-                <div key={k}>
-                  <dt>{k}</dt>
-                  <dd>{val}</dd>
-                </div>
-              ))}
-            </dl>
-            <div className="ph-grn-scroll">
-              <table className="bill-lines ph-inv-lines">
-                <thead>
-                  <tr>
-                    <th scope="col" className="num">Sr.</th>
-                    <th scope="col">Medicine</th>
-                    <th scope="col">Batch</th>
-                    <th scope="col">Expiry</th>
-                    <th scope="col" className="num">Qty</th>
-                    <th scope="col" className="num">MRP</th>
-                    <th scope="col" className="num">GST</th>
-                    <th scope="col" className="num">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {v.lines.map((l, i) => (
-                    <tr key={l.id}>
-                      <td data-label="Sr." className="num">{i + 1}</td>
-                      <td data-label="Medicine">
-                        <span className="ph-inv-med">{l.name}</span> <ScheduleMark schedule={l.schedule} />
-                        {l.returnedQty > 0 && <span className="muted"> · {l.returnedQty} returned</span>}
-                        {l.dose && <span className="ph-line-note">{l.dose}</span>}
-                        {l.substitution && <span className="ph-line-note">Given in place of {l.substitution.prescribed}, agreed by {l.substitution.agreedByName}</span>}
-                      </td>
-                      <td data-label="Batch">{l.batch}</td>
-                      <td data-label="Expiry">{expiryLabel(l.expiry)}</td>
-                      <td data-label="Qty" className="num">{l.qty}</td>
-                      <td data-label="MRP" className="num">{paper(l.mrpPaise)}</td>
-                      <td data-label="GST" className="num">{l.gstRate}%</td>
-                      <td data-label="Amount" className="num">{paper(l.amountPaise)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* 19 Nov 2026 (the developer): the bill itself as it prints – the store's letterhead, the bill's details,
+              the medicines and the sums – under a slim line with what it is, who it is for, its state and who billed it */}
+          <section className="ph-inv-main ph-inv-paper" aria-labelledby="ph-inv-no">
+            <div className="ph-inv-strip">
+              <span className={`ph-inv-kind is-${v.kind === 'issue' ? 'ipd' : v.patient ? 'opd' : 'ext'}`}>{v.kind === 'issue' ? 'Issue to ward · IPD' : v.patient ? 'Counter sale · OPD' : 'Counter sale · External'}</span>
+              <h2 id="ph-inv-no" className="sr-only">Bill no. {v.number}</h2>
+              <span className="ph-inv-strip-who">{v.patient ? v.patient.fullName : whoOf(v)}</span>
+              <InvoiceStatus invoice={v} />
+              <span className="muted">Billed by {v.byName || '–'}</span>
             </div>
-            <div className="ph-inv-foot">
-              <div className="ph-inv-words">
-                <span>Amount in words</span>
-                <strong>{amountInWords(Math.max(0, v.netPaise))}</strong>
-                {v.discountPercent > 0 && <p className="ph-inv-why">Concession {v.discountPercent}%: {v.discountReason}</p>}
-              </div>
-              <div className="ph-inv-totals">
-                <dl>
-                  {v.grossPaise > v.totalPaise && (
-                    <>
-                      <div>
-                        <dt>Gross (at MRP)</dt>
-                        <dd>{paper(v.grossPaise)}</dd>
-                      </div>
-                      <div>
-                        <dt>Discount</dt>
-                        <dd>−{paper(v.grossPaise - v.totalPaise)}</dd>
-                      </div>
-                    </>
-                  )}
-                  <div>
-                    <dt>Taxable value</dt>
-                    <dd>{paper(v.taxablePaise)}</dd>
-                  </div>
-                  <div>
-                    <dt>CGST</dt>
-                    <dd>{paper(v.cgstPaise)}</dd>
-                  </div>
-                  <div>
-                    <dt>SGST</dt>
-                    <dd>{paper(v.sgstPaise)}</dd>
-                  </div>
-                  {v.returnedPaise > 0 && (
-                    <div>
-                      <dt>Returned</dt>
-                      <dd>−{paper(v.returnedPaise)}</dd>
-                    </div>
-                  )}
-                  <div className="ph-inv-grand">
-                    <dt>Net total</dt>
-                    <dd>{paper(v.netPaise)}</dd>
-                  </div>
-                </dl>
-              </div>
+            <div className="ph-slip-sheet">
+              <BillPaper invoice={v} settings={res.data?.settings ?? {}} />
             </div>
           </section>
 
