@@ -110,7 +110,7 @@ describe('Sold’s filters', () => {
       { key: 'p2', type: '', name: 'Sample Mira Unbilled', mrn: 'SH-0043', phone: '', lastAt: null, billCount: 0, bills: [] },
     ];
     const html = renderToStaticMarkup(<MemoryRouter><PeopleFound found={{ data: { people } }} people={people} onPick={() => {}} onBills={() => {}} /></MemoryRouter>);
-    for (const part of ['Click a name to make a new bill', 'Sample Asha Kale', '2 bills', 'Bills of Sample Asha Kale', 'Sample Mira Unbilled', 'No pharmacy bill yet']) expect(html).toContain(part);
+    for (const part of ['Click a name to make a new bill', 'Sample Asha Kale', '2 bills', 'Bills of Sample Asha Kale', 'Sample Mira Unbilled', 'None yet']) expect(html).toContain(part);
     expect(html).not.toContain('Bills of Sample Mira Unbilled');
   });
 

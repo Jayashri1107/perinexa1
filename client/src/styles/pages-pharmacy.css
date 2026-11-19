@@ -1149,7 +1149,7 @@
 .ph-acct-label svg, .ph-acct-note svg { width: 14px; height: 14px; color: var(--status-due-fg); }
 .ph-acct-amount { margin-left: auto; font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--status-due-fg); }
 .ph-acct-note { display: inline-flex; align-items: center; gap: 4px; margin: 0; font-size: 0.75rem; color: var(--status-due-fg); overflow-wrap: anywhere; }
-.ph-acct-more { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+.ph-acct-more { display: flex; flex-wrap: wrap; gap: 2px var(--space-3); }
 .ph-acct .ph-acct-act { min-height: 0; padding: 0; font-size: 0.75rem; }
 
 /* 18 Nov 2026: Return stock to a supplier on one screen */
@@ -1296,3 +1296,39 @@
   .ph-sold .ph-find-form .ph-filter :is(input, select) { height: 32px; }
   .ph-sold-results .dt-wrap { height: max(320px, calc(100dvh - 250px)); }
 }
+
+/* 19 Nov 2026 (the developer): the Sales bill's search panel a little wider, its fields close together at the top (not
+   spread down the page); the people found as one clean table – one card, long names cut with "…", the tip above */
+@media screen and (min-width: 1000px) {
+  .ph-sold .ph-sold-split { grid-template-columns: 290px minmax(0, 1fr); align-items: start; }
+  .ph-sold .ph-filters { align-self: start; gap: var(--space-2); }
+  .ph-sold .ph-find-form { gap: 6px; }
+  .ph-sold .ph-find-form .ph-filter { grid-template-columns: 84px minmax(0, 1fr); }
+  .ph-sold .ph-find-form .ph-filter :is(input, select) { height: 30px; }
+}
+.ph-found.ph-found-list { display: flex; flex-direction: column; gap: var(--space-2); padding: 0; }
+.ph-found.ph-found-list > .ph-found-tip { margin: 0; color: var(--slate-600); }
+.ph-found-list .dt-wrap { padding: 0; }
+/* The short columns have fixed widths that fit their content (numbers, dates and the type never cut); the name and the
+   doctor share the rest and end in "…" when long. On a narrow screen the table scrolls sideways instead of cutting */
+.ph-sold-results .ph-found-list .dt-wrap { overflow-x: auto; }
+.ph-found-list .dt { table-layout: fixed; min-width: 720px; }
+.ph-sold-results .ph-found-list .dt td { max-width: none; overflow: hidden; text-overflow: ellipsis; }
+.ph-sold-results .ph-found-list :is(.ph-found-name, .ph-found-doctor) { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ph-found-list .dt td:last-child .btn-sm { padding: 0 4px; }
+
+/* 19 Nov 2026 (the developer): one invoice shown as its printed bill – a slim line above it with the kind of bill, who it
+   is for, its state and who billed it */
+.ph-inv-main.ph-inv-paper { display: flex; flex-direction: column; gap: var(--space-2); padding: 0; min-width: 0; }
+.ph-inv-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.ph-inv-strip-who { font-weight: 600; color: var(--ink); }
+.ph-inv-paper .ph-slip-sheet { border-radius: var(--radius-md); }
+/* 19 Nov 2026 (the developer: "in tabular format, proper"): the people found as a ruled table – a line between the
+   columns, the header row set apart, every other row lightly shaded */
+.ph-found-list .dt-card { border: 1px solid var(--border); box-shadow: none; }
+.ph-found-list .dt { border-collapse: collapse; }
+.ph-found-list .dt :is(th, td) { border-right: 1px solid var(--border); }
+.ph-found-list .dt :is(th, td):last-child { border-right: 0; }
+.ph-found-list .dt thead th { border-bottom: 1px solid var(--border); color: var(--ink); font-weight: 600; }
+.ph-found-list .dt tbody tr:nth-child(even) td { background: var(--mist-50); }
+.ph-found-list .dt tbody tr:hover td { background: var(--indigo-100); }
