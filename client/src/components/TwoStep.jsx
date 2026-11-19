@@ -20,7 +20,7 @@ export function TwoStepSetup({ secret, uri }) {
         <li>Type the 6-digit code the app shows.</li>
       </ol>
       <div className="twostep-qr">
-        <QrCode value={uri} sizeMm={42} label="QR code for your authenticator app" />
+        <QrCode value={uri} sizeMm={56} label="QR code for your authenticator app" />
       </div>
       <p className="hint">
         Can't scan? In the app choose to enter a setup key and type: <span className="twostep-key">{grouped}</span>
