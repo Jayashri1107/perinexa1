@@ -476,7 +476,7 @@ html.in-app { --safe-top: 0px; }
   .appt-daynav input[type='date'] { padding: 0 var(--space-1); font-size: 15px; }
   .appt-daynav > .btn { padding: 0 var(--space-2); font-size: var(--fs-label); }
   /* A stacked table's caption across the full width (it was squeezed) */
-  table:not(.dt, .ptable, .am-grid) caption:not(.sr-only) { display: block; width: 100%; text-align: left; }
+  table:not(.dt, .ptable, .am-grid):not(:where(.pdoc *)) caption:not(.sr-only) { display: block; width: 100%; text-align: left; }
   .wl-footnote { flex-wrap: wrap; }
   .wl-footnote .btn { flex: none; }
   /* OPD timings not set: the title and what to do; the explanation is left out */
@@ -1855,6 +1855,29 @@ html.in-app { --safe-top: 0px; }
   .wl-list > .td-dept-head { padding-left: var(--space-4); padding-right: var(--space-4); }
   /* Patients: a little more space between the switches (Today / All days, My patients / All doctors, type of care) */
   .pt-quick { column-gap: var(--space-4); }
+  /* A dialog (a sheet from the foot) always covers the bottom bar: one opened from the top bar (Change password) or a
+     patient's pinned header was drawn under the bar, its Save button hidden. While a dialog is open the bar goes, and the
+     bar or header that holds the dialog comes above everything else. */
+  .pf:has(.modal-backdrop) .pf-tabbar { display: none; }
+  .pf-topbar:has(.modal-backdrop), .ph-pinned:has(.modal-backdrop), .ph-actions:has(.modal-backdrop),
+  .sticky-actions:has(.modal-backdrop) { z-index: 100; }
+  /* Every sheet the full width of the phone – some dialogs kept a desktop width (Change password: 16 px short each side) */
+  .modal-backdrop > .modal { width: 100%; }
+  /* Patients list: her labels side by side, wrapping (a red flag after Incomplete went onto a line of its own) */
+  .pf .pf-main .dt:not(.an-table) tbody tr > td.risk-cell { flex: 1 1 100%; max-width: none; }
+  .pf .pf-main .dt:not(.an-table) tbody tr > td.risk-cell > .pt-risk { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+  .pt-risk .pill, .pt-risk .risk-badge-wrap { display: inline-flex; }
+  /* Care plan: the kind (Lab test, Scan) always above the item's name – a short name sat beside it, a long one below */
+  .pf-main .dt:not(.an-table) tbody tr.plan-item-row > td.plan-cell-item > .plan-item-head { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .pf .pf-main .dt:not(.an-table) tbody tr.plan-item-row > td[data-label] > * { margin-left: 0; }
+  /* A patient's page: Add an alert starts at the same edge as her allergy label above it */
+  .safety-strip > .btn-link { padding-left: 0; }
+  /* A page with a "jump to" button (Lab's Worklist, Billing's Bills): the download icon beside that button, not over its
+     top edge – the title it was meant to sit beside is in the top bar on phones */
+  .ph-has-jump:has(.ph-actions > .export-btn) .ph-jump-btn { width: calc(100% - 48px); }
+  .ph-has-jump .ph-actions > .export-btn, .ph-has-jump .ph-actions:has(> :nth-child(2)) > .export-btn { top: calc(var(--space-2) + 2px); }
+  /* Billing's list of bills: less padding round the table, so more of it shows before it scrolls sideways */
+  .ipd-list-card { padding: var(--space-3); }
 }
 
 /* The registration sheet slides up (mobile.css .pf-sheet .pf-main) */

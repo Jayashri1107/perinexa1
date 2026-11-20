@@ -450,11 +450,13 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
   .dt-filter { flex: 1 1 150px; }
   .dt-filter select, .dt-filter input { width: 100%; }
   .dt-footer { padding: var(--space-4); }
-  table:not(.dt, .ptable) thead { display: none; }
-  table:not(.dt, .ptable), table:not(.dt, .ptable) tbody, table:not(.dt, .ptable) tr, table:not(.dt, .ptable) td { display: block; width: 100%; }
-  table:not(.dt, .ptable) tr { border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: var(--space-3); padding: var(--space-2) 0; }
-  table:not(.dt, .ptable) td { border: none; padding: var(--space-1) var(--space-3); }
-  table:not(.dt, .ptable) td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+  /* Tables become one card per row – not a printed document's table in its preview (the patient card's appointments
+     showed as empty boxes without their headings); :where() keeps these rules' weight as it was */
+  table:not(.dt, .ptable):not(:where(.pdoc *)) thead { display: none; }
+  table:not(.dt, .ptable):not(:where(.pdoc *)), table:not(.dt, .ptable):not(:where(.pdoc *)) tbody, table:not(.dt, .ptable):not(:where(.pdoc *)) tr, table:not(.dt, .ptable):not(:where(.pdoc *)) td { display: block; width: 100%; }
+  table:not(.dt, .ptable):not(:where(.pdoc *)) tr { border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: var(--space-3); padding: var(--space-2) 0; }
+  table:not(.dt, .ptable):not(:where(.pdoc *)) td { border: none; padding: var(--space-1) var(--space-3); }
+  table:not(.dt, .ptable):not(:where(.pdoc *)) td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
   .details > div { grid-template-columns: 1fr; gap: 0; }
   .activity-list li { flex-wrap: wrap; }
   .activity-text { white-space: normal; }
