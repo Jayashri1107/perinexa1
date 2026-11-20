@@ -589,7 +589,8 @@
 .ph-stat-sub { font-size: var(--fs-caption); color: var(--slate-600); }
 /* The panel narrower: the two groups one under the other */
 @container phglance (max-width: 1050px) {
-  .ph-glance-groups { grid-template-columns: minmax(0, 1fr); }
+  /* .card.ph-glance: stronger than the two-column rule further down, which kept them side by side on a phone (20 Nov 2026) */
+  .ph-glance-groups, .card.ph-glance .ph-glance-groups { grid-template-columns: minmax(0, 1fr); }
   .ph-glance-group.is-stock { border-left: 0; border-top: 1px solid var(--border); }
 }
 /* Narrower still: the counter's sales across the top, the other four two a row */
@@ -1294,6 +1295,7 @@
 /* 18 Nov 2026 (the pharmacy, live look): "Search on the left … New walk-in customer" on the title's line; the search
    panel as tall as the list beside it, its fields spaced evenly; the barcode bar and the list higher */
 .ph-pick-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2) var(--space-3); font-size: 0.8125rem; }
+.ph-pick-head > .ph-pick-phone { display: none; } /* the phone's wording (mobile.css) */
 .ph-sold .ph-pick-tools { margin-top: 0; }
 @media screen and (min-width: 1000px) {
   .ph-sold .ph-sold-split { align-items: stretch; }

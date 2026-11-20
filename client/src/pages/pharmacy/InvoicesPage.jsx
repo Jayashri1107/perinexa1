@@ -257,7 +257,9 @@ export function InvoicesPage({ pick = null }) {
           ) : pick ? (
             // 18 Nov 2026 (the pharmacy): the way in, on the title's line – so the list starts higher
             <div className="ph-pick-head">
-              <span className="muted">Search on the left and click a name to make their bill – or a walk-in customer:</span>
+              <span className="muted ph-pick-wide">Search on the left and click a name to make their bill – or a walk-in customer:</span>
+              {/* On a phone the search is below, not on the left (20 Nov 2026) */}
+              <span className="muted ph-pick-phone">Search below and tap a name to make their bill – or a walk-in customer:</span>
               <button type="button" className="btn btn-secondary btn-sm" onClick={pick.onWalkIn}>
                 <UserPlus aria-hidden="true" /> New walk-in customer
               </button>
