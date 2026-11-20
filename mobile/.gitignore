@@ -4,3 +4,6 @@ android-build.log
 *.jks
 *.keystore
 keystore.properties
+# The signed release builds (.aab / .apk) – uploaded to Play Console, never committed (store/RELEASE.md)
+android/app/release/
+*.aab

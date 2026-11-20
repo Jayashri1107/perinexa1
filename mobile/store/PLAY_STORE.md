@@ -47,7 +47,8 @@ Package: `com.perinexa.app` · version 1.0 (versionCode 1) · target SDK 36 · m
 
 - **Graphics:**
   - App icon 512 × 512: `mobile/store/play-store-icon-512.png` ✅
-  - Feature graphic 1024 × 500: **to make** (a designer, or ask Claude for a simple one from the brand colours)
+  - Feature graphic 1024 × 500: `mobile/store/feature-graphic-1024x500.png` ✅ (source and how to render it again:
+    `feature-graphic.html`, `RELEASE.md`)
   - Phone screenshots, 2 to 8, sample data only (never a real patient): `mobile/store/screenshots/` – **to make**
 
 ## 2. App content forms
