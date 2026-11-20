@@ -1895,6 +1895,40 @@ html.in-app { --safe-top: 0px; }
      chosen one white with the teal line, like the first row – they kept their dark colours and the chosen one vanished */
   .pf .ph-patient .ph-subtabs a, .pf .ph-patient .ph-subtabs button { color: var(--indigo-200); }
   .pf .ph-patient .ph-subtabs a.active, .pf .ph-patient .ph-subtabs a[aria-current='page'] { color: var(--on-dark); box-shadow: inset 0 -3px 0 var(--teal-500); }
+  /* ---------- Billing's list of bills: one card per bill on a phone, not a table that scrolls sideways (20 Nov 2026) ----------
+     Her name and the bill's state on the first line, the bill's number and kind under it, then Total / Paid / Balance
+     side by side, then the button */
+  .pf .pf-main .table-scroll:has(> table.bills-table) { overflow: visible; border: 0; }
+  .pf .pf-main table.bills-table.bill-report { display: block; overflow: visible; width: 100%; border: 0; border-radius: 0; }
+  .pf .pf-main table.bills-table.bill-report thead { display: none; }
+  .pf .pf-main table.bills-table.bill-report tbody { display: block; width: 100%; }
+  .pf .pf-main table.bills-table.bill-report tbody tr {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: 'who who state' 'bill bill bill' 'total paid balance' 'act act act';
+    gap: var(--space-1) var(--space-3); width: auto; margin: 0; padding: var(--space-3) 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
+  }
+  .pf .pf-main table.bills-table.bill-report tbody tr:last-child { border-bottom: 0; }
+  .pf .pf-main table.bills-table.bill-report tbody td {
+    position: static; display: block; width: auto; min-width: 0; padding: 0; border: 0; background: none; white-space: normal; text-align: left; overflow-wrap: anywhere;
+  }
+  .pf .pf-main table.bills-table.bill-report tbody td.ipd-who { grid-area: who; }
+  .pf .pf-main table.bills-table.bill-report tbody td.bills-state { grid-area: state; justify-self: end; text-align: right; }
+  .pf .pf-main table.bills-table.bill-report tbody td.bills-bill { grid-area: bill; }
+  .pf .pf-main table.bills-table.bill-report tbody td.bills-bill > .ipd-sub { display: inline; }
+  .pf .pf-main table.bills-table.bill-report tbody td.bills-bill > .ipd-sub::before { content: ' · '; }
+  .pf .pf-main table.bills-table.bill-report tbody td.bills-total { grid-area: total; }
+  .pf .pf-main table.bills-table.bill-report tbody td.bills-paid { grid-area: paid; }
+  .pf .pf-main table.bills-table.bill-report tbody td.bills-balance { grid-area: balance; }
+  .pf .pf-main table.bills-table.bill-report tbody td:is(.bills-total, .bills-paid, .bills-balance) { padding: var(--space-2); border-radius: var(--radius-sm); background: var(--mist-50); }
+  .pf .pf-main table.bills-table.bill-report tbody td:is(.bills-total, .bills-paid, .bills-balance)::before {
+    display: block; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500;
+  }
+  .pf .pf-main table.bills-table.bill-report tbody td.bills-total::before { content: 'Total'; }
+  .pf .pf-main table.bills-table.bill-report tbody td.bills-paid::before { content: 'Paid'; }
+  .pf .pf-main table.bills-table.bill-report tbody td.bills-balance::before { content: 'Balance'; }
+  .pf .pf-main table.bills-table.bill-report tbody td.ipd-act-col { grid-area: act; }
+  .pf .pf-main table.bills-table.bill-report tbody td.ipd-act-col > .btn-secondary { width: 100%; justify-content: center; }
+  /* A bill with nothing in the list (the "No bills" row) keeps one plain line */
+  .pf .pf-main table.bills-table.bill-report tbody tr:has(> td[colspan]) { display: block; }
   .pf .pf-main td.bill-col-tick:has(> input)::after { content: 'Select'; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
 }
 
