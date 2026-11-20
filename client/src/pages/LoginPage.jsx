@@ -169,7 +169,13 @@ export function LoginPage() {
           </div>
           {who === 'patient' ? (
             <>
-              {signedOut && <Alert type="success">You have signed out successfully. Sign in again below when you need to.</Alert>}
+              {signedOut && (
+                <Alert type="success">
+                  {signedOut.deleted
+                    ? 'Your account is deleted. Your hospital record stays with the hospital. You can sign up again when you need to.'
+                    : 'You have signed out successfully. Sign in again below when you need to.'}
+                </Alert>
+              )}
               <PatientSignIn preferred={signedOut?.key ?? ''} onSignedIn={(key) => navigate(`/portal/h/${key}`)} />
             </>
           ) : (

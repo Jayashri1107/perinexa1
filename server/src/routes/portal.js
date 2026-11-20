@@ -183,8 +183,13 @@ export function accountAccess(tenantId, patientId, accountId, now) {
   });
 }
 
-portalRouter.post('/logout', (_req, res) => {
+/** Ends her session in this browser (the cookie). */
+export function endPortalSession(res) {
   res.clearCookie(PORTAL_COOKIE, cookieOptions());
+}
+
+portalRouter.post('/logout', (_req, res) => {
+  endPortalSession(res);
   res.json({ ok: true });
 });
 
@@ -240,6 +245,8 @@ portalRouter.get('/me', async (req, res) => {
     sessionMinutes: SESSION_MINUTES,
     // Signed in with her own account (not a paper code): she can set a new password on her page
     canChangePassword: Boolean(access.accountId) && Boolean((await PatientAccount.exists({ tenantId: access.tenantId, _id: access.accountId, email: { $type: 'string' } }))),
+    // Signed in with her own account: she can delete it (Google Play rule, 19 Nov 2026 – docs/ACCOUNT_DELETION_PLAN.md)
+    canDeleteAccount: Boolean(access.accountId),
   });
 });
 

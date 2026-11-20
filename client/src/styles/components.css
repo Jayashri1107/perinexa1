@@ -347,6 +347,18 @@ a.kpi:focus-visible { box-shadow: var(--focus-ring), var(--shadow-card); }
 .dt-filter-label { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
 .dt-filter select, .dt-filter input { width: auto; min-width: 150px; }
 .dt-wrap { position: relative; overflow: auto; max-height: calc(100vh - 300px); min-height: 180px; padding: 0 var(--space-6); }
+/* A table wider than the screen (a small laptop or a tablet, 19 Nov 2026): a soft shadow on the side that has more
+   columns, so nobody misses them – it shows only while there is more to scroll to (the surface-coloured covers move
+   with the table and hide the shadow at its ends). Phones show tables as cards (mobile.css). */
+@media (min-width: 720px) {
+  .dt-wrap, .pf-content .table-scroll {
+    background:
+      linear-gradient(to right, var(--surface) 30%, transparent) left center / 32px 100% no-repeat local,
+      linear-gradient(to left, var(--surface) 30%, transparent) right center / 32px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--ink) 16%, transparent), transparent) left center / 12px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--ink) 16%, transparent), transparent) right center / 12px 100% no-repeat scroll;
+  }
+}
 .dt { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
 .dt th, .dt td { padding: var(--space-3); text-align: left; vertical-align: middle; white-space: nowrap; }
 .dt thead th {

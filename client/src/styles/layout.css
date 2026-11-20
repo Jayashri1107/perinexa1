@@ -123,6 +123,13 @@
 .ph-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-left: auto; align-items: flex-end; }
 .ph-actions .dt-filter select { min-width: 180px; }
 .ph-tabs { margin-top: var(--space-3); }
+/* Laptop and wider (19 Nov 2026): page tabs and switches that do not fit on one line go onto a second line, instead
+   of hiding past the right edge of the page (a patient's record had 16 tabs, 5 of them out of sight at 1366 pixels).
+   Phones keep their one sideways-scrolling line (mobile.css). */
+@media (min-width: 720px) {
+  .ph-tabs.segmented { flex-wrap: wrap; overflow-x: visible; }
+  .segmented.lab-lists, .segmented.ph-rep-tabs { flex-wrap: wrap; overflow-x: visible; border-radius: var(--radius-lg); }
+}
 /* The second row: the sections of the current tab (e.g. Knowledge base → Care plans → Red-flag rules), lighter than the
    tabs above it – underlined, in the page's own colours */
 .ph-subtabs { display: flex; flex-wrap: wrap; gap: 0 var(--space-6); margin-top: var(--space-3); border-bottom: 1px solid var(--border); }

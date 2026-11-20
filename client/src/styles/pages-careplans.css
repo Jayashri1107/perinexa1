@@ -304,6 +304,11 @@
 .plan-summary-facts dt { color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .plan-summary-facts dd { margin: 0; color: var(--ink); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; overflow-wrap: anywhere; }
 @media (min-width: 900px) { .plan-summary-facts .plan-summary-from { grid-column: span 2; } }
+/* A phone (19 Nov 2026): two facts a row instead of one (an odd one out at the end takes the whole row) */
+@media (max-width: 719px) {
+  .plan-summary-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan-summary-facts > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 .plan-summary-next { padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--teal-100); }
 .plan-summary-next > * { margin: 0; }
 .plan-summary .plan-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; }
