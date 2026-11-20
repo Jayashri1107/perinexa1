@@ -1,0 +1,63 @@
+<!doctype html>
+<!-- Google Play feature graphic, 1024 × 500 (20 Nov 2026). Rendered to feature-graphic-1024x500.png with Chrome:
+     see mobile/store/RELEASE.md. Brand colours from client/src/styles/tokens.css; the phone shows shapes only, no patient. -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Perinexa – Google Play feature graphic</title>
+<style>
+  @font-face { font-family: 'Jost'; src: url('../../client/src/assets/fonts/Jost-Medium.woff2') format('woff2'); font-weight: 500; }
+  @font-face { font-family: 'Jost'; src: url('../../client/src/assets/fonts/Jost-SemiBold.woff2') format('woff2'); font-weight: 600; }
+  @font-face { font-family: 'Jost'; src: url('../../client/src/assets/fonts/Jost-Regular.woff2') format('woff2'); font-weight: 400; }
+  html, body { margin: 0; padding: 0; }
+  body { width: 1024px; height: 500px; overflow: hidden; background: #1E2163; font-family: 'Jost', 'Segoe UI', sans-serif; }
+  .art { position: relative; width: 1024px; height: 500px; overflow: hidden;
+    background: radial-gradient(circle at 82% 40%, #2C2F86 0, #1E2163 58%); }
+  /* the teal sweep of the mark, large and faint behind the phone */
+  .sweep { position: absolute; right: -300px; top: -160px; width: 640px; height: 820px; border-radius: 50%;
+    border: 46px solid transparent; border-left-color: rgba(19, 169, 155, 0.18); transform: rotate(-24deg); }
+  .text { position: absolute; left: 72px; top: 0; bottom: 0; width: 520px; display: flex; flex-direction: column; justify-content: center; }
+  .logo { width: 400px; height: auto; display: block; }
+  h1 { margin: 34px 0 0; color: #FFFFFF; font-weight: 600; font-size: 44px; line-height: 1.15; letter-spacing: -0.3px; }
+  p { margin: 18px 0 0; color: #C7C9EF; font-weight: 400; font-size: 24px; line-height: 1.35; }
+  .rule { width: 72px; height: 5px; margin-top: 30px; border-radius: 3px; background: #13A99B; }
+  /* a phone with shapes only */
+  .phone { position: absolute; right: 108px; top: 54px; width: 216px; height: 440px; border-radius: 36px; background: #0F1140;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35); padding: 12px; box-sizing: border-box; }
+  .screen { width: 100%; height: 100%; border-radius: 26px; background: #EEF1F8; overflow: hidden; }
+  .bar { height: 64px; background: #1E2163; padding: 18px 16px 0; box-sizing: border-box; }
+  .bar i { display: block; height: 10px; width: 92px; border-radius: 5px; background: #FFFFFF; opacity: 0.9; }
+  .bar b { display: block; height: 7px; width: 132px; margin-top: 9px; border-radius: 4px; background: #C7C9EF; opacity: 0.8; }
+  .card { margin: 12px 12px 0; padding: 12px; border-radius: 14px; background: #FFFFFF; }
+  .card i { display: block; height: 9px; width: 70%; border-radius: 5px; background: #1E2163; opacity: 0.85; }
+  .card b { display: block; height: 7px; width: 90%; margin-top: 8px; border-radius: 4px; background: #DDE1EE; }
+  .card s { display: inline-block; height: 14px; width: 46px; margin: 10px 6px 0 0; border-radius: 7px; background: #DAF5F1; }
+  .card s + s { background: #E9E9FB; }
+  .tabs { position: absolute; left: 12px; right: 12px; bottom: 12px; height: 44px; border-radius: 0 0 26px 26px; background: #FFFFFF;
+    display: flex; justify-content: space-around; align-items: center; }
+  .tabs u { width: 18px; height: 18px; border-radius: 6px; background: #C7C9EF; }
+  .tabs u:first-child { background: #3B3FA6; }
+</style>
+</head>
+<body>
+  <div class="art">
+    <div class="sweep" aria-hidden="true"></div>
+    <div class="text">
+      <img class="logo" src="../../client/src/assets/brand/perinexa-logo-reversed.png" alt="Perinexa" />
+      <h1>Maternity and OBGY care,<br />on your phone</h1>
+      <p>For hospital staff and their patients</p>
+      <div class="rule" aria-hidden="true"></div>
+    </div>
+    <div class="phone" aria-hidden="true">
+      <div class="screen">
+        <div class="bar"><i></i><b></b></div>
+        <div class="card"><i></i><b></b><s></s><s></s></div>
+        <div class="card"><i></i><b></b><s></s><s></s></div>
+        <div class="card"><i></i><b></b><s></s></div>
+        <div class="card"><i></i><b></b></div>
+      </div>
+      <div class="tabs"><u></u><u></u><u></u><u></u></div>
+    </div>
+  </div>
+</body>
+</html>
