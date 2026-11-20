@@ -41,10 +41,8 @@ describe('the codes (RFC 6238)', () => {
 });
 
 describe('signing in with two steps', () => {
-  it('an admin sets it up at the first sign-in, then signs in with the code; the ticket is never a session', async () => {
-    const hospital = await createTenant('Sample Hospital');
-    const admin = await createUser();
-    await addMember(admin, hospital, 'admin');
+  it('a super admin sets it up at the first sign-in, then signs in with the code; the ticket is never a session', async () => {
+    const admin = await createSuperAdmin();
     const agent = request.agent(required);
     let res = await login(agent, admin);
     expect(res.status).toBe(200);
@@ -109,6 +107,26 @@ describe('signing in with two steps', () => {
     expect(await AuditLog.countDocuments({ action: 'LOGIN_FAILED', 'details.reason': 'wrong_two_step_setup_code' })).toBe(3);
   });
 
+  // 20 Nov 2026 (the developer, with the owner's agreement of 20 Nov 2026): only the super admin and platform admins must use it
+  it('a hospital admin signs in without the code, and may turn it on and off like everyone else', async () => {
+    const hospital = await createTenant('Sample Hospital');
+    const admin = await createUser();
+    await addMember(admin, hospital, 'admin');
+    const agent = request.agent(required);
+    let res = await login(agent, admin);
+    expect(res.status).toBe(200);
+    expect(res.body.twoStep).toBeUndefined();
+    expect(res.body.twoStepRequired).toBe(false);
+    res = await agent.post('/api/auth/me/two-step/setup').send({ password: PASSWORD });
+    const { secret } = res.body;
+    res = await agent.post('/api/auth/me/two-step/confirm').send({ code: codeNow(secret) });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect((await login(request.agent(required), admin)).body.twoStep.step).toBe('code');
+    res = await agent.post('/api/auth/me/two-step/off').send({ password: PASSWORD, code: res.body.recoveryCodes[0] });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect((await login(request.agent(required), admin)).body.twoStep).toBeUndefined();
+  });
+
   it('staff without an admin role sign in as before, and may turn it on and off themselves', async () => {
     const hospital = await createTenant('Sample Hospital');
     const doctor = await createUser();
@@ -136,9 +154,7 @@ describe('signing in with two steps', () => {
   });
 
   it('the super admin resets it for someone who lost their phone; they set it up again at the next sign-in', async () => {
-    const hospital = await createTenant('Sample Hospital');
-    const admin = await createUser();
-    await addMember(admin, hospital, 'admin');
+    const admin = await createSuperAdmin();
     const a = request.agent(required);
     const setup = (await login(a, admin)).body.twoStep;
     await a.post('/api/auth/login/two-step').send({ ticket: setup.ticket, code: codeNow(setup.secret) });

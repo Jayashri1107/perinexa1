@@ -79,9 +79,10 @@ const INVALID_LOGIN = 'Invalid email or password.';
 
 // ---------- Two-step sign-in (health check H4; owner's decision of 17 Nov 2026: an authenticator app) ----------
 // After the right password, someone with two-step sign-in on gets a short-lived ticket instead of a session, and types
-// the 6-digit code from their app (or one of their recovery codes). A super admin, a platform admin or a hospital admin
-// must use it when TWO_STEP_FOR_ADMINS is on (the live server): without it yet, the ticket leads to setting it up
-// first. The ticket is signed with its own key, so it can never be used as a session cookie.
+// the 6-digit code from their app (or one of their recovery codes). A super admin or a platform admin must use it when
+// TWO_STEP_FOR_ADMINS is on (the live server): without it yet, the ticket leads to setting it up first. Since 20 Nov 2026
+// (the developer, with the owner's agreement of 20 Nov 2026: typing the code at every sign-in was too much) a
+// hospital admin no longer must – like everyone else, they may turn it on under My settings → Security. The ticket is signed with its own key, so it can never be used as a session cookie.
 let twoStepForAdmins = config.twoStepForAdmins;
 const TICKET_MINUTES = 5;
 const ticketKey = () => createHmac('sha256', config.JWT_SECRET).update('perinexa-two-step-ticket-v1').digest();
@@ -95,14 +96,11 @@ function readTicket(ticket) {
   }
 }
 /** Must this person use two-step sign-in? memberships: theirs as listActiveMemberships gives them. */
-function twoStepRequiredFor(user, memberships = []) {
-  if (!twoStepForAdmins || !user) return false;
-  return isPlatformUser(user) || memberships.some((m) => m.adminSwitch || (m.roles ?? []).includes('admin'));
+function twoStepRequiredFor(user) {
+  return Boolean(twoStepForAdmins && user && isPlatformUser(user));
 }
 async function twoStepRequired(user) {
-  if (!twoStepForAdmins) return false;
-  if (isPlatformUser(user)) return true;
-  return Boolean(await Membership.exists({ userId: user._id, isActive: true, roles: 'admin' }));
+  return twoStepRequiredFor(user);
 }
 const twoStepKey = (email) => `${email}#two-step`; // its own 3-try lock, apart from the password's
 const codeSchema = z.object({ ticket: z.string().min(1).max(2000), code: z.string().trim().min(1, 'Type the code from your app').max(20) }).strict();
@@ -155,7 +153,7 @@ function enable(user, step, now) {
 const sessionBody = (user, memberships, activeTenantId, platform = null, switchBack = false, roleMode = null) => ({
   user,
   // Two-step sign-in must stay on for this person (health check H4): the website then offers no "Turn off"
-  twoStepRequired: twoStepRequiredFor(user, memberships),
+  twoStepRequired: twoStepRequiredFor(user),
   memberships,
   activeTenantId,
   ...(platform ? { platform } : {}),
