@@ -13,6 +13,7 @@ import { departmentListed, listedPatientIds, patientAccess } from '../utils/pati
 import { objectId, parse } from '../utils/validate.js';
 import { isoDay } from '../careplans/dates.js';
 import { registerPatient } from './patients.js';
+import { eraseAccount } from './portalSignup.js';
 
 // Patients' own portal accounts, for reception (owner, 16 Oct 2026 – docs/PATIENT_ACCOUNTS_PLAN.md): the sign-ups
 // waiting, and approving or rejecting each. Approving checks who she is at the desk (or by phone) and links the account
@@ -31,6 +32,11 @@ patientAccountsRouter.use((req, _res, next) => {
 
 const view = (a, patients = new Map()) => {
   const p = a.patientId ? patients.get(String(a.patientId)) : null;
+  // A deleted account: nothing she typed is left – only when and by whom (docs/ACCOUNT_DELETION_PLAN.md)
+  if (a.status === 'deleted') {
+    const d = a.deleted ?? {};
+    return { id: String(a._id), status: 'deleted', deleted: { at: d.at ?? null, by: d.by ?? null, byName: d.byName ?? '', reason: d.reason ?? '' }, signedUpAt: a.createdAt, patient: p ? { id: String(p._id), fullName: p.fullName, mrn: p.mrn } : null };
+  }
   return {
     id: String(a._id),
     fullName: a.fullName,
@@ -136,6 +142,26 @@ patientAccountsRouter.post('/:id/reject', async (req, res) => {
   await account.save();
   await audit(req, 'PORTAL_SIGNUP_REJECTED', { details: { accountId: String(account._id), reason } });
   res.json({ account: view(account) });
+});
+
+// Delete her account – when she asks and cannot sign in to do it herself (lost phone, changed number): reception checks
+// who she is first, and writes how (Google Play rule, 19 Nov 2026 – docs/ACCOUNT_DELETION_PLAN.md). Her hospital record
+// stays as it is.
+patientAccountsRouter.post('/:id/delete', async (req, res) => {
+  const { id } = parse(z.object({ id: objectId }), req.params);
+  const { reason } = parse(z.object({ reason: z.string().trim().min(3, 'Please write how you checked who she is.').max(200) }).strict(), req.body);
+  const account = await PatientAccount.findOne({ tenantId: req.tenantId, _id: id });
+  if (!account) throw new HttpError(404, 'Account not found.', 'NOT_FOUND');
+  // a record the department rule hides from this doctor: as if it were not there
+  if (account.patientId) {
+    const listed = await listedPatientIds(req, Patient, [account.patientId]);
+    if (listed && !listed.has(String(account.patientId))) throw new HttpError(404, 'Account not found.', 'NOT_FOUND');
+  }
+  if (account.status === 'deleted') throw new HttpError(409, 'This account was already deleted.', 'HANDLED');
+  await eraseAccount(account, { by: 'staff', byId: req.user._id, byName: req.user.name, reason }, req.now);
+  await audit(req, 'PORTAL_ACCOUNT_DELETED', { details: { accountId: String(account._id), ...(account.patientId ? { patientId: String(account.patientId) } : {}), by: 'staff', reason } });
+  const fresh = await PatientAccount.findOne({ tenantId: req.tenantId, _id: id }).lean();
+  res.json({ account: view(fresh) });
 });
 
 // ---------- Her requests to change her name, age, mobile or email (from her portal profile – owner, 19 Oct 2026) ----------

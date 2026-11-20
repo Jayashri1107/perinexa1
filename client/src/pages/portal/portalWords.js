@@ -31,6 +31,7 @@ export const PORTAL_WORDS = {
     sharedDevice: 'On a shared phone or computer, sign out when you finish.',
     timedOut: 'You were signed out after 15 minutes without use.',
     signedOut: 'You are signed out.',
+    accountDeleted: 'Your account is deleted. Your hospital record stays with the hospital.',
     // Her care
     signOut: 'Sign out',
     nextAppointment: 'Your next appointment',
@@ -81,6 +82,7 @@ export const PORTAL_WORDS = {
     sharedDevice: 'इतरांसोबत वापरल्या जाणाऱ्या फोनवर किंवा संगणकावर, काम झाल्यावर बाहेर पडा.',
     timedOut: '15 मिनिटे वापर न झाल्याने तुम्ही बाहेर पडलात.',
     signedOut: 'तुम्ही बाहेर पडला आहात.',
+    accountDeleted: 'तुमचे खाते हटवले आहे. तुमची रुग्णालयातील नोंद रुग्णालयाकडे राहते.',
     signOut: 'बाहेर पडा',
     nextAppointment: 'तुमची पुढील भेट',
     noAppointment: 'कोणतीही भेट ठरलेली नाही.',
@@ -129,6 +131,7 @@ export const PORTAL_WORDS = {
     sharedDevice: 'साझा फ़ोन या कंप्यूटर पर, काम पूरा होने पर बाहर निकलें।',
     timedOut: '15 मिनट तक इस्तेमाल न होने के कारण आपको बाहर कर दिया गया।',
     signedOut: 'आप बाहर निकल चुके हैं।',
+    accountDeleted: 'आपका खाता हटा दिया गया है। आपका अस्पताल का रिकॉर्ड अस्पताल के पास रहता है।',
     signOut: 'बाहर निकलें',
     nextAppointment: 'आपकी अगली मुलाक़ात',
     noAppointment: 'कोई मुलाक़ात तय नहीं है।',

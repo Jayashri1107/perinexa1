@@ -474,6 +474,8 @@ export const AUDIT_LABELS = {
   PORTAL_SIGNUP_APPROVED: "Patient's online sign-up approved",
   PORTAL_SIGNUP_REJECTED: "Patient's online sign-up rejected",
   PORTAL_PASSWORD_CHANGED: 'Patient changed her portal password',
+  PORTAL_ACCOUNT_DELETED: 'Patient portal account deleted',
+  PORTAL_ACCOUNT_DELETE_REFUSED: 'Portal account not deleted (wrong password or OTP)',
   PORTAL_RECORDS_VIEWED: 'Patient viewed her records in the portal',
   PORTAL_PROFILE_UPDATED: 'Patient changed her contact details in the portal',
   PORTAL_CHANGE_REQUESTED: 'Patient asked to change her name, age, mobile or email',
@@ -883,6 +885,8 @@ export const AUDIT_TONES = {
   PORTAL_SIGNUP_APPROVED: 'patient',
   PORTAL_SIGNUP_REJECTED: 'warn',
   PORTAL_PASSWORD_CHANGED: 'patient',
+  PORTAL_ACCOUNT_DELETED: 'warn',
+  PORTAL_ACCOUNT_DELETE_REFUSED: 'warn',
   PORTAL_RECORDS_VIEWED: 'patient',
   PORTAL_PROFILE_UPDATED: 'patient',
   PORTAL_CHANGE_REQUESTED: 'patient',
@@ -1616,6 +1620,10 @@ export function describeAudit(entry) {
     case 'PORTAL_SIGNUP_REJECTED':
       return d.reason ?? '';
     case 'PORTAL_PASSWORD_CHANGED':
+      return '';
+    case 'PORTAL_ACCOUNT_DELETED':
+      return d.by === 'patient' ? 'By the patient' : ['By staff', d.reason].filter(Boolean).join(' – ');
+    case 'PORTAL_ACCOUNT_DELETE_REFUSED':
       return '';
     case 'KEEPSAKE_CARD_PRINTED':
       return d.mrn ? record(d) : '';

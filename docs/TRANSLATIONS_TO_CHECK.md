@@ -301,6 +301,7 @@ File: `client/src/pages/portal/portalWords.js` (the address /portal; the switch 
 | `sharedDevice` | On a shared phone or computer, sign out when you finish. | इतरांसोबत वापरल्या जाणाऱ्या फोनवर किंवा संगणकावर, काम झाल्यावर बाहेर पडा. | साझा फ़ोन या कंप्यूटर पर, काम पूरा होने पर बाहर निकलें। |
 | `timedOut` | You were signed out after 15 minutes without use. | 15 मिनिटे वापर न झाल्याने तुम्ही बाहेर पडलात. | 15 मिनट तक इस्तेमाल न होने के कारण आपको बाहर कर दिया गया। |
 | `signedOut` | You are signed out. | तुम्ही बाहेर पडला आहात. | आप बाहर निकल चुके हैं। |
+| `accountDeleted` (after she deletes her account, 19 Nov 2026) | Your account is deleted. Your hospital record stays with the hospital. | तुमचे खाते हटवले आहे. तुमची रुग्णालयातील नोंद रुग्णालयाकडे राहते. | आपका खाता हटा दिया गया है। आपका अस्पताल का रिकॉर्ड अस्पताल के पास रहता है। |
 | `signOut` | Sign out | बाहेर पडा | बाहर निकलें |
 | `nextAppointment` | Your next appointment | तुमची पुढील भेट | आपकी अगली मुलाक़ात |
 | `noAppointment` | No appointment is booked. | कोणतीही भेट ठरलेली नाही. | कोई मुलाक़ात तय नहीं है। |
@@ -722,3 +723,10 @@ depression (the sheets say उदास वाटणे / मन उदास �
 लठ्ठपणा / मोटापा for obesity, and the transliterated terms (प्री-एक्लॅम्पसिया, थ्रॉम्बोफिलिया, हायड्रॉप्स,
 इम्युनोग्लोब्युलिन, जेस्टेशनल डायबेटीस). In Hindi, anaesthesia is written एनेस्थीसिया (बेहोशी या सुन्न करने की दवा), as on
 the anaesthesia consent.
+
+## Deleting her portal account (19 Nov 2026)
+`client/src/pages/portal/portalAccountWords.js` → `deleteAccount` (the card on My profile → My details: what is
+deleted, what the hospital keeps "as the law asks of hospitals", the password or OTP to confirm) and
+`portalWords.js` → `accountDeleted` (the message after it), in Marathi and Hindi. Written by Claude, not yet checked
+by a fluent speaker. The sentence about the hospital record also needs the owner's (and later a lawyer's) approval in
+English first.

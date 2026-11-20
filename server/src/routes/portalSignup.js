@@ -9,6 +9,7 @@ import { addDays, hospitalToday } from '../careplans/dates.js';
 import { config } from '../config.js';
 import { Patient } from '../models/Patient.js';
 import { PatientAccount, SELF_CARE_TYPES } from '../models/PatientAccount.js';
+import { PortalAccess } from '../models/PortalAccess.js';
 import { Tenant } from '../models/Tenant.js';
 import { isClosed } from '../patients/deathRules.js';
 import { deliverOtp, otpChannels, otpSender } from '../reminders/sender.js';
@@ -17,7 +18,7 @@ import { HttpError } from '../utils/httpError.js';
 import { fakeVerify, hashPassword, passwordSchema, verifyPassword } from '../utils/password.js';
 import { parse, requiredDateOnly } from '../utils/validate.js';
 import { letterheadFor } from './settings.js';
-import { accountAccess, portalAudit, portalSession, startPortalSession } from './portal.js';
+import { accountAccess, endPortalSession, portalAudit, portalSession, startPortalSession } from './portal.js';
 import { capitalizeName } from '../utils/personName.js';
 
 // Patients' own accounts on the hospital's portal (owner, 16 Oct 2026 – docs/PATIENT_ACCOUNTS_PLAN.md). Public (no
@@ -56,14 +57,18 @@ const limiter = (limit) =>
 // WhatsApp, and a limit per computer alone lets someone with many addresses flood a patient. Counted for every number
 // – registered or not – so the answer never tells whether someone is a patient. A number that is not a mobile is left
 // to the route (400). Off (no-op) when the limit is 0.
+// The number counted: the hospital's portal key and the 10 digits. Signing in: the number she typed. Confirming a
+// deletion: her account's number, set by the route as req.otpMobileKey.
+const mobileKey = (hospitalKey, mobile) => `${String(hospitalKey ?? '').toUpperCase()}:${mobileDigits(mobile)}`;
+const otpMobileKey = (req) => req.otpMobileKey ?? (mobileDigits(req.body?.mobile) ? mobileKey(req.params.key, req.body.mobile) : '');
 const mobileLimiter = (windowMs, limit, message) =>
   limit && windowMs
     ? rateLimit({
         windowMs,
         limit,
         store: rateLimitStore(`portal-otp-mobile-${windowMs}-${++limiterCount}`),
-        keyGenerator: (req) => `${String(req.params.key ?? '').toUpperCase()}:${mobileDigits(req.body?.mobile)}`,
-        skip: (req) => !mobileDigits(req.body?.mobile),
+        keyGenerator: otpMobileKey,
+        skip: (req) => !otpMobileKey(req),
         standardHeaders: 'draft-8',
         legacyHeaders: false,
         // RATE_LIMITED: the portal already has this refusal in Marathi and Hindi (portalWords.js) – no new patient wording
@@ -149,14 +154,24 @@ async function refuse(req, tenant, reason, message = WRONG, lockedFor = 0) {
 }
 
 /**
- * /api/portal/h – otpLimitMax: OTPs one computer may ask for in 15 minutes (each one sends an SMS); mobileGapSeconds
- * and mobileDailyMax: OTPs one mobile number may be sent, whoever asks (0 = no such limit).
+ * The limits per mobile number, whoever asks (0 = no such limit): one OTP every gapSeconds, dailyMax in 24 hours. Made
+ * once by the app and given to both routers, so sign-in OTPs and OTPs to confirm a deletion count together.
  */
-export function portalSignupRouter({ otpLimitMax = 8, mobileGapSeconds = 0, mobileDailyMax = 0 } = {}) {
+export function otpMobileLimits({ gapSeconds = 0, dailyMax = 0 } = {}) {
+  return [
+    mobileLimiter(gapSeconds * 1000, 1, 'An OTP was sent to this number a moment ago. Please wait a minute before asking for another.'),
+    mobileLimiter(24 * 60 * 60 * 1000, dailyMax, 'Too many OTPs for this number today. Please sign in with your email and password, or call the hospital.'),
+  ];
+}
+
+/**
+ * /api/portal/h – otpLimitMax: OTPs one computer may ask for in 15 minutes (each one sends an SMS); mobileLimits: the
+ * limits per mobile number (otpMobileLimits).
+ */
+export function portalSignupRouter({ otpLimitMax = 8, mobileLimits = otpMobileLimits() } = {}) {
   const router = Router();
   const otpLimiter = limiter(otpLimitMax);
-  const mobileGap = mobileLimiter(mobileGapSeconds * 1000, 1, 'An OTP was sent to this number a moment ago. Please wait a minute before asking for another.');
-  const mobileDaily = mobileLimiter(24 * 60 * 60 * 1000, mobileDailyMax, 'Too many OTPs for this number today. Please sign in with your email and password, or call the hospital.');
+  const [mobileGap, mobileDaily] = mobileLimits;
   const stepLimiter = limiter(Math.max(30, otpLimitMax * 3));
 
   // ---------- The hospitals a patient can choose on the sign-in page ----------
@@ -286,9 +301,20 @@ export function portalSignupRouter({ otpLimitMax = 8, mobileGapSeconds = 0, mobi
   return router;
 }
 
-/** /api/portal/account – her own account, once signed in: a new password (also after signing in with an OTP). */
-export const portalAccountRouter = Router();
-portalAccountRouter.post('/password', async (req, res) => {
+/**
+ * /api/portal/account – her own account, once signed in: a new password (also after signing in with an OTP), and
+ * deleting the account. mobileLimits: the same limits per mobile number as signing in (otpMobileLimits), so an OTP to
+ * confirm a deletion counts with the sign-in OTPs to her number (health check M4).
+ */
+export function portalAccountRouter({ mobileLimits = [] } = {}) {
+  const router = Router();
+  router.post('/delete/otp', deleteLimiter, accountForDeleteOtp, ...mobileLimits, sendDeleteOtp);
+  router.use(accountRoutes);
+  return router;
+}
+
+const accountRoutes = Router();
+accountRoutes.post('/password', async (req, res) => {
   const { access } = await portalSession(req, res);
   const body = parse(z.object({ password: passwordSchema }).strict(), req.body);
   if (!access.accountId) throw new HttpError(409, 'Signed in with a code from the hospital: there is no password to change.', 'NO_ACCOUNT');
@@ -298,5 +324,100 @@ portalAccountRouter.post('/password', async (req, res) => {
   account.passwordHash = await hashPassword(body.password);
   await account.save();
   await portalAudit(req, 'PORTAL_PASSWORD_CHANGED', access);
+  res.json({ ok: true });
+});
+
+// ---------- Deleting her account (Google Play rule, 19 Nov 2026 – docs/ACCOUNT_DELETION_PLAN.md) ----------
+
+/**
+ * Erases a portal account: every detail she typed (name, age, mobile, email, password, address, care type, LMP) and
+ * its sign-in state; a stub stays with the hospital, status 'deleted', when and by whom – nothing that names her. Every
+ * portal access of her record ends (her sessions on every phone and computer, and any code staff made). Her hospital
+ * record (visits, prescriptions, lab, scans, bills) is the hospital's and is not touched.
+ * deleted: { by: 'patient' } or { by: 'staff', byId, byName, reason }.
+ */
+export async function eraseAccount(account, deleted, now) {
+  const filter = { _id: account._id, tenantId: account.tenantId };
+  const erased = { fullName: 1, ageYears: 1, mobile: 1, email: 1, passwordHash: 1, address: 1, careType: 1, lmpSaid: 1, otp: 1, reviewed: 1, lockedUntil: 1, lastSignInAt: 1, failedAttempts: 1 };
+  await PatientAccount.updateOne(filter, { $set: { status: 'deleted', deleted: { at: now, reason: '', ...deleted } }, $unset: erased });
+  const revoked = (byName) => ({ $set: { revoked: { by: deleted.byId ?? null, byName, at: now } } });
+  if (account.patientId) {
+    await PortalAccess.updateMany({ tenantId: account.tenantId, patientId: account.patientId, revoked: null }, revoked(deleted.by === 'patient' ? 'Patient (account deleted)' : deleted.byName));
+  }
+  // Any session of this account, even one of a record it was linked to before
+  await PortalAccess.updateMany({ tenantId: account.tenantId, accountId: account._id, revoked: null }, revoked('Account deleted'));
+}
+
+// As many tries as OTPs a computer may ask for (8 in 15 minutes by default)
+const deleteLimiter = limiter(config.PORTAL_OTP_RATE_LIMIT_MAX);
+
+/** Her approved account, from her session – or 409 (signed in with a paper code: no account) / 401. */
+async function ownAccount(req, res) {
+  const session = await portalSession(req, res);
+  const { access } = session;
+  if (!access.accountId) throw new HttpError(409, 'Signed in with a code from the hospital: there is no account to delete. Please call the hospital.', 'NO_ACCOUNT');
+  const account = await PatientAccount.findOne({ tenantId: access.tenantId, _id: access.accountId, status: 'approved' });
+  if (!account) throw new HttpError(401, 'Please sign in again.', 'PORTAL_SIGNED_OUT');
+  return { ...session, account };
+}
+
+// An OTP to confirm the deletion (an account without an email has no password)
+// Her account and whether an OTP can go at all – before the limits per mobile number, so only an OTP that is really
+// sent counts. Her number is the account's, never one typed in the request.
+async function accountForDeleteOtp(req, res, next) {
+  const { tenant, account } = await ownAccount(req, res);
+  const mode = otpMode(tenant);
+  if (mode === 'off') throw new HttpError(409, 'An OTP cannot be sent just now. Please use your password, or call the hospital.', 'OTP_OFF');
+  if (isLocked(account, req.now)) throw lockedError(secondsLeft(account.lockedUntil, req.now), 'PORTAL_LOCKED');
+  req.deleteOtp = { tenant, account, mode };
+  req.otpMobileKey = mobileKey(tenant.messaging?.signupKey ?? tenant._id, account.mobile);
+  next();
+}
+
+async function sendDeleteOtp(req, res) {
+  const { tenant, account, mode } = req.deleteOtp;
+  const otp = String(randomInt(0, 1_000_000)).padStart(6, '0');
+  account.otp = { hash: hashOtp(account._id, otp), expiresAt: new Date(req.now.getTime() + OTP_MINUTES * 60 * 1000), tries: 0 };
+  await account.save();
+  if (mode === 'sms' || mode === 'whatsapp') {
+    try {
+      await deliverOtp(tenant, { to: `+91${account.mobile}`, otp, hospital: letterheadFor(tenant).name, minutes: OTP_MINUTES });
+    } catch {
+      throw new HttpError(503, 'The OTP could not be sent just now. Please try again in a minute.', 'OTP_NOT_SENT');
+    }
+  }
+  res.json({ sentTo: `******${account.mobile.slice(-4)}`, minutes: OTP_MINUTES, via: mode, ...(mode === 'practice' ? { practiceOtp: otp } : {}) });
+}
+
+// Delete: confirmed with her password or the OTP just sent. Wrong tries count towards the same lock as signing in.
+accountRoutes.post('/delete', deleteLimiter, async (req, res) => {
+  const { access, account } = await ownAccount(req, res);
+  const body = parse(z.object({ password: z.string().max(128).optional(), otp: z.string().regex(/^\d{6}$/, 'The OTP has 6 digits.').optional() }).strict(), req.body);
+  if (!body.password && !body.otp) throw new HttpError(400, account.passwordHash ? 'Please enter your password.' : 'Please enter the OTP.', 'VALIDATION');
+  const wrong = await claimFor(account, req.now);
+  const refused = async (reason, message) => {
+    const lockedFor = await wrong();
+    await portalAudit(req, 'PORTAL_ACCOUNT_DELETE_REFUSED', access, { reason });
+    if (lockedFor) throw lockedError(lockedFor, 'PORTAL_LOCKED');
+    throw new HttpError(401, message, 'PORTAL_LOGIN_FAILED');
+  };
+  if (body.password) {
+    if (!account.passwordHash) {
+      await fakeVerify(body.password);
+      return refused('no_password', 'You signed up without an email: please confirm with an OTP.');
+    }
+    if (!(await verifyPassword(body.password, account.passwordHash))) return refused('wrong_password', 'The password is not right.');
+  } else {
+    if (!account.otp || account.otp.expiresAt <= req.now) return refused('otp_expired', WRONG_OTP);
+    if (!same(hashOtp(account._id, body.otp), account.otp.hash)) {
+      const filter = { _id: account._id, tenantId: account.tenantId, 'otp.hash': account.otp.hash };
+      const after = await PatientAccount.findOneAndUpdate(filter, { $inc: { 'otp.tries': 1 } }, { returnDocument: 'after', projection: { otp: 1 } }).lean();
+      if (after?.otp && after.otp.tries >= MAX_FAILED) await PatientAccount.updateOne(filter, { $set: { otp: null } });
+      return refused('wrong_otp', WRONG_OTP);
+    }
+  }
+  await eraseAccount(account, { by: 'patient' }, req.now);
+  endPortalSession(res);
+  await portalAudit(req, 'PORTAL_ACCOUNT_DELETED', access, { accountId: String(account._id), by: 'patient' });
   res.json({ ok: true });
 });
