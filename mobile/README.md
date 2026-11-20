@@ -11,6 +11,12 @@ a store update is needed only when the shell changes (name, icon, a phone featur
 - **Icons and splash screens:** made from the 128-pixel Perinexa mark. A 1024-pixel (or SVG) logo from the designer
   makes them sharper – replace the files under `android/app/src/main/res/mipmap-*` and
   `ios/App/App/Assets.xcassets`.
+- **Android icon (19 Nov 2026):** `ic_launcher_foreground.png` is the white-and-teal X alone on a clear background;
+  Android puts it on the Night Indigo colour (`values/ic_launcher_background.xml`, #221F6E) and cuts the phone's own
+  shape (circle, squircle). Before, the picture carried its own white edge and rounded square, so phones showed a
+  square inside a square. `ic_launcher.png` / `ic_launcher_round.png` are for Android 7.
+  The Google Play listing icon is `store/play-store-icon-512.png` (512 × 512, full square – Google rounds it).
+  All were made from `client/public/icon-maskable-512.png`; a designer's large logo should replace them later.
 
 ## Once, on a computer
 
