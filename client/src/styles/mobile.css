@@ -1839,6 +1839,22 @@ html.in-app { --safe-top: 0px; }
   /* ---------- Care plans: each label over its value, so neither wraps beside the other ---------- */
   .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td.cp-col-name) > td[data-label]:not(:first-child)::before { display: block; margin: 0 0 2px; }
   .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td.cp-col-name) > td[data-label]:not(:first-child) > * { margin-left: 0; }
+
+  /* ---------- From the developer's test of the Android app (20 Nov 2026) ---------- */
+  /* A patient's bar once scrolled: her name and button keep clear of the search, bell and profile buttons; More and the
+     other buttons come back only in the bar at the foot, never under those buttons */
+  .ph-patient.ph-stuck .ph-main { padding-right: 136px; }
+  .ph-patient.ph-stuck .ph-heading { padding-right: 0; }
+  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient.ph-stuck .ph-actions:not(:has(> .btn-primary)) > :not(.btn-primary) { display: none; }
+  /* Today's lists (In hospital and the others): her name on its own line, her labels wrap under it, the arrow at the
+     right – the labels ran past the edge beside a name broken over three lines */
+  .wl-list .wl-row-toggle { position: relative; flex-wrap: wrap; row-gap: var(--space-1); column-gap: var(--space-2); padding-right: 44px; }
+  .wl-list .wl-row-toggle > .wl-row-name { flex: 1 1 100%; min-width: 0; font-size: var(--fs-body); line-height: var(--lh-body); overflow-wrap: anywhere; }
+  .wl-list .wl-row-toggle > .wl-row-chevron { position: absolute; top: 50%; right: var(--space-3); margin-top: -10px; }
+  /* A department's heading (OBGY) starts at the same edge as the names under it */
+  .wl-list > .td-dept-head { padding-left: var(--space-4); padding-right: var(--space-4); }
+  /* Patients: a little more space between the switches (Today / All days, My patients / All doctors, type of care) */
+  .pt-quick { column-gap: var(--space-4); }
 }
 
 /* The registration sheet slides up (mobile.css .pf-sheet .pf-main) */
