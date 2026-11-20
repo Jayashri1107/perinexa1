@@ -1878,6 +1878,24 @@ html.in-app { --safe-top: 0px; }
   .ph-has-jump .ph-actions > .export-btn, .ph-has-jump .ph-actions:has(> :nth-child(2)) > .export-btn { top: calc(var(--space-2) + 2px); }
   /* Billing's list of bills: less padding round the table, so more of it shows before it scrolls sideways */
   .ipd-list-card { padding: var(--space-3); }
+  /* A list row's two-part value on one line with a dot between ("1 medicine · Vitamin B complex"), not run together */
+  .pf .pf-main .dt:not(.an-table) tbody tr > td[data-label]:not(:first-child) > .name-cell-text > * + *::before { content: ' · '; }
+  .pf .pf-main .dt:not(.an-table) tbody tr > td[data-label]:not(:first-child) > .name-cell-text > * { display: inline; }
+  /* A patient's visits: vital signs, diagnosis and prescription each on a full line (they broke in a half-width box) */
+  .pf .pf-main .dt tbody tr:has(> td[data-label='Next visit']) > td:is([data-label='Vitals'], [data-label='Diagnosis'], [data-label='Prescription']) { flex: 1 1 100%; }
+  /* Pharmacy's Sales bill: "search below" on a phone (the search is not on the left), and the patient type choices
+     across the full width */
+  .ph-pick-head > .ph-pick-wide { display: none; }
+  .ph-pick-head > .ph-pick-phone { display: inline; }
+  .ph-filters > .ph-filter:has(> .segmented) { flex: 1 1 100%; width: 100%; }
+  .ph-filters .ph-filter > .segmented { width: 100%; }
+  /* A bill's items: the tick box says what it is for (several ticked are removed together with "Remove ticked") */
+  .pf .pf-main td.bill-col-tick:has(> input) { display: flex; align-items: center; gap: var(--space-2); }
+  /* A patient's second row of tabs on the dark band (a stay's Admissions / Current stay / IPD bill): light words, the
+     chosen one white with the teal line, like the first row – they kept their dark colours and the chosen one vanished */
+  .pf .ph-patient .ph-subtabs a, .pf .ph-patient .ph-subtabs button { color: var(--indigo-200); }
+  .pf .ph-patient .ph-subtabs a.active, .pf .ph-patient .ph-subtabs a[aria-current='page'] { color: var(--on-dark); box-shadow: inset 0 -3px 0 var(--teal-500); }
+  .pf .pf-main td.bill-col-tick:has(> input)::after { content: 'Select'; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
 }
 
 /* The registration sheet slides up (mobile.css .pf-sheet .pf-main) */
