@@ -79,6 +79,9 @@ so **each of them sets up an authenticator app at their next sign-in after the d
 My settings → Security. Secret encrypted (key from `JWT_SECRET`), 8 recovery codes as hashes, a code works once, its
 own 3-try lock; "Switch back to super admin" asks the code too; the super admin resets it for a lost phone (user page).
 Changing `JWT_SECRET` leaves only the recovery codes working for those who had it on. `tests/two-step.test.js`.
+**Changed 20 Nov 2026 (the developer, with the owner's agreement of 20 Nov 2026):** required for the super admin and
+platform admins only. Hospital admins found typing the code at every sign-in too much; like all other staff they may turn
+it on under My settings → Security, and those who already set it up keep it until they turn it off there.
 
 ## Medium
 
