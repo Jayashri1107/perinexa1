@@ -896,7 +896,9 @@ html.in-app { --safe-top: 0px; }
   .ch-day input { flex: 1 1 auto; min-width: 0; }
   /* A table with rows and columns that mean something together (Monthly income): a real table that swipes, the first
      column staying in view – not one long stack */
-  .pf-main table.bill-report:not(:has(td[data-label])) { display: block; overflow-x: auto; width: 100%; border: 1px solid var(--border); border-radius: var(--radius-md); }
+  /* position: relative – the hidden screen-reader words in its cells are placed against the table, inside its sideways
+     scroll; without it they sat far to the right and made the whole Billing page 850 pixels wide on a phone (19 Nov 2026) */
+  .pf-main table.bill-report:not(:has(td[data-label])) { position: relative; display: block; overflow-x: auto; width: 100%; border: 1px solid var(--border); border-radius: var(--radius-md); }
   .pf-main table.bill-report:not(:has(td[data-label])) thead { display: table-header-group; }
   .pf-main table.bill-report:not(:has(td[data-label])) tbody { display: table-row-group; width: auto; }
   .pf-main table.bill-report:not(:has(td[data-label])) tfoot { display: table-footer-group; }

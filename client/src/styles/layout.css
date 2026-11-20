@@ -128,7 +128,7 @@
    Phones keep their one sideways-scrolling line (mobile.css). */
 @media (min-width: 720px) {
   .ph-tabs.segmented { flex-wrap: wrap; overflow-x: visible; }
-  .segmented.lab-lists { flex-wrap: wrap; overflow-x: visible; border-radius: var(--radius-lg); }
+  .segmented.lab-lists, .segmented.ph-rep-tabs { flex-wrap: wrap; overflow-x: visible; border-radius: var(--radius-lg); }
 }
 /* The second row: the sections of the current tab (e.g. Knowledge base → Care plans → Red-flag rules), lighter than the
    tabs above it – underlined, in the page's own colours */
