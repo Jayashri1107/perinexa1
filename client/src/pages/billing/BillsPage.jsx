@@ -283,7 +283,8 @@ export function BillsPage() {
                           )}
                         </span>
                       </td>
-                      <td>
+                      {/* bills-* names: a card per bill on a phone (mobile.css, 20 Nov 2026) */}
+                      <td className="bills-bill">
                         <Link to={`/billing/bills/${b.id}`} className="tabular bills-number">
                           {b.number}
                         </Link>
@@ -291,13 +292,13 @@ export function BillsPage() {
                           {b.kind === 'ipd' ? (b.stay?.inHospital ? 'IPD, in hospital' : 'IPD') : 'OPD'} · {shortDay(b.date)}
                         </span>
                       </td>
-                      <td className="num tabular">{rupees(b.total)}</td>
-                      <td className="num tabular">{rupees(b.paid)}</td>
-                      <td className="num tabular">
+                      <td className="num tabular bills-total">{rupees(b.total)}</td>
+                      <td className="num tabular bills-paid">{rupees(b.paid)}</td>
+                      <td className="num tabular bills-balance">
                         <strong>{b.balance < 0 ? `−${rupees(-b.balance)}` : rupees(b.balance)}</strong>
                         {b.insuranceDue > 0 && <span className="ipd-sub">insurance {rupees(b.insuranceDue)}</span>}
                       </td>
-                      <td>
+                      <td className="bills-state">
                         <BillStatus status={b.status} />
                         <span className="ipd-sub">
                           {b.lastPayment
