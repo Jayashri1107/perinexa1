@@ -267,3 +267,19 @@ describe('her Home page: welcome and next steps (20 Oct 2026)', () => {
   });
 });
 
+
+describe('deleting her account (19 Nov 2026 – docs/ACCOUNT_DELETION_PLAN.md)', () => {
+  it('says what goes and what the hospital keeps, in each language, with every word translated', async () => {
+    const { DeleteAccount } = await import('./PortalProfile.jsx');
+    const keys = Object.keys(PORTAL_ACCOUNT_WORDS.en.deleteAccount).sort();
+    for (const lang of ['mr', 'hi']) expect(Object.keys(PORTAL_ACCOUNT_WORDS[lang].deleteAccount).sort(), lang).toEqual(keys);
+    for (const lang of ['mr', 'hi']) expect(PORTAL_WORDS[lang].accountDeleted, lang).toMatch(DEVANAGARI);
+    const en = text(renderToStaticMarkup(<DeleteAccount lang="en" hospital="Sample Hospital" withPassword />));
+    expect(en).toContain('Delete my account');
+    expect(en).toContain('kept by Sample Hospital');
+    expect(en).toContain('sign up again');
+    const mr = text(renderToStaticMarkup(<DeleteAccount lang="mr" hospital="Sample Hospital" withPassword={false} />));
+    expect(mr).toContain('माझे खाते हटवा');
+    expect(mr).toContain('Sample Hospital');
+  });
+});

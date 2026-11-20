@@ -722,3 +722,10 @@ depression (the sheets say उदास वाटणे / मन उदास �
 लठ्ठपणा / मोटापा for obesity, and the transliterated terms (प्री-एक्लॅम्पसिया, थ्रॉम्बोफिलिया, हायड्रॉप्स,
 इम्युनोग्लोब्युलिन, जेस्टेशनल डायबेटीस). In Hindi, anaesthesia is written एनेस्थीसिया (बेहोशी या सुन्न करने की दवा), as on
 the anaesthesia consent.
+
+## Deleting her portal account (19 Nov 2026)
+`client/src/pages/portal/portalAccountWords.js` → `deleteAccount` (the card on My profile → My details: what is
+deleted, what the hospital keeps "as the law asks of hospitals", the password or OTP to confirm) and
+`portalWords.js` → `accountDeleted` (the message after it), in Marathi and Hindi. Written by Claude, not yet checked
+by a fluent speaker. The sentence about the hospital record also needs the owner's (and later a lawyer's) approval in
+English first.

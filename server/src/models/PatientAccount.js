@@ -6,22 +6,28 @@ import { tenantScoped } from '../utils/tenantScope.js';
 // and approves it – linking it to her patient record (found, or registered then) – or rejects it with a reason. Only an
 // approved account signs in, with mobile and an OTP, or with email and password when she gave an email (owner: email
 // optional, 16 Oct 2026); it then opens her record's portal.
-// Never deleted: a rejected or withdrawn account is kept with who did it and why.
+// A rejected or withdrawn account is kept with who did it and why. Deleted (Google Play rule, 19 Nov 2026 –
+// docs/ACCOUNT_DELETION_PLAN.md): by her from her portal, or by reception when she cannot sign in; every detail she
+// typed is erased, a stub without her name or contact details stays (status 'deleted'). Her hospital record is not
+// part of the account and is never touched.
 // The password is kept only as a bcrypt hash, the OTP only as a keyed hash, for 10 minutes.
 
 const { ObjectId } = mongoose.Schema.Types;
 const stamp = new mongoose.Schema({ by: ObjectId, byName: String, at: Date, reason: { type: String, default: '' } }, { _id: false });
 
-export const ACCOUNT_STATUSES = ['pending', 'approved', 'rejected'];
+export const ACCOUNT_STATUSES = ['pending', 'approved', 'rejected', 'deleted'];
+const notDeleted = function () {
+  return this.status !== 'deleted';
+};
 // The types of care a patient may choose herself when she signs up (owner, 16 Oct 2026); a baby's record and a
 // pregnancy loss are registered at the hospital. The doctor can change the type of care later.
 export const SELF_CARE_TYPES = ['antenatal', 'postnatal', 'gynaecology', 'infertility'];
 
 const accountSchema = new mongoose.Schema(
   {
-    fullName: { type: String, required: true, trim: true, maxlength: 150 },
+    fullName: { type: String, required: notDeleted, trim: true, maxlength: 150 },
     ageYears: { type: Number, min: 0, max: 120, default: null },
-    mobile: { type: String, required: true }, // 10 digits (Indian mobile)
+    mobile: { type: String, required: notDeleted }, // 10 digits (Indian mobile)
     // Her registration details, as she typed them (owner, 16 Oct 2026: "the patient fills her own details"): reception
     // approves a new patient in one click and her record is made from them. The LMP is what she said – it goes on her
     // record as a note for the doctor to confirm, never as the pregnancy's dates.
@@ -38,6 +44,8 @@ const accountSchema = new mongoose.Schema(
     lockedUntil: { type: Date, default: null },
     otp: { type: new mongoose.Schema({ hash: String, expiresAt: Date, tries: { type: Number, default: 0 } }, { _id: false }), default: null },
     lastSignInAt: { type: Date, default: null },
+    // Deleted: when, and by whom – 'patient' (herself) or 'staff' (byName: who, reason: why)
+    deleted: { type: new mongoose.Schema({ at: Date, by: { type: String, enum: ['patient', 'staff'] }, byId: ObjectId, byName: String, reason: { type: String, default: '' } }, { _id: false }), default: null },
   },
   { timestamps: true },
 );

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BadgeCheck, Globe, UserPen, UserPlus, UserX } from 'lucide-react';
+import { BadgeCheck, Globe, Trash2, UserPen, UserPlus, UserX } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -151,6 +151,88 @@ function RejectDialog({ account, onClose, onDone }) {
         </div>
       </form>
     </Modal>
+  );
+}
+
+/**
+ * Delete a patient's portal account when she asks and cannot do it herself (lost phone, changed number) – after
+ * checking who she is (Google Play rule, 19 Nov 2026 – docs/ACCOUNT_DELETION_PLAN.md). Her hospital record stays.
+ */
+function DeleteAccountDialog({ account, onClose, onDone }) {
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const remove = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/patient-accounts/${account.id}/delete`, { method: 'POST', body: { reason } });
+      onDone(`${account.fullName}: portal account deleted. Her hospital record is unchanged.`);
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal id="signup-delete" title={`Delete ${account.fullName}'s portal account`} onClose={onClose}>
+      <form onSubmit={remove} noValidate>
+        <Alert type="error">{error}</Alert>
+        <p>Only when she asks for it. Her sign-in and the details she typed are erased and she is signed out everywhere. Her hospital record is not changed. This cannot be undone; she can sign up again.</p>
+        <Field label="How you checked who she is" id="signup-delete-reason" hint="For example: at the desk with her Aadhaar card. Kept in the audit log.">
+          <input id="signup-delete-reason" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} autoFocus />
+        </Field>
+        <div className="row">
+          <button type="submit" className="btn btn-danger" disabled={busy || reason.trim().length < 3}>
+            <Trash2 aria-hidden="true" /> {busy ? 'Deleting…' : 'Delete account'}
+          </button>
+          <button type="button" className="btn btn-link" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+/** One handled account in "Recently handled": approved, rejected or deleted (a deleted one has no name left). */
+function HandledRow({ a, onDelete }) {
+  if (a.status === 'deleted') {
+    return (
+      <li>
+        <StatusPill tone="inactive" icon={Trash2}>
+          Account deleted
+        </StatusPill>{' '}
+        <span className="muted">
+          {a.patient ? (
+            <>
+              <Link to={`/patients/${a.patient.id}`}>{a.patient.mrn}</Link> ·{' '}
+            </>
+          ) : null}
+          {a.deleted?.by === 'patient' ? 'by the patient' : `by ${a.deleted?.byName ?? ''}`}
+          {a.deleted?.at ? `, ${formatDate(a.deleted.at)}` : ''}
+          {a.deleted?.reason ? ` – ${a.deleted.reason}` : ''}
+        </span>
+      </li>
+    );
+  }
+  return (
+    <li>
+      <strong>{a.fullName}</strong>{' '}
+      <StatusPill tone={a.status === 'approved' ? 'stable' : 'inactive'}>{a.status === 'approved' ? 'Approved' : 'Rejected'}</StatusPill>{' '}
+      <span className="muted">
+        {a.patient ? (
+          <>
+            <Link to={`/patients/${a.patient.id}`}>{a.patient.mrn}</Link> ·{' '}
+          </>
+        ) : null}
+        {a.reviewed ? `${a.reviewed.byName}, ${formatDate(a.reviewed.at)}` : ''}
+        {a.reviewed?.reason ? ` – ${a.reviewed.reason}` : ''}
+      </span>{' '}
+      <button type="button" className="btn btn-link btn-sm" onClick={() => onDelete(a)}>
+        Delete account
+      </button>
+    </li>
   );
 }
 
@@ -350,6 +432,7 @@ export function SignupsPage() {
   const roles = activeMembership.roles;
   const handled = useFetch(canRegisterPatients(roles) ? '/patient-accounts' : null, { status: 'handled' });
   const s = useSignups(handled.reload);
+  const [deleting, setDeleting] = useState(null); // the account whose deletion is being confirmed
   const list = s.res.data?.accounts ?? [];
   return (
     <>
@@ -381,25 +464,24 @@ export function SignupsPage() {
             <h2 id="signups-handled">Recently handled</h2>
             <ul className="plain-list">
               {handled.data.accounts.map((a) => (
-                <li key={a.id}>
-                  <strong>{a.fullName}</strong>{' '}
-                  <StatusPill tone={a.status === 'approved' ? 'stable' : 'inactive'}>{a.status === 'approved' ? 'Approved' : 'Rejected'}</StatusPill>{' '}
-                  <span className="muted">
-                    {a.patient ? (
-                      <>
-                        <Link to={`/patients/${a.patient.id}`}>{a.patient.mrn}</Link> ·{' '}
-                      </>
-                    ) : null}
-                    {a.reviewed ? `${a.reviewed.byName}, ${formatDate(a.reviewed.at)}` : ''}
-                    {a.reviewed?.reason ? ` – ${a.reviewed.reason}` : ''}
-                  </span>
-                </li>
+                <HandledRow key={a.id} a={a} onDelete={setDeleting} />
               ))}
             </ul>
           </section>
         )}
       </div>
       {s.dialogs}
+      {deleting && (
+        <DeleteAccountDialog
+          account={deleting}
+          onClose={() => setDeleting(null)}
+          onDone={(message) => {
+            setDeleting(null);
+            s.setFlash(message);
+            handled.reload();
+          }}
+        />
+      )}
     </>
   );
 }
