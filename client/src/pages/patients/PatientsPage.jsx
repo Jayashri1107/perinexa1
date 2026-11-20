@@ -320,7 +320,7 @@ export function PatientsPage() {
               Today's patients
             </button>
             <button type="button" aria-pressed={params.day !== 'today'} onClick={() => setParams({ day: 'all' })}>
-              All patients
+              All days
             </button>
           </div>
           )}
@@ -330,7 +330,7 @@ export function PatientsPage() {
                 My patients
               </button>
               <button type="button" aria-pressed={params.doctor === 'all'} onClick={() => setParams({ doctor: 'all' })}>
-                All patients
+                All doctors
               </button>
             </div>
           )}
