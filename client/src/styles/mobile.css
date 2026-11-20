@@ -1672,7 +1672,13 @@ html.in-app { --safe-top: 0px; }
   .pf-search-open:has(.ph-patient) .pf-topbar { left: 0; padding-bottom: var(--space-2); background: var(--surface); pointer-events: auto; }
   .pf-search-open:has(.ph-patient) .pf-topbar-start { display: flex; }
   .ph-patient.ph-pinned { top: 0; margin-top: 0; padding-top: calc(var(--safe-top) + var(--space-2)); background: var(--surface); box-shadow: 0 1px 3px rgba(29, 33, 80, 0.06); }
+  /* Room for the search, bell and profile buttons beside the first two lines (the way back and her name) only: her
+     badges come below those buttons and use the whole width – they were squeezed one per line (19 Nov 2026) */
   .ph-patient .ph-heading { min-height: 44px; padding-right: 136px; }
+  .ph-patient:not(.ph-stuck) .ph-heading:has(.ph-badges) { padding-right: 0; }
+  .ph-patient:not(.ph-stuck) .ph-heading:has(.ph-badges) > .ph-crumbs,
+  .ph-patient:not(.ph-stuck) .ph-heading:has(.ph-badges) .ph-title { max-width: calc(100% - 136px); }
+  .ph-patient:not(.ph-stuck) .ph-heading .ph-badges { flex: 1 1 100%; }
   .pf-main:has(.ph-patient) > .pf-notice { padding-top: calc(var(--safe-top) + 60px); }
 
   /* ---------- A list on a page: a day's lists and the lab order's buttons ---------- */
