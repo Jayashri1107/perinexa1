@@ -1,5 +1,22 @@
 # Progress
 
+## Google Play readiness and the developer's Android app test (20 Nov 2026, master 0417b1aa → main db1c27b2)
+- **Merged:** patients delete their own portal account (`account-deletion`; the OTP that confirms it now counts against
+  the same per-number limits as sign-in OTPs, health check M4), the Android icon and the 512-pixel Play Store icon
+  (`android-icon`, `mobile/store/`), pages and billing that fit the phone (`layout-fit-1119`, `layout-fit-billing`), and
+  the phone fixes from the developer's screenshots (`phone-ui-1120`): a patient's scrolled bar no longer puts More under
+  the search, bell and profile buttons; Today's rows put the name on its own line with the labels under it; OBGY lines
+  up with the names; Patients' switches read Today's patients / All days and My patients / All doctors.
+- **Tested:** 0417b1aa – server 2,069 passed, website 2,481 passed, build works, server starts.
+- **Not checked in a browser** at phone width (the preview could not be signed in): check the patient page, Today and
+  Patients on a phone after deploying.
+- **Website (C:\perinexa-website, branch `app-privacy`, not merged):** the privacy policy now covers the app, and a new
+  page /delete-account/ (Google Play's deletion address). Needs the owner's reading (ideally a lawyer's) before it goes live.
+- **Still before the Play Store:** the signing (upload) key; the Google Play organisation account and its forms (data
+  safety, health apps declaration, content rating, a sample login on the live server for Google's reviewers); a
+  1024×500 feature graphic and phone screenshots with sample data; the go-live checklist before real patients.
+- **Test app:** a debug APK built from `mobile/` (it opens https://app.perinexa.com; the shell did not change after it).
+
 ## Vaccination reminder the day before; nurses mark vaccines as given (18 Nov 2026, branch `vaccine-reminders`)
 
 Asked for by a hospital and approved by the owner on 18 Nov 2026 as an exception to the feature freeze.
