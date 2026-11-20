@@ -57,14 +57,18 @@ const limiter = (limit) =>
 // WhatsApp, and a limit per computer alone lets someone with many addresses flood a patient. Counted for every number
 // – registered or not – so the answer never tells whether someone is a patient. A number that is not a mobile is left
 // to the route (400). Off (no-op) when the limit is 0.
+// The number counted: the hospital's portal key and the 10 digits. Signing in: the number she typed. Confirming a
+// deletion: her account's number, set by the route as req.otpMobileKey.
+const mobileKey = (hospitalKey, mobile) => `${String(hospitalKey ?? '').toUpperCase()}:${mobileDigits(mobile)}`;
+const otpMobileKey = (req) => req.otpMobileKey ?? (mobileDigits(req.body?.mobile) ? mobileKey(req.params.key, req.body.mobile) : '');
 const mobileLimiter = (windowMs, limit, message) =>
   limit && windowMs
     ? rateLimit({
         windowMs,
         limit,
         store: rateLimitStore(`portal-otp-mobile-${windowMs}-${++limiterCount}`),
-        keyGenerator: (req) => `${String(req.params.key ?? '').toUpperCase()}:${mobileDigits(req.body?.mobile)}`,
-        skip: (req) => !mobileDigits(req.body?.mobile),
+        keyGenerator: otpMobileKey,
+        skip: (req) => !otpMobileKey(req),
         standardHeaders: 'draft-8',
         legacyHeaders: false,
         // RATE_LIMITED: the portal already has this refusal in Marathi and Hindi (portalWords.js) – no new patient wording
@@ -150,14 +154,24 @@ async function refuse(req, tenant, reason, message = WRONG, lockedFor = 0) {
 }
 
 /**
- * /api/portal/h – otpLimitMax: OTPs one computer may ask for in 15 minutes (each one sends an SMS); mobileGapSeconds
- * and mobileDailyMax: OTPs one mobile number may be sent, whoever asks (0 = no such limit).
+ * The limits per mobile number, whoever asks (0 = no such limit): one OTP every gapSeconds, dailyMax in 24 hours. Made
+ * once by the app and given to both routers, so sign-in OTPs and OTPs to confirm a deletion count together.
  */
-export function portalSignupRouter({ otpLimitMax = 8, mobileGapSeconds = 0, mobileDailyMax = 0 } = {}) {
+export function otpMobileLimits({ gapSeconds = 0, dailyMax = 0 } = {}) {
+  return [
+    mobileLimiter(gapSeconds * 1000, 1, 'An OTP was sent to this number a moment ago. Please wait a minute before asking for another.'),
+    mobileLimiter(24 * 60 * 60 * 1000, dailyMax, 'Too many OTPs for this number today. Please sign in with your email and password, or call the hospital.'),
+  ];
+}
+
+/**
+ * /api/portal/h – otpLimitMax: OTPs one computer may ask for in 15 minutes (each one sends an SMS); mobileLimits: the
+ * limits per mobile number (otpMobileLimits).
+ */
+export function portalSignupRouter({ otpLimitMax = 8, mobileLimits = otpMobileLimits() } = {}) {
   const router = Router();
   const otpLimiter = limiter(otpLimitMax);
-  const mobileGap = mobileLimiter(mobileGapSeconds * 1000, 1, 'An OTP was sent to this number a moment ago. Please wait a minute before asking for another.');
-  const mobileDaily = mobileLimiter(24 * 60 * 60 * 1000, mobileDailyMax, 'Too many OTPs for this number today. Please sign in with your email and password, or call the hospital.');
+  const [mobileGap, mobileDaily] = mobileLimits;
   const stepLimiter = limiter(Math.max(30, otpLimitMax * 3));
 
   // ---------- The hospitals a patient can choose on the sign-in page ----------
@@ -287,9 +301,20 @@ export function portalSignupRouter({ otpLimitMax = 8, mobileGapSeconds = 0, mobi
   return router;
 }
 
-/** /api/portal/account – her own account, once signed in: a new password (also after signing in with an OTP). */
-export const portalAccountRouter = Router();
-portalAccountRouter.post('/password', async (req, res) => {
+/**
+ * /api/portal/account – her own account, once signed in: a new password (also after signing in with an OTP), and
+ * deleting the account. mobileLimits: the same limits per mobile number as signing in (otpMobileLimits), so an OTP to
+ * confirm a deletion counts with the sign-in OTPs to her number (health check M4).
+ */
+export function portalAccountRouter({ mobileLimits = [] } = {}) {
+  const router = Router();
+  router.post('/delete/otp', deleteLimiter, accountForDeleteOtp, ...mobileLimits, sendDeleteOtp);
+  router.use(accountRoutes);
+  return router;
+}
+
+const accountRoutes = Router();
+accountRoutes.post('/password', async (req, res) => {
   const { access } = await portalSession(req, res);
   const body = parse(z.object({ password: passwordSchema }).strict(), req.body);
   if (!access.accountId) throw new HttpError(409, 'Signed in with a code from the hospital: there is no password to change.', 'NO_ACCOUNT');
@@ -337,11 +362,20 @@ async function ownAccount(req, res) {
 }
 
 // An OTP to confirm the deletion (an account without an email has no password)
-portalAccountRouter.post('/delete/otp', deleteLimiter, async (req, res) => {
+// Her account and whether an OTP can go at all – before the limits per mobile number, so only an OTP that is really
+// sent counts. Her number is the account's, never one typed in the request.
+async function accountForDeleteOtp(req, res, next) {
   const { tenant, account } = await ownAccount(req, res);
   const mode = otpMode(tenant);
   if (mode === 'off') throw new HttpError(409, 'An OTP cannot be sent just now. Please use your password, or call the hospital.', 'OTP_OFF');
   if (isLocked(account, req.now)) throw lockedError(secondsLeft(account.lockedUntil, req.now), 'PORTAL_LOCKED');
+  req.deleteOtp = { tenant, account, mode };
+  req.otpMobileKey = mobileKey(tenant.messaging?.signupKey ?? tenant._id, account.mobile);
+  next();
+}
+
+async function sendDeleteOtp(req, res) {
+  const { tenant, account, mode } = req.deleteOtp;
   const otp = String(randomInt(0, 1_000_000)).padStart(6, '0');
   account.otp = { hash: hashOtp(account._id, otp), expiresAt: new Date(req.now.getTime() + OTP_MINUTES * 60 * 1000), tries: 0 };
   await account.save();
@@ -353,10 +387,10 @@ portalAccountRouter.post('/delete/otp', deleteLimiter, async (req, res) => {
     }
   }
   res.json({ sentTo: `******${account.mobile.slice(-4)}`, minutes: OTP_MINUTES, via: mode, ...(mode === 'practice' ? { practiceOtp: otp } : {}) });
-});
+}
 
 // Delete: confirmed with her password or the OTP just sent. Wrong tries count towards the same lock as signing in.
-portalAccountRouter.post('/delete', deleteLimiter, async (req, res) => {
+accountRoutes.post('/delete', deleteLimiter, async (req, res) => {
   const { access, account } = await ownAccount(req, res);
   const body = parse(z.object({ password: z.string().max(128).optional(), otp: z.string().regex(/^\d{6}$/, 'The OTP has 6 digits.').optional() }).strict(), req.body);
   if (!body.password && !body.otp) throw new HttpError(400, account.passwordHash ? 'Please enter your password.' : 'Please enter the OTP.', 'VALIDATION');

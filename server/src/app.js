@@ -53,7 +53,7 @@ import { exportsRouter } from './routes/exports.js';
 import { reminderOutboxRouter } from './routes/reminderOutbox.js';
 import { portalRouter } from './routes/portal.js';
 import { portalRecordsRouter } from './routes/portalRecords.js';
-import { portalAccountRouter, portalSignupRouter } from './routes/portalSignup.js';
+import { otpMobileLimits, portalAccountRouter, portalSignupRouter } from './routes/portalSignup.js';
 import { patientAccountsRouter } from './routes/patientAccounts.js';
 import { displayRouter } from './routes/display.js';
 import { medicineSafetyRouter } from './routes/medicineSafety.js';
@@ -267,8 +267,10 @@ export function createApp({
   // The patient portal (Version 2): its own sign-in with a code, no staff login (routes/portal.js)
   // Patients' own accounts: sign-up and sign-in on the hospital's portal, her password, and her records
   // (docs/PATIENT_ACCOUNTS_PLAN.md)
-  app.use('/api/portal/h', portalSignupRouter({ otpLimitMax: portalOtpRateLimitMax, mobileGapSeconds: portalOtpMobileGapSeconds, mobileDailyMax: portalOtpMobileDailyMax }));
-  app.use('/api/portal/account', portalAccountRouter);
+  // One set of limits per mobile number for both: sign-in OTPs and OTPs to confirm deleting the account (health check M4)
+  const portalOtpMobileLimits = otpMobileLimits({ gapSeconds: portalOtpMobileGapSeconds, dailyMax: portalOtpMobileDailyMax });
+  app.use('/api/portal/h', portalSignupRouter({ otpLimitMax: portalOtpRateLimitMax, mobileLimits: portalOtpMobileLimits }));
+  app.use('/api/portal/account', portalAccountRouter({ mobileLimits: portalOtpMobileLimits }));
   app.use('/api/portal/records', portalRecordsRouter);
   app.use('/api/portal', portalRouter);
   // The ultrasound machine's scan bridge: no staff login – the hospital's bridge key (routes/scanBridge.js)

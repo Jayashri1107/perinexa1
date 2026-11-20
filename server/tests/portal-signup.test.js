@@ -562,6 +562,36 @@ describe('deleting her account', () => {
     expect((await agent.get('/api/portal/me')).status).toBe(401);
   });
 
+  // The OTP to confirm a deletion goes to her account's number: it counts with the sign-in OTPs to that number
+  // (health check M4), whatever is typed in the request
+  async function otpSignedIn() {
+    sessions = {};
+    const key = await signupOn();
+    const p = await register();
+    await signUp(key, { email: '', password: undefined });
+    await approve(await waitingId(), p.id);
+    const agent = request.agent(app);
+    const sent = await agent.post(`/api/portal/h/${key}/otp`).send({ mobile: '9876543210' });
+    expect((await agent.post(`/api/portal/h/${key}/otp/verify`).send({ mobile: '9876543210', otp: sent.body.practiceOtp })).status).toBe(200);
+    return agent;
+  }
+
+  it('the deletion OTP keeps the one-a-minute limit of her number, counted with the sign-in OTP', async () => {
+    app = createApp({ portalOtpMobileGapSeconds: 60, portalOtpMobileDailyMax: 0 });
+    const agent = await otpSignedIn();
+    const res = await agent.post('/api/portal/account/delete/otp').send({ mobile: '9000000009' });
+    expect(res.status).toBe(429);
+    expect(res.body.error.code).toBe('RATE_LIMITED');
+    expect((await PatientAccount.findOne({ tenantId: hospital._id }).lean()).status).toBe('approved');
+  });
+
+  it('the deletion OTP keeps the daily limit of her number', async () => {
+    app = createApp({ portalOtpMobileGapSeconds: 0, portalOtpMobileDailyMax: 2 });
+    const agent = await otpSignedIn(); // the first of two today
+    expect((await agent.post('/api/portal/account/delete/otp').send({})).status).toBe(200);
+    expect((await agent.post('/api/portal/account/delete/otp').send({})).status).toBe(429);
+  });
+
   it('three wrong passwords lock it, as signing in does', async () => {
     const { agent } = await signedIn();
     for (let i = 0; i < 2; i += 1) expect((await agent.post('/api/portal/account/delete').send({ password: 'NotRight99' })).status).toBe(401);
