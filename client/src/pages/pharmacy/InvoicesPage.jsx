@@ -672,8 +672,9 @@ export function BillPaper({ invoice: v, settings }) {
               <span>Paid Amount</span>
               <span>{plain(v.paidPaise ?? 0)}</span>
             </div>
-            {/* a walk-in (External) pays the whole bill: never credit */}
-            {v.patient && (
+            {/* a walk-in (External) pays the whole bill: never credit. 21 Nov 2026 (the pharmacy): a bill paid in full
+                prints no Credit Amt 0.00 line */}
+            {v.patient && (v.balancePaise ?? 0) > 0 && (
               <div className="ph-slip-credit">
                 <span>Credit Amt</span>
                 <span>{plain(Math.max(0, v.balancePaise ?? 0))}</span>
