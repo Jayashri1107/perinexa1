@@ -33,7 +33,7 @@ function takeSwitchEmail() {
   }
 }
 
-// "Remember my email on this computer": only the email, in this browser (never the password). Browser storage may be
+// "Remember my email on this device": only the email, in this browser (never the password). Browser storage may be
 // blocked (private windows): then nothing is remembered and the box simply starts empty.
 const REMEMBER_KEY = 'perinexa1:rememberedEmail';
 function rememberedEmail() {
@@ -51,6 +51,10 @@ function keepEmail(value) {
     /* not remembered – fine */
   }
 }
+
+// Phones and tablets (iPhone app, 21 Nov 2026): no box is focused on opening, or the keyboard covers half the sign-in
+// page and pushes the logo under the camera notch. Computers keep the cursor in the box as before.
+const touchScreen = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(pointer: coarse)').matches);
 
 export function LoginPage() {
   const { user, loading, login, loginTwoStep, startSession, logoutReason, timeoutMinutes } = useAuth();
@@ -188,14 +192,14 @@ export function LoginPage() {
           <Alert type="error">{lock.seconds ? null : error}</Alert>
           <LockNotice seconds={lock.seconds} />
           <Field label="Email" id="email" error={fieldErrors.email}>
-            <input id="email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus={!email} />
+            <input id="email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus={!email && !touchScreen()} />
           </Field>
           <Field label="Password" id="password" error={fieldErrors.password}>
-            <PasswordInput id="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus={Boolean(email)} />
+            <PasswordInput id="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus={Boolean(email) && !touchScreen()} />
           </Field>
           <label className="check auth-remember" htmlFor="remember-email">
             <input id="remember-email" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-            Remember my email on this computer
+            Remember my email on this device
           </label>
           <button type="submit" className="btn btn-primary btn-block auth1-submit" disabled={submitting || lock.seconds > 0}>
             {submitting ? (
