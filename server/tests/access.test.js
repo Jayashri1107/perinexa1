@@ -30,6 +30,7 @@ beforeEach(async () => {
     desk: 'referral_desk', // referrals from other doctors, booking and replies (owner, 15 Oct 2026; brought over 19 Oct 2026)
     admin: 'admin',
     adminDoctor: ['admin', 'doctor'],
+    deskDoctor: ['doctor', 'receptionist'], // health check L3
   })) {
     people[key] = await createUser({ name: key });
     await addMember(people[key], hospital, roles);
@@ -209,6 +210,38 @@ describe('sensitive records', () => {
     expect(res.body.patient.sensitive).toBe(true);
     expect((await view('nurse', ownPatient)).pregnancy).toBeUndefined();
     expect(await AuditLog.countDocuments({ action: 'PATIENT_SENSITIVITY_CHANGED' })).toBe(1);
+  });
+});
+
+// Health check L3 (21 Nov 2026): rights of several roles add up, but the desk's right to assign a doctor is for handing
+// her to a doctor – a doctor who also works the desk must not use it to take another doctor's patient.
+describe('a doctor who is also a receptionist', () => {
+  const assign = (who, patient, doctor) => sessions[who].patch(`/api/patients/${patient.id}/doctor`).send({ doctorId: doctor ? people[doctor]._id.toString() : null });
+
+  it("cannot make themselves the doctor of another doctor's patient, sensitive or not", async () => {
+    for (const patient of [sensitivePatient, ownPatient]) {
+      const res = await assign('deskDoctor', patient, 'deskDoctor');
+      expect(res.status, patient.fullName).toBe(403);
+      expect(res.body.error.message).toMatch(/yourself/);
+      expect(String((await Patient.findById(patient.id)).assignedDoctor)).toBe(people.drA._id.toString());
+    }
+    expect(await AuditLog.countDocuments({ action: 'PATIENT_ASSIGNED' })).toBe(0);
+    // and so still sees only the identity of the sensitive record
+    expect((await view('deskDoctor', sensitivePatient)).medical).toBeUndefined();
+  });
+
+  it('still hands a patient to another doctor at the desk, and takes one who has no doctor yet', async () => {
+    expect((await assign('deskDoctor', ownPatient, 'drB')).status).toBe(200);
+    expect(String((await Patient.findById(ownPatient.id)).assignedDoctor)).toBe(people.drB._id.toString());
+    const free = (await sessions.reception.post('/api/patients').send(samplePatient({ fullName: 'No Doctor Yet' }))).body.patient;
+    expect((await assign('deskDoctor', free, 'deskDoctor')).status).toBe(200);
+    expect((await view('deskDoctor', free)).access.level).toBe('full');
+  });
+
+  it('a receptionist and an RMO assign as before', async () => {
+    expect((await assign('reception', sensitivePatient, 'drB')).status).toBe(200);
+    expect((await assign('rmo', sensitivePatient, 'rmo')).status).toBe(400); // an RMO is not a doctor of the hospital
+    expect((await assign('rmo', ownPatient, 'drB')).status).toBe(200);
   });
 });
 
