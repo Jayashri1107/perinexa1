@@ -1,6 +1,7 @@
 import { cloneElement, useRef, useState } from 'react';
 import { BillingLabel, STAY_TYPE_HINT, STAY_TYPE_OPTIONS, StayTypeLabel } from '../../components/AdmissionLabels.jsx';
 import { WitnessFields, emptyWitness, witnessWords } from '../../components/WitnessFields.jsx';
+import { DateTimeInput } from '../../components/DateTimeInput.jsx';
 import { MeowsChart } from './MeowsChart.jsx';
 import { PainChartSection } from '../anaesthesia/PainChart.jsx';
 import { PphChartSection } from './PphChart.jsx';
@@ -245,6 +246,7 @@ export function AdmissionPage() {
   const [notice, setNotice] = useState(null);
   const [place, setPlace] = useState(null); // editing the ward and bed
   const [stayType, setStayType] = useState(null); // changing the admission type (ANC → Delivered …)
+  const [admitDate, setAdmitDate] = useState(null); // correcting the admission date { at, reason, fields } (21 Nov 2026)
   const page = latest && latest.admission.id === admissionId ? latest : data;
   if (error && !page) return <Alert type="error">{error}</Alert>;
   if (!page) return <div className="card plan-loading" aria-busy="true" />;
@@ -271,6 +273,16 @@ export function AdmissionPage() {
       setNotice({ type: 'success', text: 'Admission type changed.' });
     } catch (err) {
       setNotice({ type: 'error', text: err.message });
+    }
+  };
+  const saveAdmitDate = async () => {
+    try {
+      setLatest(await api(`/patients/${patient.id}/admissions/${a.id}`, { method: 'PATCH', body: { admittedAt: fromLocalInput(admitDate.at) ?? '', dateReason: admitDate.reason.trim() } }));
+      setAdmitDate(null);
+      setNotice({ type: 'success', text: 'Admission date changed. The bed days on the bill follow it.' });
+    } catch (err) {
+      if (err.fields) setAdmitDate({ ...admitDate, fields: err.fields });
+      else setNotice({ type: 'error', text: err.message });
     }
   };
   const savePlace = async () => {
@@ -356,6 +368,11 @@ export function AdmissionPage() {
                 Change admission type
               </button>
             )}
+            {page.access.canWrite && a.status === 'admitted' && admitDate === null && (
+              <button type="button" className="btn btn-link btn-sm" onClick={() => setAdmitDate({ at: toLocalInput(a.admittedAt), reason: '', fields: {} })}>
+                Change admission date
+              </button>
+            )}
           </p>
         )}
         {stayType !== null && (
@@ -374,6 +391,23 @@ export function AdmissionPage() {
               Save
             </button>
             <button type="button" className="btn btn-link" onClick={() => setStayType(null)}>
+              Cancel
+            </button>
+          </div>
+        )}
+        {/* 21 Nov 2026: a patient already in hospital entered with today's date is moved to her real admission date */}
+        {admitDate !== null && (
+          <div className="row ip-place">
+            <Field label="Admitted at" id="ip-admitted-at" error={admitDate.fields.admittedAt}>
+              <DateTimeInput id="ip-admitted-at" value={admitDate.at} max={toLocalInput(new Date().toISOString())} onChange={(e) => setAdmitDate({ ...admitDate, at: e.target.value })} />
+            </Field>
+            <Field label="Reason" id="ip-date-reason" error={admitDate.fields.dateReason}>
+              <input id="ip-date-reason" value={admitDate.reason} maxLength={200} placeholder="e.g. Admitted on 18 Nov, entered later" onChange={(e) => setAdmitDate({ ...admitDate, reason: e.target.value })} />
+            </Field>
+            <button type="button" className="btn btn-secondary" disabled={!admitDate.at || admitDate.reason.trim().length < 3} onClick={saveAdmitDate}>
+              Save
+            </button>
+            <button type="button" className="btn btn-link" onClick={() => setAdmitDate(null)}>
               Cancel
             </button>
           </div>
