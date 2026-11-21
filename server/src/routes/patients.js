@@ -76,6 +76,7 @@ import {
   IDENTITY_EDIT,
   NEWBORN_EDIT,
   PATIENT_ROLES,
+  canAssignSelf,
   creationAccess,
   departmentListFilter,
   pregnancyVisibleFilter,
@@ -1362,6 +1363,10 @@ patientsRouter.patch('/:id/doctor', async (req, res) => {
   const { doctorId } = parse(z.object({ doctorId: z.union([objectId, z.null()]) }), req.body);
   const patient = await findPatient(req);
   if (!patientAccess(req, patient).assign) throw forbidden("You can't change the doctor for another doctor's patient.");
+  // The desk hands her to a doctor; taking her oneself needs the doctor or RMO role's own right (health check L3)
+  if (doctorId && String(doctorId) === String(req.user._id) && !canAssignSelf(req, patient)) {
+    throw forbidden("You can't make yourself the doctor of another doctor's patient. Ask an RMO or her doctor to hand her over.");
+  }
   await assertDoctorInHospital(req.tenantId, doctorId);
   const from = patient.assignedDoctor?.toString() ?? null;
   if (from !== doctorId) {
