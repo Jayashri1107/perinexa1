@@ -1,0 +1,68 @@
+# Builds the iPhone app (mobile/, Capacitor) on a GitHub Mac, runs it in the iPhone Simulator and keeps a screenshot.
+# Runs when the iPhone app (mobile/) or this file changes – on a pull request, on ios-cloud-build, or by hand.
+# No signing and no secrets: a Simulator build. The App Store build is ios-release.yml.
+name: iOS build
+
+on:
+  push:
+    branches: [ios-cloud-build]
+    paths: ['mobile/**', '.github/workflows/ios-build.yml']
+  pull_request:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/ios-build.yml', '.github/workflows/ios-release.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Xcode version
+        run: xcodebuild -version
+      - name: Install packages and sync iOS
+        working-directory: mobile
+        run: |
+          npm ci
+          npx cap sync ios
+      - name: Pick an iPhone simulator
+        id: sim
+        run: |
+          xcrun simctl list devices available
+          SIM=$(xcrun simctl list devices available | grep -m1 -E '^\s+iPhone' | sed -E 's/^ +(.*) \(([0-9A-F-]+)\).*/\2/')
+          echo "Using $SIM"
+          echo "id=$SIM" >> "$GITHUB_OUTPUT"
+      - name: Build for the Simulator
+        working-directory: mobile
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.id }}" -derivedDataPath build/ios \
+            CODE_SIGNING_ALLOWED=NO build | tail -60
+          test -d build/ios/Build/Products/Debug-iphonesimulator/App.app
+      - name: Run in the Simulator and take a screenshot
+        working-directory: mobile
+        run: |
+          SIM=${{ steps.sim.outputs.id }}
+          xcrun simctl boot "$SIM" || true
+          xcrun simctl bootstatus "$SIM" -b
+          xcrun simctl install "$SIM" build/ios/Build/Products/Debug-iphonesimulator/App.app
+          xcrun simctl launch "$SIM" com.perinexa.app
+          sleep 25
+          xcrun simctl io "$SIM" screenshot screenshot.png
+      - name: Zip the app
+        working-directory: mobile/build/ios/Build/Products/Debug-iphonesimulator
+        run: ditto -c -k --keepParent App.app "$GITHUB_WORKSPACE/Perinexa-simulator.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: perinexa-ios-simulator
+          path: |
+            Perinexa-simulator.zip
+            mobile/screenshot.png
