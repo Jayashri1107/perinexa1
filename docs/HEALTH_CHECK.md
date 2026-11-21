@@ -21,20 +21,25 @@ test (VAPT) is still needed. The client (`client/src`) was looked at only where 
 
 Before real patients: all High items closed, every Medium item fixed or accepted in writing by the owner.
 
+**Status on 21 Nov 2026** (headings below brought in line with the notes under them): High – H2, H3, H4 done; H1 partly
+(M10 in use, restore test to do). Medium – all fixed, decided or reduced, except M9 (owner decides before AI is on).
+Low – L3 fixed 21 Nov 2026; L2, L14 and part of L20 open. The website code and the ABDM callbacks, "Not covered"
+below, were reviewed on 21 Nov 2026: `docs/REVIEW_2026-11-21.md`.
+
 From outside the live site is in good shape: HTTPS with a Let's Encrypt certificate (renewed by Caddy), `http://`
 redirected, HSTS, a Content-Security-Policy, X-Frame-Options, nosniff, a strict referrer policy, every data route
 answers 401 without a session, and ports 22, 4000 and 27017 are closed to the internet.
 
 ## High
 
-**H1 – No scheduled backup, and no backup off the server.** Open.
+**H1 – No scheduled backup, and no backup off the server.** Partly fixed 21 Nov 2026: the live `MONGO_URI` points at the owner's paid Atlas M10 cluster (checked by the owner on the server). Still to do: confirm Cloud Backup and Continuous Cloud Backup are on, and one restore to a temporary cluster with the time written down (`docs/RUNBOOK.md`).
 The database is on Atlas M0 (no backups). `deploy.sh` now saves a `mongodump` before each deploy
 (`deploy/db-backup-lib.sh`), but only when someone deploys, unencrypted, on the same disk. A week without a deploy and
 a lost cluster or disk means a week (or everything) lost.
 *Fix:* Atlas M10 with Cloud Backup and Continuous Cloud Backup, a backup policy, one restore to a temporary cluster
 with the time written down (`docs/DEPLOY_AWS.md` sections 4 and 9). Encrypted EBS volume for the deploy copies.
 
-**H2 – Vulnerable production dependencies** (`npm audit --omit=dev`: 3 high, 2 moderate, all with fixes). Open.
+**H2 – Vulnerable production dependencies** (`npm audit --omit=dev`: 3 high, 2 moderate, all with fixes). Fixed 16 Nov 2026 (`npm audit --omit=dev` on 21 Nov 2026: 0 vulnerabilities).
 - `body-parser` 2.3.0 – denial of service through compressed bodies (GHSA-27r3-jxmh-p828). `express.json` inflates by
   default and runs before sign-in (`server/src/app.js:164`), so anyone can send one.
 - `mongoose` 9.10.2 – four advisories incl. `sanitizeFilter` not applied and prototype pollution; fixed in 9.12.1.
@@ -45,7 +50,7 @@ with the time written down (`docs/DEPLOY_AWS.md` sections 4 and 9). Encrypted EB
 10.7.6; the build and test tools too (vite 8.3.8, vitest 5.1.0, concurrently 10.0.7). `npm audit` finds 0 in all
 packages. Only `package-lock.json` changed.
 
-**H3 – Platform users can read patient records inside a hospital.** Owner decides. **Verified.**
+**H3 – Platform users can read patient records inside a hospital.** Owner decided 17 Nov 2026 (support access, below). **Verified.**
 `server/src/middleware/auth.js` `platformMembership` gives a platform user every hospital role, and
 `platformHospitalGuard` lets a super admin do everything in a hospital and a platform admin read everything there
 (`GET /api/patients`, `/:id`, notes, record copy, lab …). This follows the owner's decision of 12 Oct 2026
@@ -67,7 +72,7 @@ its patients, bills, pharmacy, lab and analytics lists only while that hospital'
 During it the 12 Oct rules apply (super admin like staff, platform admin reads). `platformHospitalGuard`,
 `utils/platformAccess.js`, `tests/support-access.test.js`; `CLAUDE.md` and handover section 9 changed to match.
 
-**H4 – No two-step sign-in for staff.** Open.
+**H4 – No two-step sign-in for staff.** Fixed 17 and 20 Nov 2026 (below).
 No TOTP or other second factor anywhere in `server/src`. With H3 as it stands, one phished super-admin password opens
 every hospital's records.
 *Fix:* TOTP (authenticator app) required for super admin, platform admins and hospital admins, offered to everyone.
@@ -85,7 +90,7 @@ it on under My settings → Security, and those who already set it up keep it un
 
 ## Medium
 
-**M1 – Page access (None / View per menu item) is only a hint.** Open. **Verified.**
+**M1 – Page access (None / View per menu item) is only a hint.** Fixed 16 Nov 2026 (below). **Verified.**
 `server/src/middleware/pageAccess.js` acts only when the browser sends `X-Perinexa-Page` with a known page. A direct
 request without the header, or with the name of a page set to Edit, skips the check. Roles and need-to-know still
 apply, so it never gives more than the roles do – but a hospital admin who sets "Reports: None" will believe reports
@@ -99,7 +104,7 @@ only:** areas several menu items share – patients, billing, the lab's orders, 
 summaries – because refusing them by area would break the other pages that use them. For those, the roles and the
 need-to-know rules remain the real limit, as the admin screen's help already says ("Each item also needs a role").
 
-**M2 – The server never ends a session for inactivity on its own; no absolute limit.** Open. **Verified.**
+**M2 – The server never ends a session for inactivity on its own; no absolute limit.** Fixed 16 Nov 2026. **Verified.**
 `requireAuth` renews the cookie on every request, including the background polls (`NotificationBell.jsx:29`,
 `TodayPage.jsx:592`, `pharmacy/RegisterPage.jsx:181`). The 30-minute logout is enforced only by the browser timer; a
 stolen cookie, or an open tab, stays signed in indefinitely. *Fix:* an absolute lifetime (e.g. 12 hours, an `authTime`
@@ -111,7 +116,7 @@ read again by themselves do not, so an unused open tab ends after `SESSION_TIMEO
 Sessions from before the change start their 12 hours at their next request. Staff on a longer shift sign in again
 after 12 hours.
 
-**M3 – Account lock and OTP try counter can be raced.** Open. *Plausible.*
+**M3 – Account lock and OTP try counter can be raced.** Fixed 16 Nov 2026. *Plausible.*
 `routes/auth.js:188` with `auth/loginLock.js`, and `routes/portalSignup.js:244-248`: the lock is checked before the
 attempt and counted after it; `otp.tries` is incremented in memory and saved, so parallel guesses overwrite each other.
 Many parallel requests from many addresses can make far more guesses than the limit. *Fix:* atomic
@@ -121,7 +126,7 @@ after). Every try – staff sign-in (`staffClaimTry`), a patient's password and 
 the portal code (`portal.js`) – is now counted in one database step *before* it is checked, and refused unchecked once
 3 in a row are used; the OTP's own try count is a database `$inc` too. Tests: `server/tests/parallel-tries.test.js`.
 
-**M4 – Nothing limits OTP messages to one mobile number.** Open. **Verified.**
+**M4 – Nothing limits OTP messages to one mobile number.** Fixed 16 Nov 2026. **Verified.**
 `routes/portalSignup.js` `POST /:key/otp` is limited per IP only; each request for a registered mobile sends a paid
 SMS / WhatsApp. *Fix:* a cooldown per mobile (e.g. 60 s) and a daily cap.
 **Fixed 16 Nov 2026:** one OTP a minute and 5 in 24 hours per hospital and mobile number, whoever asks
@@ -129,7 +134,7 @@ SMS / WhatsApp. *Fix:* a cooldown per mobile (e.g. 60 s) and a daily cap.
 registered or not, so the answer never tells whether someone is a patient. Refused with the existing `RATE_LIMITED`
 code, which the portal already shows in Marathi and Hindi – no new patient wording.
 
-**M5 – A patient's bills are listed without the need-to-know check or an audit entry.** Open. **Verified.**
+**M5 – A patient's bills are listed without the need-to-know check or an audit entry.** Fixed 16 Nov 2026. **Verified.**
 `routes/billing.js:144` `GET /patient/:patientId` checks only the hospital; the appointments equivalent
 (`appointments.js:326-333`) calls `assertNotHidden` / `patientAccess` and writes an audit line. *Fix:* the same three
 steps here.
@@ -139,7 +144,7 @@ admin reach the billing routes, and reception and billing see every patient's id
 the missing audit entry. A view-level check like the appointments one was not added, because it would block the
 hospital admin – whether admins see bills is the owner's decision (L5).
 
-**M6 – Fertility plan text is not checked for the baby's sex.** Owner decides. **Verified.**
+**M6 – Fertility plan text is not checked for the baby's sex.** Owner decided 17 Nov 2026: built. **Verified.**
 `routes/fertilityPlans.js` (section text up to 8,000 characters, switch notes, cycle notes) never calls the PC-PNDT
 check. The Act also covers sex selection before conception, so "patient requests male child" can be saved and printed.
 *Needed:* the owner's OK to add the same check as the history sheet.
@@ -148,7 +153,7 @@ approved library itself ("male factor", "sexual health", "47,XXY"), so fertility
 child of one sex and sex selection (`SEX_SELECTION_WORDS` in `utils/pcpndt.js`, **DRAFT until the owner reads it**) – on
 the plan's title, sections, switch and outcome notes and every cycle-sheet text.
 
-**M7 – Hospital admins can export patient names in bulk.** Owner decides.
+**M7 – Hospital admins can export patient names in bulk.** Owner decided 17 Nov 2026: allowed with a reason, built.
 `routes/billing.js:1048` (admin and billing) and `routes/pharmacy.js:1740` (admin) return up to a year as CSV with
 MRN, full name and each item or medicine – against the rule at `routes/exports.js:9-10` that an admin sees no patient
 data. A pharmacy sales file can show a named patient next to HIV medicines, which defeats the neutral test name. Both
@@ -158,7 +163,7 @@ and the pharmacy sales file need a reason (5–200 characters), written to the a
 Still open for the owner: the pharmacy sales file can name a patient next to HIV medicines (the neutral test name does
 not cover medicines).
 
-**M8 – Startup data changes run on every start, without a lock, inside the deploy's one-minute window.** Open. *Plausible.*
+**M8 – Startup data changes run on every start, without a lock, inside the deploy's one-minute window.** Reduced 16 Nov 2026; what is left is Low (before a second server copy). *Plausible.*
 `server/src/index.js:39-108` runs six data-changing steps before `listen()`, on every start of every copy, without
 `takeTurn`. `deploy.sh` waits 60 seconds; on a large database it can restart the server in the middle of one and go
 back to the old code on half-changed data. A failed step is only a warning. *Fix:* record each finished step in the
@@ -179,7 +184,7 @@ and, per step, whether it can retire once the owner agrees nothing old is left.
 `build_and_start` runs inside `if`, where `set -e` is off; a failed `npm ci` or build still restarted the server, and
 `/api/health` said OK. Now joined with `&&`.
 
-**M11 – Large request bodies are read before sign-in.** Open.
+**M11 – Large request bodies are read before sign-in.** Fixed 16 Nov 2026.
 The JSON parsers (21 MB for `/api/patients/*/documents`) run before `requireAuth` and before the API rate limit
 (`app.js:164-218`); Caddy allows 32 MB. Anonymous parallel 21 MB posts can exhaust the memory of the single server.
 *Fix:* parse large bodies only after `requireAuth`, and the rate limit before the parsers.
@@ -194,7 +199,7 @@ address (refused before reading when ABDM is off, as before).
 | --- | --- | --- | --- |
 | L1 | `routes/members.js` `PATCH /:memberId/department` | An admin who is also a doctor can change their own departments (no self check, unlike roles, group and pages), then see other departments' patients in clinical work. Audited. **Verified.** | Fixed 16 Nov 2026: refused (`SELF_ACTION`); one's own departments shown read-only on the staff screen |
 | L2 | members reset-password, `platformUsers.js:291` | A password reset hands the admin the temporary password of a doctor who works nowhere else – they can sign in as her. Audited, and she is locked out. Consider a reset link to the user instead. | Open |
-| L3 | `utils/patientAccess.js`, `patients.js:1356` | Rights of several roles are OR-ed: a doctor who is also a receptionist can assign another doctor's sensitive patient to themselves. Audited. | Open |
+| L3 | `utils/patientAccess.js`, `patients.js:1356` | Rights of several roles are OR-ed: a doctor who is also a receptionist can assign another doctor's sensitive patient to themselves. Audited. | Fixed 21 Nov 2026: a person makes themselves her doctor only through the doctor role (her doctor, or none yet, in their department) or as an RMO – never through the receptionist's right (`canAssignSelf`; tests in `access.test.js`) |
 | L4 | `platformPatients.js:41`, `platformHospitalView.js:170` | The super admin's patient lists show `careType` (e.g. abortion, infertility) and include sensitive records. Follows 24 Oct decision. | Owner decides |
 | L5 | `billingRules.js:6` | Hospital admins are in the billing roles, so they see bills with names and services. *Plausible.* | Owner decides |
 | L6 | `utils/tenantScope.js:28, 36` | The hospital guard checks only that `tenantId` is present; `{$in: [...]}` or `{$ne: x}` would pass. Nothing uses that today. | Fixed 16 Nov 2026: tenantId must be one ObjectId, its text or { $eq } |

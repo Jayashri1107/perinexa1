@@ -241,7 +241,7 @@ export async function linkByHospital(req, patient, references) {
 
 /** ABDM's answer with the link token (sandbox or production): the waiting records are sent to be linked. */
 export async function onLinkToken(req, tenant, body) {
-  const requestId = body?.response?.requestId ?? '';
+  const requestId = String(body?.response?.requestId ?? ''); // text only: an object here would be a query operator
   if (!requestId) return;
   const rows = await AbdmCareContext.find({ tenantId: tenant._id, requestId, status: 'waiting', step: 'token' }).lean();
   if (!rows.length) return;
@@ -270,7 +270,7 @@ export async function onLinkToken(req, tenant, body) {
 
 /** ABDM's answer to "link these records" (sandbox or production). */
 export async function onLinkResult(req, tenant, body) {
-  const requestId = body?.response?.requestId ?? '';
+  const requestId = String(body?.response?.requestId ?? ''); // text only: an object here would be a query operator
   if (!requestId) return;
   const rows = await AbdmCareContext.find({ tenantId: tenant._id, requestId, status: 'waiting', step: 'link' }).lean();
   if (!rows.length) return;

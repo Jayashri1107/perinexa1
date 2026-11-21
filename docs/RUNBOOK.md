@@ -10,7 +10,7 @@ setup changes.
 | --- | --- | --- |
 | Website and API | EC2 in Mumbai, Ubuntu 26.04, Elastic IP 13.201.142.178 | `/opt/perinexa/app`, user `perinexa`, service `perinexa` (port 4000, 127.0.0.1 only) |
 | HTTPS | Caddy on the same server | `/etc/caddy/Caddyfile`; certificate renewed by Caddy (Let's Encrypt) |
-| Database | MongoDB Atlas, AWS Mumbai | address in `/opt/perinexa/app/server/.env` (`MONGO_URI`); **M0 until the owner approves M10 – no Atlas backups on M0** |
+| Database | MongoDB Atlas, AWS Mumbai | address in `/opt/perinexa/app/server/.env` (`MONGO_URI`); **M10 (paid) with Atlas backups – the owner checked on 21 Nov 2026 that `MONGO_URI` points at it** |
 | Copies of the database | `/opt/perinexa/backups` on the server | made by `deploy.sh` before every deploy, newest 14 kept, root only |
 | Code | GitHub `Jayashri1107/perinexa1`, branch `main` | the server pulls with a read-only deploy key |
 | Checks | GitHub Actions `test` | must be green on the commit before it is deployed |
@@ -69,7 +69,7 @@ sudo /opt/perinexa/app/deploy/restore.sh /opt/perinexa/backups/<file>.archive.gz
 It asks you to type `restore`, saves the database as it is now first (so a wrong restore can be undone the same way),
 stops the site, restores, starts it and checks `/api/health`. Write down what was restored and why.
 
-After the move to Atlas M10: Atlas → the cluster → **Backup** gives daily snapshots and any minute in the last days
+On Atlas M10: Atlas → the cluster → **Backup** gives daily snapshots and any minute in the last days
 (Continuous Cloud Backup). Restore to a *new* cluster first, check it, and only then point `MONGO_URI` at it or restore
 over the live one. **How long a restore took when it was last tried: not tried yet** – fill this in after the first try.
 
