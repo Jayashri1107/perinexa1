@@ -40,7 +40,7 @@ describe('the pharmacy bill', () => {
     // 13 Nov 2026: a registered patient may pay at the counter – then the bill is not on the hospital bill
     const paidHere = paper({ ...invoice, billId: null, paidPaise: 66500 });
     expect(paidHere).toContain('Paid Amount 665.00');
-    expect(paidHere).toContain('Credit Amt 0.00');
+    expect(paidHere).not.toContain('Credit Amt'); // 21 Nov 2026: paid in full – no Credit Amt 0.00 line
     expect(paper({ ...invoice, billId: null, paidPaise: 30000, balancePaise: 36500 })).toContain('Paid Amount 300.00 Credit Amt 365.00');
     expect(paidHere).not.toContain('Payable at the billing desk');
     // 18 Nov 2026: earlier bills still due are printed with the total she owes; nothing when none is due
