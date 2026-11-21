@@ -1,12 +1,15 @@
 # Builds the iPhone app (mobile/, Capacitor) on a GitHub Mac, runs it in the iPhone Simulator and keeps a screenshot.
-# Only on the ios-cloud-build branch or by hand – never on main, so it cannot start a website deploy (.do/app.yaml).
-# No signing and no secrets: a Simulator build. App Store builds need Apple certificates added later.
+# Runs when the iPhone app (mobile/) or this file changes – on a pull request, on ios-cloud-build, or by hand.
+# No signing and no secrets: a Simulator build. The App Store build is ios-release.yml.
 name: iOS build
 
 on:
   push:
     branches: [ios-cloud-build]
     paths: ['mobile/**', '.github/workflows/ios-build.yml']
+  pull_request:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/ios-build.yml', '.github/workflows/ios-release.yml']
   workflow_dispatch:
 
 permissions:
