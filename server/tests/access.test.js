@@ -223,7 +223,7 @@ describe('a doctor who is also a receptionist', () => {
       const res = await assign('deskDoctor', patient, 'deskDoctor');
       expect(res.status, patient.fullName).toBe(403);
       expect(res.body.error.message).toMatch(/yourself/);
-      expect(String((await Patient.findById(patient.id)).assignedDoctor)).toBe(people.drA._id.toString());
+      expect(String((await Patient.findOne({ _id: patient.id, tenantId: hospital._id })).assignedDoctor)).toBe(people.drA._id.toString());
     }
     expect(await AuditLog.countDocuments({ action: 'PATIENT_ASSIGNED' })).toBe(0);
     // and so still sees only the identity of the sensitive record
@@ -232,7 +232,7 @@ describe('a doctor who is also a receptionist', () => {
 
   it('still hands a patient to another doctor at the desk, and takes one who has no doctor yet', async () => {
     expect((await assign('deskDoctor', ownPatient, 'drB')).status).toBe(200);
-    expect(String((await Patient.findById(ownPatient.id)).assignedDoctor)).toBe(people.drB._id.toString());
+    expect(String((await Patient.findOne({ _id: ownPatient.id, tenantId: hospital._id })).assignedDoctor)).toBe(people.drB._id.toString());
     const free = (await sessions.reception.post('/api/patients').send(samplePatient({ fullName: 'No Doctor Yet' }))).body.patient;
     expect((await assign('deskDoctor', free, 'deskDoctor')).status).toBe(200);
     expect((await view('deskDoctor', free)).access.level).toBe('full');
