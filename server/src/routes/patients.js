@@ -475,8 +475,12 @@ const makeCreateSchema = ({ requireDates }) => z
     for (const issue of fetalSexIssues(d.careType, d, null)) ctx.addIssue(issue);
     if (d.careType === 'newborn') {
       const birthAt = d.newborn?.birthAt;
-      if (!birthAt) ctx.addIssue({ code: 'custom', path: ['newborn', 'birthAt'], message: d.newborn?.birthTimeKnown === false ? 'Date of birth is required' : 'Date and time of birth is required (or tick Time of birth not known)' });
-      else if (isDate(birthAt) && birthAt.getTime() > Date.now() + 5 * 60 * 1000) {
+      // A baby here for follow-up or vaccination (time of birth not known) may be registered without the date of birth
+      // (21 Nov 2026): its care plan waits, with no vaccine dates or reminders, until the date is added. A baby
+      // registered with its time of birth (born here) still needs it.
+      if (!birthAt) {
+        if (d.newborn?.birthTimeKnown !== false) ctx.addIssue({ code: 'custom', path: ['newborn', 'birthAt'], message: 'Date and time of birth is required (or tick Time of birth not known)' });
+      } else if (isDate(birthAt) && birthAt.getTime() > Date.now() + 5 * 60 * 1000) {
         ctx.addIssue({ code: 'custom', path: ['newborn', 'birthAt'], message: 'Date of birth cannot be in the future' });
       }
     } else if (d.ageYears === null || d.ageYears === undefined) {

@@ -170,10 +170,14 @@ describe('registering a newborn', () => {
 
   it('an older baby for follow-up or vaccination: the date of birth only, no time (11 Nov 2026)', async () => {
     const s = await loginAs(doctor, { app });
-    // No date at all: the message says the date is needed
-    const none = await s.post('/api/patients').send({ careType: 'newborn', fullName: 'Vaccine Baby', newborn: { birthTimeKnown: false } });
-    expect(none.status).toBe(400);
-    expect(JSON.stringify(none.body.error)).toMatch(/Date of birth is required/);
+    // No date at all (21 Nov 2026): registered anyway; the care plan waits for the date
+    const none = await s.post('/api/patients').send({ careType: 'newborn', fullName: 'Undated Baby', newborn: { birthTimeKnown: false } });
+    expect(none.status, JSON.stringify(none.body)).toBe(201);
+    expect(none.body.patient.newborn).toMatchObject({ birthAt: null, birthTimeKnown: false });
+    // A baby registered with its time of birth still needs it
+    const noTime = await s.post('/api/patients').send({ careType: 'newborn', fullName: 'Untimed Baby', newborn: {} });
+    expect(noTime.status).toBe(400);
+    expect(JSON.stringify(noTime.body.error)).toMatch(/Date and time of birth is required/);
     // Midday of the day of birth (12:00 in India), marked "time not known"
     const day = new Date(Date.now() - 90 * 86400000);
     const birthAt = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 12) - 330 * 60000).toISOString();
