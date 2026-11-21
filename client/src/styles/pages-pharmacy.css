@@ -1372,3 +1372,11 @@
 .kit-card-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: auto; padding-top: var(--space-2); }
 .kit-card-foot .hint { margin: 0; }
 .kit-card-actions { display: inline-flex; gap: var(--space-2); }
+/* Stock → a medicine → Batches on a tablet or phone (21 Nov 2026): .bill-page turns bill-lines rows into blocks, which
+   left these cells unlabelled and the action links running off the screen – each value with its name, links below */
+@media (max-width: 900px) {
+  .bill-page .stock-batches tr { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bill-page .stock-batches td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+  .bill-page .stock-batches td.num { text-align: left; }
+  .bill-page .stock-batches .bill-price-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); width: auto; white-space: normal; text-align: left; }
+}

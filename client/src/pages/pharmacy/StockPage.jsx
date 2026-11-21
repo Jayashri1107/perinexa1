@@ -369,7 +369,7 @@ export function MedicineStockPage() {
           <section className="card bill-section">
             <h2>Batches</h2>
             {!d.batches.length && <p className="muted">No stock.</p>}
-            <table className="bill-lines">
+            <table className="bill-lines stock-batches">
               <thead>
                 <tr>
                   <th scope="col">Batch</th>
@@ -385,16 +385,16 @@ export function MedicineStockPage() {
               <tbody>
                 {batchPage.shown.map((b) => (
                   <tr key={b.id}>
-                    <td>
+                    <td data-label="Batch">
                       {b.batch}
                       {b.place && <span className="ph-line-note">At {b.place}</span>}
                     </td>
-                    <td>
+                    <td data-label="Expiry">
                       {expiryLabel(b.expiry)} {b.expired && <StatusPill tone="high">Expired</StatusPill>} <HoldPill hold={b.hold} />
                     </td>
-                    <td className="num">{b.qtyLeft}</td>
-                    <td className="num">{money(b.mrpPaise)}</td>
-                    <td className="num">{money(b.costPaise)}</td>
+                    <td className="num" data-label="Left">{b.qtyLeft}</td>
+                    <td className="num" data-label="MRP">{money(b.mrpPaise)}</td>
+                    <td className="num" data-label="Cost">{money(b.costPaise)}</td>
                     <td className="bill-price-actions">
                       {desk && b.qtyLeft > 0 && (
                         <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog({ kind: 'writeoff', batch: b })}>
