@@ -994,7 +994,7 @@ export function PatientForm({
                           {vm('newborn.birthAt')}
                         </Field>
                       ) : (
-                        <Field label="Date of birth" id="birthAt" error={fe('newborn.birthAt')} hint="Used for the baby's age and the vaccination dates.">
+                        <Field label="Date of birth (optional)" id="birthAt" error={fe('newborn.birthAt')} hint="Used for the baby's age and the vaccination dates. Without it, the care plan shows no vaccine dates and sends no reminders until it is added.">
                           <input id="birthAt" type="date" className={vc('newborn.birthAt')} value={v.newborn.birthDate} max={toDateTimeInput(new Date()).slice(0, 10)} onChange={setIn('newborn', 'birthDate')} />
                           {vm('newborn.birthAt')}
                         </Field>
