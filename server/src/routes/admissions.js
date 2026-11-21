@@ -18,6 +18,8 @@ import { FormularyItem } from '../models/FormularyItem.js';
 import { admissionView, documentView, entryView } from '../inpatient/inpatientView.js';
 import { MEDICAL_ROLES } from '../inpatient/dischargeTypes.js';
 import { Bill } from '../models/Bill.js';
+import { openStayBill } from '../billing/billingService.js';
+import { toHospitalDate } from '../careplans/dates.js';
 import { redFlagsForPatient } from '../redflags/redFlagService.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
@@ -225,9 +227,37 @@ admissionsRouter.get('/:admissionId', async (req, res) => {
 admissionsRouter.patch('/:admissionId', async (req, res) => {
   const patient = await loadPatientForPlan(req);
   const a = assertCanEdit(req, patient);
-  const body = parse(z.object({ ward: safeText('Ward', 60).optional(), bed: safeText('Bed', 30).optional(), stayType: z.enum(STAY_TYPES, 'Choose ANC, PNC, Delivered or Other').optional() }).strict(), req.body);
+  const body = parse(
+    z
+      .object({
+        ward: safeText('Ward', 60).optional(),
+        bed: safeText('Bed', 30).optional(),
+        stayType: z.enum(STAY_TYPES, 'Choose ANC, PNC, Delivered or Other').optional(),
+        admittedAt: z.iso.datetime('Please enter the date and time of admission').optional(),
+        dateReason: safeText('Reason', 200).optional(),
+      })
+      .strict(),
+    req.body,
+  );
   const admission = await findAdmission(req, patient, req.params.admissionId);
   if (admission.status !== 'admitted') throw conflict('She has been discharged: this stay can no longer be changed.');
+  // The admission date corrected (21 Nov 2026): e.g. a patient already in hospital entered with today's date. Never in
+  // the future, never before her previous stay ended, never after the first entry of this stay's nursing chart. The bed
+  // days on the open bill follow the new date.
+  const fromDate = admission.admittedAt;
+  const dateChanged = body.admittedAt !== undefined && new Date(body.admittedAt).getTime() !== fromDate.getTime();
+  if (dateChanged) {
+    const to = new Date(body.admittedAt);
+    const now = req.now ?? new Date();
+    if (!body.dateReason || body.dateReason.trim().length < 3) throw invalid({ dateReason: 'Write why the admission date is changed.' });
+    if (to.getTime() > now.getTime() + 5 * 60 * 1000) throw invalid({ admittedAt: "The admission can't be in the future." });
+    const before = await Admission.findOne({ tenantId: req.tenantId, patientId: patient._id, _id: { $ne: admission._id }, dischargedAt: { $gt: to } }, { dischargedAt: 1 }).lean();
+    if (before) throw invalid({ admittedAt: 'This is before her previous stay ended – please check the date.' });
+    const first = await NursingEntry.findOne({ tenantId: req.tenantId, admissionId: admission._id, cancelled: null, at: { $lt: to } }, { at: 1 }).lean();
+    if (first) throw invalid({ admittedAt: 'The nursing chart of this stay has entries before this time – please check the date.' });
+    admission.admittedAt = to;
+    admission.admittedAtChanges.push({ from: fromDate, to, reason: body.dateReason.trim(), by: req.user._id, byName: req.user.name, at: now });
+  }
   if (body.ward !== undefined) admission.ward = body.ward;
   if (body.bed !== undefined) admission.bed = body.bed;
   const from = admission.stayType ?? null;
@@ -238,7 +268,13 @@ admissionsRouter.patch('/:admissionId', async (req, res) => {
   }
   await admission.save();
   if (typeChanged) await audit(req, 'ADMISSION_STAY_TYPE_CHANGED', { details: ids(patient, { admissionId: String(admission._id), from, to: body.stayType }) });
-  if (body.ward !== undefined || body.bed !== undefined || !typeChanged) await audit(req, 'ADMISSION_UPDATED', { details: ids(patient, { admissionId: String(admission._id) }) });
+  if (dateChanged) {
+    await audit(req, 'ADMISSION_DATE_CHANGED', { details: ids(patient, { admissionId: String(admission._id), from: fromDate.toISOString(), to: admission.admittedAt.toISOString(), reason: body.dateReason.trim() }) });
+    // The stay's open bill: its date and the bed and nursing days follow the new admission date (a final bill is left)
+    await Bill.updateOne({ tenantId: req.tenantId, admissionId: admission._id, kind: 'ipd', status: 'open', final: null }, { $set: { on: toHospitalDate(admission.admittedAt) } });
+    await openStayBill(req, admission.toObject());
+  }
+  if (body.ward !== undefined || body.bed !== undefined || (!typeChanged && !dateChanged)) await audit(req, 'ADMISSION_UPDATED', { details: ids(patient, { admissionId: String(admission._id) }) });
   res.json(await admissionPage(req, patient, admission, a));
 });
 

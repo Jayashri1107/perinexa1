@@ -9,6 +9,9 @@ import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans
 import { migrateAdmissionLabels } from '../src/inpatient/admissionLabels.js';
 import { Admission } from '../src/models/Admission.js';
 import { AuditLog } from '../src/models/AuditLog.js';
+import { Bill } from '../src/models/Bill.js';
+import { NursingEntry } from '../src/models/NursingEntry.js';
+import { NURSING_KINDS } from '../src/inpatient/docSchemas.js';
 import { Patient } from '../src/models/Patient.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
@@ -118,6 +121,44 @@ describe('changing the admission type', () => {
     expect(stay.stayTypeChanges).toMatchObject([{ from: 'anc', to: 'delivered', byName: 'Sample drA' }]);
     const log = await AuditLog.findOne({ tenantId: hospital._id, action: 'ADMISSION_STAY_TYPE_CHANGED' }).lean();
     expect(log.details).toMatchObject({ admissionId: id, from: 'anc', to: 'delivered' });
+  });
+});
+
+describe('changing the admission date (21 Nov 2026)', () => {
+  it('a patient already in hospital entered today is moved to her real date, with a reason, kept and audited; the bill follows', async () => {
+    const [b1] = await bedsOf(['L1']);
+    const p = await register('Earlier Mother');
+    const id = (await admitAtBed(b1, p, { billingType: 'cash', stayType: 'anc' })).body.admission.id;
+    const s = await as('rmo');
+    const url = `/api/patients/${p.id}/admissions/${id}`;
+    const earlier = '2026-11-06T04:30:00.000Z';
+    const noReason = await s.patch(url).send({ admittedAt: earlier });
+    expect(noReason.status, JSON.stringify(noReason.body)).toBe(400);
+    expect(noReason.body.error.fields.dateReason).toMatch(/why/);
+    expect((await s.patch(url).send({ admittedAt: '2026-11-10T06:00:00.000Z', dateReason: 'Entered late' })).body.error.fields.admittedAt).toMatch(/future/);
+    const res = await s.patch(url).send({ admittedAt: earlier, dateReason: 'Admitted on 6 Nov, entered today' });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(new Date(res.body.admission.admittedAt).toISOString()).toBe(earlier);
+    const stay = await Admission.findOne({ tenantId: hospital._id, _id: id }).lean();
+    expect(stay.admittedAtChanges).toMatchObject([{ from: NOW, to: new Date(earlier), reason: 'Admitted on 6 Nov, entered today', byName: 'Sample rmo' }]);
+    const log = await AuditLog.findOne({ tenantId: hospital._id, action: 'ADMISSION_DATE_CHANGED' }).lean();
+    expect(log.details).toMatchObject({ admissionId: id, from: NOW.toISOString(), to: earlier });
+    const bill = await Bill.findOne({ tenantId: hospital._id, admissionId: id }).lean();
+    expect(bill).toBeTruthy();
+    expect(bill.on.toISOString().slice(0, 10)).toBe('2026-11-06');
+  });
+
+  it('never before her previous stay ended, nor after the first entry of the nursing chart', async () => {
+    const [b1] = await bedsOf(['L1']);
+    const p = await register('Checked Mother');
+    const id = (await admitAtBed(b1, p, { billingType: 'cash', stayType: 'anc' })).body.admission.id;
+    await Admission.create({ tenantId: hospital._id, patientId: p.id, careType: 'antenatal', admittedAt: new Date('2026-11-01T04:00:00Z'), status: 'discharged', dischargedAt: new Date('2026-11-04T04:00:00Z'), admittedBy: people.drA._id, admittedByName: 'Sample drA', clientRequestId: randomUUID() });
+    const s = await as('rmo');
+    const url = `/api/patients/${p.id}/admissions/${id}`;
+    expect((await s.patch(url).send({ admittedAt: '2026-11-03T04:00:00.000Z', dateReason: 'Entered late' })).body.error.fields.admittedAt).toMatch(/previous stay/);
+    await NursingEntry.create({ tenantId: hospital._id, patientId: p.id, admissionId: id, kind: NURSING_KINDS[0], at: new Date('2026-11-09T05:00:00Z'), by: people.nurse._id, byName: 'Sample nurse', clientRequestId: randomUUID() });
+    expect((await s.patch(url).send({ admittedAt: '2026-11-09T05:30:00.000Z', dateReason: 'Entered early' })).body.error.fields.admittedAt).toMatch(/nursing chart/);
+    expect((await s.patch(url).send({ admittedAt: '2026-11-05T04:00:00.000Z', dateReason: 'Admitted on 5 Nov' })).status).toBe(200);
   });
 });
 

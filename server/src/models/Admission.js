@@ -51,6 +51,9 @@ const admissionSchema = new mongoose.Schema(
     billingType: { type: String, enum: [...PAYER_TYPES, ''], default: '' },
     stayType: { type: String, enum: [...STAY_TYPES, null], default: null },
     stayTypeChanges: [{ _id: false, from: String, to: String, by: { type: ObjectId, ref: 'User' }, byName: String, at: Date }],
+    // The admission date and time corrected during the stay (21 Nov 2026: patients already in hospital were entered
+    // with today's date), each with its reason. Kept on the stay and audited.
+    admittedAtChanges: [{ _id: false, from: Date, to: Date, reason: String, by: { type: ObjectId, ref: 'User' }, byName: String, at: Date }],
     mlc: { type: Boolean, default: false },
     // HIMS-style admission (owner, 17 Oct 2026 – docs/ADMISSION_DESK_PLAN.md): the IPD number (IP-2026-000001), the
     // checklist, the police station of a medico-legal case, the doctor's request it came from, and the clearance for
