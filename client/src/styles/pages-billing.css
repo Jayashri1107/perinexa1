@@ -464,7 +464,9 @@
   .ipd-layout { grid-template-columns: 1fr; }
   .ipd-foot { grid-template-columns: 1fr; }
 }
-.ipd-page .table-scroll, .pf-content .table-scroll { overflow-x: auto; max-width: 100%; }
+/* position: relative keeps hidden screen-reader labels (.sr-only, position: absolute) inside the scrolling box –
+   without it they escaped it and made the whole page scroll sideways on a tablet (Billing, 21 Nov 2026) */
+.ipd-page .table-scroll, .pf-content .table-scroll { position: relative; overflow-x: auto; max-width: 100%; }
 
 /* IPD → Discharge and In hospital: the bill window over the list (the HIMS pop-up), row actions, filters */
 .ipd-embed-head { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-3); }
