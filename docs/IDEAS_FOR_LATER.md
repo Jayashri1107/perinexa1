@@ -223,3 +223,35 @@ patients deleting their own portal account (a Google Play rule for apps where pe
 organisation account and its forms (data safety, health apps, a sample login for the reviewers) – deleting an account:
 built on branch `account-deletion` (19 Nov 2026, `docs/ACCOUNT_DELETION_PLAN.md`; the owner to confirm the answers). Real patients only
 after the go-live checklist, as for the website.
+
+
+## Discharge and the stay bill: one Discharge screen (23 Nov 2026, not built)
+From the other Perinexa copy. The owner asked for an inpatient's discharge and billing to be made easy, saw three
+options and chose the largest, which includes the other two: **D1** the two sides connected ("Going home" marked by
+the doctor or RMO, a Going home today list for the desk, the bill as one word with no amounts for doctors and nurses,
+a final bill that ends the stay bill), **D2** charges that add themselves (the delivery and operation charge from the
+confirmed note, the doctor's visit, nursing and RMO per day like the bed, the bed price following a change of ward,
+packages), **D3** a Discharge tab beside Stays with the steps in order and a discharge card that starts fuller
+**(clinical wording)**. The owner's seventeen decisions are in section 1 of the build note:
+`docs/DISCHARGE_BUILD_NOTE.md`. Perinexa1 already has part of D1 and a start of D2 from 9 Nov 2026 (the final bill,
+the desk's discharge steps, clearance, nursing per day, a charge for each signed ward round): section 0 of the note
+says what differs and what to settle with the owner first – above all whether the doctor's visit is charged per day
+or per signed round. The owner's answers on packages are there too ("IPD packages" above). **Left for the owner:** to
+read and correct five DRAFT discharge medicine sets (three already in Perinexa, two proposed in section 8)
+**(clinical)**.
+
+
+## Payroll from an attendance file (23 Nov 2026, not built)
+From the other Perinexa copy. The owner asked for a payroll function for accounts – a soft copy of the month's
+attendance goes in, each staff member's salary comes out – and chose the middle of three options: **PY1** an accounts
+login and a staff list with pay, also for employees with no Perinexa login, **PY2** the attendance file read into a
+salary sheet, rows matched to staff by code, **PY3** salary parts, deductions (PF, ESI and professional tax from a
+rate table – **legal content, DRAFT until the accountant confirms**; TDS as a typed figure) and advances, **PY4** a
+locked month, payslips, the salary register and the PF, ESI and professional tax lists. No leave balances, overtime,
+shifts or Tally entry. Decisions: only the accounts login and the hospital admin see salaries, never the super admin;
+the PF number, ESI number, PAN and bank account are kept, masked on screen and on the payslip, Aadhaar never; the
+hospital admin may reopen a locked month with a reason. Build note with four stages: `docs/PAYROLL_BUILD_NOTE.md` –
+section 0 says what differs in perinexa1, first of all that every payroll route must itself refuse Perinexa's own
+staff, also during support access. **Left open (section 8):** samples of the attendance files with made-up names, the
+accountant's answers on a day's pay and on every DRAFT rate, a bank payment list yes or no. Stage A can start
+without them.
