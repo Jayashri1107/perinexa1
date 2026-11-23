@@ -1,4 +1,4 @@
-import { BadgeCheck, FolderArchive, BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, CirclePlus, ClipboardPen, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Scissors, Settings, ShieldCheck, Siren, Stethoscope, TestTube, Truck, UserCog, Users, Wallet } from 'lucide-react';
+import { BadgeCheck, FolderArchive, BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, CirclePlus, ClipboardPen, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Scissors, Search, Settings, ShieldCheck, Siren, Stethoscope, TestTube, Truck, UserCog, Users, Wallet } from 'lucide-react';
 import { ANALYTICS_ROLES } from '../pages/analytics/analyticsRoles.js';
 import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 import { CASE_REVIEW_ROLES, CLINICAL_AUDIT_ROLES, QUALITY_TABS } from '../pages/quality/qualityFormat.js';
@@ -300,6 +300,8 @@ const HOSPITAL_PHARMACY = {
 const PHARMACIST_MENU = [
   // New bill and Sold as one Sales bill page with two tabs (9 Nov 2026); a bill opened from the list stays under it
   { key: 'pharmacy', label: 'Sales bill', icon: ReceiptText, to: '/pharmacy', end: true, activeFor: ['/pharmacy/issue', '/pharmacy/invoices'] },
+  // Search bill (23 Nov 2026, the developer): the earlier software's "Browse Sales Bill" window – a bill made earlier, found and printed again
+  { key: 'pharmacy-search-bill', label: 'Search bill', icon: Search, to: '/pharmacy/search-bill' },
   { key: 'pharmacy-ward-requests', label: 'Ward requests', icon: BedDouble, to: '/pharmacy/ward-requests' }, // PH12
   { key: 'pharmacy-discharge', label: 'Discharge clearance', icon: ListChecks, to: '/pharmacy/discharge-clearance' }, // 18 Nov 2026
   { key: 'pharmacy-suppliers', label: 'Suppliers', icon: Truck, to: '/pharmacy/suppliers' },

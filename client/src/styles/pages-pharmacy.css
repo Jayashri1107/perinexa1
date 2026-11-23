@@ -1380,3 +1380,92 @@
   .bill-page .stock-batches td.num { text-align: left; }
   .bill-page .stock-batches .bill-price-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); width: auto; white-space: normal; text-align: left; }
 }
+/* Search bill (23 Nov 2026, the developer): the earlier software's "Browse Sales Bill" window – what to search for in
+   a panel at the side (above the list when narrow), the bills found beside it, the clicked bill's medicines under
+   them, then the list's buttons. Compact, like the Sales bill. */
+.ph-sb, .ph-sb-split, .ph-sb-results { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.ph-sb-panel { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: var(--space-4); }
+.ph-sb-set { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; margin: 0; padding: 0; border: 0; }
+.ph-sb-set legend { padding: 0; margin-bottom: var(--space-1); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; color: var(--ink); }
+.ph-sb-choices { display: flex; flex-wrap: wrap; gap: 0 10px; }
+.ph-sb-panel .check { min-height: 28px; margin: 0; gap: 6px; font-size: var(--fs-label); line-height: var(--lh-label); }
+.ph-sb-tick { font-weight: 600; color: var(--ink); }
+.ph-sb-field { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: var(--space-2); margin: 0; }
+.ph-sb-field > span { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.ph-sb-field input:not([type='checkbox']) { width: 100%; min-width: 0; height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
+.ph-sb-field .date-text { min-width: 0; }
+.ph-sb-field .date-text > input:not(.date-text-native) { padding-right: 34px; }
+.ph-sb-panel .field-error { margin: 0; }
+.ph-sb-show { width: 100%; justify-content: center; }
+.ph-sb-count { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin: 0; font-size: var(--fs-label); color: var(--slate-600); }
+.ph-sb-count strong { font-size: var(--fs-h3); color: var(--ink); }
+.ph-sb-tip { margin: 0; }
+/* The bills: short rows in small letters, so every column fits beside the panel; the one clicked stays marked */
+.ph-sb-bills .dt-wrap { max-height: 38vh; min-height: 150px; padding: 0; }
+.ph-sb-bills .dt { font-size: 0.8125rem; }
+.ph-sb-bills .dt :is(th, td) { padding: 4px 8px; }
+.ph-sb-bills .dt thead th { font-size: 0.6875rem; }
+.ph-sb-bills .dt td { height: 30px; }
+.ph-sb-bills .dt tbody tr.is-picked td { background: var(--selected-bg); }
+.ph-sb-bills .dt tbody tr.is-picked td:first-child { box-shadow: inset 3px 0 0 var(--indigo-700); }
+.ph-sb-name { display: inline-block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.ph-sb-where { display: block; font-size: 0.6875rem; line-height: 1.1; color: var(--slate-600); }
+/* The sums under the list, as the earlier window: each name beside its amount in a box, under the amount columns */
+.ph-sb-sums { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2) var(--space-4); margin: 0; }
+.ph-sb-sums > div { display: flex; align-items: center; gap: var(--space-2); }
+.ph-sb-sums dt { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.ph-sb-sums dd { min-width: 104px; margin: 0; padding: 3px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); text-align: right; font-size: var(--fs-label); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* 23 Nov 2026 (the developer: "the table clear, the headings highlighted, a list in tabular form"): on a computer the
+   bills and the bill's medicines are grids like the earlier window and the Sales bill's list of people – a dark indigo
+   heading row with white headings, a line between the columns, every other row shaded. The bills' box keeps its height
+   and scrolls inside, every bill in it (no pages), so even an empty search shows the grid. Phones keep their cards. */
+@media (min-width: 720px) {
+  .ph-sb-bills .dt-card { border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: none; }
+  .ph-sb-bills .dt-wrap { height: clamp(240px, 42vh, 480px); max-height: none; min-height: 0; }
+  .ph-sb-bills .dt { border-collapse: collapse; }
+  .ph-sb-bills .dt :is(th, td) { padding: 5px 10px; border-right: 1px solid var(--border); }
+  .ph-sb-bills .dt :is(th, td):last-child { border-right: 0; }
+  .ph-sb-bills .dt :is(th, td):first-child { padding: 5px 0; text-align: center; }
+  .ph-sb-bills .dt thead th { height: 34px; background: var(--indigo-800); color: var(--on-solid); font-size: 0.75rem; font-weight: 600; text-transform: none; letter-spacing: 0; border-bottom: 0; border-right-color: var(--indigo-600); }
+  .ph-sb-bills .dt thead th:first-child, .ph-sb-bills .dt thead th:last-child { border-radius: 0; }
+  .ph-sb-bills .dt td { height: 32px; border-bottom: 1px solid var(--border); }
+  .ph-sb-bills .dt tbody tr:nth-child(even) td { background: var(--mist-50); }
+  .ph-sb-bills .dt tbody tr:hover td { background: var(--indigo-100); }
+  .ph-sb-bills .dt tbody tr:hover td.dt-empty { background: none; }
+  .ph-sb-bills .dt tbody tr.is-picked td { background: var(--selected-bg); font-weight: 600; }
+  .ph-sb-bills .dt .dt-empty { border: 0; color: var(--slate-600); }
+  .ph-sb-items .bill-report { border: 1px solid var(--border); }
+  .ph-sb-items .bill-report :is(th, td) { border-right: 1px solid var(--border); }
+  .ph-sb-items .bill-report :is(th, td):last-child { border-right: 0; }
+  .ph-sb-items .bill-report thead th { background: var(--indigo-800); color: var(--on-solid); font-size: 0.75rem; font-weight: 600; border-bottom: 0; border-right-color: var(--indigo-600); }
+  .ph-sb-items .bill-report tbody tr:nth-child(even) td { background: var(--mist-50); }
+  .ph-sb-items .bill-report td.ph-sb-none { padding: var(--space-4); text-align: center; color: var(--slate-600); }
+}
+/* The clicked bill's medicines */
+.ph-sb-items { padding: var(--space-3) var(--space-4); }
+.ph-sb-items-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); }
+.ph-sb-items-head h2 { margin: 0; font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.ph-sb-items-head h2 .muted { font-weight: 400; }
+.ph-sb-items-acts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ph-sb-items-acts .btn, .ph-sb-actions .btn { min-height: 32px; padding: 4px 12px; font-size: 0.8125rem; }
+.ph-sb-items .table-scroll { max-height: 26vh; overflow: auto; }
+.ph-sb-items .bill-report { margin: 0; font-size: 0.8125rem; }
+.ph-sb-items .bill-report :is(th, td) { padding: 4px 8px; }
+.ph-sb-items .bill-report thead th { position: sticky; top: 0; }
+.ph-sb-none { margin: 0; }
+.ph-sb-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ph-sb-actions .ph-sb-direct { min-height: 32px; margin: 0 auto 0 0; }
+.ph-sb-admitted { max-height: 60vh; overflow: auto; }
+.ph-sb-admitted .bill-report { margin: 0; }
+@media (min-width: 1024px) {
+  .ph-sb-split { display: grid; grid-template-columns: 280px minmax(0, 1fr); align-items: start; }
+}
+@media (max-width: 719px) {
+  .ph-sb-bills .dt-wrap, .ph-sb-items .table-scroll { max-height: none; }
+  /* Phones show each bill as a card: the clicked card is marked as a whole, not cell by cell */
+  .ph-sb-bills .dt tbody tr.is-picked { background: var(--selected-bg); box-shadow: inset 3px 0 0 var(--indigo-700); }
+  .ph-sb-bills .dt tbody tr.is-picked td, .ph-sb-bills .dt tbody tr.is-picked td:first-child { background: none; box-shadow: none; }
+  .ph-sb-field input:not([type='checkbox']) { height: 40px; font-size: 1rem; }
+  .ph-sb-actions .btn { flex: 1 1 100%; justify-content: center; }
+  .ph-sb-actions .ph-sb-direct { flex: 1 1 100%; }
+}

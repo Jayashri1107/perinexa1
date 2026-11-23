@@ -91,10 +91,12 @@ describe('the left menu by role', () => {
     for (const roles of [['nurse'], ['receptionist'], ['lab'], ['pharmacist'], ['admin']]) expect(menu(roles), roles[0]).not.toContain('Referrals');
     expect(moduleByKey('referrals').tabs.map((t) => t.to)).toEqual(['/referrals', '/referrals/doctors', '/referrals/review', '/referrals/slip']);
     // The pharmacist (owner, 26 Oct 2026): the pharmacy's sections in the sidebar; New bill and Sold as one Sales bill
-    // page with two tabs (9 Nov 2026)
-    expect(menu(['pharmacist'])).toEqual(['Today', 'Sales bill', 'Ward requests', 'Discharge clearance', 'Suppliers', 'Purchase bills', 'Stock', 'Medicines', 'Reports', 'Pharmacy settings', 'Formulary', 'Incidents']);
+    // page with two tabs (9 Nov 2026); Search bill after it (23 Nov 2026)
+    expect(menu(['pharmacist'])).toEqual(['Today', 'Sales bill', 'Search bill', 'Ward requests', 'Discharge clearance', 'Suppliers', 'Purchase bills', 'Stock', 'Medicines', 'Reports', 'Pharmacy settings', 'Formulary', 'Incidents']);
     expect(menu(['pharmacist', 'receptionist'])).toContain('Patients');
     expect(hospitalModules(['pharmacist']).find((m) => m.label === 'Sales bill').activeFor).toEqual(['/pharmacy/issue', '/pharmacy/invoices']);
+    expect(hospitalModules(['pharmacist']).find((m) => m.label === 'Search bill')).toMatchObject({ key: 'pharmacy-search-bill', to: '/pharmacy/search-bill' }); // a key starting with "pharmacy": the Pharmacy page access covers it
+    expect(menu(['admin'])).not.toContain('Search bill'); // the counter is for pharmacists
     expect(hospitalModules(['admin']).find((m) => m.label === 'Pharmacy').to).toBe('/pharmacy/stock'); // the counter is for pharmacists
     expect(menu(['receptionist', 'lab'])).not.toContain('Analytics');
     expect(hospitalModules(['nurse', 'rmo']).find((m) => m.label === 'Analytics').tabs.map((t) => t.label)).toEqual(['Ask your records']);

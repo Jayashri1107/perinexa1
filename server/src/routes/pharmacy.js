@@ -52,6 +52,7 @@ import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, exportReason, objectId, parse, requiredDateOnly } from '../utils/validate.js';
 import { pharmacyOrdersRouter } from './pharmacyOrders.js';
 import { pharmacyRegisterRouter } from './pharmacyRegister.js';
+import { pharmacyBillSearchRouter } from './pharmacyBillSearch.js';
 import { pharmacySupplierReturnsRouter } from './pharmacySupplierReturns.js';
 import { capitalizeName } from '../utils/personName.js';
 import { stampOf } from '../billing/billingService.js';
@@ -87,6 +88,9 @@ import { formularyHighAlerts, withFormularyAlert } from '../pharmacy/formularyAl
 //  - /api/pharmacy/register          today's OPD, IPD and External patients, and finding someone else (routes/pharmacyRegister.js)
 //  - /api/pharmacy/barcode/:code     the medicine a barcode belongs to (exact match)
 //  - /api/pharmacy/invoices/:id/einvoice   the e-invoice file of a sale to a business with a GSTIN (hospital admin)
+// Search bill (23 Nov 2026):
+//  - /api/pharmacy/bill-search      the bills that fit a type, name, UHID, sales number, dates, item, cash or credit
+//                                    (routes/pharmacyBillSearch.js)
 // Pharmacists see patients' names, numbers and phones, and the medicines prescribed – never diagnoses or notes.
 
 export const pharmacyRouter = Router();
@@ -98,6 +102,7 @@ pharmacyRouter.use((req, _res, next) => {
 pharmacyRouter.use('/orders', pharmacyOrdersRouter);
 pharmacyRouter.use('/supplier-returns', pharmacySupplierReturnsRouter);
 pharmacyRouter.use('/register', pharmacyRegisterRouter);
+pharmacyRouter.use('/bill-search', pharmacyBillSearchRouter); // Search bill (23 Nov 2026)
 
 // ---------- The pharmacy's details ----------
 

@@ -260,6 +260,18 @@ export function patientAccess(req, patient) {
 }
 
 /**
+ * May this person make THEMSELVES the patient's doctor (health check L3, 21 Nov 2026)? Only through a role that gives
+ * that on its own: an RMO, or the doctor role where she is theirs or has no doctor yet (in their department). The
+ * desk's right to assign (receptionist) is for handing her to a doctor, never to oneself – otherwise a doctor who also
+ * works the desk could take another doctor's patient, a sensitive one included, and with it her whole record. PURE.
+ */
+export function canAssignSelf(req, patient) {
+  const roles = req.membership?.roles ?? [];
+  if (roles.includes('rmo')) return true;
+  return roles.includes('doctor') && forRole('doctor', patient, departmentContext(req)).assign === true;
+}
+
+/**
  * A copy of the whole record (routes/recordCopy.js): only with full clinical access to THIS record – her doctor (any
  * doctor while she has none) or an RMO. Never reception, nurses, the lab, the pharmacist or an admin; never another
  * doctor's patient (read-only there), so never another doctor's sensitive record either.

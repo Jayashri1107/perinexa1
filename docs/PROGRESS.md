@@ -1,5 +1,50 @@
 # Progress
 
+## Pharmacy → Search bill, as the earlier software's "Browse Sales Bill" window (23 Nov 2026, branch `pharmacy-search-bill`)
+Asked for by the developer from a photo of the earlier software's window, and built with Claude in the Claude app,
+which has no terminal on the computer: Claude wrote the files into the working folder; the developer runs the tests,
+commits, merges and deploys. Built during the feature pause, at the developer's request to deploy it.
+- **Menu:** the pharmacist's left menu has **Search bill** right after Sales bill (`/pharmacy/search-bill`, key
+  `pharmacy-search-bill`, so the Pharmacy page access covers it). The hospital admin does not get it. On a phone the
+  bottom bar is the first four menu items, so it now reads Today, Sales bill, Search bill, Ward requests – Discharge
+  clearance moved under Menu. Reports → All topics → *Search sale bill* opens the new page.
+- **The page** (`SearchBillPage.jsx`, `searchBill.js`): on the left the same boxes as the earlier window – Patient
+  type (OPD, IPD, External, All); Patient name (First name, Last name), UHID, Sales no and Date (From, To), each used
+  only while ticked (typing in one ticks it; Date is ticked with today's date when the page opens); Item name (the
+  stock list's names are offered while typing); Cash, Credit, All; **Show**; Total count. Beside it the bills (Sales
+  date, Sales no, UHID, Patient name, Disc amt, Net amt, Bal amt; each ticked for the printed list), then Total sales
+  amt, Received amt and Credit amount, then the clicked bill's medicines (Sr no, Item name, Batch no, Expiry date,
+  Rate, Qty, Total amt). **Double-click a bill to print it again** (the same bill paper and preview as Sales bill;
+  with **Direct print** ticked the printer's window opens by itself). Buttons: **Current admitted list** (choose a
+  patient: IPD, her UHID, from the admission day to today), **IP bill summary** (the listed IPD bills of the clicked
+  bill's patient on one A4 page), **Print list** (the ticked bills, A4 landscape) and **Close** (back to Sales bill).
+  Also Re-print bill and Open the bill for the clicked bill; back from an opened bill the search is as it was.
+- **Server:** `GET /api/pharmacy/bill-search` (`routes/pharmacyBillSearch.js`, pure parts in
+  `pharmacy/billSearch.js`): the pharmacist only; every part given must fit; newest first, at most 1,000 bills (the
+  page says when more fit); dates at most a year apart; a name or UHID is looked for among patients the pharmacy has
+  billed, and a name among walk-in customers too; Sales no also finds a return's CN number. Credit is counted as on
+  the Credit report: something due at the counter, or the whole bill when it is on the hospital bill ("on hospital
+  bill" in the list), so Total sales = Received + Credit. Audited as `PHARMACY_MIS_VIEWED` with report
+  `bill-search`, the dates and the number of rows – never the words typed ("Search bill" in the audit log).
+- **Look:** the earlier window's layout and names, in Perinexa's own colours (`docs/BRAND.md`): its red buttons are
+  one primary button (Show) and plain ones. On a computer the bills and the bill's medicines are grids like the Sales
+  bill's list of people – a dark indigo heading row, a line between the columns, every other row shaded; the bills'
+  box keeps its height and scrolls, with every bill in it (no pages), and an empty search says what was searched.
+  The sums sit under the amount columns in boxes. Phones keep cards. Styles at the end of `pages-pharmacy.css`.
+- **Guessed from the photo – please check with the pharmacy:** what *IP bill summary* printed there (here: the
+  patient's listed IPD bills with their sums); what choosing someone in *Current admitted list* did; and any columns
+  to the right of Bal amt (the photo is cut off there).
+- **Tests:** written – `server/tests/pharmacyBillSearch.test.js`, `client/src/pages/pharmacy/searchBill.test.jsx`,
+  and lines added to `modules.test.js` and `auditFormat.test.js`. **Not yet run with `npm test`, and `npm run build`
+  not run** (no terminal). Checked another way: the website tests named here (and `misReports.test.js`,
+  `billDraft.test.js`) pass in a stand-in runner; the route was run against a stand-in for the database with the
+  same sample bills; the page was opened in a browser with made-up bills (laptop and phone widths, every button).
+  The server test itself has never run – run `npm test` before committing.
+- **How to test:** sign in as a pharmacist → Search bill: today's bills are listed. Click a bill (its medicines show),
+  double-click it (the bill's preview), tick Direct print and double-click again. Tick Patient name or UHID, or
+  choose Credit, and press Show. Current admitted list → Show bills; click one of the bills → IP bill summary. Untick
+  a few bills → Print list. Hospital admin → Audit log: "Pharmacy report opened – Search bill".
+
 ## Waiting times page tidied (23 Nov 2026, look only – `npm test` and `npm run build` still to run)
 Analytics → Waiting times (`/analytics/waiting`, and the super admin's page). The numbers, the periods and who sees
 what are unchanged – nothing in `server/` was touched. New on the page:

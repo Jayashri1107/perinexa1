@@ -1068,6 +1068,7 @@ const MIS_WORDS = {
   'sales-return-gst': 'Sales return GST report', 'h1-sales': 'Sales – Schedule H1', 'narcotic-sales': 'Sales – narcotic (NDPS)', 'antitb-sales': 'Sales – anti-TB',
   'antitb-returns': 'Sales returns – anti-TB', 'h1-returns': 'Sales returns – Schedule H1',
   'upi-collection': 'UPI collection', 'patient-returns': 'Sales return patient-wise', advance: 'Advance amount report', insurance: 'Insurance / cashless patients',
+  'bill-search': 'Search bill', // 23 Nov 2026: Pharmacy → Search bill (routes/pharmacyBillSearch.js)
 };
 const PHARMACY_EXPORT_WORDS = { sales: 'Sales with GST', purchases: 'Purchases', supplier_returns: 'Returns to suppliers' };
 const invoiceOf = (d) => (d.number ? `Invoice ${d.number}` : 'An invoice');

@@ -344,6 +344,9 @@ describe('the pharmacy in the audit log (5 Oct 2026)', () => {
     expect(describeAudit({ action: 'PHARMACY_REGISTER_VIEWED', details: { type: 'narcotic', from: '2026-09-01', to: '2026-09-30' } })).toBe('Narcotic (NDPS) register · 1 Sep 2026 to 30 Sep 2026');
     expect(describeAudit({ action: 'PHARMACY_REGISTER_VIEWED', details: { type: 'H1', from: '2026-10-01', to: '2026-10-05' } })).toBe('Schedule H1 register · 1 Oct 2026 to 5 Oct 2026');
     expect(describeAudit({ action: 'PHARMACY_MIS_VIEWED', details: { report: 'credit', from: '2026-11-01', to: '2026-11-13', rows: 3 } })).toBe('Credit report · 1 Nov 2026 to 13 Nov 2026 · 3 rows');
+    // 23 Nov 2026: Search bill – one day, or every date (no period)
+    expect(describeAudit({ action: 'PHARMACY_MIS_VIEWED', details: { report: 'bill-search', from: '2026-11-21', to: '2026-11-21', rows: 18 } })).toBe('Search bill · 21 Nov 2026 · 18 rows');
+    expect(describeAudit({ action: 'PHARMACY_MIS_VIEWED', details: { report: 'bill-search', rows: 1 } })).toBe('Search bill · 1 row');
     expect(describeAudit({ action: 'PHARMACY_PATIENT_LOOKED_UP', details: { by: 'phone', patientIds: ['p1'], walkInBills: 2 } })).toBe('By phone number · 1 record · 2 walk-in bills');
     expect(describeAudit({ action: 'PHARMACY_PATIENT_LOOKED_UP', details: { by: 'name', patientIds: ['p1'], walkInBills: 1 } })).toBe('By name, among people billed · 1 record · 1 walk-in customer');
     expect(describeAudit({ action: 'PHARMACY_PATIENT_LOOKED_UP', details: { by: 'list', people: 12 } })).toBe('List of people billed · 12 people');

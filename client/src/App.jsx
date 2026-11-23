@@ -96,6 +96,7 @@ const RegisterRedirect = screen(load26, 'RegisterRedirect');
 const load27 = () => import('./pages/pharmacy/SellPage.jsx');
 const loadNewBill = () => import('./pages/pharmacy/NewBillPage.jsx');
 const NewBillPage = screen(loadNewBill, 'NewBillPage');
+const SearchBillPage = screen(() => import('./pages/pharmacy/SearchBillPage.jsx'), 'SearchBillPage');
 const SellPage = screen(load27, 'SellPage');
 const loadWardRequests = () => import('./pages/pharmacy/WardRequests.jsx');
 const WardRequestsPage = screen(loadWardRequests, 'WardRequestsPage');
@@ -671,6 +672,7 @@ export function App() {
                   <Route element={<RequireTenantRole roles={['pharmacist']} message="Selling and issuing medicines is for the pharmacist." />}>
                     <Route index element={<NewBillPage />} />
                     <Route path="issue" element={<SellPage key="issue" kind="issue" />} />
+                    <Route path="search-bill" element={<SearchBillPage />} /> {/* 23 Nov 2026: a bill made earlier, found and printed again */}
                     {/* The day's OPD, IPD and External patients are on Today (owner, 26 Oct 2026) */}
                     <Route path="register" element={<RegisterRedirect />} />
                     <Route path="purchases/new" element={<NewPurchasePage />} />
