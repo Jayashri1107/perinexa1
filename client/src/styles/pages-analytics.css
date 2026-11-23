@@ -257,3 +257,48 @@
 .an-list li:first-child { padding-top: 0; }
 .an-list li:last-child { border-bottom: none; }
 .an-list strong { color: var(--ink); }
+
+/* Waiting times, tidier (23 Nov 2026, look only). Four headline figures above the grid; the stages in three groups
+   (.an-group-row), the stages inside a visit also as a bar on one scale – solid for the usual time, the same colour
+   paler for the slow time; a mark on the slowest hour and day; the completeness shares as meters with a line of
+   explanation under each. On a phone every value sits under its own label (data-label, as the other lists) and the
+   bar takes the line below. Lab times still uses .wt-grid and .an-list above. */
+.an-page .wt-kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+/* By hour and by day side by side with the months under them; three across only where each card has room for its bar */
+.an-page .wt-grid.wt-times > .wt-month { grid-column: 1 / -1; }
+@container (min-width: 900px) { .an-page .wt-grid.wt-times { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container (min-width: 1280px) {
+  .an-page .wt-grid.wt-times { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .an-page .wt-grid.wt-times > .wt-month { grid-column: auto; }
+}
+.an-page .wt-table { width: 100%; }
+.an-page .wt-table th[scope='row'] { white-space: normal; }
+.an-page .wt-table td.num { white-space: nowrap; }
+.an-page .wt-table .wt-bar { width: 30%; min-width: 120px; vertical-align: middle; }
+.an-page .wt-grid > .an-card:not(.an-wide) .wt-table .wt-bar { width: 24%; min-width: 56px; }
+.an-page .wt-grid > .an-card:not(.an-wide) .wt-table th[scope='row'] { white-space: normal; }
+.an-page .wt-grid > .an-card:not(.an-wide) .wt-table :is(th, td) { padding-left: var(--space-2); padding-right: var(--space-2); }
+.wt-when { white-space: nowrap; }
+.an-page .wt-hospitals tbody th[scope='row'] { min-width: 200px; }
+.an-page .wt-table .wt-few { text-align: right; color: var(--slate-600); white-space: normal; }
+.wt-track { position: relative; display: block; height: 10px; overflow: hidden; background: var(--chart-track); border-radius: var(--radius-pill); }
+.wt-track > span { position: absolute; top: 0; bottom: 0; left: 0; min-width: 2px; border-radius: var(--radius-pill); }
+.wt-usual { background: var(--chart-bar); }
+.wt-slow { background: var(--chart-bar); opacity: 0.28; }
+.wt-key { display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.wt-swatch { display: inline-block; width: 12px; height: 8px; border-radius: var(--radius-pill); }
+.wt-key .wt-swatch + .wt-swatch, .wt-key .wt-swatch:not(:first-child) { margin-left: var(--space-2); }
+.wt-meter { grid-template-columns: minmax(0, 3fr) minmax(96px, 3fr) minmax(96px, auto); padding: var(--space-1) 0; }
+.wt-meter + .wt-meter { border-top: 1px solid var(--border); }
+.wt-meter .meter-text { text-align: right; }
+.wt-note { display: block; font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 400; color: var(--slate-600); }
+@container (max-width: 899px) {
+  .an-page .wt-grid > .an-card:not(.an-wide) .wt-table .wt-bar { width: 40%; }
+}
+@media (max-width: 720px) {
+  .an-page .wt-table thead { display: none; }
+  .an-page .wt-table .wt-bar { display: block; width: 100%; min-width: 0; padding-top: 0; }
+  .an-page .wt-table .wt-few { text-align: left; }
+  .an-page .wt-hospitals thead { display: none; }
+  .wt-meter { grid-template-columns: minmax(0, 1fr) auto; }
+}

@@ -1,5 +1,56 @@
 # Progress
 
+## Waiting times page tidied (23 Nov 2026, look only – `npm test` and `npm run build` still to run)
+Analytics → Waiting times (`/analytics/waiting`, and the super admin's page). The numbers, the periods and who sees
+what are unchanged – nothing in `server/` was touched. New on the page:
+- Four headline figures above the tables: OPD visits, the whole visit's usual and slow time, the longest wait.
+- "Each stage" in three groups – Stages of the visit, Whole visit, Lab – and the stages inside a visit also as a bar
+  on one scale (solid = usual, pale = slow).
+- By hour and by day: a bar on every row and a "Slowest" mark on the row with the longest usual time (only with two
+  or more rows and no tie). By month: a bar on every row.
+- "Too few visits to show" once per row instead of in every cell, and a plain message when a period has no times.
+- The period's dates under the Period box; the completeness shares as meters, each with a line of explanation.
+- Phones: every value under its own label (Usual, Slow, Visits) with the bar below. Before, three numbers stood
+  under each stage with no labels.
+- Files: `client/src/pages/analytics/WaitingTimesPage.jsx`, `waitingFormat.js` (new pure helpers; tests in the new
+  `waitingFormat.test.js`), `client/src/styles/pages-analytics.css` (new rules after "Waiting times"; `.wt-grid` and
+  `.an-list` stay for Lab times, which keeps the earlier look).
+- **Checked outside the project only:** the page drawn with sample numbers in a test browser at phone, tablet and
+  desktop widths, for a doctor, a hospital admin, the super admin, an empty period and a loading page; the new
+  helper tests. Still to do: `npm test`, `npm run build`, and a look at the page in the app itself.
+
+### How to test (fake data only)
+1. `npm test` and `npm run build` from the project root.
+2. As a doctor: Analytics → Waiting times → "This month so far". The four figures, the groups and the bars show;
+   the row with the "Longest wait" mark is the same stage as before.
+3. As the hospital admin: "Last month" – rows below 10 visits read "Too few visits to show" once.
+4. As the super admin: Platform → Analytics → Waiting times, one hospital and all hospitals.
+5. Narrow the window to a phone's width: every value has its label; nothing scrolls sideways.
+
+## Discharge and payroll build notes from the other Perinexa copy (23 Nov 2026, nothing built)
+Brought over from `girishsolanke/perinexa` (branches `ideas-discharge-desk` and `ideas-payroll`, documentation only
+there too), each with a section 0 on where perinexa1 differs:
+- **`docs/DISCHARGE_BUILD_NOTE.md`** – one Discharge screen per stay, in three stages (A the two sides connected, B
+  charges that add themselves, C the Discharge tab), with the owner's seventeen decisions of 23 Nov 2026. Perinexa1
+  already has the final bill, the desk's discharge steps, clearance, nursing per day and a charge for each signed
+  ward round (9 Nov 2026), so Stage A is to be fitted to those. To settle with the owner first: the doctor's visit
+  per day (the note) or per signed round (perinexa1 today) – not both; who reopens a final bill; where the Discharge
+  tab goes. Still to build here: the going-home mark, the bill as one word for the clinical side, the warning at
+  confirming, delivery and operation charges from the confirmed note, the RMO charge, the bed price following a ward
+  change, packages, the fuller discharge card.
+- **`docs/PAYROLL_BUILD_NOTE.md`** – salary from an attendance file, in four stages (A the accounts login, staff list
+  and settings; B the file to the salary sheet; C salary parts, deductions and advances; D lock, payslips and lists).
+  Perinexa1 has nothing of it. The main difference: a super admin or platform admin opening a hospital is given every
+  hospital role and passes a role check while support access is open, so each payroll route must refuse them
+  itself; the payroll also needs its page key, its own audit fields for the platform reader, and to stay out of
+  Daily expenses.
+- Entries in `docs/IDEAS_FOR_LATER.md`.
+- **Waiting for the owner:** the five DRAFT discharge medicine sets (section 8 of the discharge note – none is
+  offered on a discharge card before approval); sample attendance files with made-up names, a yes or no to a bank
+  payment list, and the accountant's answers on a day's pay and every DRAFT rate (section 8 of the payroll note – the
+  rates are not checked and not for use).
+- **Nothing is built.** The feature pause holds until the developer and the owner agree when.
+
 ## Google Play readiness and the developer's Android app test (20 Nov 2026, master 0417b1aa → main db1c27b2)
 - **Merged:** patients delete their own portal account (`account-deletion`; the OTP that confirms it now counts against
   the same per-number limits as sign-in OTPs, health check M4), the Android icon and the 512-pixel Play Store icon
