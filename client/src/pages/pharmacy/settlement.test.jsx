@@ -38,7 +38,7 @@ describe('what Search asks for', () => {
     expect(findQuery({ type: 'external', mrn: '', name: '' })).toEqual({ type: 'external' });
     expect(findProblem({ type: 'opd', mrn: '', name: 'A' })).toContain('at least two letters');
     expect(findProblem({ type: 'opd', mrn: 'SH', name: '' })).toBe('');
-    expect(findProblem({ type: 'opd', mrn: '', name: '' })).toBe(''); // nothing typed: today's OP bills (24 Nov 2026)
+    expect(findProblem({ type: 'opd', mrn: '', name: '' })).toBe(''); // nothing typed: today's OPD bills (24 Nov 2026)
     expect(findQuery({ type: 'ipd', mrn: ' ', name: '' })).toEqual({ type: 'ipd' });
     expect(findProblem({ type: 'external', mrn: '', name: '' })).toBe('');
   });
@@ -95,9 +95,9 @@ describe('the list of patients found (Settlement, Sale return patient-wise)', ()
   it('shows one line a patient – name, UHID and what she owes – the chosen one marked', () => {
     const people = Array.from({ length: 22 }, (_, i) => ({ id: `p${i}`, fullName: `Sample Patient ${i + 1}`, mrn: `SH-${1000 + i}`, creditPaise: i === 1 ? 40800 : 0 }));
     const html = renderToStaticMarkup(
-      <PatientPickList title="Today’s OP patients (22) – click one" people={people} chosenId="p1" onChoose={() => {}} extra={{ header: 'Due (₹)', render: (p) => (p.creditPaise > 0 ? amount(p.creditPaise) : '–') }} />,
+      <PatientPickList title="Today’s OPD patients (22) – click one" people={people} chosenId="p1" onChoose={() => {}} extra={{ header: 'Due (₹)', render: (p) => (p.creditPaise > 0 ? amount(p.creditPaise) : '–') }} />,
     );
-    expect(text(html)).toMatch(/^ ?Today’s OP patients \(22\) – click one Patient name UHID Due \(₹\) Sample Patient 1 SH-1000 – Sample Patient 2 SH-1001 408\.00 Sample Patient 3/);
+    expect(text(html)).toMatch(/^ ?Today’s OPD patients \(22\) – click one Patient name UHID Due \(₹\) Sample Patient 1 SH-1000 – Sample Patient 2 SH-1001 408\.00 Sample Patient 3/);
     expect((html.match(/<tr/g) ?? []).length).toBe(23); // the header and the 22 patients, one line each
     expect(words(html)).toContain('<tr class="is-on"><td><button type="button" class="ph-plist-name" aria-pressed="true" title="Sample Patient 2">');
     // Sale return: no money column
@@ -113,12 +113,12 @@ describe('the Settlement screen', () => {
       </MemoryRouter>,
     );
     const shown = text(html);
-    expect(shown).toMatch(/Patient type OP IP External UHID Patient name Search/);
+    expect(shown).toMatch(/Patient type OPD IPD External UHID Patient name Search/);
     expect(shown).toMatch(/Paid bills .*Sales date Print bill no UHID Bill amt Con\. amt Net pay amt Paid amt Balance/);
     expect(shown).toMatch(/Credit bills Select all .*Sales date Print bill no UHID Bill amt Con\. amt Net pay amt Balance/);
     expect(shown).toMatch(/Advance available .*Total credit .*Selected total .*Advance Discount Settlement Close/);
-    expect(shown).toContain('Choose OP, IP or External and press Search – today’s bills – or type a UHID or name.');
-    // OP chosen to begin with; nothing to settle until bills are ticked
+    expect(shown).toContain('Choose OPD, IPD or External and press Search – today’s bills – or type a UHID or name.');
+    // OPD chosen to begin with; nothing to settle until bills are ticked
     const radios = words(html).match(/<input type="radio" name="st-type"[^>]*>/g);
     const checked = radios.filter((tag) => tag.includes('checked=""'));
     expect(checked).toHaveLength(1);

@@ -4,8 +4,8 @@
 import { amount } from './searchBill.js';
 
 export const SETTLE_TYPES = [
-  ['opd', 'OP'],
-  ['ipd', 'IP'],
+  ['opd', 'OPD'],
+  ['ipd', 'IPD'],
   ['external', 'External'],
 ];
 

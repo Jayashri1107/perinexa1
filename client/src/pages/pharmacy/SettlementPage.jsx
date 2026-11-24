@@ -11,7 +11,7 @@ import { amount } from './searchBill.js';
 import { SETTLE_TYPES, SETTLE_WAYS, findProblem, findQuery, newSettle, selectedOf, settleBody, settleSums, settledWords } from './settlement.js';
 
 // Pharmacy → Settlement (24 Nov 2026, the developer, after the "Pharmacy Settlement" window of the pharmacy's earlier
-// software), the menu item after Search bill. On the left OP, IP or External, the UHID and the patient's name, and
+// software), the menu item after Search bill. On the left OPD, IPD or External, the UHID and the patient's name, and
 // Search. Beside it the patient's Paid bills and Credit bills (Select all, or tick each); under them Advance available,
 // Total credit and Selected total, and the buttons Advance, Discount, Settlement and Close. Each of the three opens the
 // Settlement window for the credit bills ticked – Advance with the advance filled in, Discount ready for a discount
@@ -325,10 +325,10 @@ export function PharmacySettlementPage() {
     { ...money('netPayable'), header: 'Net pay amt' },
     { ...money('balance'), header: 'Balance' },
   ];
-  const typeWord = query?.type === 'ipd' ? 'IP' : 'OP';
-  const admittedNow = found.data?.scope === 'admitted'; // IP with nothing typed: everyone admitted now
+  const typeWord = query?.type === 'ipd' ? 'IPD' : 'OPD';
+  const admittedNow = found.data?.scope === 'admitted'; // IPD with nothing typed: everyone admitted now
   const nothingWords = !query
-    ? 'Choose OP, IP or External and press Search – today’s bills – or type a UHID or name.'
+    ? 'Choose OPD, IPD or External and press Search – today’s bills – or type a UHID or name.'
     : external
       ? 'No walk-in bills found.'
       : data
@@ -420,7 +420,7 @@ export function PharmacySettlementPage() {
             )}
             {list && (
               <p className="ph-st-who">
-                <strong>{admittedNow ? `IP patients admitted now – ${formatDate(list.day)}` : `Today’s ${typeWord} bills – ${formatDate(list.day)}`}</strong>{' '}
+                <strong>{admittedNow ? `IPD patients admitted now – ${formatDate(list.day)}` : `Today’s ${typeWord} bills – ${formatDate(list.day)}`}</strong>{' '}
                 <span className="muted tabular">
                   · {list.patients.length} patient{list.patients.length === 1 ? '' : 's'} · {list.paidBills.length + list.creditBills.length} {admittedNow ? 'counter bills of their stays' : 'bills'} · ₹{amount(list.totalCreditPaise)} on credit
                 </span>

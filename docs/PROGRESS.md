@@ -9,6 +9,8 @@ The developer's request ("when IP is chosen it should display the IP patients").
   patients admitted now – date · n patients · n counter bills of their stays · ₹ on credit"; "Back to the admitted
   patients" from one patient. Before, IP listed only today's counter bills of admitted patients – usually nobody.
 - **IP and a name typed** finds an admitted patient before her first counter bill too.
+- **OPD and IPD in full:** the choices read OPD, IPD and External (were OP and IP), and so do the headings, the list
+  titles and the messages.
 - Unchanged: only counter bills are settled here; ward issues and bills put on the hospital bill are paid at the billing
   desk – the screen now says so under IP.
 - **Server:** `GET /api/pharmacy/settlement?type=ipd` (nothing typed) answers `{ list: true, scope: 'admitted', day,

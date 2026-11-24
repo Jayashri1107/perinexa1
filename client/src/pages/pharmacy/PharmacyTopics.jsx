@@ -21,7 +21,7 @@ export const PHARMACY_TOPICS = [
       ['MRP adjustment', '/pharmacy/stock', 'Stock → a medicine → Change MRP on the batch.'],
       ['Batch adjustment', '/pharmacy/stock', 'Stock → a medicine → Count, Write off, Put on hold.'],
       ['Add stock', '/pharmacy/purchases/new', 'A new purchase bill (GRN).'],
-      ['Settlement', '/pharmacy/settlement', 'Settlement: OP, IP or External, UHID or name, Search – then tick the credit bills and settle them with advance, discount and money received.'],
+      ['Settlement', '/pharmacy/settlement', 'Settlement: OPD, IPD or External, UHID or name, Search – then tick the credit bills and settle them with advance, discount and money received.'],
       ['Search sale return', '/pharmacy', 'Type the return number (CN-…) in the box above the bills.'],
     ],
   },
