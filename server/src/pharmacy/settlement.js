@@ -166,6 +166,6 @@ export async function settleSelected(req, body) {
       receivedPaise: row.payments.reduce((n, p) => n + p.amountPaise, 0),
     })),
   };
-  const current = await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: patient._id, billId: null, kind: 'sale' }).sort({ 'created.at': -1 }).limit(500).lean();
+  const current = await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: patient._id, billId: null, kind: 'sale' }).sort({ 'created.at': -1, _id: -1 }).limit(500).lean();
   return { patient, result, data: await settlementData(req, patient, current) };
 }

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Admission } from '../models/Admission.js';
 import { Bill } from '../models/Bill.js';
 import { Patient } from '../models/Patient.js';
 import { Medicine, PharmacyInvoice } from '../models/Pharmacy.js';
@@ -10,10 +11,12 @@ import { invoiceTotals, isExpired, returnItems } from '../pharmacy/pharmacyServi
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, parse } from '../utils/validate.js';
-import { isoDay } from '../careplans/dates.js';
+import { addDays, hospitalDayStart, isoDay } from '../careplans/dates.js';
 
 // Sale return patient-wise (24 Nov 2026, the developer, after the earlier software's "Sales Return" window):
-//  - GET  /api/pharmacy/patient-return?type=opd|ipd&mrn=&first=&doctor=   the patients found (UHID or first name)
+//  - GET  /api/pharmacy/patient-return?type=opd|ipd&mrn=&first=&doctor=   the patients found (UHID or first name); with
+//    nothing typed (24 Nov 2026, the pharmacy's request): OPD – those with counter bills today, IPD – those admitted now
+//    with ward issues
 //  - GET  /api/pharmacy/patient-return?type=&patientId=&doctor=           her medicines that can be taken back
 //  - POST /api/pharmacy/patient-return                                    takes back quantities from several bills
 // OPD: her counter sales; IPD: her ward issues. Each bill returned gets its own credit note (returnItems). The pharmacist
@@ -66,6 +69,17 @@ pharmacyPatientReturnRouter.get('/', async (req, res) => {
   }
   const mrn = q.mrn ?? '';
   const first = q.first ?? '';
+  if (!mrn && !first) {
+    const day = today(req);
+    const ids =
+      q.type === 'ipd'
+        ? await PharmacyInvoice.distinct('patientId', { tenantId: req.tenantId, kind: 'issue', patientId: { $in: await Admission.distinct('patientId', { tenantId: req.tenantId, status: 'admitted' }) }, ...doctorFilter(q.doctor) })
+        : await PharmacyInvoice.distinct('patientId', { tenantId: req.tenantId, kind: 'sale', patientId: { $ne: null }, 'created.at': { $gte: hospitalDayStart(day), $lt: hospitalDayStart(addDays(day, 1)) }, ...doctorFilter(q.doctor) });
+    const people = ids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: ids } }, { fullName: 1, mrn: 1 }).sort({ fullName: 1 }).limit(200).lean() : [];
+    const patients = people.map((p) => ({ id: String(p._id), fullName: p.fullName, mrn: p.mrn ?? '' }));
+    await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'patient-return', patientIds: patients.map((p) => p.id), rows: patients.length } });
+    return res.json({ type: q.type, list: true, patients });
+  }
   if (mrn.length < 2 && first.length < 2) throw bad('Type the registration number (UHID) or at least two letters of the first name.');
   const who = {
     tenantId: req.tenantId,

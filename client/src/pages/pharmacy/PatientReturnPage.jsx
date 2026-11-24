@@ -126,9 +126,9 @@ export function PatientReturnPage() {
   const shown = linesShown(data?.lines, barcode ? '' : item);
   const todayIso = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
-  // One patient found: her medicines at once
+  // One patient found by number or name: her medicines at once (the list of today's patients stays a list)
   useEffect(() => {
-    if (people?.length === 1) choose(people[0].id);
+    if (people?.length === 1 && !found.data?.list) choose(people[0].id);
   }, [found.data]);
 
   const choose = (id) => {
@@ -216,7 +216,7 @@ export function PatientReturnPage() {
     { key: 'pay', header: 'Pay', render: (l) => payWord(data?.bills?.find((b) => b.invoiceId === l.invoiceId)) },
   ];
   const emptyWords = !query
-    ? 'Search for a patient to see the medicines on her bills.'
+    ? 'Choose OPD or IPD and press Search for today’s patients – or type a registration no or first name.'
     : data
       ? data.lines.length
         ? 'No medicine with that name on her bills.'
@@ -225,7 +225,11 @@ export function PatientReturnPage() {
         ? 'Choose the patient on the left.'
         : found.loading
           ? 'Searching…'
-          : `No patient with ${query.type === 'ipd' ? 'ward issues' : 'pharmacy bills'} found.`;
+          : found.data?.list
+            ? query.type === 'ipd'
+              ? 'Nobody admitted now has ward issues.'
+              : 'No OPD patient has a pharmacy bill today.'
+            : `No patient with ${query.type === 'ipd' ? 'ward issues' : 'pharmacy bills'} found.`;
 
   return (
     <>
@@ -273,9 +277,11 @@ export function PatientReturnPage() {
             </button>
             {problem && (form.mrn || form.first) && <p className="field-error">{problem}</p>}
             {found.error && <Alert type="error">{found.error}</Alert>}
-            {people && people.length > 1 && (
+            {people && (people.length > 1 || (found.data?.list && people.length > 0)) && (
               <div className="ph-st-people" role="group" aria-label="Patients found">
-                <p className="hint ph-sb-tip">{people.length} patients found – choose one:</p>
+                <p className="hint ph-sb-tip">
+                  {found.data?.list ? `${query?.type === 'ipd' ? 'Admitted now, with ward issues' : 'Billed today'} (${people.length}) – choose one:` : `${people.length} patients found – choose one:`}
+                </p>
                 <ul>
                   {people.map((p) => (
                     <li key={p.id}>

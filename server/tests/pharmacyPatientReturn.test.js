@@ -59,6 +59,9 @@ describe('Sale return patient-wise', () => {
     expect((await ph('get', '/patient-return?type=opd&first=Sample')).body.patients.map((x) => x.id)).toContain(p.id);
     expect((await ph('get', '/patient-return?type=ipd&first=Sample')).body.patients).toEqual([]); // no ward issues
     expect((await ph('get', '/patient-return?type=opd&first=S')).status).toBe(400);
+    // Nothing typed (24 Nov 2026): OPD – those billed today; IPD – those admitted now with ward issues
+    expect((await ph('get', '/patient-return?type=opd')).body).toMatchObject({ list: true, patients: [{ id: p.id, fullName: p.fullName, mrn: p.mrn }] });
+    expect((await ph('get', '/patient-return?type=ipd')).body.patients).toEqual([]);
     const mine = (await ph('get', `/patient-return?type=opd&patientId=${p.id}`)).body;
     expect(mine.lines.map((l) => [l.number, l.canReturnQty])).toEqual([[owed.number, 3], [paid.number, 2]]);
     expect(mine.bills.find((b) => b.number === owed.number)).toMatchObject({ balancePaise: 600, paidPaise: 0 });

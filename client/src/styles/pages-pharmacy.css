@@ -1515,6 +1515,13 @@
 .ph-st-problem { margin: var(--space-2) 0 0; }
 @media (min-width: 720px) {
   .ph-st .ph-sb-bills .dt-wrap { height: clamp(140px, 26vh, 300px); }
+  /* 24 Nov 2026: today's list adds the patient's name – the grids tightened so every column fits a laptop screen */
+  .ph-st .ph-sb-bills .dt { font-size: 0.78rem; }
+  .ph-st .ph-sb-bills .dt :is(th, td) { padding: 4px 6px; white-space: nowrap; }
+  .ph-st-paid .dt :is(th, td):first-child { padding: 4px 8px; text-align: left; }
+}
+@media (min-width: 1024px) {
+  .ph-st .ph-sb-split { grid-template-columns: 230px minmax(0, 1fr); }
 }
 @media (max-width: 719px) {
   .ph-st-adjust { grid-template-columns: repeat(2, minmax(0, 1fr)); }

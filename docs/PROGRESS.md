@@ -1,5 +1,23 @@
 # Progress
 
+## Settlement and Sale return patient-wise: Search with nothing typed lists today's (24 Nov 2026)
+The developer's request (built with Claude in the Claude app – **`npm test` and `npm run build` still to run**):
+- **Settlement:** choose OP or IP and press **Search with nothing typed** – today's bills of that type, every
+  patient's, fill the Paid bills and Credit bills tables (with a Patient name column), and the left side lists today's
+  patients with what each owes. Ticking a credit bill picks its patient: Advance available is hers, Select all ticks
+  all her credit bills, and ticking another patient's bill starts again with that one (one patient is settled at a
+  time, as before). Click a patient on the left for all her bills of every date; "Back to today's OP bills" returns.
+  External with nothing typed lists today's walk-in bills, as before. IP means admitted now. Typing a UHID or name
+  works as before.
+- **Sale return patient-wise:** OPD or IPD and **Search with nothing typed** lists the patients on the left – OPD:
+  billed today; IPD: admitted now, with ward issues. Click one for her medicines.
+- **Server:** `GET /api/pharmacy/settlement?type=` with no search: `{ list: true, day, paidBills, creditBills,
+  totalCreditPaise, patients: [{ id, fullName, mrn, type, billCount, creditPaise, advancePaise }] }` (From/To give
+  another day); `GET /api/pharmacy/patient-return?type=` with nothing typed: `{ list: true, patients }`. Both audited
+  as before. Bills made at the same moment now list in a fixed order (`_id` after the time).
+- **Tests:** added to `pharmacySettlement.test.js`, `pharmacyPatientReturn.test.js`, `settlement.test.jsx`,
+  `patientReturn.test.jsx`. Checked here with the stand-in runner and in a browser with sample data.
+
 ## Pharmacy → Sale return patient-wise, as the earlier software's Sales Return window (24 Nov 2026)
 The developer's request with a photo of the earlier software's "Sales Return" window. Built with Claude in the Claude
 app – **`npm test` and `npm run build` are still to be run by the developer**. Fake data only.

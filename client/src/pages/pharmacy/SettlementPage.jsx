@@ -223,6 +223,7 @@ export function PharmacySettlementPage() {
   const [opened, setOpened] = useState(null); // 'advance' | 'discount' | 'settle'
   const [done, setDone] = useState(null); // the last settlement: { result, words, patient, at }
   const [printing, setPrinting] = useState(false);
+  const [oneNote, setOneNote] = useState(''); // a tick of another patient's bill in today's list
   const found = useFetch(query ? '/pharmacy/settlement' : null, query ?? undefined);
   const one = useFetch(patientId ? '/pharmacy/settlement' : null, patientId ? { patientId } : undefined);
   const settings = useFetch(done ? '/pharmacy/settings' : null);
@@ -230,15 +231,18 @@ export function PharmacySettlementPage() {
   const people = query && query.type !== 'external' ? (found.data?.patients ?? null) : null;
   const external = query?.type === 'external' ? (found.data?.externalBills ?? null) : null;
   const data = patientId && one.data?.patientId === patientId ? one.data : null;
+  // Search with nothing typed (24 Nov 2026): the type's bills of today, every patient's, until a patient is clicked
+  const list = !patientId && query && query.type !== 'external' && found.data?.list ? found.data : null;
 
-  // One patient found: her bills at once
+  // One patient found by name or UHID: her bills at once
   useEffect(() => {
-    if (people?.length === 1) choosePatient(people[0].id);
+    if (people?.length === 1 && !found.data?.list) choosePatient(people[0].id);
   }, [found.data]);
 
   const choosePatient = (id) => {
     setPatientId(id);
     setChosen(new Set());
+    setOneNote('');
   };
   const search = (e) => {
     e?.preventDefault();
@@ -257,20 +261,33 @@ export function PharmacySettlementPage() {
     setDone(null);
   };
 
-  const credit = data?.creditBills ?? [];
-  const paid = external ?? data?.paidBills ?? [];
+  const credit = data?.creditBills ?? list?.creditBills ?? [];
+  const paid = external ?? data?.paidBills ?? list?.paidBills ?? [];
   const selected = selectedOf(credit, chosen);
-  const advancePaise = data?.advance?.balancePaise ?? 0;
-  const tick = (id, on) =>
+  // In today's list the bills ticked are one patient's: hers is the advance, and the Settlement window is hers
+  const tickedPatient = selected.rows[0]?.patientId ?? null;
+  const listPatient = list && tickedPatient ? list.patients.find((p) => p.id === tickedPatient) : null;
+  const patient = data?.patient ?? (listPatient ? { id: listPatient.id, fullName: listPatient.fullName, mrn: listPatient.mrn } : null);
+  const advancePaise = data ? (data.advance?.balancePaise ?? 0) : (listPatient?.advancePaise ?? 0);
+  const tick = (id, on) => {
+    const row = credit.find((b) => b.id === id);
+    if (on && tickedPatient && row && row.patientId !== tickedPatient) {
+      setChosen(new Set([id]));
+      setOneNote('Bills of one patient are settled together: the other patient’s ticks were taken off.');
+      return;
+    }
+    setOneNote('');
     setChosen((all) => {
       const next = new Set(all);
       if (on) next.add(id);
       else next.delete(id);
       return next;
     });
-  const allTicked = credit.length > 0 && credit.every((b) => chosen.has(b.id));
+  };
+  // Select all: every credit bill of the patient (in today's list, of the patient ticked – or of the only one)
+  const allOf = data ? credit : credit.filter((b) => b.patientId === (tickedPatient ?? (new Set(credit.map((x) => x.patientId)).size === 1 ? credit[0]?.patientId : null)));
+  const allTicked = allOf.length > 0 && allOf.every((b) => chosen.has(b.id));
   const settled = (answer, modes) => {
-    const patient = data.patient;
     setOpened(null);
     setChosen(new Set());
     setDone({ result: answer, patient, at: new Date().toISOString(), words: settledWords(answer, modes) });
@@ -283,6 +300,7 @@ export function PharmacySettlementPage() {
     { key: 'date', header: 'Sales date', render: (r) => formatDateTime(r.date) },
     { key: 'number', header: 'Print bill no', render: (r) => <span className="tabular">{r.number}</span> },
     { key: 'mrn', header: external ? 'Customer' : 'UHID', render: (r) => (external ? r.name : <span className="tabular">{r.mrn || '–'}</span>) },
+    ...(list ? [{ key: 'name', header: 'Patient name', render: (r) => <span className="ph-sb-name">{r.name}</span> }] : []),
     { ...money('billAmount'), header: 'Bill amt' },
     { ...money('concession'), header: 'Con. amt' },
     { ...money('netPayable'), header: 'Net pay amt' },
@@ -299,18 +317,22 @@ export function PharmacySettlementPage() {
     { key: 'date', header: 'Sales date', render: (r) => formatDateTime(r.date) },
     { key: 'number', header: 'Print bill no', render: (r) => <span className="tabular">{r.number}</span> },
     { key: 'mrn', header: 'UHID', render: (r) => <span className="tabular">{r.mrn || '–'}</span> },
+    ...(list ? [{ key: 'name', header: 'Patient name', render: (r) => <span className="ph-sb-name">{r.name}</span> }] : []),
     { ...money('billAmount'), header: 'Bill amt' },
     { ...money('concession'), header: 'Con. amt' },
     { ...money('netPayable'), header: 'Net pay amt' },
     { ...money('balance'), header: 'Balance' },
   ];
+  const typeWord = query?.type === 'ipd' ? 'IP' : 'OP';
   const nothingWords = !query
-    ? 'Search for a patient to see her bills.'
+    ? 'Choose OP, IP or External and press Search – today’s bills – or type a UHID or name.'
     : external
       ? 'No walk-in bills found.'
       : data
         ? 'No paid bills.'
-        : people?.length
+        : list
+          ? `No paid ${typeWord} bills today.`
+          : people?.length
           ? 'Choose the patient on the left.'
           : found.loading
             ? 'Searching…'
@@ -346,9 +368,9 @@ export function PharmacySettlementPage() {
             </button>
             {problem && (form.mrn || form.name) && <p className="field-error">{problem}</p>}
             {found.error && <Alert type="error">{found.error}</Alert>}
-            {people && people.length > 1 && (
+            {people && (people.length > 1 || (found.data?.list && people.length > 0)) && (
               <div className="ph-st-people" role="group" aria-label="Patients found">
-                <p className="hint ph-sb-tip">{people.length} patients found – choose one:</p>
+                <p className="hint ph-sb-tip">{found.data?.list ? `Today’s ${typeWord} patients (${people.length}) – click one for all her bills:` : `${people.length} patients found – choose one:`}</p>
                 <ul>
                   {people.map((p) => (
                     <li key={p.id}>
@@ -383,13 +405,31 @@ export function PharmacySettlementPage() {
             {data && (
               <p className="ph-st-who">
                 <strong>{data.patient.fullName}</strong> <span className="muted tabular">· UHID {data.patient.mrn || '–'}</span>
+                {found.data?.list && (
+                  <>
+                    {' '}
+                    <button type="button" className="btn btn-link btn-sm" onClick={() => choosePatient(null)}>
+                      Back to today’s {typeWord} bills
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
+            {list && (
+              <p className="ph-st-who">
+                <strong>
+                  Today’s {typeWord} bills – {formatDate(list.day)}
+                </strong>{' '}
+                <span className="muted tabular">
+                  · {list.patients.length} patient{list.patients.length === 1 ? '' : 's'} · {list.paidBills.length + list.creditBills.length} bills · ₹{amount(list.totalCreditPaise)} on credit
+                </span>
               </p>
             )}
             <section className="ph-st-grid" aria-labelledby="st-paid">
               <h2 id="st-paid" className="ph-st-title">
                 {external ? 'Walk-in bills' : 'Paid bills'}
               </h2>
-              <div className="ph-sb-bills">
+              <div className="ph-sb-bills ph-st-paid">
                 <DataTable caption={external ? 'Walk-in bills' : 'Paid bills'} rows={paid} loading={one.loading || found.loading} columns={paidColumns} pageSize={0} emptyText={nothingWords} />
               </div>
             </section>
@@ -399,7 +439,7 @@ export function PharmacySettlementPage() {
                   Credit bills
                 </h2>
                 <label className="check ph-st-all">
-                  <input type="checkbox" disabled={!credit.length} checked={allTicked} onChange={(e) => setChosen(e.target.checked ? new Set(credit.map((b) => b.id)) : new Set())} /> Select all
+                  <input type="checkbox" disabled={!allOf.length} checked={allTicked} onChange={(e) => setChosen(e.target.checked ? new Set(allOf.map((b) => b.id)) : new Set())} /> Select all
                 </label>
               </div>
               <div className="ph-sb-bills">
@@ -418,9 +458,9 @@ export function PharmacySettlementPage() {
 
             <div className="ph-st-foot">
               <div className="ph-st-facts">
-                <Fact label="Advance available" value={data ? amount(advancePaise) : ''} id="st-advance" />
-                <Fact label="Total credit" value={data ? amount(data.totalCreditPaise) : ''} id="st-credit-total" />
-                <Fact label="Selected total" value={data ? amount(selected.paise) : ''} id="st-selected" />
+                <Fact label="Advance available" value={patient ? amount(advancePaise) : ''} id="st-advance" />
+                <Fact label="Total credit" value={data || list ? amount((data ?? list).totalCreditPaise) : ''} id="st-credit-total" />
+                <Fact label="Selected total" value={data || list ? amount(selected.paise) : ''} id="st-selected" />
               </div>
               <div className="ph-st-actions">
                 <button type="button" className="btn btn-secondary" disabled={!selected.rows.length || advancePaise <= 0} onClick={() => setOpened('advance')}>
@@ -438,15 +478,21 @@ export function PharmacySettlementPage() {
               </div>
             </div>
             {data && credit.length > 0 && !selected.rows.length && <p className="hint ph-sb-tip">Tick the credit bills to settle (or Select all), then Advance, Discount or Settlement.</p>}
+            {list && credit.length > 0 && !selected.rows.length && <p className="hint ph-sb-tip">Tick the credit bills of one patient, then Advance, Discount or Settlement – or click a patient on the left for all her bills.</p>}
+            {oneNote && (
+              <p className="hint ph-sb-tip" role="status">
+                {oneNote}
+              </p>
+            )}
             {data && data.from && <p className="hint ph-sb-tip">Bills from {formatDate(data.from)} to {formatDate(data.to)}.</p>}
           </div>
         </div>
       </div>
 
-      {opened && data && (
+      {opened && patient && (
         <SettleWindow
           preset={opened}
-          patient={data.patient}
+          patient={patient}
           rows={selected.rows}
           selectedPaise={selected.paise}
           advancePaise={advancePaise}

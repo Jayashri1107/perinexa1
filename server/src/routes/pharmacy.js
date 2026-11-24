@@ -1532,6 +1532,9 @@ pharmacyRouter.post('/patients/:id/settle', async (req, res) => {
 // hospital bills and ward issues stay with the billing desk, and a walk-in pays the whole bill at the counter.
 // IP: admitted now; OP: everyone else. A UHID typed in full finds that patient whatever is chosen. No dates: a credit
 // bill stays owed until it is settled, however old it is (From and To narrow the list when given).
+// Search with nothing typed (24 Nov 2026, the pharmacy's request): the type's bills of today, every patient's, in the
+// Paid and Credit tables, with the patients beside them (what each owes and her advance) – External: today's walk-in
+// bills, as before.
 const settlementQuery = z.object({
   from: requiredDateOnly('From').optional(),
   to: requiredDateOnly('To').optional(),
@@ -1549,7 +1552,7 @@ pharmacyRouter.get('/settlement', async (req, res) => {
   if (q.patientId) {
     const patient = await Patient.findOne({ tenantId: req.tenantId, _id: q.patientId }, { _id: 1, fullName: 1, mrn: 1, phone: 1 }).lean();
     if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
-    const invoices = await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: patient._id, billId: null, kind: 'sale', ...when }).sort({ 'created.at': -1 }).limit(500).lean();
+    const invoices = await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: patient._id, billId: null, kind: 'sale', ...when }).sort({ 'created.at': -1, _id: -1 }).limit(500).lean();
     await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'settlement', patientIds: [String(patient._id)], rows: invoices.length } });
     return res.json({ ...dates, patientId: String(patient._id), ...(await settlementData(req, patient, invoices)) });
   }
@@ -1562,7 +1565,29 @@ pharmacyRouter.get('/settlement', async (req, res) => {
     await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'settlement', patientIds: [], walkInBills: invoices.length } });
     return res.json({ ...dates, externalBills: invoices.map((inv) => settlementRow(inv)) });
   }
-  if (!q.search || q.search.length < 2) return res.json({ ...dates, patients: [] });
+  if (!q.search) {
+    const day = dated ? q.from ?? q.to : today(req);
+    const [dayStart, dayEnd] = dated ? [start, end] : [hospitalDayStart(day), hospitalDayStart(addDays(day, 1))];
+    const admitted = new Set((await Admission.distinct('patientId', { tenantId: req.tenantId, status: 'admitted' })).map(String));
+    const invoices = (await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: { $ne: null }, billId: null, kind: 'sale', 'created.at': { $gte: dayStart, $lt: dayEnd } }).sort({ 'created.at': -1, _id: -1 }).limit(500).lean())
+      .filter((inv) => q.type === 'all' || (q.type === 'ipd') === admitted.has(String(inv.patientId)));
+    const pids = [...new Set(invoices.map((inv) => String(inv.patientId)))];
+    const people = new Map((pids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
+    const advances = pids.length ? await PharmacyAdvance.find({ tenantId: req.tenantId, patientId: { $in: pids } }, { patientId: 1, kind: 1, amountPaise: 1 }).lean() : [];
+    const advanceOfPatient = new Map();
+    for (const e of advances) advanceOfPatient.set(String(e.patientId), (advanceOfPatient.get(String(e.patientId)) ?? 0) + (e.kind === 'deposit' ? 1 : -1) * e.amountPaise);
+    const rows = invoices.filter((inv) => people.has(String(inv.patientId))).map((inv) => settlementRow(inv, people.get(String(inv.patientId))));
+    const patients = [...new Map(rows.map((r) => [r.patientId, r])).values()]
+      .map((r) => {
+        const own = rows.filter((x) => x.patientId === r.patientId);
+        return { id: r.patientId, fullName: r.name, mrn: r.mrn, type: admitted.has(r.patientId) ? 'ipd' : 'opd', billCount: own.length, creditPaise: own.reduce((n, x) => n + x.balancePaise, 0), advancePaise: Math.max(0, advanceOfPatient.get(r.patientId) ?? 0), lastAt: own[0].date };
+      })
+      .sort((a, b) => b.creditPaise - a.creditPaise || new Date(b.lastAt) - new Date(a.lastAt));
+    const creditBills = rows.filter((r) => r.balancePaise > 0);
+    await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'settlement', patientIds: patients.map((p) => p.id), rows: rows.length } });
+    return res.json({ ...dates, day: isoDay(day), list: true, paidBills: rows.filter((r) => r.balancePaise <= 0), creditBills, totalCreditPaise: creditBills.reduce((n, r) => n + r.balancePaise, 0), patients });
+  }
+  if (q.search.length < 2) return res.json({ ...dates, patients: [] });
   const rx = new RegExp(escapeRegex(q.search), 'i');
   const exact = new RegExp(`^${escapeRegex(q.search)}$`, 'i');
   const admittedNow = new Set((await Admission.distinct('patientId', { tenantId: req.tenantId, status: 'admitted' })).map(String));

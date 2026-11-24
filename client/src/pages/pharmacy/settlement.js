@@ -28,11 +28,11 @@ export function toPaise(text) {
 /** Paise → what goes back in a box: 1234.50. */
 export const typed = (paise) => (paise / 100).toFixed(2);
 
-/** Why Search can't be pressed yet ('' when it can). */
+/** Why Search can't be pressed yet ('' when it can). Nothing typed: today's bills of the type (24 Nov 2026). */
 export function findProblem(form) {
   if (form.type === 'external') return '';
-  const text = (form.mrn.trim() || form.name.trim());
-  return text.length >= 2 ? '' : 'Type the UHID or at least two letters of the patient’s name.';
+  const text = form.mrn.trim() || form.name.trim();
+  return !text || text.length >= 2 ? '' : 'Type the UHID or at least two letters of the patient’s name – or nothing, for today’s bills.';
 }
 
 /** What Search asks the server for: the UHID when one is typed, otherwise the name. */

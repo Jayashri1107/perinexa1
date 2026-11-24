@@ -66,6 +66,14 @@ describe('Settlement', () => {
     expect((await ph('get', '/settlement?type=ipd&search=Settlement')).body.patients).toEqual([]);
     expect((await ph('get', `/settlement?type=ipd&search=${encodeURIComponent(p.mrn)}`)).body.patients.map((x) => x.id)).toEqual([p.id]);
     expect((await ph('get', '/settlement?type=opd&search=S')).body.patients).toEqual([]); // two letters at least
+    // Nothing typed (24 Nov 2026): today's OP bills, every patient's, with what each owes and her advance
+    const today = (await ph('get', '/settlement?type=opd')).body;
+    expect(today).toMatchObject({ list: true, day: DAY, totalCreditPaise: 1000 });
+    expect(today.creditBills.map((x) => [x.patientId, x.balancePaise])).toEqual([[p.id, 400], [p.id, 600]]);
+    expect(today.paidBills).toHaveLength(1);
+    expect(today.patients).toEqual([expect.objectContaining({ id: p.id, mrn: p.mrn, type: 'opd', billCount: 3, creditPaise: 1000, advancePaise: 300 })]);
+    expect((await ph('get', '/settlement?type=ipd')).body).toMatchObject({ list: true, creditBills: [], paidBills: [], patients: [] }); // nobody admitted
+    expect((await ph('get', '/settlement?type=opd&from=2026-09-01&to=2026-09-01')).body.creditBills).toEqual([]); // another day
     expect((await ph('get', '/settlement?type=external')).body.externalBills).toEqual([]);
     // The counter's, not the reception's or the admin's
     expect((await ph('get', `/settlement?type=opd&search=${encodeURIComponent(p.mrn)}`, undefined, 'reception')).status).toBe(403);

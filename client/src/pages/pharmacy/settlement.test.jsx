@@ -36,6 +36,8 @@ describe('what Search asks for', () => {
     expect(findQuery({ type: 'external', mrn: '', name: '' })).toEqual({ type: 'external' });
     expect(findProblem({ type: 'opd', mrn: '', name: 'A' })).toContain('at least two letters');
     expect(findProblem({ type: 'opd', mrn: 'SH', name: '' })).toBe('');
+    expect(findProblem({ type: 'opd', mrn: '', name: '' })).toBe(''); // nothing typed: today's OP bills (24 Nov 2026)
+    expect(findQuery({ type: 'ipd', mrn: ' ', name: '' })).toEqual({ type: 'ipd' });
     expect(findProblem({ type: 'external', mrn: '', name: '' })).toBe('');
   });
 });
@@ -99,7 +101,7 @@ describe('the Settlement screen', () => {
     expect(shown).toMatch(/Paid bills .*Sales date Print bill no UHID Bill amt Con\. amt Net pay amt Paid amt Balance/);
     expect(shown).toMatch(/Credit bills Select all .*Sales date Print bill no UHID Bill amt Con\. amt Net pay amt Balance/);
     expect(shown).toMatch(/Advance available .*Total credit .*Selected total .*Advance Discount Settlement Close/);
-    expect(shown).toContain('Search for a patient to see her bills.');
+    expect(shown).toContain('Choose OP, IP or External and press Search – today’s bills – or type a UHID or name.');
     // OP chosen to begin with; nothing to settle until bills are ticked
     const radios = words(html).match(/<input type="radio" name="st-type"[^>]*>/g);
     const checked = radios.filter((tag) => tag.includes('checked=""'));

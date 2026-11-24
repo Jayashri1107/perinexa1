@@ -7,9 +7,14 @@ export const RETURN_KINDS = [
   ['ipd', 'IPD'],
 ];
 
-/** Why Search can't be pressed yet ('' when it can). */
+/**
+ * Why Search can't be pressed yet ('' when it can). Nothing typed (24 Nov 2026): the type's patients – OPD those billed
+ * today, IPD those admitted now with ward issues.
+ */
 export function findProblem(form) {
-  return form.mrn.trim().length >= 2 || form.first.trim().length >= 2 ? '' : 'Type the registration number (UHID) or at least two letters of the first name.';
+  const mrn = form.mrn.trim();
+  const first = form.first.trim();
+  return (!mrn && !first) || mrn.length >= 2 || first.length >= 2 ? '' : 'Type the registration number (UHID) or at least two letters of the first name – or nothing, for today’s patients.';
 }
 
 /** What Search asks the server for. */

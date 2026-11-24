@@ -37,6 +37,8 @@ describe('what Search asks for', () => {
     expect(findQuery({ type: 'opd', mrn: '', first: 'Asha', doctor: '' })).toEqual({ type: 'opd', first: 'Asha' });
     expect(findProblem({ type: 'opd', mrn: '', first: 'A', doctor: 'Rao' })).toContain('at least two letters');
     expect(findProblem({ type: 'opd', mrn: 'SH', first: '', doctor: '' })).toBe('');
+    expect(findProblem({ type: 'ipd', mrn: '', first: '', doctor: '' })).toBe(''); // nothing typed: today's patients (24 Nov 2026)
+    expect(findQuery({ type: 'ipd', mrn: '', first: ' ', doctor: '' })).toEqual({ type: 'ipd' });
   });
 });
 
@@ -87,7 +89,7 @@ describe('the Sale return patient-wise screen', () => {
     expect(shown).toContain('Total cash return Total cash disc Total cash N disc Net cash return Total credit return Total credit disc Total credit N disc Net credit return Total return amt Total discount amt Total N discount amt Net return amt');
     expect((html.match(/<input id="pr-[a-z-]+"[^>]*value="0.00"/g) ?? []).length).toBe(12);
     expect(shown).toMatch(/Reason for the return Money given back by .*Save Close/);
-    expect(shown).toContain('Search for a patient to see the medicines on her bills.');
+    expect(shown).toContain('Choose OPD or IPD and press Search for today’s patients – or type a registration no or first name.');
     expect((html.match(/class="btn btn-primary[^"]*"/g) ?? []).length).toBe(1); // Save
     expect(words(html)).toMatch(/<button type="button" class="btn btn-primary" disabled="">/);
     expect(shown).not.toMatch(/!/);
