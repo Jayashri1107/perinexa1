@@ -7,7 +7,7 @@ import { DataTable } from '../../components/DataTable.jsx';
 import { MenuButton } from '../../components/MenuButton.jsx';
 import { downloadFile } from '../../components/print/pdfExport.js';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
-import { Alert, Field, StatusPill, formatDateTime, useDebounced } from '../../components/ui.jsx';
+import { Alert, Field, StatusPill, formatDate, formatDateTime, useDebounced } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { savedNote } from '../../platform/androidApp.js';
 import { addDaysIso } from '../appointments/appointmentFormat.js';
@@ -36,6 +36,8 @@ const slipDate = (value) => {
 const lineName = (l) => `${l.name}${l.schedule ? ` (${l.schedule === 'narcotic' ? 'NDPS' : `Sch. ${l.schedule}`})` : ''}`;
 const buyerAddress = (b) => [b.address, [b.place, b.pin].filter(Boolean).join(' '), b.state && `${b.state} (${b.stateCode})`].filter(Boolean).join(', ');
 
+// The hospital's today (India), for the dates chosen on the left before the server has said which day it is
+const hospitalTodayIso = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 const TYPE_CHOICES = [['all', 'All', Users], ['opd', 'OPD', Stethoscope], ['ipd', 'IPD', BedDouble], ['external', 'External', UserPlus]];
 // A payment's mode in words – 'advance': paid from the patient's pharmacy advance (18 Nov 2026)
 const modeWord = (mode) => (mode === 'advance' ? 'the advance' : MODE_LABELS[mode] ?? mode);
@@ -67,7 +69,15 @@ export function InvoicesPage({ pick = null }) {
   const [text, setText] = useState('');
   const search = useDebounced(text.trim(), 300);
   const date = /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') ?? '') ? params.get('date') : undefined;
-  const res = useFetch('/pharmacy/invoices', search.length >= 2 ? { search } : { date });
+  // 24 Nov 2026 (the pharmacy's request): the bills listed are today's when the page opens; From and To chosen on the
+  // left list every bill of those dates (a whole month, say) – not the people billed in them
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const dated = Boolean(fromDate || toDate);
+  const todayHere = hospitalTodayIso();
+  const from = dated ? fromDate || toDate : '';
+  const to = dated ? toDate || date || todayHere : '';
+  const res = useFetch('/pharmacy/invoices', search.length >= 2 ? { search } : dated ? { from: from <= to ? from : to, to: from <= to ? to : from } : { date });
   const day = date ?? res.data?.today;
 
   // The pharmacist's search, as the store's earlier software's Search patient window (13 Nov 2026): patient type, first,
@@ -79,8 +89,6 @@ export function InvoicesPage({ pick = null }) {
   const [lastText, setLastText] = useState('');
   const [phoneText, setPhoneText] = useState('');
   const [mrnText, setMrnText] = useState(start ?? '');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
   // 19 Nov 2026 (the developer): back from a bill opened here, the same person and bill are shown again – kept in this
   // page's own browser history entry (as the router keeps its state), never in stored data
   const [person, setPerson] = useState(() =>
@@ -97,10 +105,8 @@ export function InvoicesPage({ pick = null }) {
   const phone = useDebounced(phoneText.replace(/[^\d]/g, ''), 300);
   const mrn = useDebounced(mrnText.trim(), 300);
   const name = first || middle || last || (phone.length >= 3 ? phone : '');
-  // 18 Nov 2026 (the pharmacy): no "Date" tick – a date chosen filters at once; Clear dates takes them off
-  const dated = Boolean(fromDate || toDate);
-  const from = dated ? fromDate || toDate : '';
-  const to = dated ? toDate || day : '';
+  // 18 Nov 2026 (the pharmacy): no "Date" tick – a date chosen filters at once; Clear dates takes them off (back to
+  // today's bills). With a name or number typed, or a type's list shown, the dates narrow the people found instead.
   // Search (6 Nov 2026, as the store's earlier software): with a type chosen, that type's people – nothing typed needed
   const [searched, setSearched] = useState(false);
   // The whole list (owner's approval, 9 Nov 2026): how many pages of it are shown – "Show more" adds one
@@ -199,9 +205,21 @@ export function InvoicesPage({ pick = null }) {
       </button>
     </div>
   );
+  const listed = res.data?.invoices && search.length < 2 && (res.data.from ?? day);
+  const periodLine = listed && (
+    <p className="ph-sold-period">
+      <strong>{res.data.from && res.data.to && res.data.from !== res.data.to ? `Bills from ${formatDate(res.data.from)} to ${formatDate(res.data.to)}` : listed === res.data.today ? `Today’s bills – ${formatDate(listed)}` : `Bills of ${formatDate(listed)}`}</strong>
+      <span className="muted tabular">
+        {' '}
+        · {res.data.invoices.length} bill{res.data.invoices.length === 1 ? '' : 's'} · {money(res.data.invoices.reduce((n, v) => n + (v.netPaise ?? 0), 0))}
+      </span>
+    </p>
+  );
   const dayList = (
     <>
       {res.error && <Alert type="error">{res.error}</Alert>}
+      {desk && periodLine}
+      {res.data?.more && <p className="hint">The newest {res.data.invoices.length.toLocaleString('en-IN')} bills are listed. Choose fewer days to see the rest.</p>}
       {desk && filtering && res.data && (
         <p className="ph-sold-count">
           Showing {bills.length} of {res.data.invoices.length} bills · {money(bills.reduce((n, v) => n + (v.netPaise ?? 0), 0))}
@@ -220,7 +238,7 @@ export function InvoicesPage({ pick = null }) {
         rows={bills}
         loading={res.loading}
         onRowClick={(v) => navigate(`/pharmacy/invoices/${v.id}`)}
-        emptyText={search.length >= 2 || filtering ? 'No bills match.' : 'Nothing sold on this day.'}
+        emptyText={search.length >= 2 || filtering ? 'No bills match.' : dated ? 'Nothing sold on these days.' : 'Nothing sold on this day.'}
         toolbar={
           desk ? undefined : (
             <div className="bill-toolbar">
@@ -325,12 +343,11 @@ export function InvoicesPage({ pick = null }) {
                   <span>From date</span>
                   <DateText
                     aria-label="From date"
-                    value={fromDate || day || ''}
-                    max={toDate || day}
+                    value={fromDate || toDate || day || ''}
+                    max={toDate || todayHere}
                     onChange={(v) => {
                       setFromDate(v);
                       setPerson(null);
-                      setSearched(true);
                       setBlank(false);
                     }}
                   />
@@ -339,12 +356,12 @@ export function InvoicesPage({ pick = null }) {
                   <span>To date</span>
                   <DateText
                     aria-label="To date"
-                    value={toDate || day || ''}
+                    value={toDate || (fromDate ? todayHere : day) || ''}
                     min={fromDate || undefined}
                     onChange={(v) => {
                       setToDate(v);
-                      go(v);
-                      setSearched(true);
+                      setPerson(null);
+                      setBlank(false);
                     }}
                   />
                 </div>

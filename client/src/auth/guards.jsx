@@ -1,7 +1,7 @@
 import { Building2, Lock } from 'lucide-react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader.jsx';
-import { canSeeCalendar } from '../platform/modules.js';
+import { PAYROLL_ROLES, canSeeCalendar } from '../platform/modules.js';
 import { useAuth } from './AuthContext.jsx';
 
 export function FullPageSpinner() {
@@ -94,6 +94,15 @@ export function RequireTenantAdmin() {
 export function RequireTenantRole({ roles, message }) {
   const { activeMembership } = useAuth();
   if (!activeMembership?.roles?.some((r) => roles.includes(r))) return <NotAllowed>{message}</NotAllowed>;
+  return <Outlet />;
+}
+
+// Payroll (docs/PAYROLL_BUILD_NOTE.md): the accounts login and the hospital admin – never Perinexa's own staff inside a
+// hospital, who carry every role there (the server refuses them too, also during support access).
+export function RequirePayroll() {
+  const { activeMembership } = useAuth();
+  if (activeMembership?.platform) return <NotAllowed>Payroll belongs to the hospital. It is not open to Perinexa’s own staff.</NotAllowed>;
+  if (!activeMembership?.roles?.some((r) => PAYROLL_ROLES.includes(r))) return <NotAllowed>Payroll is for the accounts login and the hospital admin.</NotAllowed>;
   return <Outlet />;
 }
 

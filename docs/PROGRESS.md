@@ -1,5 +1,324 @@
 # Progress
 
+## Pharmacy → Settlement; Sales bill and every pharmacy report open on today; the Daily Collection print (24 Nov 2026)
+The developer's request with a photo of the earlier software's "Pharmacy Settlement" window and its printed
+"Pharmacy Daily Collection" (23 Nov). Built with Claude in the Claude app on top of the settlement and daily
+collection server code another session started this morning (`settlement.js`, `dailyCollection.js`, the concessions
+on the invoice) – **`npm test` and `npm run build` are still to be run by the developer**. Fake data only.
+- **Settlement** (new menu item after Search bill, pharmacist only – `/pharmacy/settlement`): OP, IP or External,
+  UHID, Patient name, Search. One patient found opens at once; several are listed on the left to choose from. On the
+  right the patient's **Paid bills** (Sales date, Print bill no, UHID, Bill amt, Con. amt, Net pay amt, Paid amt,
+  Balance) and **Credit bills** with Select all (the same columns, Balance last); under them **Advance available,
+  Total credit, Selected total** and the buttons **Advance, Discount, Settlement, Close**. Each of the three opens the
+  Settlement window for the credit bills ticked – Advance with the advance filled in, Discount ready for a discount
+  and its reason, Settlement with the whole amount in cash. The bills are settled **in full**, oldest first, by the
+  advance, a discount (a concession – never counted as money received) and money received in one or more ways
+  (cash, cheque, card – last 4 digits only, NEFT, UPI). Save stays off until it adds up exactly. After saving: a line
+  saying what was settled, and **Print receipt** (A5). IP means admitted now; a UHID typed in full finds the patient
+  whatever is ticked. Hospital bills and ward issues are not here (billing desk); External lists walk-in bills to
+  look at only (a walk-in pays the whole bill at the counter). The older "Settle credit" on the Sales bill page stays.
+- **Fixed in the morning's server code:** a bill saved before today has no `concessions` array in the database, and
+  the "has the bill changed?" check (`$size`) never matches a missing array – every such bill would have failed
+  with "A selected bill changed". Also: the lookup no longer needs dates (an old credit bill stays owed), IP = admitted
+  now, Net pay amt is net of a settlement discount (Net pay − Paid = Balance), and the audit entry says the amount
+  settled, received, from the advance and as concession (never the reason) – `Settlement · n records` for a lookup.
+- **Sales bill opens on today's bills** and says so above the list ("Today's bills – 24 Nov 2026 · 37 bills ·
+  ₹…"). From and To chosen on the left now list **every bill of those dates** (a whole month: From = the 1st) –
+  before, a date chosen listed the people billed instead. Clear dates goes back to today. With a name or UHID typed,
+  or OPD / IPD / Show pressed, the dates narrow the people found as before (the people lists are unchanged – owner's
+  approval of 9 Nov). The server lists up to 1,000 bills for a period (200 for a day) and says when there are more.
+- **Every pharmacy report opens on today** (Pharmacy → Reports: the summary, Sales & GST, Purchases, Registers,
+  Profit and stock, Report list…); Today / This month / Last month or two dates show another period.
+- **Reports → Report list → Sales collection** now opens as the **Pharmacy Daily Collection**, laid out and printed
+  like the earlier paper (A4 landscape, "Page 1 of 3" at the foot, the column headings on every page): the store's
+  heading, the title between rules, the period and when it was printed; Sr. No, Date, Sales no, MR No, Patient name,
+  Net amount, Cash, Cheque, Card, NEFT, UPI, Adv. use amount; the sections **Cash Sales, Cash Sales Return, Credit
+  Sale, Due Collection**, each with its Sub total, rows numbered on through; then Sales / Sales return / Advance /
+  Advance refund by mode with the Total, **Net collection** (sales − returns + advance − advance refund), CASH / CARD /
+  NEFT / UPI AMT, and the Sale type table. Each sale is judged on its own day, so a period is the sum of its days:
+  paid that day = Cash Sales, left unpaid that day = Credit Sale (a hospital-bill sale in full), paid on a later day
+  = Due Collection with the day it was paid; money given back for returns = Cash Sales Return (with its CN number).
+  Advance used has its own column and is not counted again. "Payment list" beside it shows the old list of payments
+  (with its Details / Summary); Excel (admin) follows what is shown. Dates are written the Perinexa way (23 Nov 2026).
+- **Server:** `pharmacy/dailyCollection.js` (reworked: returns as positive amounts, the money by mode, the same-day
+  rule), `misReports.js` (`daily` on the collection report), `settlement.js` (`sized`, Net pay), `routes/pharmacy.js`
+  (`GET /settlement` without dates, IP = admitted now; the audit details; `GET /invoices` with `from`/`to`, `more`).
+  **Website:** `SettlementPage.jsx`, `settlement.js`, `MisReports.jsx` (`DailyCollectionTable`, `DailyCollectionEnd`,
+  `DailyCollectionPaper`, `dailyCsv`), `InvoicesPage.jsx`, `ReportsPage.jsx`, `PharmacyTopics.jsx`, `modules.js`,
+  `App.jsx`, `auditFormat.js`, `pages-pharmacy.css` (`.ph-st-*`, `.ph-dc-*`, `.ph-sold-period`).
+- **Tests (new, not yet run with `npm test`):** `server/tests/pharmacySettlement.test.js` (the lookup, a settlement
+  with advance, discount and two ways of paying, refusals, an old bill without concessions, the Daily Collection after
+  it, the Sales bill's period), `server/tests/pharmacyDailyCollection.test.js` (pure), `client/.../settlement.test.jsx`,
+  `client/.../dailyCollection.test.jsx`; `modules.test.js` updated (Settlement in the menu). Checked here with a
+  stand-in runner and an in-memory stand-in for the database (the settlement logic, the daily collection, the
+  screens), and in a browser with sample data (search → tick → Settlement window → Save → receipt; the collection
+  report on screen and printed to PDF; the Sales bill with a From date).
+
+### How to test (fake data only)
+1. Make a sample OPD patient with two credit bills (Sales bill → the patient → Payment window with nothing ticked →
+   Credit authorised by) and one paid bill; give her an advance (her name → Advance → Take advance).
+2. Pharmacy → **Settlement** → OP → type her UHID → Search: her bills show. Tick both credit bills (or Select all):
+   Selected total is their balance. **Advance** → the advance is filled in; type a Discount and its reason; tick Cash
+   → the rest is filled in; Save. The credit bills move to Paid bills; Print receipt.
+3. Try IP with her name (nothing – she isn't admitted), then IP with her full UHID (found). External with nothing
+   typed lists today's walk-in bills; nothing can be ticked.
+4. Pharmacy → **Sales bill**: "Today's bills – <today>". Choose From date = the 1st of the month: every bill of the
+   month is listed. Clear dates → today again.
+5. Pharmacy → **Reports**: the period buttons show Today pressed. Report list → **Sales collection**: the Daily
+   Collection of today, with the bills of step 2 under Cash Sales (the discount in no column) and the advance under
+   Advance. **Print**: A4 landscape, page numbers at the foot. "Payment list" shows the old list.
+
+## Payroll: what the owner's note asked for and the first build left out (24 Nov 2026)
+After stages C and D the developer asked whether everything in `docs/PAYROLL_BUILD_NOTE.md` was built. Five things
+were not, or differed from the note; they are built now (with Claude in the Claude app – **`npm test` and
+`npm run build` are still to be run by the developer**). Fake staff and made-up pay only.
+- **A rate change never rewrites an old month.** Each group of rates (PF, ESI, professional tax) now keeps the sets
+  confirmed before, each in force from its own date. A month is worked out with the confirmed figures in force in
+  that month. Figures typed without the tick are DRAFT and are used by no month while confirmed ones are in force. A
+  confirmation for the same day is a correction and takes the old set's place. Payroll → Rates lists the earlier
+  sets with their dates.
+- **A pay entry a locked month was paid with can't be corrected** (the note, section 4). A locked month keeps the
+  first day of the pay entry each person was paid with; correcting that entry is refused with a sentence that names
+  the month. A change of pay from a later day is always possible; after a reopen the entry is free again.
+- **Payroll → Lists** (new tab, as the note's screens say): every locked month with its payslips and its lists in
+  one place. The same buttons as on Run payroll, part 6.
+- **Two switches in Payroll → Settings, both OFF**, for the hospital admin only – "Files with numbers in full":
+  the **bank payment list** (name, bank, IFSC, full account number, take-home) and **full PF and ESI numbers in the
+  PF and ESI lists**. The note leaves both to the owner (section 8): they stay off until the owner says yes. The
+  full numbers are read at the moment a file is made, never kept in the locked month's snapshot or in the audit
+  log; the audit entry says the file was made "with numbers in full".
+- **Sample staff for trying it:** `npm run sample:payroll -w server -- "<hospital name>"` adds four made-up staff
+  members with pay and the attendance codes of `docs/samples/payroll-attendance-sample.csv`. It makes no login.
+- **The wide tables fit a laptop screen:** the salary sheet, the take-home table and the Advances table are
+  tightened (`.pr-fit` in `pages-payroll.css`): on a 1366 px screen with the menu open, the pencil and the printer at
+  the end of a row are no longer off to the side.
+- **`test-and-push.bat`** in the project folder (not committed – it leaves itself out): one double-click runs
+  `npm test`, then `npm run build`, and only if both pass commits everything and pushes `master` and `main`. What it
+  did is written to `test-and-push.log` (ignored by git).
+- **Still not built, and why:** half days or late arrival worked out from in and out times (needs the accountant's
+  rule and a real punch file); reading `.xlsx` (needs a library – CSV works: Excel → Save As → CSV); the labour
+  welfare fund and a limit on advance recovery in a month (the accountant must say; until then a one-off deduction
+  line, and the instalment, do the work by hand).
+- **Server:** `payrollDeductions.js` (`ratesFor`, `nextRateGroup`), `payrollLists.js` (`listsFor`, `listIsFull`, the
+  bank list), `PayrollRun.used`, `Tenant.payroll.bankList` / `.fullNumbers` / `.rates.<group>.earlier`,
+  `GET /api/payroll/runs` (the months for the Lists page – no snapshot), the staff route's check, the lists route.
+  **Website:** `PayrollListsPage.jsx`, `ListButtons` in `PayrollClose.jsx`, the Settings and Rates pages.
+- **Tests:** added to `server/tests/payroll-pay.test.js`, `payFormat.test.js`, `payrollFormat.test.js`,
+  `runFormat.test.js`, `auditFormat.test.js` – not yet run with `npm test`. Checked the same way as stages C and D.
+- **How to test the whole payroll, start to end:** see "How to test" of the four entries below, in the order
+  A → B → C and D; then: Payroll → Settings (admin) → tick "Bank payment list" → Save → Payroll → Lists → the bank
+  list button appears for a locked month; untick it and the button is gone. Payroll → Staff: change the pay of a
+  person of a locked month without changing "Pay from" → refused, naming the month.
+
+## Payroll, Stages C and D: deductions, advances, the locked month, payslips and lists (24 Nov 2026)
+The last two stages of `docs/PAYROLL_BUILD_NOTE.md`, asked for by the developer and built with Claude in the Claude
+app on top of stages A and B (no terminal: Claude wrote the files; the developer runs the tests, commits, merges and
+deploys). **Built before the accountant confirmed anything: every rate is DRAFT**, taken from the note's own DRAFT
+table ("from general knowledge, not from the current government notifications"). Fake staff and made-up pay only.
+- **Payroll → Rates** (`/payroll/rates`, new tab): PF (staff share, hospital's share, pay limit, whether PF stops at
+  the limit), ESI (the same three figures) and professional tax (a table of slabs for men, one for women, the top
+  slab's February amount). The hospital admin changes them; the accounts login reads them in words. A group is
+  **confirmed** only with a tick ("the accountant has confirmed exactly these figures"), the accountant's name, the
+  date, and the date the figures apply from. Changing a figure takes the tick off. Until then: DRAFT.
+- **Payroll → Staff:** a person from whose pay professional tax is taken now also has a **professional tax slab**
+  (men's or women's table). A new pay entry that takes professional tax asks for it.
+- **Payroll → Advances** (`/payroll/advances`, new tab): an advance with its date, amount, monthly instalment, the
+  first month it is taken back from and a note. The list shows what the locked months took back and what is left.
+  An advance can be stopped with a reason; its amount and date are never changed. Nothing goes into Daily expenses.
+- **Payroll → Run payroll**, two new parts under the salary sheet:
+  5. **Deductions and take-home**: for each person the pay for the month, one-off additions, PF, ESI, professional
+     tax, TDS, other deductions, the advance taken back and the take-home; headline figures with the hospital's own
+     PF and ESI shares (never taken from the take-home). The pencil on a row opens **this month for that person**:
+     TDS for this month only (empty = the figure on the pay entry – never worked out), one-off additions and
+     deductions (each says what for; printed on the payslip), and an advance's instalment for this month with a
+     reason. An advance is taken back last and never below a take-home of zero.
+  6. **Lock, payslips and lists**: what still stands in the way of the lock is listed in plain words. **Lock the
+     month** keeps a full snapshot (version 1): days, the pay entry used, the rates and rules used, earnings,
+     deductions, the hospital's shares, advances, take-home, who locked and when. A locked month is shown and printed
+     from that snapshot only and takes no change – a later rise in pay or change of a rate does not touch it.
+     **Reopen** is for the hospital admin, with a written reason: the version stays and its payslips say "Replaced",
+     what it took back of advances is undone, and the next lock is version 2 ("Revised"). The reopen box says which
+     lists were already saved as files.
+- **DRAFT – not for payment.** A month that uses a DRAFT rate, or whose rules for a day's pay are DRAFT, can be
+  looked at and its payslips printed with that band on every page. **It can't be locked**, and the lists are made
+  from a locked month only. The lock also waits for a person with no pay, a person whose professional tax slab is
+  not chosen, and deductions that are more than a person's pay.
+- **Payslips:** one a page, all of a month in one print or one person's (the printer icon on a row): the hospital's
+  name, the month, name, staff number, designation, department, **PF number, ESI number, PAN and bank account by
+  their last four characters only**, paid days, earnings, deductions, take-home in figures and words.
+- **Lists** (a locked month): salary register, PF list, ESI list, professional tax list – CSV files that open in
+  Excel, written through the existing `csvCell`, each download kept on the month and in the audit log. **PF and ESI
+  numbers show their last four characters in the lists too** (the note lets a full number out through one route
+  only). *(Later the same day: full numbers and a bank payment list became two switches, both off – entry above.)*
+- **Six more rules the sums needed that nobody has decided** – written at the top of
+  `server/src/payroll/payrollDeductions.js` and in the note for the accountant: every part of the pay is reduced
+  alike for unpaid days; PF is worked out on the earned parts that count for PF (on no more than the limit when that
+  is ticked); ESI on the earned parts that count for ESI, pay above the limit only marked; professional tax is looked
+  up on the pay for the month plus one-off additions; PF and ESI are each rounded to the nearest rupee and one-off
+  additions count for neither; deductions are taken in the order PF, ESI, professional tax, TDS, one-off, advances.
+- **Server:** `payroll/payrollDeductions.js` (the rates and the sums) and `payroll/payrollLists.js` (the snapshot and
+  the lists) – both pure; `models/StaffAdvance.js`; `PayrollRun` gains the month's TDS, lines and instalments, the
+  status `locked`, `versions[]`, `recovered`, `reopened`, `downloads`; `Tenant.payroll.rates`; `StaffMember.ptSlab`;
+  `routes/payrollClose.js` (one person's month, lock, reopen, payslips, lists) and `routes/payrollAdvances.js`, both
+  behind the payroll router's guard; `GET`/`PUT /api/payroll/rates`. Every route that changes a month refuses a
+  locked one. Eight audit actions (rates, advances, a person's month, lock, reopen, payslips, lists): the month, the
+  person, which list and the version – never an amount, and nothing for the super admin's readers. `StaffAdvance` is
+  left out of the hospital export.
+- **Website:** `pages/payroll/PayrollRatesPage.jsx`, `PayrollAdvancesPage.jsx`, `PayrollClose.jsx`,
+  `PayslipPrint.jsx`, `payFormat.js`; changes in `PayrollRunPage.jsx`, `PayrollPages.jsx`, `payrollFormat.js`,
+  `auditFormat.js`, `modules.js`, `App.jsx`, `pages-payroll.css`.
+- **Tests:** written – `server/tests/payroll-pay.test.js`, `client/src/pages/payroll/payFormat.test.js`, lines added
+  to `payrollFormat.test.js`, `runFormat.test.js`, `auditFormat.test.js`, and two lines changed in
+  `payroll-staff.test.js` and `payroll-run.test.js`. **Not yet run with `npm test`, and `npm run build` not run** (no
+  terminal). Checked another way: the sums and the lists by their own checks; every route against a stand-in for the
+  database (rates, advances, a person's month, lock, lists, reopen, version 2, the next month, another hospital);
+  the website tests in a stand-in runner; the screens driven in a browser, and the payslips printed to PDF (one a
+  page). **Nothing was run against a real MongoDB** – run `npm test` before committing.
+- **Not built** *(the first two were built later the same day – entry above)*: a bank payment list; history of rates
+  (one set of figures per group, with the date it applies from); the labour welfare fund; a limit on how much of an advance may be taken back in a month; staff seeing their
+  own payslip; anything of Option 3 (leave balances, overtime, shifts, a Tally salary entry).
+- **Before real use:** the accountant's answer to every question in section 8 of the note; each rate and the rules
+  confirmed on the screen with the accountant's name; one or two months run beside the present method and compared.
+  On the live server `PAYROLL_KEY` must be set (`docs/RUNBOOK.md`).
+- **How to test:** `npm run dev`, with made-up staff and the days of a month already on the sheet (Stage B below).
+  1. Accounts login → Payroll → Run payroll → last month: part 5 shows PF, ESI, professional tax and take-home, with
+     **DRAFT – not for payment**; part 6 lists why the month can't be locked; **Lock the month** is greyed out.
+  2. **Print DRAFT payslips**: every page has the DRAFT band; the four numbers show their last four characters.
+  3. Payroll → Advances → **Give an advance** to one person (₹10,000, ₹2,000 a month). Back on Run payroll their
+     row shows Advance ₹2,000. Press the pencil on the row: type TDS 500, add a line "Arrear" 1000, change the
+     advance to 1000 with a reason → Save. The take-home changes and the row says "Changed for this month".
+  4. Hospital admin → Payroll → Rates: for PF, ESI and professional tax tick the confirmation, write a made-up
+     accountant's name, today's date and "applies from" 1 April → Save each. Payroll → Settings: write the same name
+     and date → Save. (Made-up names only – this is a test, not a real confirmation.)
+  5. Accounts login → Run payroll: the DRAFT marks are gone and part 6 says **Ready to lock** (give pay and a
+     professional tax slab to anyone it still names). **Lock the month** → the page says Locked – version 1, the
+     pencils are gone, and the four lists can be saved. Open one in Excel.
+  6. Payroll → Staff: raise someone's pay. Run payroll for the locked month still shows the old figures.
+  7. Hospital admin → Run payroll → **Reopen the month** with a reason → correct a person's days → **Lock** again:
+     version 2. Under "Versions of this month", the payslips of version 1 say "Replaced".
+  8. Sign in as a doctor: no Payroll in the menu. As the super admin, open the hospital: no Payroll either.
+
+## Payroll: the accounts login gets a Today of its own (24 Nov 2026, with stages A and B)
+Found by the developer on `localhost:5174`: signed in as Accounts, the menu item **Today** jumped to Payroll, so two
+menu items opened the same page. Now Today is its own page for that login (built with Claude in the Claude app; no
+terminal there, so `npm test` and `npm run build` are still to be run by the developer).
+- **Today** for an accounts-only login: four figures at a glance (working staff, pay not entered, staff with no
+  attendance code, and whether last month's salary sheet is made) and a **To do** list – each line says what is
+  waiting and links to where it is done (no pay entered, the pay rules still DRAFT or the basis not chosen, the
+  attendance file not read, codes to answer, people with no row; and, once made, the sheet). Counts only: no name and
+  no amount, so opening Today writes nothing in the audit log. Three buttons open Staff, Run payroll and Settings.
+- A hospital admin keeps the hospital's Overview as Today (Payroll is one of its areas). The newborn follow-up
+  coordinator and the quality lead still start on their own lists, as before.
+- **Server:** `GET /api/payroll/overview` (behind the payroll guard; `?month=` optional, otherwise the month before
+  this one). **Website:** `pages/payroll/PayrollToday.jsx`, `payrollToDo` in `payrollFormat.js`, `TodayPage.jsx`.
+- **Tests:** added to `server/tests/payroll-run.test.js` and `payrollFormat.test.js`; not yet run with `npm test`.
+- **How to test:** sign in as the Accounts person → **Today** shows the figures and the To do list; **Payroll** shows
+  the staff list. Add a staff member without pay: "Pay not entered" goes up by one and a To do line appears.
+
+## Payroll, Stage B: a month's attendance file read into the salary sheet (23 Nov 2026, with Stage A on one branch)
+The second stage of `docs/PAYROLL_BUILD_NOTE.md`, asked for by the developer straight after Stage A and built with
+Claude in the Claude app (no terminal: Claude wrote the files, the developer runs the tests, commits, merges and
+deploys). **Built before the owner's sample attendance files and the accountant's answers arrived** – so the reader
+has not seen a real file of the hospital, and every sheet is DRAFT. Fake staff and made-up pay only.
+- **Payroll → Run payroll** (`/payroll/run`), four steps on one screen:
+  1. **The month** (usually the one just ended), with the rules in force in one sentence and the DRAFT mark.
+  2. **The attendance file**: a CSV (Excel: File → Save As → CSV), at most 1 MB. Its first rows are shown as text; the
+     person says what kind of file it is – a register (a column per day), a daily list (a row per person per day) or
+     totals – and which column holds the code, the name and the days; **Check the file** then lists every mark found
+     (P, A, HD, WO…) and the person says what each means. Nothing is guessed. The layout can be saved by name and is
+     offered next month. **Read this file** keeps the file as it was (with its SHA-256).
+  3. **People and codes to answer**: a code in the file that nobody on the payroll carries is tied to a staff member
+     (and kept for the months to come) or left out with a reason; someone on the payroll with no row gets their paid
+     days written by hand, with a reason.
+  4. **The salary sheet**, once nothing is unanswered: for each person the days by kind, the paid days from the
+     file, the paid days by hand (a pencil on every row; the reason is kept and shown), the monthly pay and
+     **pay for the month = monthly pay × paid days ÷ the basis days**, rounded as the settings say. Joining and
+     leaving inside the month are applied. Headline figures above; rows are marked when pay is not entered, when
+     someone joined, left or had a change of pay in the month, and when paid days are above the basis.
+- **Not in this stage:** deductions (PF, ESI, professional tax, TDS, advances), locking the month, payslips and the
+  lists to download (stages C and D). Half days or late arrival worked out from in and out times are not built: that
+  needs the accountant's rule. Excel workbooks are not read, only CSV.
+- **Three rules the sum needed that nobody has decided** (marked on the rows, listed in the note for the
+  accountant): more paid days than the basis pays the full monthly pay, not more; a month with a change of pay uses
+  the pay on the last working day; a half day is half a paid day.
+- **Server:** `payroll/csvText.js` (the reader), `payroll/attendanceRead.js` (layouts → days), `payroll/payrollMath.js`
+  (the sum) – all pure; `models/AttendanceFile.js`, `models/PayrollRun.js`; `routes/payrollRuns.js` behind the payroll
+  router's guard (the same two roles, never Perinexa's own staff); saved layouts in `Tenant.payroll.layouts`; five
+  audit actions with the month and counts – never an amount; an upload limit line in `app.js`; both models left out
+  of the hospital export. No amount is stored: the sheet is worked out each time it is opened.
+- **Also changed in Stage A's code:** a wrong value inside the pay boxes, the dates or the settings' date now answers
+  with the sentence for that box (it answered "Invalid input" – `.nullable()` in place of a union with null).
+- **Tests:** written – `server/tests/payroll-run.test.js`, `client/src/pages/payroll/runFormat.test.js`, lines added
+  to `auditFormat.test.js` and `payrollFormat.test.js`. **Not yet run with `npm test`, and `npm run build` not run**
+  (no terminal). Checked another way: the reader, the layouts and the sum by their own checks; the routes against a
+  stand-in for the database with a made-up October file; the website tests in a stand-in runner; the screen driven
+  in a browser from choosing the file to the sheet. Nothing was run against a real MongoDB, and no real attendance
+  file has been read – run `npm test` before committing.
+- **How to test:** `npm run dev`. As the hospital admin: Payroll → Settings → choose how a day's pay is counted →
+  Save. As the accounts login: Payroll → Staff → add three made-up people with pay and the attendance codes `A-17`,
+  `N-12` and `C-4`, and a fourth with pay and no code. Payroll → Run payroll → month **October 2026** → Choose the
+  file → `docs/samples/payroll-attendance-sample.csv` → headings on row **2**, code column **A**, name column **B**,
+  column of day 1 **C** → Check the file → give each mark its meaning (P present, A absent, H half day, W weekly
+  off, O holiday, L paid leave) → Read this file. Under step 3: tie code `X-9` to the fourth person; leave `Y-1` out
+  with a reason. The sheet appears: `A-17` has 29.5 paid days. Press the pencil on a row, write other days with a
+  reason: both figures show. Remove the file with a reason: the sheet goes. Hospital admin → Audit log: "Payroll:
+  attendance file read – October 2026 · …". A doctor, and the super admin inside the hospital, get no Run payroll.
+
+## Payroll, Stage A: the accounts login, the staff list with pay, the settings (23 Nov 2026, branch `payroll-stages-a-b`)
+The first of the four stages in `docs/PAYROLL_BUILD_NOTE.md` (the owner's choice of 23 Nov 2026), asked for by the
+developer and built with Claude in the Claude app, which has no terminal on the computer: Claude wrote the files into
+the working folder; the developer runs the tests, commits, merges and deploys. Built during the feature pause, at the
+developer's request. **Fake staff and made-up pay only until the go-live checklist.**
+- **Who:** a new hospital role **Accounts** (`accounts`, the fourteenth; its ready-made user group "Accounts" is made
+  at the next start of the server) and the hospital admin. Nobody else in the hospital. The accounts login opens no
+  patient record, no bill, no report and no Tally file. **Perinexa's own staff never see payroll**, also while the
+  hospital allows support access: `routes/payroll.js` refuses them before the role is looked at, and the website does
+  not show them the menu item.
+- **Menu:** **Payroll** (page key `payroll`, so user groups can set it to None or View), with the tabs Staff and
+  Settings. An accounts-only login starts on it.
+- **Staff** (`/payroll`): everyone on a monthly salary, with or without a Perinexa login – staff number, name,
+  designation, monthly pay, status (Working, Left, Off the payroll), three headline figures, Working / Left / All, a
+  search box. **Add a staff member** and each person's page (`/payroll/staff/…`): the person (staff number, name,
+  designation, department, joining day, last working day, attendance codes, a login tied by hand), the monthly pay
+  by salary part with "Pay from", who PF, ESI and professional tax apply to, the TDS figure the accountant gives, and
+  the bank name and IFSC. **A change of pay adds a dated entry**; the same first day corrects that entry; an earlier
+  day is refused. Nobody is deleted.
+- **The four numbers** (PF number / UAN, ESI number, PAN, bank account): kept sealed in the database, shown as the
+  last four characters, never in a list. **Show in full** reads one number for one person, writes whose and which in
+  the audit log, and hides it again after a minute. Aadhaar has no box, and a box that holds 12 digits like one is
+  refused.
+- **Settings** (`/payroll/settings`; the admin changes, the accounts login reads): the salary parts and whether each
+  counts for PF and ESI, how one day's pay is counted (not decided yet), weekly offs and holidays, the rounding, and
+  the accountant's name and date. **DRAFT** – in colour, icon and word – until the accountant's name, the date and a
+  basis are written; changing a rule makes it DRAFT again. Nothing is worked out from these yet.
+- **Not in this stage:** reading the attendance file, deductions and their rates, advances, locking a month,
+  payslips and the monthly lists (stages B to D). No salary is worked out anywhere yet.
+- **Server:** `models/StaffMember.js`, `payroll/payrollRules.js` (pure), `payroll/secretBox.js`,
+  `payroll/payrollService.js`, `routes/payroll.js` (`/api/payroll`), `Tenant.payroll` (never in the hospital's JSON),
+  six audit actions (`PAYROLL_…`; the super admin's audit readers get none of their details), `StaffMember` left out
+  of the hospital export. **A new setting, `PAYROLL_KEY`** in `server/.env`: the key that seals the four numbers –
+  its own key, never `JWT_SECRET`. This computer makes one by itself at the next `npm run dev`. **On the live
+  server it must be added by hand before the four numbers can be kept** (`docs/RUNBOOK.md`, "When something goes
+  wrong"); without it the server starts and payroll works, and those four boxes say they can't be kept yet.
+- **Still to ask the owner** (section 0 of the note): is the accounts login always given alone, or may it sit beside
+  another role; and is two-step sign-in required for it. Until answered: it may be combined, and two-step is offered,
+  not required.
+- **Tests:** written – `server/tests/payroll-staff.test.js`, `client/src/pages/payroll/payrollFormat.test.js`, and
+  lines added to `modules.test.js`, `auditFormat.test.js` and `user-groups.test.js` (14 role groups now).
+  **Not yet run with `npm test`, and `npm run build` not run** (no terminal). Checked another way: the website tests
+  named here pass in a stand-in runner; the route was run against a stand-in for the database with the same checks
+  as the server test; the three pages were opened in a browser with made-up staff (laptop and phone widths). The
+  server test itself has never run, and nothing was tried against a real MongoDB – run `npm test` before committing.
+- **How to test:** `npm run dev` (the first start adds `PAYROLL_KEY` to `server/.env` and makes the Accounts group).
+  Sign in as the hospital admin → Hospital admin → Staff → add a person in the user group **Accounts** → sign in as
+  that person: the menu shows only Today and Payroll. Payroll → Add a staff member (a made-up name; pay from a day;
+  amounts; a made-up PAN like ABCDE1234F and a made-up account number) → the list shows the pay and no number → open
+  the person: the numbers show their last four → Show in full → change the pay with a later "Pay from": two pay
+  entries. Settings as the accounts login: read only. As the hospital admin: Payroll → Settings → choose how a day's
+  pay is counted, write an accountant's name and a date → the DRAFT mark goes. Hospital admin → Audit log: "Payroll:
+  …" entries with the name and the fields, never an amount or a number. Sign in as a doctor or reception: no Payroll
+  in the menu, and `/payroll` says Not allowed. As the super admin, open the hospital: no Payroll.
+
 ## Pharmacy → Search bill, as the earlier software's "Browse Sales Bill" window (23 Nov 2026, branch `pharmacy-search-bill`)
 Asked for by the developer from a photo of the earlier software's window, and built with Claude in the Claude app,
 which has no terminal on the computer: Claude wrote the files into the working folder; the developer runs the tests,

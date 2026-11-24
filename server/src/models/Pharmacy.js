@@ -398,8 +398,22 @@ const invoiceSchema = new mongoose.Schema(
           on: { type: Date, default: null },
           authorisedBy: { type: String, default: '' },
           narration: { type: String, default: '' },
+          settlementId: { type: String, default: '' }, // selected-bill settlement; used to undo a failed write
           ...stamp,
         }),
+      ],
+      default: [],
+    },
+    // A post-sale settlement concession clears credit but is not money received, so it never belongs in payments.
+    concessions: {
+      type: [
+        new mongoose.Schema({
+          amountPaise: Number,
+          reason: String,
+          remarks: { type: String, default: '' },
+          settlementId: { type: String, default: '' },
+          ...stamp,
+        }, { _id: false }),
       ],
       default: [],
     },
@@ -553,6 +567,7 @@ const advanceSchema = new mongoose.Schema(
     invoiceId: { type: ObjectId, ref: 'PharmacyInvoice', default: null }, // a use: the bill it paid
     invoiceNumber: { type: String, default: '' },
     reason: { type: String, default: '' }, // a refund's reason
+    settlementId: { type: String, default: '' }, // a selected-bill settlement's use of advance
     created: { type: stampSchema, required: true },
   },
   { timestamps: true },

@@ -131,6 +131,54 @@ describe('the Tally link in the audit log (16 Oct 2026)', () => {
   });
 });
 
+describe('payroll in the audit log (23 Nov 2026)', () => {
+  it('says whose record and which fields – never an amount or one of the four numbers', () => {
+    for (const action of ['PAYROLL_STAFF_LIST_VIEWED', 'PAYROLL_STAFF_VIEWED', 'PAYROLL_STAFF_ADDED', 'PAYROLL_STAFF_CHANGED', 'PAYROLL_NUMBER_VIEWED', 'PAYROLL_SETTINGS_CHANGED']) expect(AUDIT_LABELS[action], action).toBeTruthy();
+    const who = { staffId: 'x', staffNumber: 'S001', name: 'Sample Attendant' };
+    expect(describeAudit({ action: 'PAYROLL_STAFF_LIST_VIEWED', details: { shown: 12 } })).toBe('12 staff members');
+    expect(describeAudit({ action: 'PAYROLL_STAFF_LIST_VIEWED', details: { shown: 1 } })).toBe('1 staff member');
+    expect(describeAudit({ action: 'PAYROLL_STAFF_VIEWED', details: who })).toBe('Sample Attendant (S001)');
+    expect(describeAudit({ action: 'PAYROLL_STAFF_ADDED', details: { ...who, fields: ['pay', 'pan', 'accountNumber'] } })).toBe('Sample Attendant (S001) · pay, PAN, bank account number');
+    expect(describeAudit({ action: 'PAYROLL_STAFF_CHANGED', details: { ...who, fields: ['leftOn', 'userId', 'uan'] } })).toBe('Sample Attendant (S001) · last working day, login, PF number (UAN)');
+    expect(describeAudit({ action: 'PAYROLL_NUMBER_VIEWED', details: { ...who, field: 'accountNumber' } })).toBe('Sample Attendant (S001) · bank account number');
+    expect(describeAudit({ action: 'PAYROLL_SETTINGS_CHANGED', details: { fields: ['parts', 'dayBasis', 'confirmedBy'] } })).toBe('Salary parts, how one day’s pay is counted, accountant’s name');
+    // Stage B: the month, a file's name and counts – never a person's days or pay
+    expect(describeAudit({ action: 'PAYROLL_SHEET_VIEWED', details: { month: '2026-10', people: 5 } })).toBe('October 2026 · 5 people');
+    expect(describeAudit({ action: 'PAYROLL_ATTENDANCE_READ', details: { month: '2026-10', fileName: 'october.csv', rows: 10, people: 7, unknown: 2 } })).toBe('October 2026 · october.csv · 10 rows · 7 people · 2 codes not known');
+    expect(describeAudit({ action: 'PAYROLL_ATTENDANCE_READ', details: { month: '2026-10', fileName: 'october.csv', rows: 1, people: 1, unknown: 0 } })).toBe('October 2026 · october.csv · 1 row · 1 person');
+    expect(describeAudit({ action: 'PAYROLL_ATTENDANCE_REMOVED', details: { month: '2026-10', fileName: 'october.csv', people: 7 } })).toBe('October 2026 · october.csv · 7 people');
+    expect(describeAudit({ action: 'PAYROLL_CODE_LEFT_OUT', details: { month: '2026-10', code: 'Y-1' } })).toBe('October 2026 · code Y-1');
+    expect(describeAudit({ action: 'PAYROLL_DAYS_CORRECTED', details: { month: '2026-10', ...who } })).toBe('October 2026 · Sample Attendant (S001)');
+    expect(describeAudit({ action: 'PAYROLL_DAYS_CORRECTED', details: { month: '2026-10', ...who, removed: true } })).toBe('October 2026 · Sample Attendant (S001) · taken back');
+    for (const action of ['PAYROLL_SHEET_VIEWED', 'PAYROLL_ATTENDANCE_READ', 'PAYROLL_ATTENDANCE_REMOVED', 'PAYROLL_CODE_LEFT_OUT', 'PAYROLL_DAYS_CORRECTED']) {
+      expect(AUDIT_LABELS[action], action).toBeTruthy();
+      expect(describeAudit({ action, details: {} }), action).toBe('');
+    }
+    // The super admin's log holds no detail of a payroll entry at all
+    for (const action of ['PAYROLL_STAFF_VIEWED', 'PAYROLL_STAFF_CHANGED', 'PAYROLL_NUMBER_VIEWED', 'PAYROLL_SETTINGS_CHANGED', 'PAYROLL_STAFF_LIST_VIEWED']) expect(describeAudit({ action, details: {} }), action).toBe('');
+  });
+
+  it('says which month, whose and which list for rates, advances, the lock and the lists – never an amount (Stages C and D)', () => {
+    const who = { staffId: 'x', staffNumber: 'S003', name: 'Sample Guard' };
+    expect(describeAudit({ action: 'PAYROLL_RATES_CHANGED', details: { group: 'pf', confirmed: true } })).toBe('PF · confirmed by the accountant');
+    expect(describeAudit({ action: 'PAYROLL_RATES_CHANGED', details: { group: 'pt', confirmed: false } })).toBe('Professional tax · saved as DRAFT');
+    expect(describeAudit({ action: 'PAYROLL_ADVANCE_GIVEN', details: who })).toBe('Sample Guard (S003)');
+    expect(describeAudit({ action: 'PAYROLL_ADVANCE_CHANGED', details: { ...who, fields: ['instalment', 'stopped'] } })).toBe('Sample Guard (S003) · monthly instalment, stopped or started again');
+    expect(describeAudit({ action: 'PAYROLL_MONTH_ADJUSTED', details: { month: '2026-10', ...who, fields: ['tds', 'lines', 'instalments'] } })).toBe('October 2026 · Sample Guard (S003) · TDS for the month, one-off additions and deductions, advance instalment for the month');
+    expect(describeAudit({ action: 'PAYROLL_MONTH_LOCKED', details: { month: '2026-10', version: 1, people: 4 } })).toBe('October 2026 · version 1 · 4 people');
+    expect(describeAudit({ action: 'PAYROLL_MONTH_REOPENED', details: { month: '2026-10', version: 1, reason: 'A day was missed for the guard' } })).toBe('October 2026 · version 1 · A day was missed for the guard');
+    expect(describeAudit({ action: 'PAYROLL_PAYSLIPS_PRINTED', details: { month: '2026-10', people: 3, draft: true } })).toBe('October 2026 · DRAFT · 3 payslips');
+    expect(describeAudit({ action: 'PAYROLL_PAYSLIPS_PRINTED', details: { month: '2026-10', people: 1, version: 2 } })).toBe('October 2026 · version 2 · 1 payslip');
+    expect(describeAudit({ action: 'PAYROLL_LIST_DOWNLOADED', details: { month: '2026-10', list: 'pf', version: 1 } })).toBe('October 2026 · PF list · version 1');
+    expect(describeAudit({ action: 'PAYROLL_LIST_DOWNLOADED', details: { month: '2026-10', list: 'bank', version: 2, full: true } })).toBe('October 2026 · bank payment list · version 2 · with numbers in full');
+    expect(describeAudit({ action: 'PAYROLL_SETTINGS_CHANGED', details: { fields: ['bankList', 'fullNumbers'] } })).toBe('Bank payment list on or off, full numbers in the PF and ESI lists on or off');
+    for (const action of ['PAYROLL_RATES_CHANGED', 'PAYROLL_ADVANCE_GIVEN', 'PAYROLL_ADVANCE_CHANGED', 'PAYROLL_MONTH_ADJUSTED', 'PAYROLL_MONTH_LOCKED', 'PAYROLL_MONTH_REOPENED', 'PAYROLL_PAYSLIPS_PRINTED', 'PAYROLL_LIST_DOWNLOADED']) {
+      expect(AUDIT_LABELS[action], action).toBeTruthy();
+      expect(describeAudit({ action, details: {} }), action).toBe(''); // the super admin's log holds no detail of a payroll entry
+    }
+  });
+});
+
 describe('billing extras in the audit log (4 Oct 2026)', () => {
   it('insurance details, claim forms, UPI links and the billing settings read in plain words – names of details only', () => {
     for (const action of ['BILL_INSURANCE_CHANGED', 'CLAIM_FORM_PRINTED', 'UPI_LINK_MADE', 'BILLING_SETTINGS_CHANGED']) expect(AUDIT_LABELS[action], action).toBeTruthy();
@@ -400,6 +448,9 @@ const FILTER_ACTIONS = [
   'PHARMACY_ISSUED', 'PHARMACY_INVOICE_VIEWED', 'PHARMACY_RETURNED', 'PHARMACY_PRINTED', 'PHARMACY_REGISTER_VIEWED', 'PHARMACY_MIS_VIEWED', 'PHARMACY_PAYMENT_RECEIVED', 'PHARMACY_DUES_SETTLED', 'PHARMACY_ADVANCE_TAKEN', 'PHARMACY_ADVANCE_REFUNDED', 'PHARMACY_ADVANCE_USED', 'PHARMACY_MRP_CHANGED', 'PHARMACY_EXPORTED', 'PHARMACY_PATIENT_LOOKED_UP', 'PHARMACY_ORDER_CREATED', 'PHARMACY_ORDER_CHANGED',
   'PHARMACY_ORDER_SENT', 'PHARMACY_ORDER_RECEIVED', 'PHARMACY_ORDER_CLOSED', 'PHARMACY_ORDER_CANCELLED', 'PHARMACY_ORDER_PRINTED', 'PHARMACY_SUPPLIER_RETURNED', 'PHARMACY_SUPPLIER_RETURN_CANCELLED', 'PHARMACY_SUPPLIER_CREDIT_NOTE', 'PHARMACY_BATCH_HELD', 'PHARMACY_BATCH_RELEASED', 'PHARMACY_BATCH_RECIPIENTS_VIEWED', 'MEDICINE_MARKS_CHANGED', 'MEDICINE_MARKS_CONFIRMED', 'NO_SUBSTITUTE_CHANGED', 'PHARMACY_SUPPLIER_PAID', 'PHARMACY_SUPPLIER_PAYMENT_CANCELLED', 'PHARMACY_DAY_CLOSED', 'PHARMACY_DOCTOR_SALES_VIEWED', 'PHARMACY_KIT_CHANGED', 'WARD_REQUEST_MADE', 'WARD_REQUEST_CANCELLED', 'WARD_REQUEST_REFUSED', 'STOCK_PLACE_CHANGED', 'STOCK_TRANSFERRED', 'STOCK_PLACE_CHECKED', 'STOCK_PLACE_USED', 'USG_REFERENCE_CHANGED', 'USG_REFERENCE_APPROVED', 'PHARMACY_DEBIT_NOTE_PRINTED',
   'PHARMACY_EINVOICE_DOWNLOADED', 'TALLY_SETTINGS_CHANGED', 'TALLY_BATCH_CREATED', 'TALLY_FILE_DOWNLOADED', 'TALLY_VOUCHER_STATUS',
+  'PAYROLL_STAFF_LIST_VIEWED', 'PAYROLL_STAFF_VIEWED', 'PAYROLL_STAFF_ADDED', 'PAYROLL_STAFF_CHANGED', 'PAYROLL_NUMBER_VIEWED', 'PAYROLL_SETTINGS_CHANGED',
+  'PAYROLL_SHEET_VIEWED', 'PAYROLL_ATTENDANCE_READ', 'PAYROLL_ATTENDANCE_REMOVED', 'PAYROLL_CODE_LEFT_OUT', 'PAYROLL_DAYS_CORRECTED',
+  'PAYROLL_RATES_CHANGED', 'PAYROLL_ADVANCE_GIVEN', 'PAYROLL_ADVANCE_CHANGED', 'PAYROLL_MONTH_ADJUSTED', 'PAYROLL_MONTH_LOCKED', 'PAYROLL_MONTH_REOPENED', 'PAYROLL_PAYSLIPS_PRINTED', 'PAYROLL_LIST_DOWNLOADED',
   'ABHA_VERIFIED', 'ABHA_LINKED', 'ABHA_CREATED', 'ABHA_UNLINKED', 'ABHA_VIEWED', 'ABHA_CARD_PRINTED', 'ABDM_SCAN_SHARE_RECEIVED',
   'ABDM_SCAN_SHARE_HANDLED', 'ABDM_SETTINGS_CHANGED', 'ABDM_RECORDS_VIEWED', 'ABDM_RECORDS_LINKED', 'ABDM_RECORDS_DISCOVERED', 'ABDM_CONSENT_RECEIVED', 'ABDM_RECORDS_SHARED', 'ABDM_SHARE_REFUSED',
   'ABDM_FETCH_REQUESTED', 'ABDM_FETCH_ANSWERED', 'ABDM_RECORDS_FETCHED', 'ABDM_FETCHED_VIEWED', 'ABDM_FETCHED_DELETED', 'TENANT_SETTINGS_UPDATED', 'PROFILE_UPDATED', 'PATIENT_UPDATED',

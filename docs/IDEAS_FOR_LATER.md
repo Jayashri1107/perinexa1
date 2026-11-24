@@ -241,7 +241,7 @@ read and correct five DRAFT discharge medicine sets (three already in Perinexa, 
 **(clinical)**.
 
 
-## Payroll from an attendance file (23 Nov 2026, not built)
+## Payroll from an attendance file (23 Nov 2026 – all four stages built by 24 Nov 2026; every rate still DRAFT)
 From the other Perinexa copy. The owner asked for a payroll function for accounts – a soft copy of the month's
 attendance goes in, each staff member's salary comes out – and chose the middle of three options: **PY1** an accounts
 login and a staff list with pay, also for employees with no Perinexa login, **PY2** the attendance file read into a
@@ -253,5 +253,10 @@ the PF number, ESI number, PAN and bank account are kept, masked on screen and o
 hospital admin may reopen a locked month with a reason. Build note with four stages: `docs/PAYROLL_BUILD_NOTE.md` –
 section 0 says what differs in perinexa1, first of all that every payroll route must itself refuse Perinexa's own
 staff, also during support access. **Left open (section 8):** samples of the attendance files with made-up names, the
-accountant's answers on a day's pay and on every DRAFT rate, a bank payment list yes or no. Stage A can start
-without them.
+accountant's answers on a day's pay and on every DRAFT rate, a bank payment list yes or no. **PY1 and PY2
+(Stages A and B) were built on 23 Nov 2026** (`docs/PROGRESS.md`) – PY2 before the sample files came, so its sheet is
+DRAFT and its reader must be tried on the real files. **PY3 and PY4 (Stages C and D) were built on 24 Nov 2026**, also
+before the accountant's answers: every rate is the note's DRAFT figure, a month that uses a DRAFT rate can't be
+locked, and the PF and ESI lists show the last four characters of each number. A bank payment list and full numbers
+in those lists are built as two switches, both off until the owner says yes. Not built: half days from in and out
+times, `.xlsx` files, the labour welfare fund, a limit on advance recovery in a month.

@@ -71,7 +71,7 @@ export function HelpPage() {
   const look = normalizeAppearance(user.preferences?.appearance);
   const shown = look.help === 'shown';
   const inSetup = Boolean(activeMembership?.platform);
-  const modules = isPlatform && !inSetup ? platformModules(platform) : hospitalModules(activeMembership?.roles);
+  const modules = isPlatform && !inSetup ? platformModules(platform) : hospitalModules(activeMembership?.roles, { platform: isPlatform });
   const guided = modules.filter((m) => GUIDE[m.key]);
 
   return (

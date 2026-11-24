@@ -60,7 +60,7 @@ export function UserGroupsPage() {
         <Alert type="error">{error}</Alert>
         {!editable && <Alert type="info">Only a super admin makes and changes user groups. You can look.</Alert>}
         <DataTable caption="User groups" columns={columns} rows={data?.groups} loading={loading} onRowClick={(g) => navigate(`${base}/${g.id}`)} emptyText="No user groups yet." />
-        <p className="help">The 13 groups made from the old roles keep their roles; their menu items can be changed. A group with people in it keeps its roles – make a new group instead.</p>
+        <p className="help">The 14 groups made from the roles keep their roles; their menu items can be changed. A group with people in it keeps its roles – make a new group instead.</p>
       </div>
     </>
   );

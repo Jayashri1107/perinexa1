@@ -44,6 +44,7 @@ import {
 import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, invoiceTotals, invoiceViews, isExpired, patientDues, returnItems, stockOf, writeOff, usableMatch, HOLD_REASONS, padded } from '../pharmacy/pharmacyService.js';
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { advanceOf, depositAdvance, refundAdvance, useAdvance } from '../pharmacy/advance.js';
+import { settleSelected, settlementData, settlementRow } from '../pharmacy/settlement.js';
 import { isClosed } from '../patients/deathRules.js';
 import { NOT_CANCELLED, returnTotals } from '../pharmacy/supplierReturnsService.js';
 import { checkOpening, nameKey, openingSchema, saveOpening } from '../pharmacy/openingStock.js';
@@ -1173,8 +1174,12 @@ pharmacyRouter.post('/invoices/quote', async (req, res) => {
 });
 
 pharmacyRouter.get('/invoices', async (req, res) => {
-  const q = parse(z.object({ date: requiredDateOnly('Date').optional(), search: z.string().trim().max(100).optional(), patientId: objectId.optional() }).strict(), req.query);
+  const q = parse(z.object({ date: requiredDateOnly('Date').optional(), from: requiredDateOnly('From').optional(), to: requiredDateOnly('To').optional(), search: z.string().trim().max(100).optional(), patientId: objectId.optional() }).strict(), req.query);
+  if (q.from && q.to && q.to < q.from) throw new HttpError(400, 'The To date is before the From date.', 'VALIDATION');
+  if (q.from && q.to && daysBetween(q.from, q.to) > 366) throw new HttpError(400, 'Choose a period of at most one year.', 'VALIDATION');
   const filter = { tenantId: req.tenantId };
+  let from = null;
+  let to = null;
   if (q.patientId) filter.patientId = q.patientId;
   else if (q.search) {
     const rx = new RegExp(escapeRegex(q.search), 'i');
@@ -1182,11 +1187,16 @@ pharmacyRouter.get('/invoices', async (req, res) => {
     // 18 Nov 2026 (Search sale return): a return's credit-note number (CN-000001) finds its bill
     filter.$or = [{ number: rx }, { 'returns.number': rx }, { 'customer.name': rx }, { 'buyer.name': rx }, { patientId: { $in: pids } }, { 'lines.name': rx }, { 'lines.generic': rx }];
   } else {
-    const day = q.date ?? today(req);
-    filter['created.at'] = { $gte: hospitalDayStart(day), $lt: hospitalDayStart(addDays(day, 1)) };
+    from = q.from ?? q.date ?? today(req);
+    to = q.to ?? q.date ?? from;
+    filter['created.at'] = { $gte: hospitalDayStart(from), $lt: hospitalDayStart(addDays(to, 1)) };
   }
-  const list = await PharmacyInvoice.find(filter).sort({ 'created.at': -1, _id: -1 }).limit(200).lean();
-  res.json({ today: isoDay(today(req)), invoices: await invoiceViews(req, list) });
+  // Sales bill (24 Nov 2026, the pharmacy's request): today's bills when the page opens, the dates' bills when chosen –
+  // a month can hold far more than a day, so a period gets up to 1,000 (newest first) and says when there are more
+  const cap = from && to && isoDay(from) !== isoDay(to) ? 1000 : 200;
+  const found = await PharmacyInvoice.find(filter).sort({ 'created.at': -1, _id: -1 }).limit(cap + 1).lean();
+  const list = found.slice(0, cap);
+  res.json({ today: isoDay(today(req)), from: from ? isoDay(from) : null, to: to ? isoDay(to) : null, more: found.length > cap, invoices: await invoiceViews(req, list) });
 });
 
 // Finding people on Sold (developer's request, 3 Nov 2026): the people the pharmacy has billed, newest bill first, by
@@ -1509,6 +1519,90 @@ pharmacyRouter.post('/patients/:id/settle', async (req, res) => {
   }
   await audit(req, 'PHARMACY_DUES_SETTLED', { details: { patientId: String(patient._id), amountPaise: paying, duePaise: dues.duePaise - paying, invoices: [...touched].map(([id, amountPaise]) => ({ invoiceId: id, number: invoices.get(id).number, amountPaise })) } });
   res.json(await patientDues(req, patient._id));
+});
+
+// Settlement (24 Nov 2026, the developer, after the earlier software's Pharmacy Settlement window): OP, IP or External,
+// a UHID or name, then the patient's Paid bills and Credit bills; the credit bills chosen are settled in full with
+// advance, a concession (Discount) and money received. Only counter sales of one registered patient can be settled –
+// hospital bills and ward issues stay with the billing desk, and a walk-in pays the whole bill at the counter.
+// IP: admitted now; OP: everyone else. A UHID typed in full finds that patient whatever is chosen. No dates: a credit
+// bill stays owed until it is settled, however old it is (From and To narrow the list when given).
+const settlementQuery = z.object({
+  from: requiredDateOnly('From').optional(),
+  to: requiredDateOnly('To').optional(),
+  type: z.enum(['all', 'opd', 'ipd', 'external']).default('all'),
+  search: z.string().trim().max(80).optional(),
+  patientId: objectId.optional(),
+}).strict();
+pharmacyRouter.get('/settlement', async (req, res) => {
+  desk(req);
+  const q = parse(settlementQuery, req.query);
+  const dated = Boolean(q.from || q.to);
+  const [start, end] = dated ? period({ from: q.from ?? q.to, to: q.to ?? q.from }) : [null, null];
+  const when = dated ? { 'created.at': { $gte: start, $lt: end } } : {};
+  const dates = dated ? { from: isoDay(q.from ?? q.to), to: isoDay(q.to ?? q.from) } : { from: null, to: null };
+  if (q.patientId) {
+    const patient = await Patient.findOne({ tenantId: req.tenantId, _id: q.patientId }, { _id: 1, fullName: 1, mrn: 1, phone: 1 }).lean();
+    if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+    const invoices = await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: patient._id, billId: null, kind: 'sale', ...when }).sort({ 'created.at': -1 }).limit(500).lean();
+    await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'settlement', patientIds: [String(patient._id)], rows: invoices.length } });
+    return res.json({ ...dates, patientId: String(patient._id), ...(await settlementData(req, patient, invoices)) });
+  }
+  if (q.type === 'external') {
+    const rx = q.search ? new RegExp(escapeRegex(q.search), 'i') : null;
+    const invoices = await PharmacyInvoice.find({
+      tenantId: req.tenantId, patientId: null, billId: null, kind: 'sale', ...(dated ? when : { 'created.at': { $gte: hospitalDayStart(today(req)) } }),
+      ...(rx ? { $or: [{ 'customer.name': rx }, { 'buyer.name': rx }, { 'customer.phone': rx }, { number: rx }] } : {}),
+    }).sort({ 'created.at': -1 }).limit(200).lean();
+    await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'settlement', patientIds: [], walkInBills: invoices.length } });
+    return res.json({ ...dates, externalBills: invoices.map((inv) => settlementRow(inv)) });
+  }
+  if (!q.search || q.search.length < 2) return res.json({ ...dates, patients: [] });
+  const rx = new RegExp(escapeRegex(q.search), 'i');
+  const exact = new RegExp(`^${escapeRegex(q.search)}$`, 'i');
+  const admittedNow = new Set((await Admission.distinct('patientId', { tenantId: req.tenantId, status: 'admitted' })).map(String));
+  const people = await Patient.find({ tenantId: req.tenantId, $or: [{ fullName: rx }, { mrn: rx }] }, { _id: 1, fullName: 1, mrn: 1, phone: 1 }).limit(200).lean();
+  const wanted = (p) => exact.test(p.mrn ?? '') || q.type === 'all' || (q.type === 'ipd') === admittedNow.has(String(p._id));
+  const ids = people.filter(wanted).map((p) => p._id);
+  const invoices = ids.length ? await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: { $in: ids }, billId: null, kind: 'sale', ...when }, { number: 1, patientId: 1, kind: 1, billId: 1, lines: 1, returns: 1, payments: 1, concessions: 1, created: 1 }).lean() : [];
+  const by = new Map();
+  for (const inv of invoices) {
+    const row = settlementRow(inv);
+    const found = by.get(String(inv.patientId)) ?? { billCount: 0, creditPaise: 0, lastAt: inv.created.at };
+    found.billCount += 1;
+    found.creditPaise += row.balancePaise;
+    if (new Date(inv.created.at) > new Date(found.lastAt)) found.lastAt = inv.created.at;
+    by.set(String(inv.patientId), found);
+  }
+  const patients = people
+    .filter((p) => by.has(String(p._id)))
+    .map((p) => ({ id: String(p._id), fullName: p.fullName, mrn: p.mrn ?? '', type: admittedNow.has(String(p._id)) ? 'ipd' : 'opd', ...by.get(String(p._id)) }))
+    // a UHID typed in full first, then those who owe most, then the latest bill
+    .sort((a, b) => Number(exact.test(b.mrn)) - Number(exact.test(a.mrn)) || b.creditPaise - a.creditPaise || new Date(b.lastAt) - new Date(a.lastAt));
+  await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'settlement', patientIds: patients.map((p) => p.id), rows: patients.length } });
+  res.json({ ...dates, patients });
+});
+const settlementBody = z.object({
+  patientId: objectId,
+  invoiceIds: z.array(objectId).min(1).max(100).refine((ids) => new Set(ids).size === ids.length, 'Choose each bill only once.'),
+  payments: z.array(paymentPart).max(5).default([]),
+  advancePaise: paise.default(0),
+  concessionPaise: paise.default(0),
+  concessionReason: z.string().trim().max(200).default(''),
+  remarks: z.string().trim().max(200).default(''),
+}).strict();
+pharmacyRouter.post('/settlement', async (req, res) => {
+  desk(req);
+  const body = parse(settlementBody, req.body);
+  const { patient, result, data } = await settleSelected(req, body);
+  // amountPaise: the credit settled in full (nothing of it is left due); never the concession's reason or remarks
+  await audit(req, 'PHARMACY_DUES_SETTLED', {
+    details: {
+      patientId: String(patient._id), settlement: true, settlementId: result.settlementId, amountPaise: result.duePaise, receivedPaise: result.receivedPaise,
+      advancePaise: result.advancePaise, concessionPaise: result.concessionPaise, invoices: result.invoices.map((x) => ({ invoiceId: x.invoiceId, number: x.number })),
+    },
+  });
+  res.status(201).json({ ...result, ...data });
 });
 
 // Pharmacy advance (18 Nov 2026, the pharmacy's request): a registered patient's deposit, used on her bills, refunded

@@ -1,0 +1,111 @@
+/* Payroll, Stage A (docs/PAYROLL_BUILD_NOTE.md): the staff list, one person's page and the settings. Desk screens;
+   colours and sizes only from tokens.css. */
+.pr-page, .pr-page > .fieldset { display: flex; flex-direction: column; gap: var(--space-4); }
+.pr-page > *, .pr-page > .fieldset > * { margin-top: 0; margin-bottom: 0; }
+.pr-page .card h2 { margin: 0 0 var(--space-3); font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.pr-page .card > .hint { margin: 0 0 var(--space-4); }
+.pr-page .card > .alert { margin: var(--space-4) 0 0; }
+.pr-page .card > .btn { margin-top: var(--space-4); }
+.pr-toolbar { align-items: center; margin-bottom: var(--space-4); }
+.pr-sub { margin: var(--space-6) 0 var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; color: var(--slate-600); }
+.pr-total { margin: 0 0 var(--space-3); }
+/* One of the four numbers: the box to type a new one, and under it the kept one as its last four characters */
+.pr-number { min-width: 0; margin-bottom: var(--space-4); }
+.pr-number .field { margin-bottom: var(--space-1); }
+.pr-kept { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-4); margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); }
+.pr-digits { font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+.pr-kept .check { min-height: 0; }
+.pr-actions { align-items: center; }
+.pr-page .card > .check + .field { margin-top: var(--space-3); }
+/* The salary parts: a name box and two ticks a row */
+table.ca-table.pr-parts td { vertical-align: middle; }
+.pr-parts td:first-child input { width: 100%; max-width: 360px; }
+
+/* Stage B – Run payroll: the month, the file and its columns, what is left to answer, the salary sheet */
+.pr-month { max-width: 260px; }
+.pr-rules { margin: 0 0 var(--space-3); }
+.pr-choose { margin-top: var(--space-3); }
+.pr-read { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.pr-read > .pr-sub:first-child { margin-top: 0; }
+/* The first rows of the file, as text: scrolls inside its box, never the page */
+.pr-preview { max-height: 320px; overflow: auto; margin-bottom: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.pr-preview table { border-collapse: collapse; font-size: var(--fs-caption); line-height: var(--lh-caption); font-variant-numeric: tabular-nums; }
+.pr-preview th, .pr-preview td { padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.pr-preview thead th, .pr-preview tbody th { position: sticky; background: var(--mist-50); color: var(--slate-600); font-weight: 600; }
+.pr-preview thead th { top: 0; z-index: 1; }
+.pr-preview tbody th { left: 0; }
+.pr-preview tr.pr-heading-row td { font-weight: 600; background: var(--status-stable-bg); }
+.pr-check { margin-bottom: var(--space-4); }
+.pr-problems { margin: var(--space-2) 0 0; padding-left: var(--space-6); }
+.pr-problems li + li { margin-top: var(--space-1); }
+.pr-found { margin: var(--space-3) 0 0; }
+table.ca-table.pr-marks { max-width: 520px; }
+table.ca-table.pr-marks td, table.ca-table.pr-marks th { vertical-align: middle; }
+/* A code to answer: the staff member to tie it to, or a reason to leave it out */
+.pr-answer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.pr-answer select { max-width: 240px; }
+.pr-answer input { flex: 1 1 200px; min-width: 160px; }
+.pr-hand { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-1); }
+.pr-draft { margin: 0 0 var(--space-3); }
+
+/* The accounts login's Today: what is waiting, one line each – a mark, the sentence, where to go */
+.pr-todo { list-style: none; margin: 0; padding: 0; }
+.pr-todo li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+.pr-todo li:last-child { border-bottom: 0; }
+.pr-todo-text { flex: 1 1 320px; min-width: 0; }
+.pr-open { flex-wrap: wrap; }
+
+/* Stage C – Rates: a group's status, its figures in words (for the accounts login), the two tables of slabs */
+.pr-rate-status { margin: 0 0 var(--space-3); }
+.pr-rate-lines { margin: 0; padding-left: var(--space-6); }
+.pr-rate-lines li + li { margin-top: var(--space-1); }
+.pr-slab-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-4) var(--space-8); margin-bottom: var(--space-4); }
+.pr-slabs > .pr-sub { margin-top: 0; }
+.pr-slabs > .btn { margin-top: var(--space-2); }
+table.ca-table.pr-slab-table td { vertical-align: middle; }
+.pr-slab-table input { width: 100%; max-width: 160px; }
+
+/* Stages C and D – Run payroll: one person's month (the dialog), the lock, the monthly lists */
+.pr-lines { min-width: 0; margin: 0; padding: 0; border: 0; }
+.pr-lines > legend { padding: 0; margin-bottom: var(--space-1); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; color: var(--slate-600); }
+.pr-lines > .hint { margin: 0 0 var(--space-2); }
+.pr-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.pr-line > select { flex: 0 0 auto; width: auto; }
+.pr-line > input { flex: 1 1 200px; min-width: 140px; }
+.pr-line > input.pr-line-amount { flex: 0 1 120px; min-width: 96px; }
+.pr-line > .field-error { flex-basis: 100%; margin: 0; }
+.pr-advance + .pr-advance { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.pr-advance > .hint { margin: 0 0 var(--space-2); }
+.pr-lock-actions { flex-wrap: wrap; align-items: center; margin-top: var(--space-3); }
+.pr-lists { list-style: none; margin: 0; padding: 0; }
+.pr-lists li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.pr-lists li:last-child { border-bottom: 0; }
+.pr-lists .hint { margin: 0; }
+
+/* Stage D – the payslip on paper: one a page; black on white, thin rules (the print tokens) */
+.ps-slip { break-after: page; break-inside: avoid; }
+.ps-slip:last-child { break-after: auto; }
+.pv-sheet .ps-slip + .ps-slip { margin-top: var(--space-8); padding-top: var(--space-8); border-top: 1px dashed var(--print-rule); }
+.ps-head { margin-bottom: var(--space-3); text-align: center; }
+.ps-head h1 { margin: var(--space-1) 0 0; }
+.ps-hospital { margin: 0; font-size: var(--fs-print-h2); line-height: var(--lh-print-h2); font-weight: 600; }
+.ps-version { margin: var(--space-1) 0 0; font-weight: 600; }
+.ps-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--space-6); align-items: start; }
+.ps-lines .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ps-lines tfoot th, .ps-lines tfoot td { padding: var(--space-1) var(--space-2); text-align: left; border-top: 1.5px solid var(--print-ink); border-bottom: 0; font-size: var(--fs-print-body); line-height: var(--lh-print-body); font-weight: 600; }
+.ps-lines tfoot td.num { text-align: right; }
+.ps-net { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4); margin: 0; padding: var(--space-2) var(--space-3); border: 1.5px solid var(--print-ink); border-radius: var(--radius-sm); font-size: var(--fs-print-h2); line-height: var(--lh-print-h2); }
+.ps-words { margin: var(--space-1) 0 var(--space-3); font-weight: 500; }
+.ps-days, .ps-made { margin: var(--space-1) 0 0; font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
+.ps-made { color: var(--slate-600); }
+@media print {
+  .pv-sheet .ps-slip + .ps-slip { margin-top: 0; padding-top: 0; border-top: 0; }
+}
+
+/* The salary sheet and the take-home table have a dozen number columns: on a laptop screen (1366 px wide, with the
+   menu open) they must fit their card – the pencil and the printer at the end of a row are never off to the side */
+.pr-fit .ca-table th, .pr-fit .ca-table td { padding-left: var(--space-2); padding-right: var(--space-2); }
+.pr-fit .ca-table thead th.num { min-width: 0; }
+.pr-fit .ca-table .ca-wide, .pr-fit .ca-table tbody th.ca-wide { min-width: 8em; }
+.pr-fit .ca-table .num.ca-nowrap { white-space: nowrap; }
+.pr-fit .pr-hand .icon-btn { flex-shrink: 0; }

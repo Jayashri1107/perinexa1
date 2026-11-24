@@ -450,7 +450,7 @@ export function AppLayout() {
   // (docs/USER_GROUPS_PLAN.md Part B); each request names the menu item it comes from (api.js), for the server to check.
   const staffMenu = !locked && !isPlatform ? hospitalModules(activeMembership?.roles) : [];
   const pages = isPlatform ? {} : (activeMembership?.pages ?? {});
-  const modules = locked ? [] : isPlatform && !inSetup ? platformModules(platform) : isPlatform ? hospitalModules(activeMembership?.roles) : visibleModules(staffMenu, pages);
+  const modules = locked ? [] : isPlatform && !inSetup ? platformModules(platform) : isPlatform ? hospitalModules(activeMembership?.roles, { platform: true }) : visibleModules(staffMenu, pages);
   const currentLevel = isPlatform ? 'edit' : pageLevel(pages, pageForPath(location.pathname, staffMenu));
   useEffect(() => {
     setPageResolver(isPlatform ? null : (path) => pageForPath(path, staffMenu));

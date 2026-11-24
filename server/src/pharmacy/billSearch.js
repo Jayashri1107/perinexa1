@@ -52,7 +52,7 @@ export function billRow(inv, t, patient = null) {
     type: inv.kind === 'issue' ? 'ipd' : inv.patientId ? 'opd' : 'external',
     mrn: patient?.mrn ?? '',
     name: patient ? patient.fullName : inv.patientId ? '' : inv.buyer?.name || inv.customer?.name || 'Walk-in customer',
-    discPaise: Math.max(0, t.grossPaise - t.totalPaise),
+    discPaise: Math.max(0, t.grossPaise - t.totalPaise) + (t.settlementConcessionPaise ?? 0),
     netPaise: t.netPaise,
     paidPaise: counter ? (t.paidPaise ?? 0) : 0,
     balPaise: counter ? (t.balancePaise ?? 0) : t.netPaise,

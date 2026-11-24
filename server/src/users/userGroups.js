@@ -1,4 +1,4 @@
-// User groups (developer, 14 Nov 2026 – docs/USER_GROUPS_PLAN.md Part B): the 13 groups made from the old roles, and
+// User groups (developer, 14 Nov 2026 – docs/USER_GROUPS_PLAN.md Part B): the 14 groups made from the roles (13 until the accounts login of 23 Nov 2026), and
 // moving every member into a group. Run at every start (index.js); a second run finds nothing to do.
 //  - One system group per role ("Doctor", "Receptionist" …) with that role and every menu item Edit: nobody gains or
 //    loses anything on the day of the change.
@@ -24,6 +24,7 @@ export const ROLE_NAMES = {
   followup_coordinator: 'Newborn follow-up coordinator',
   quality: 'Quality lead',
   records: 'Medical records',
+  accounts: 'Accounts',
 };
 
 // A group's name may be 80 characters (models/UserGroup.js); a made name keeps room for " (2026-11-15) (2)" after it.
@@ -63,7 +64,7 @@ export async function groupForRoles(roles, { createdBy = null } = {}) {
   return { group, made: true };
 }
 
-/** Makes the 13 system groups and moves every member without a group. Returns { groupsMade, membersMoved }. */
+/** Makes the 14 system groups and moves every member without a group. Returns { groupsMade, membersMoved }. */
 export async function moveToUserGroups() {
   let groupsMade = 0;
   const made = [];

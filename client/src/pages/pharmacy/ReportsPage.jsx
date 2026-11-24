@@ -484,8 +484,10 @@ export function ReportsPage() {
   const pharmacist = activeMembership.roles.includes('pharmacist');
   const views = [...VIEWS, ...(pharmacist ? [['by-doctor', 'Sales by doctor']] : []), ...(admin ? [['export', 'Export']] : [])];
   const view = views.some(([k]) => k === params.get('view')) ? params.get('view') : 'alerts';
+  // 24 Nov 2026 (the pharmacy's request): every report opens on today's figures; This month, Last month or two dates
+  // chosen show another period
   const now = new Date();
-  const [from, setFrom] = useState(isoOf(new Date(now.getFullYear(), now.getMonth(), 1)));
+  const [from, setFrom] = useState(isoOf(now));
   const [to, setTo] = useState(isoOf(now));
   const [type, setType] = useState('H1');
   const alerts = useFetch('/pharmacy/reports/alerts');

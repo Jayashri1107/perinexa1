@@ -22,6 +22,23 @@ if (!process.env.JWT_SECRET && (process.env.NODE_ENV ?? 'development') === 'deve
   process.env.JWT_SECRET = secret;
 }
 
+// The key that seals the payroll's four numbers (PF number, ESI number, PAN, bank account – payroll/secretBox.js) is a
+// key of its own, never JWT_SECRET (health check L18). A development copy makes one on its first start, as above. On
+// the live server it is set by hand (docs/RUNBOOK.md): without it the server starts and payroll works, but the four
+// numbers can't be kept. A lost or changed key: the kept numbers can no longer be read and are typed again.
+if (!process.env.PAYROLL_KEY && (process.env.NODE_ENV ?? 'development') === 'development') {
+  const key = randomBytes(48).toString('base64url');
+  try {
+    const before = existsSync(ENV_FILE) ? readFileSync(ENV_FILE, 'utf8') : '';
+    writeFileSync(ENV_FILE, `${before}${before && !before.endsWith('\n') ? '\n' : ''}# Made automatically on the first start – seals the payroll's PF, ESI, PAN and bank account numbers. Keep it secret.\nPAYROLL_KEY=${key}\n`);
+    console.log('ℹ️  A new key for the payroll numbers was made and saved in server/.env.');
+    process.env.PAYROLL_KEY = key;
+  } catch {
+    // not kept: numbers sealed with it could not be read after a restart, so none is used
+    console.warn('⚠️  Could not save a key for the payroll numbers in server/.env; the PF, ESI, PAN and bank account numbers can\'t be kept until PAYROLL_KEY is set.');
+  }
+}
+
 // A time zone name the computer knows, e.g. "Asia/Kolkata".
 const isValidTimeZone = (timeZone) => {
   try {
@@ -46,6 +63,12 @@ const schema = z.object({
   // sign-in limits see each visitor's own address. 0 (default): the app is reached directly.
   TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters long'),
+  // Seals the payroll's PF number, ESI number, PAN and bank account (payroll/secretBox.js). Empty: those four numbers
+  // can't be kept (the rest of payroll works). Never the same value as JWT_SECRET.
+  PAYROLL_KEY: z
+    .string()
+    .default('')
+    .refine((v) => v === '' || v.length >= 32, 'PAYROLL_KEY must be at least 32 characters long (or empty)'),
   CLIENT_URL: z.url().default('http://localhost:5173'),
   SESSION_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(30),
   // A session ends this many hours after signing in, however busy (health check M2, 16 Nov 2026): a stolen cookie or
@@ -176,6 +199,8 @@ export function productionProblems(settings) {
   if (settings.COOKIE_SECURE === 'false') unsafe.push('COOKIE_SECURE=false sends the sign-in cookie without HTTPS – remove it');
   if (looksTyped(settings.JWT_SECRET)) unsafe.push(`JWT_SECRET looks typed or copied from an example – ${MAKE_ONE}`);
   if (settings.SETUP_CODE && (settings.SETUP_CODE.length < 20 || looksTyped(settings.SETUP_CODE))) unsafe.push(`SETUP_CODE is too easy to guess – ${MAKE_ONE}`);
+  if (settings.PAYROLL_KEY && looksTyped(settings.PAYROLL_KEY)) unsafe.push(`PAYROLL_KEY looks typed or copied from an example – ${MAKE_ONE}`);
+  if (settings.PAYROLL_KEY && settings.PAYROLL_KEY === settings.JWT_SECRET) unsafe.push(`PAYROLL_KEY must not be the same as JWT_SECRET – ${MAKE_ONE}`);
   return unsafe;
 }
 

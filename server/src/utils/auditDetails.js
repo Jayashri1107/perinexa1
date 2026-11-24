@@ -89,6 +89,16 @@ const BILLING_EXTRA_DETAIL_FIELDS = ['billId', 'number', 'patientId', 'fields', 
 const TALLY_ACTIONS = new Set(['TALLY_SETTINGS_CHANGED', 'TALLY_BATCH_CREATED', 'TALLY_FILE_DOWNLOADED', 'TALLY_VOUCHER_STATUS']);
 const TALLY_DETAIL_FIELDS = ['fields', 'batchId', 'number', 'from', 'to', 'vouchers', 'part', 'voucherId', 'key', 'status', 'count'];
 const TALLY_PLATFORM_FIELDS = ['fields', 'from', 'to', 'vouchers', 'part', 'status', 'count'];
+// Payroll (23 Nov 2026, docs/PAYROLL_BUILD_NOTE.md): whose record and which fields – never an amount, never one of
+// the four numbers. The super admin's readers get no detail at all (decision 3: the super admin never sees payroll).
+const PAYROLL_ACTIONS = new Set([
+  ...['PAYROLL_STAFF_LIST_VIEWED', 'PAYROLL_STAFF_VIEWED', 'PAYROLL_STAFF_ADDED', 'PAYROLL_STAFF_CHANGED', 'PAYROLL_NUMBER_VIEWED', 'PAYROLL_SETTINGS_CHANGED'],
+  // Stage B: the month, a file's name and counts – a person's paid days or pay never
+  ...['PAYROLL_SHEET_VIEWED', 'PAYROLL_ATTENDANCE_READ', 'PAYROLL_ATTENDANCE_REMOVED', 'PAYROLL_CODE_LEFT_OUT', 'PAYROLL_DAYS_CORRECTED'],
+  // Stages C and D: rates, advances, one person's month, lock and reopen, payslips, the monthly lists
+  ...['PAYROLL_RATES_CHANGED', 'PAYROLL_ADVANCE_GIVEN', 'PAYROLL_ADVANCE_CHANGED', 'PAYROLL_MONTH_ADJUSTED', 'PAYROLL_MONTH_LOCKED', 'PAYROLL_MONTH_REOPENED', 'PAYROLL_PAYSLIPS_PRINTED', 'PAYROLL_LIST_DOWNLOADED'],
+]);
+const PAYROLL_DETAIL_FIELDS = ['staffId', 'staffNumber', 'name', 'fields', 'field', 'shown', 'month', 'fileName', 'rows', 'people', 'unknown', 'code', 'removed', 'group', 'confirmed', 'version', 'list', 'reason', 'draft', 'stopped', 'full'];
 // A record closed after a death, and reopened: counts only, in every reader – never which record, the date, the
 // place, the timing or the reason a doctor typed. A record is closed for one reason only (a doctor recorded a death),
 // so an entry with the record's number would give the hospital admin – who reads this log and sees no patient data –
@@ -148,6 +158,7 @@ const PLATFORM_PATIENT_EVENT_FIELDS = ['access', 'fields', 'sections', 'change',
 // own fields the allowlist above would drop them all.
 const PLATFORM_FIELDS_BY_ACTION = {
   ...Object.fromEntries([...TALLY_ACTIONS].map((a) => [a, TALLY_PLATFORM_FIELDS])),
+  ...Object.fromEntries([...PAYROLL_ACTIONS].map((a) => [a, []])),
   RISK_RECALCULATED: ['templateId', 'name', 'version', 'checked', 'changed', 'skipped'],
   ANALYTICS_VIEWED: ANALYTICS_DETAIL_FIELDS.platform,
   ANALYTICS_LIST_VIEWED: ANALYTICS_DETAIL_FIELDS.platform,
@@ -195,6 +206,7 @@ function trimmedByAction(action, details) {
   if (REFERRAL_ACTIONS.has(action)) return only(details, REFERRAL_DETAIL_FIELDS);
   if (RECORDS_ACTIONS.has(action)) return only(details, RECORDS_DETAIL_FIELDS);
   if (TALLY_ACTIONS.has(action)) return only(details, TALLY_DETAIL_FIELDS);
+  if (PAYROLL_ACTIONS.has(action)) return only(details, PAYROLL_DETAIL_FIELDS);
   if (REGISTER_ACTIONS.has(action)) return only(details, REGISTER_DETAIL_FIELDS);
   if (BILLING_EXTRA_ACTIONS.has(action)) return only(details, BILLING_EXTRA_DETAIL_FIELDS);
   if (ANALYTICS_ACTIONS.has(action)) return only(details, ANALYTICS_DETAIL_FIELDS.tenant);

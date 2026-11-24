@@ -5,7 +5,10 @@
 > way Perinexa's own staff enter a hospital differ: as the code stands, a role check alone would let a super admin
 > into the payroll while a hospital allows support access. Read section 0 before anything else, and section 2 ("what
 > exists") again against this code before building. The ideas list in this repository is `docs/IDEAS_FOR_LATER.md`.
-> **Nothing of this note is built in perinexa1.**
+> **All four stages are built in perinexa1 (A and B on 23 Nov 2026, C and D on 24 Nov 2026 – `docs/PROGRESS.md`).**
+> **Every rate and every rule is still DRAFT: nothing here is confirmed by the hospital's accountant.**
+> What was built, and where it differs from sections 4 to 6, is at the end of section 0. Stage B was built **before**
+> the owner's sample attendance files and the accountant's answers arrived: read "Stage B as built" there.
 
 Written 23 Nov 2026 for the developer, at the owner's request. The owner asked for "a payroll function for accounts":
 a soft copy of the month's attendance goes in, and Perinexa works out each staff member's salary. The owner saw what
@@ -93,6 +96,124 @@ Read in the code only.
   `auditFormat.test.js`, or the website tests fail (`docs/HANDOVER.md` section 4).
 - The phone layout (below 720 px, 31 Oct 2026): the payroll screens are desk screens, but the menu item and the
   payslip print must not break it.
+
+**Stage A as built in perinexa1 (23 Nov 2026)**
+- The role `accounts` (the fourteenth; its ready-made user group "Accounts" is made at the next start), the menu item
+  Payroll (page key `payroll`, API area `/api/payroll` in `PAGE_ROUTES`) for `accounts` and `admin`, and
+  `routes/payroll.js`, whose first line refuses `req.membership.platform` before the role is looked at. The website
+  hides the menu item from a platform user too (`hospitalModules(roles, { platform })`, `RequirePayroll`).
+- `StaffMember` as in section 4. The four numbers are kept sealed (AES-256-GCM, `payroll/secretBox.js`) as
+  `{ enc, last4 }` with `select: false`, under `PAYROLL_KEY` in `server/.env` – a key of its own; a development copy
+  makes one at its first start, the live server needs it set by hand (`docs/RUNBOOK.md`). Without a key the server
+  starts and payroll works, but the four numbers are refused with a plain message.
+- One number in full: `POST /api/payroll/staff/:id/number` (a POST, so a login whose Payroll page is set to View
+  cannot read one), audited as `PAYROLL_NUMBER_VIEWED` with whose and which. The page hides it again after a minute.
+- Pay entries: a later first day adds an entry; **the same first day corrects that entry**; an earlier day is
+  refused. Stage D must stop the correction once a locked month has used the entry.
+- Settings are `Tenant.payroll` (stripped from the hospital's JSON like `tally`): the salary parts with their PF and
+  ESI ticks, the basis of a day's pay (empty until decided), weekly offs and holidays paid or not, the rounding, and
+  the accountant's name and date – **DRAFT until both are written and a basis is chosen**. Changing a rule on the
+  screen empties the confirmation. A part that a pay entry names can be renamed, not removed. **Not there yet:** the
+  rate table (stage C) and the saved attendance layouts (stage B).
+- Free-text boxes refuse 12 digits that look like an Aadhaar number. No patient data, nothing sent to an AI feature,
+  nothing written into Daily expenses or the Tally files, `StaffMember` in `LEFT_OUT` of the hospital export.
+- Six audit actions (`PAYROLL_STAFF_LIST_VIEWED`, `_STAFF_VIEWED`, `_STAFF_ADDED`, `_STAFF_CHANGED`,
+  `_NUMBER_VIEWED`, `PAYROLL_SETTINGS_CHANGED`): the hospital admin reads whose record and which fields; the super
+  admin's readers get no detail at all (`PLATFORM_FIELDS_BY_ACTION` → an empty list).
+- **Not decided, so not changed** (the two questions to the owner above): the accounts login can be given together
+  with another role and has no switch of its own; two-step sign-in is not required for it.
+
+**Stage B as built in perinexa1 (23 Nov 2026) – without the sample files and without the accountant's answers**
+- Payroll → **Run payroll** (`/payroll/run`): the month → the file → its columns → the check → the sheet, as
+  section 5 says. Routes `/api/payroll/runs/…` in `routes/payrollRuns.js`, mounted behind the payroll router's guard.
+- **The reader** (`payroll/csvText.js`): CSV only – comma, semicolon or tab, quotes, the byte-order mark, UTF-16,
+  CRLF; at most 1 MB, 5,000 rows, 80 columns; an Excel workbook is refused with "save it as CSV". Every cell is text.
+- **The layout is data** (`payroll/attendanceRead.js`), chosen by the person on the file's first rows, saved by name
+  on the hospital (`Tenant.payroll.layouts`, at most 10) and offered next month. Three shapes: a **register** (a
+  column per day; every mark found gets a meaning from the person – nothing is guessed), a **daily list** (a row per
+  person per day, with a date and either a status mark or, without one, "a row means present"), and **totals** (a
+  column per kind of day, or the file's own paid-days column). **Not built: half days or late arrival worked out
+  from in and out times** – that needs the accountant's rule (section 8, question 2) and a real punch log.
+- **Matching** by code only. A code nobody carries: tied to a staff member (saved on `StaffMember.attendanceCodes`)
+  or left out with a reason. Someone on the payroll with no row: their paid days are written by hand with a reason
+  (the same correction as below) – so a hospital with no file at all can still make a sheet. The sheet is not made
+  while either is unanswered, while the basis of a day's pay is not chosen, or while one person has two rows.
+- **Kept:** `AttendanceFile` (the bytes, their SHA-256, the layout used; a file read by mistake is marked removed,
+  never deleted) and `PayrollRun` (per month: each code's days, the left-out codes, the corrections). No amount is
+  stored: the sheet is worked out on each opening from the staff list, the settings and the days
+  (`payroll/payrollMath.js`). Stage D adds the lock and the kept snapshot (below).
+- **The sum** – monthly pay × paid days ÷ basis days, whole paise, rounded as the settings say; days outside
+  `joinedOn`…`leftOn` are not counted (a file of totals is capped at the days employed). A correction by hand is
+  shown beside the file's figure and used in its place.
+- **Three rules were needed for the sum and are NOT decided – each is marked on the row it touches, and each is a
+  question for the accountant:** (1) more paid days than the basis pays the full monthly pay, not more; (2) a month
+  in which the pay changed uses the pay in force on the person's last working day of that month; (3) a half day is
+  half a paid day. Together with the basis, the weekly offs, the holidays and the rounding, the whole sheet is
+  **DRAFT – not for payment** until the settings carry the accountant's name and date.
+- Five more audit actions (`PAYROLL_SHEET_VIEWED`, `_ATTENDANCE_READ`, `_ATTENDANCE_REMOVED`, `_CODE_LEFT_OUT`,
+  `_DAYS_CORRECTED`): the month, a file's name and counts – never a person's pay. Nothing for the super admin's
+  readers. A body-limit line in `app.js` for the upload (1,500 kb as base64). Both models in `LEFT_OUT`.
+- **When the owner's sample files come:** read each one on the screen. If its shape is not one of the three, the
+  reader gets a fourth shape in `attendanceRead.js` – the routes and the sheet do not change. A made-up register
+  for trying the screen is in `docs/samples/payroll-attendance-sample.csv`.
+
+**Stages C and D as built in perinexa1 (24 Nov 2026) – without the accountant's answers**
+- **The rate table** is on the hospital (`Tenant.payroll.rates`, three groups: `pf`, `esi`, `pt`), read through
+  `payroll/payrollDeductions.js` `ratesWithDefaults`. A hospital that saved nothing gets the DRAFT table of section 8
+  – the figures there, nothing looked up. Each group has `status` (`draft` | `confirmed`), `confirmedBy`,
+  `confirmedOn` and `from`. The admin confirms a group with a tick, the accountant's name and both dates; a save
+  without the tick is DRAFT and drops the old confirmation. A month before `from` uses the group as DRAFT.
+  Each group keeps the sets confirmed before (`earlier`), each in force from its own date: a month is worked out
+  with the confirmed set in force in that month (`ratesFor`), so a rate change never rewrites an old month, and a
+  locked month keeps the rates it used in its snapshot as well. Figures typed without the tick are used by no month
+  while confirmed ones are in force (`nextRateGroup` says what a save keeps).
+- **The sums** (`payrollDeductions.js` `payOf`, pure): earnings by part, PF, ESI, professional tax by slab, TDS, one-off
+  lines, advance recoveries, take-home; the hospital's PF and ESI shares beside them. **Six rules were needed and are
+  NOT decided – each a question for the accountant** (numbered 4 to 9 at the top of that file, after the three of
+  stage B): every part is reduced alike for unpaid days; PF on the earned parts that count for PF, on no more than
+  the limit when `capAtLimit` is on; ESI on the earned parts that count for ESI, pay above the limit only marked;
+  professional tax looked up on the pay for the month plus one-off additions; PF and ESI each rounded to the nearest
+  rupee, one-off additions counting for neither; deductions in the order PF, ESI, professional tax, TDS, one-off,
+  advances – an advance never taking the take-home below zero.
+- **Professional tax needs to know which table of slabs is a person's:** `StaffMember.ptSlab` (`men` | `women`), asked
+  for when a pay entry takes professional tax. The labour welfare fund is not built (section 8: "not known").
+- **One person's month** (`PayrollRun.tds`, `.lines`, `.instalments`; `PUT /runs/:month/people/:staffId`): TDS for the
+  month in place of the pay entry's, one-off additions and deductions with what they are for, an advance's
+  instalment for the month with a reason. What was typed before keeps who typed it.
+- **Advances** (`StaffAdvance`, `routes/payrollAdvances.js`). **Differs from section 5:** what a month took back is
+  kept on the locked month (`PayrollRun.recovered`), not on the advance – so locking and reopening is one write, and
+  what is left of an advance is always its amount less the locked months. An advance is stopped, never deleted; its
+  amount and date are not changed.
+- **The lock** (`POST /runs/:month/lock`): refused while a rule or a rate the month uses is DRAFT, a person has no
+  pay, a professional tax slab is missing, deductions are more than a person's pay, or anything of stage B waits.
+  It writes `status: 'locked'`, `recovered` and a new entry of `versions[]` in one update, only into the month as it
+  was read. The snapshot (`payroll/payrollLists.js` `snapshotOf`) holds everything section 5 D lists; the four
+  numbers by their last four characters only – never the sealed text. Every route that changes a month refuses a
+  locked one (409), and the month is shown from its snapshot.
+- **Reopen** (`POST /runs/:month/reopen`, the hospital admin, a written reason): back to `draft`, `recovered`
+  emptied, the version marked in `reopened[]`. Its payslips print "Replaced on …"; the next lock is the next version
+  and prints "Revised". The reopen box names the lists already saved from that version.
+- **Payslips** (`GET /runs/:month/payslips`, `?version=`): from the snapshot, or – while the month is open – from the
+  sheet as it stands, every page "DRAFT – not for payment". One a page.
+- **Lists** (`GET /runs/:month/lists/register|pf|esi|pt`): CSV through `utils/csv.js`, from the locked version only,
+  each download kept in `downloads[]`. The PF and ESI lists carry the last four characters of the UAN and the ESI
+  number – section 6 lets a full number out through one audited route, one person at a time. **Two switches on the
+  hospital, both off, for the hospital admin only** (`Tenant.payroll.fullNumbers`, `.bankList`; Payroll → Settings):
+  full numbers in the PF and ESI lists, and the bank payment list (`…/lists/bank`: name, bank, IFSC, full account
+  number, take-home). Both are the owner's to decide (section 8). The full numbers are unsealed when the file is
+  made and go nowhere else – not into the snapshot, not into the audit log, which says "full" for such a file.
+- **A pay entry a locked month was paid with is not corrected** (section 4): the lock writes `PayrollRun.used`
+  (person and the entry's first day), the staff route refuses to correct such an entry and names the month; a
+  reopen empties it.
+- **Payroll → Lists** (`/payroll/lists`): every locked month with its payslips and lists; `GET /api/payroll/runs`
+  gives the months with their version and what was saved – never a snapshot.
+- **Sample staff:** `npm run sample:payroll -w server -- "<hospital>"` (made-up people, the codes of the sample file).
+- Eight more audit actions (`PAYROLL_RATES_CHANGED`, `_ADVANCE_GIVEN`, `_ADVANCE_CHANGED`, `_MONTH_ADJUSTED`,
+  `_MONTH_LOCKED`, `_MONTH_REOPENED`, `_PAYSLIPS_PRINTED`, `_LIST_DOWNLOADED`): the month, the person, which group or
+  list, the version, the reopen reason – never an amount. Nothing for the super admin's readers. `StaffAdvance` in
+  `LEFT_OUT`.
+- **For the owner, added to section 8:** should the PF and ESI lists carry full numbers and is a bank payment list
+  wanted (both are built and switched off); does the labour welfare fund apply. **For the accountant, added:** the six rules above.
 
 **What can start now, and what waits**
 - Stage A (the accounts login, the staff list, the settings) depends on nothing but the two questions to the owner
@@ -312,6 +433,10 @@ usual colour + icon + word.
    and it is the one place full account numbers would leave Perinexa.
 3. Whether the accounts login should also take over the money reports and Tally files that only the hospital admin
    sees today. Nothing changes unless you say so.
+4. *(Added 24 Nov 2026, with stages C and D.)* Whether the PF list and the ESI list should carry each person's full
+   PF number (UAN) and ESI number. As built they show the last four characters, like every other screen and paper;
+   a switch in Payroll → Settings, off, puts the full numbers in. The bank payment list of question 2 is built the
+   same way: off until you say yes.
 
 **From the accountant** – in their own words, on paper or by message to you
 1. One day's pay: the monthly salary divided by the days of that month, by 30, or by 26. Whether weekly offs and
@@ -325,6 +450,11 @@ usual colour + icon + word.
 8. Advances: any limit on how much may be taken back in one month.
 9. What the payslip and the salary register must show by law, and whether the labour welfare fund applies.
 10. How the monthly TDS figure for each person will reach the accounts person.
+11. *(Added 24 Nov 2026, with stages C and D.)* The six rules the sums use until you say otherwise: every part of
+    the pay is reduced alike for unpaid days; PF is worked out on the earned parts that count for PF (on no more than
+    the pay limit); ESI on the earned parts that count for ESI; professional tax is looked up on the pay for the month
+    plus any one-off addition; PF and ESI are each rounded to the nearest rupee; deductions are taken in the order
+    PF, ESI, professional tax, TDS, one-off deductions, advances.
 
 **DRAFT rates – not checked, not for use.** These are from general knowledge on 23 Nov 2026, not from the current
 government notifications. They are here only so the accountant has something to correct. Professional tax differs by

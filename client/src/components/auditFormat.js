@@ -521,6 +521,27 @@ export const AUDIT_LABELS = {
   TALLY_BATCH_CREATED: 'Tally batch prepared',
   TALLY_FILE_DOWNLOADED: 'Tally file downloaded',
   TALLY_VOUCHER_STATUS: 'Tally entry status changed',
+  // Payroll, Stage A (docs/PAYROLL_BUILD_NOTE.md)
+  PAYROLL_STAFF_LIST_VIEWED: 'Payroll staff list opened',
+  PAYROLL_STAFF_VIEWED: 'Payroll: staff member opened',
+  PAYROLL_STAFF_ADDED: 'Payroll: staff member added',
+  PAYROLL_STAFF_CHANGED: 'Payroll: staff member changed',
+  PAYROLL_NUMBER_VIEWED: 'Payroll: number shown in full',
+  PAYROLL_SETTINGS_CHANGED: 'Payroll settings changed',
+  PAYROLL_SHEET_VIEWED: 'Payroll: salary sheet opened',
+  PAYROLL_ATTENDANCE_READ: 'Payroll: attendance file read',
+  PAYROLL_ATTENDANCE_REMOVED: 'Payroll: attendance file removed',
+  PAYROLL_CODE_LEFT_OUT: 'Payroll: attendance code left out',
+  PAYROLL_DAYS_CORRECTED: 'Payroll: paid days written by hand',
+  // Payroll, Stages C and D
+  PAYROLL_RATES_CHANGED: 'Payroll: rates changed',
+  PAYROLL_ADVANCE_GIVEN: 'Payroll: advance given',
+  PAYROLL_ADVANCE_CHANGED: 'Payroll: advance changed',
+  PAYROLL_MONTH_ADJUSTED: 'Payroll: a person’s month changed',
+  PAYROLL_MONTH_LOCKED: 'Payroll: month locked',
+  PAYROLL_MONTH_REOPENED: 'Payroll: month reopened',
+  PAYROLL_PAYSLIPS_PRINTED: 'Payroll: payslips opened to print',
+  PAYROLL_LIST_DOWNLOADED: 'Payroll: monthly list saved',
   // Billing extras (4 Oct 2026)
   BILL_INSURANCE_CHANGED: 'Insurance details of a bill changed',
   INSURANCE_CLAIM_SET: 'Insurance approved amount set on a bill',
@@ -1036,6 +1057,16 @@ const BILLING_SETTING_WORDS = { upiId: 'UPI ID', payeeName: 'payee name' };
 const TALLY_SETTING_WORDS = { companyName: 'Tally company', booksFrom: 'day the books start', inpatientIssues: 'medicines issued to admitted patients', ledgers: 'account names', voucherTypes: 'voucher type names' };
 const TALLY_STATUS_WORDS = { exported: 'waiting for Tally (sent again)', imported: 'imported', failed: 'refused by Tally', skipped: 'skipped' };
 const TALLY_PART_WORDS = { vouchers: 'entries file', masters: 'account names file' };
+// Payroll: whose record and which fields – the log never holds an amount or one of the four numbers
+const PAYROLL_FIELD_WORDS = { staffNumber: 'staff number', name: 'name', designation: 'designation', department: 'department', joinedOn: 'joining day', leftOn: 'last working day', isActive: 'on or off the payroll', userId: 'login', attendanceCodes: 'attendance codes', bank: 'bank name and IFSC', pay: 'pay', uan: 'PF number (UAN)', esiNumber: 'ESI number', pan: 'PAN', accountNumber: 'bank account number' };
+const PAYROLL_SETTING_WORDS = { parts: 'salary parts', dayBasis: 'how one day’s pay is counted', weeklyOffsPaid: 'weekly offs', holidaysPaid: 'holidays', rounding: 'rounding', confirmedBy: 'accountant’s name', confirmedOn: 'date confirmed', bankList: 'bank payment list on or off', fullNumbers: 'full numbers in the PF and ESI lists on or off' };
+const PAYROLL_RATE_WORDS = { pf: 'PF', esi: 'ESI', pt: 'professional tax' };
+const PAYROLL_LIST_WORDS = { register: 'salary register', pf: 'PF list', esi: 'ESI list', pt: 'professional tax list', bank: 'bank payment list' };
+const PAYROLL_MONTH_WORDS = { tds: 'TDS for the month', lines: 'one-off additions and deductions', instalments: 'advance instalment for the month' };
+const PAYROLL_ADVANCE_WORDS = { instalment: 'monthly instalment', firstMonth: 'first month taken back', note: 'note', stopped: 'stopped or started again' };
+const payrollStaffOf = (d) => (d.name ? `${d.name}${d.staffNumber ? ` (${d.staffNumber})` : ''}` : '');
+// "2026-10" → "October 2026"
+const payrollMonthOf = (d) => (/^\d{4}-\d{2}$/.test(d.month ?? '') ? new Date(`${d.month}-01T00:00:00Z`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : '');
 const CLAIM_LAYOUT_WORDS = { claim: 'claim form', pmjay: 'PM-JAY claim sheet' };
 const billOf = (d) => (d.number ? `Bill ${d.number}` : 'A bill');
 const namesOf = (fields, words) => (Array.isArray(fields) ? fields.map((f) => words[f] ?? f).join(', ') : '');
@@ -1782,6 +1813,43 @@ export function describeAudit(entry) {
       return joined(d.number ? `Batch ${d.number}` : 'A batch', TALLY_PART_WORDS[d.part] ?? '');
     case 'TALLY_VOUCHER_STATUS':
       return joined(d.key ? `Entry ${d.key}` : d.number ? `Batch ${d.number}` : 'Entries', TALLY_STATUS_WORDS[d.status] ?? d.status ?? '', d.count != null ? count(d.count, 'entry', 'entries') : '');
+    case 'PAYROLL_STAFF_LIST_VIEWED':
+      return d.shown != null ? count(d.shown, 'staff member') : '';
+    case 'PAYROLL_STAFF_VIEWED':
+      return payrollStaffOf(d);
+    case 'PAYROLL_STAFF_ADDED':
+    case 'PAYROLL_STAFF_CHANGED':
+      return joined(payrollStaffOf(d), namesOf(d.fields, PAYROLL_FIELD_WORDS));
+    case 'PAYROLL_NUMBER_VIEWED':
+      return joined(payrollStaffOf(d), PAYROLL_FIELD_WORDS[d.field] ?? '');
+    case 'PAYROLL_SETTINGS_CHANGED':
+      return joined(namesOf(d.fields, PAYROLL_SETTING_WORDS));
+    case 'PAYROLL_SHEET_VIEWED':
+      return joined(payrollMonthOf(d), d.people != null ? count(d.people, 'person', 'people') : '');
+    case 'PAYROLL_ATTENDANCE_READ':
+      return joined(payrollMonthOf(d), d.fileName ?? '', d.rows != null ? count(d.rows, 'row') : '', d.people != null ? count(d.people, 'person', 'people') : '', d.unknown ? `${count(d.unknown, 'code')} not known` : '');
+    case 'PAYROLL_ATTENDANCE_REMOVED':
+      return joined(payrollMonthOf(d), d.fileName ?? '', d.people != null ? count(d.people, 'person', 'people') : '');
+    case 'PAYROLL_CODE_LEFT_OUT':
+      return joined(payrollMonthOf(d), d.code ? `code ${d.code}` : '');
+    case 'PAYROLL_DAYS_CORRECTED':
+      return joined(payrollMonthOf(d), payrollStaffOf(d), d.removed ? 'taken back' : '');
+    case 'PAYROLL_RATES_CHANGED':
+      return joined(PAYROLL_RATE_WORDS[d.group] ?? '', d.confirmed === true ? 'confirmed by the accountant' : d.confirmed === false ? 'saved as DRAFT' : '');
+    case 'PAYROLL_ADVANCE_GIVEN':
+      return payrollStaffOf(d);
+    case 'PAYROLL_ADVANCE_CHANGED':
+      return joined(payrollStaffOf(d), namesOf(d.fields, PAYROLL_ADVANCE_WORDS));
+    case 'PAYROLL_MONTH_ADJUSTED':
+      return joined(payrollMonthOf(d), payrollStaffOf(d), namesOf(d.fields, PAYROLL_MONTH_WORDS));
+    case 'PAYROLL_MONTH_LOCKED':
+      return joined(payrollMonthOf(d), d.version != null ? `version ${d.version}` : '', d.people != null ? count(d.people, 'person', 'people') : '');
+    case 'PAYROLL_MONTH_REOPENED':
+      return joined(payrollMonthOf(d), d.version != null ? `version ${d.version}` : '', d.reason ?? '');
+    case 'PAYROLL_PAYSLIPS_PRINTED':
+      return joined(payrollMonthOf(d), d.draft ? 'DRAFT' : d.version != null ? `version ${d.version}` : '', d.people != null ? count(d.people, 'payslip') : '');
+    case 'PAYROLL_LIST_DOWNLOADED':
+      return joined(payrollMonthOf(d), PAYROLL_LIST_WORDS[d.list] ?? '', d.version != null ? `version ${d.version}` : '', d.full ? 'with numbers in full' : '');
     case 'ABHA_VERIFIED':
     case 'ABHA_LINKED':
     case 'ABHA_CREATED':
@@ -1892,6 +1960,9 @@ export function describeAudit(entry) {
     case 'PHARMACY_REGISTER_VIEWED':
       return joined(`${SCHEDULE_WORDS[d.type] ?? 'Drug'} register`, periodOf(d));
     case 'PHARMACY_DUES_SETTLED':
+      // Settlement (24 Nov 2026): the chosen credit bills settled in full – received, advance and concession
+      if (d.settlement) return joined(d.amountPaise != null ? `${rupeesOf(d.amountPaise)} settled` : 'Bills settled', d.invoices?.length ? `on ${d.invoices.map((x) => x.number).join(', ')}` : '', d.receivedPaise ? `${rupeesOf(d.receivedPaise)} received` : '', d.advancePaise ? `${rupeesOf(d.advancePaise)} from the advance` : '', d.concessionPaise ? `${rupeesOf(d.concessionPaise)} concession` : '');
+    // falls through
     case 'PHARMACY_ADVANCE_USED':
       return joined(d.amountPaise != null ? rupeesOf(d.amountPaise) : '', d.invoices?.length ? `on ${d.invoices.map((x) => x.number).join(', ')}` : '', d.duePaise ? `${rupeesOf(d.duePaise)} still due` : '');
     case 'PHARMACY_ADVANCE_TAKEN':
@@ -1905,6 +1976,7 @@ export function describeAudit(entry) {
       return joined(MIS_WORDS[d.report] ?? 'Pharmacy report', periodOf(d), d.rows != null ? count(d.rows, 'row') : '');
     case 'PHARMACY_PATIENT_LOOKED_UP':
       if (d.by === 'list') return joined('List of people billed', count(d.people ?? 0, 'person', 'people'));
+      if (d.by === 'settlement') return joined('Settlement', count(d.patientIds?.length ?? 0, 'record'), d.walkInBills != null ? count(d.walkInBills, 'walk-in bill') : '');
       return joined(d.by === 'phone' ? 'By phone number' : d.by === 'name' ? 'By name, among people billed' : 'By patient number', count(d.patientIds?.length ?? 0, 'record'), d.walkInBills ? count(d.walkInBills, d.by === 'name' ? 'walk-in customer' : 'walk-in bill') : '');
     case 'PHARMACY_EXPORTED':
       return joined(PHARMACY_EXPORT_WORDS[d.what] ?? 'export', periodOf(d), d.rows != null ? count(d.rows, 'row') : '');

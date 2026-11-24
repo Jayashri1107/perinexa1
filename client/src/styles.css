@@ -22,6 +22,7 @@
 @import './styles/pages-beds.css';
 @import './styles/pages-billing.css';
 @import './styles/pages-pharmacy.css';
+@import './styles/pages-payroll.css'; /* Payroll, Stage A */
 @import './styles/pages-followups.css';
 @import './styles/pages-nicu.css'; /* Build 13 – NICU admission */
 @import './styles/pages-reception.css';

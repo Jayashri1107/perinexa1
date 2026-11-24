@@ -35,6 +35,7 @@ export const PAGES = [
   { key: 'formulary', label: 'Formulary' },
   { key: 'incidents', label: 'Incidents' },
   { key: 'privileges', label: 'Privileges' },
+  { key: 'payroll', label: 'Payroll' },
   { key: 'hospital-admin', label: 'Hospital admin' },
 ];
 export const PAGE_KEYS = PAGES.map((p) => p.key);
@@ -51,6 +52,7 @@ export const PAGE_ROUTES = [
   { page: 'specimens', prefix: '/specimens' },
   { page: 'formulary', prefix: '/formulary' },
   { page: 'privileges', prefix: '/privileges' },
+  { page: 'payroll', prefix: '/payroll' },
   { page: 'clinical-audit', prefix: '/clinical-audit' },
   { page: 'clinical-audit', prefix: '/case-reviews' },
   { page: 'clinical-audit', prefix: '/dashboards' },

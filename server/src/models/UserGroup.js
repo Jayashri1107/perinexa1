@@ -7,7 +7,7 @@ import { TENANT_ROLES } from './Membership.js';
 //  - roles: what the group's people may do and which patient records they may open – the same roles and need-to-know
 //    rules as before (utils/patientAccess.js); a member's roles in a hospital are the group's.
 //  - pages: per menu item (access/pages.js) None or View; a menu item not listed is Edit.
-//  - system: one of the 13 groups made from the old roles – it keeps its roles, its pages may be changed.
+//  - system: one of the 14 groups made from the roles – it keeps its roles, its pages may be changed.
 // Deactivated, never deleted. Every change is in the audit log.
 const userGroupSchema = new mongoose.Schema(
   {

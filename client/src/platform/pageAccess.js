@@ -29,6 +29,7 @@ export const PAGES = [
   { key: 'formulary', label: 'Formulary' },
   { key: 'incidents', label: 'Incidents' },
   { key: 'privileges', label: 'Privileges' },
+  { key: 'payroll', label: 'Payroll' },
   { key: 'hospital-admin', label: 'Hospital admin' },
 ];
 export const PAGE_KEYS = PAGES.map((p) => p.key);

@@ -11,6 +11,8 @@ export default defineConfig({
       NODE_ENV: 'test',
       MONGO_URI: `mongodb://127.0.0.1:27017/${testDb}`,
       JWT_SECRET: 'test-only-secret-that-is-long-enough-1234567890',
+      // Seals the payroll's four numbers in the tests (a key of its own, never JWT_SECRET)
+      PAYROLL_KEY: 'test-only-payroll-key-that-is-long-enough-0987654321',
       LOGIN_RATE_LIMIT_MAX: '1000',
       PORTAL_OTP_RATE_LIMIT_MAX: '1000',
       // OTPs per mobile number: off, except where a test turns them on (tests ask for several OTPs in a row)

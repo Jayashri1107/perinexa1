@@ -90,6 +90,8 @@ over the live one. **How long a restore took when it was last tried: not tried y
 | Many people locked out | wrong passwords (3 tries → 2 minutes) or the login limit | wait 2 minutes; an admin resets a password from the staff screen |
 | An admin lost the phone with the authenticator app | two-step sign-in (health check H4) | a recovery code signs in once; otherwise the super admin: Users → the person → Reset two-step sign-in (they set it up again at the next sign-in) |
 | Nobody with two-step sign-in can sign in after `JWT_SECRET` was changed | the secrets are encrypted with a key from `JWT_SECRET` | recovery codes still work; or put the old `JWT_SECRET` back; last resort `TWO_STEP_FOR_ADMINS=false` in `server/.env` and restart, then each person resets under My settings |
+| Payroll says "This number can't be kept yet" (PF number, ESI number, PAN, bank account) | `PAYROLL_KEY` is not in `/opt/perinexa/app/server/.env` | make one: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`; add the line `PAYROLL_KEY=…` to `server/.env`; `sudo systemctl restart perinexa`; **put the key in the company password manager at once** – never the same value as `JWT_SECRET` |
+| Payroll says "This number can no longer be read" | `PAYROLL_KEY` was changed or lost: the kept numbers were sealed with the old key | put the old `PAYROLL_KEY` back and restart; if it is lost for good, the accounts person types the numbers again (each save seals with the present key) – pay, names and everything else are not affected |
 | Suspected data leak or break-in | – | do not delete anything; tell the owner at once; see "Data breach" below |
 
 ## Data breach (personal data seen or taken by someone who should not have)

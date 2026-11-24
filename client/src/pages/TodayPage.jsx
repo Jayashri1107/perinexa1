@@ -15,6 +15,7 @@ import { ScanShareSection } from './abdm/ScanShare.jsx';
 import { SignupsNotice, SignupsSection } from './patients/SignupsPage.jsx';
 import { ContinueVisits } from './visits/ContinueVisits.jsx';
 import { MyDayCard } from './MyDayCard.jsx';
+import { PayrollToday } from './payroll/PayrollToday.jsx';
 import { MeowsWardPills } from './inpatient/MeowsWardPills.jsx';
 import { BillingToday } from './billing/BillingToday.jsx';
 import { PharmacyActions, PharmacyToday } from './pharmacy/PharmacyToday.jsx';
@@ -260,6 +261,9 @@ export function TodayPage() {
   }
   // Clinical Requirements Group A: the newborn follow-up coordinator and the quality lead start on their own lists
   const HOME = { followup_coordinator: '/newborn-follow-up', quality: '/incidents' };
+  // The accounts login (24 Nov 2026): a Today of its own – what is waiting in the payroll, in counts only. Not a
+  // jump to the staff list: Today and Payroll are two different pages.
+  if (!lenses.length && all.includes('accounts') && all.every((r) => r === 'accounts' || HOME[r])) return <PayrollToday />;
   if (!lenses.length && all.length && all.every((r) => HOME[r])) return <Navigate to={HOME[all[0]]} replace />;
   if (!lenses.length) return <RoleToday roles={all} />;
   const lens = lenses.find((l) => l.key === params.get('view')) ?? lenses[0];
@@ -285,7 +289,7 @@ export function TodayPage() {
  * For a hospital admin (no patient data) every number comes without a name (the server sends counts only).
  */
 function OverviewToday({ roles, lensBar = null }) {
-  const { user } = useAuth();
+  const { user, activeMembership } = useAuth();
   const front = canSeeCalendar(roles); // doctors, RMOs, reception: today's list itself
   const isAdmin = roles.includes('admin');
   const today = useFetch(front ? '/today' : null);
@@ -308,7 +312,7 @@ function OverviewToday({ roles, lensBar = null }) {
       : null;
   const going = stays.data ? (stays.data.goingHomeCount ?? stays.data.goingHome.length) : 0;
   const gone = stays.data ? (stays.data.dischargedTodayCount ?? stays.data.dischargedToday.length) : 0;
-  const areas = hospitalModules(roles).filter((m) => m.key !== 'today');
+  const areas = hospitalModules(roles, { platform: Boolean(activeMembership?.platform) }).filter((m) => m.key !== 'today');
   return (
     <>
       <PageHeader breadcrumbs={[{ label: 'Today' }]} title="Today" />

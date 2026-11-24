@@ -69,8 +69,8 @@ describe('My settings and Hospital admin', () => {
 describe('the left menu by role', () => {
   it('Analytics for doctors and hospital admins only; Appointments for reception, doctors, RMOs and nurses; Calendar for doctors, RMOs and reception; Billing for reception and admins; Pharmacy for pharmacists and admins (exact lists pin the order too)', () => {
     expect(menu(['doctor'])).toEqual(['Today', 'Patients', 'Records', 'Appointments', 'Calendar', 'Lab', 'Referrals', 'Theatre', 'Specimens', 'Newborn follow-up', 'Clinical audit', 'Analytics', 'Clinic library', 'Formulary', 'Incidents', 'Privileges']);
-    expect(menu(['admin'])).toEqual(['Today', 'Sonography', 'Billing', 'Daily expenses', 'Pharmacy', 'Clinical audit', 'Analytics', 'Incidents', 'Privileges', 'Hospital admin']); // Sonography: the counts only (owner, 24 Oct 2026)
-    expect(menu(['doctor', 'admin'])).toEqual(['Today', 'Patients', 'Records', 'Appointments', 'Calendar', 'Lab', 'Sonography', 'Referrals', 'Billing', 'Daily expenses', 'Pharmacy', 'Theatre', 'Specimens', 'Newborn follow-up', 'Clinical audit', 'Analytics', 'Clinic library', 'Formulary', 'Incidents', 'Privileges', 'Hospital admin']); // once, not twice
+    expect(menu(['admin'])).toEqual(['Today', 'Sonography', 'Billing', 'Daily expenses', 'Pharmacy', 'Clinical audit', 'Analytics', 'Incidents', 'Privileges', 'Payroll', 'Hospital admin']); // Sonography: the counts only (owner, 24 Oct 2026)
+    expect(menu(['doctor', 'admin'])).toEqual(['Today', 'Patients', 'Records', 'Appointments', 'Calendar', 'Lab', 'Sonography', 'Referrals', 'Billing', 'Daily expenses', 'Pharmacy', 'Theatre', 'Specimens', 'Newborn follow-up', 'Clinical audit', 'Analytics', 'Clinic library', 'Formulary', 'Incidents', 'Privileges', 'Payroll', 'Hospital admin']); // once, not twice
     expect(menu(['rmo'])).toEqual(['Today', 'Patients', 'Records', 'Appointments', 'Beds', 'Lab', 'Referrals', 'Theatre', 'Specimens', 'Newborn follow-up', 'Clinical audit', 'Analytics', 'Clinic library', 'Formulary', 'Incidents']); // Analytics: only Ask your records; no Calendar for an RMO alone (owner, 13 Oct 2026)
     expect(menu(['rmo', 'doctor'])).toContain('Calendar');
     // Sonography for the Sonography role only, and the admin's counts (owner, 10 Nov 2026 – doctors and RMOs order from her
@@ -84,6 +84,8 @@ describe('the left menu by role', () => {
     // The referral desk (brought over 19 Oct 2026): referrals, her identity details and her appointment
     expect(menu(['followup_coordinator'])).toEqual(['Today', 'Newborn follow-up', 'Incidents']); // never Patients (Group A item 4)
     expect(menu(['quality'])).toEqual(['Today', 'Clinical audit', 'Incidents', 'Privileges']); // never Patients (Group A item 6)
+    expect(menu(['accounts'])).toEqual(['Today', 'Payroll']); // the accounts login: the payroll only, never Patients (23 Nov 2026)
+    expect(hospitalModules(['admin', 'accounts', 'doctor'], { platform: true }).map((m) => m.label)).not.toContain('Payroll'); // never Perinexa's own staff
     expect(menu(['referral_desk'])).toEqual(['Today', 'Patients', 'Appointments', 'Referrals', 'Incidents']);
     expect(patientTabs(['referral_desk']).find((t) => t.label === 'New patient').menu.map((l) => l.to)).not.toContain('/patients/new/newborn'); // never a baby
     expect(patientTabs(['referral_desk']).find((t) => t.label === 'New patient').menu.map((l) => l.to)).not.toContain('/patients/new/pediatric'); // nor the Pediatric department card (14 Nov 2026)
@@ -91,12 +93,14 @@ describe('the left menu by role', () => {
     for (const roles of [['nurse'], ['receptionist'], ['lab'], ['pharmacist'], ['admin']]) expect(menu(roles), roles[0]).not.toContain('Referrals');
     expect(moduleByKey('referrals').tabs.map((t) => t.to)).toEqual(['/referrals', '/referrals/doctors', '/referrals/review', '/referrals/slip']);
     // The pharmacist (owner, 26 Oct 2026): the pharmacy's sections in the sidebar; New bill and Sold as one Sales bill
-    // page with two tabs (9 Nov 2026); Search bill after it (23 Nov 2026)
-    expect(menu(['pharmacist'])).toEqual(['Today', 'Sales bill', 'Search bill', 'Ward requests', 'Discharge clearance', 'Suppliers', 'Purchase bills', 'Stock', 'Medicines', 'Reports', 'Pharmacy settings', 'Formulary', 'Incidents']);
+    // page with two tabs (9 Nov 2026); Search bill after it (23 Nov 2026), then Settlement (24 Nov 2026)
+    expect(menu(['pharmacist'])).toEqual(['Today', 'Sales bill', 'Search bill', 'Settlement', 'Ward requests', 'Discharge clearance', 'Suppliers', 'Purchase bills', 'Stock', 'Medicines', 'Reports', 'Pharmacy settings', 'Formulary', 'Incidents']);
     expect(menu(['pharmacist', 'receptionist'])).toContain('Patients');
     expect(hospitalModules(['pharmacist']).find((m) => m.label === 'Sales bill').activeFor).toEqual(['/pharmacy/issue', '/pharmacy/invoices']);
     expect(hospitalModules(['pharmacist']).find((m) => m.label === 'Search bill')).toMatchObject({ key: 'pharmacy-search-bill', to: '/pharmacy/search-bill' }); // a key starting with "pharmacy": the Pharmacy page access covers it
+    expect(hospitalModules(['pharmacist']).find((m) => m.label === 'Settlement')).toMatchObject({ key: 'pharmacy-settlement', to: '/pharmacy/settlement' });
     expect(menu(['admin'])).not.toContain('Search bill'); // the counter is for pharmacists
+    expect(menu(['admin'])).not.toContain('Settlement');
     expect(hospitalModules(['admin']).find((m) => m.label === 'Pharmacy').to).toBe('/pharmacy/stock'); // the counter is for pharmacists
     expect(menu(['receptionist', 'lab'])).not.toContain('Analytics');
     expect(hospitalModules(['nurse', 'rmo']).find((m) => m.label === 'Analytics').tabs.map((t) => t.label)).toEqual(['Ask your records']);

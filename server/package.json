@@ -11,6 +11,7 @@
     "beds:hospital": "node scripts/hospital-beds.js",
     "doctors:hospital": "node scripts/hospital-doctors.js",
     "sample:lab": "node scripts/sample-lab.js",
+    "sample:payroll": "node scripts/sample-payroll.js",
     "test": "vitest run"
   },
   "dependencies": {

@@ -27,13 +27,13 @@ const groupsUrl = '/api/platform/user-groups';
 const membersUrl = () => `/api/platform/tenants/${tenant._id}/members`;
 
 describe('moving the old roles into groups', () => {
-  it('makes the 13 groups, a group for each mix of roles, and moves everyone once', async () => {
+  it('makes the 14 groups, a group for each mix of roles, and moves everyone once', async () => {
     const doc = await addMember(await createUser({ name: 'Sample Doctor' }), tenant, 'doctor');
     const both = await addMember(await createUser({ name: 'Sample Doctor Admin' }), tenant, ['doctor', 'admin']);
     const first = await moveToUserGroups();
-    expect(first).toEqual({ groupsMade: 14, membersMoved: 2 });
+    expect(first).toEqual({ groupsMade: 15, membersMoved: 2 }); // the 14 role groups and one for the doctor who is also the admin
     const groups = await UserGroup.find({}).lean();
-    expect(groups.filter((g) => g.system)).toHaveLength(13);
+    expect(groups.filter((g) => g.system)).toHaveLength(14);
     const mix = groups.find((g) => !g.system);
     expect(mix).toMatchObject({ name: 'Doctor + Hospital admin', roles: ['admin', 'doctor'] });
     expect(String((await Membership.findById(doc._id)).groupId)).toBe(String(groups.find((g) => g.name === 'Doctor')._id));

@@ -1,0 +1,8 @@
+Sample Hospital attendance - October 2026 (made-up names, for testing only)
+Code,Name,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31
+A-17,"Attendant One",P,P,P,W,P,P,P,P,P,H,W,P,P,O,P,P,P,W,P,P,A,P,L,P,W,P,P,P,P,P,P
+N-12,"Nurse Two",P,P,P,W,P,P,P,P,P,P,W,P,P,P,P,P,P,W,P,P,P,P,P,P,W,P,P,P,P,P,P
+C-4,"Cleaner Four",P,P,P,W,P,P,P,P,P,P,W,P,P,P,P,P,P,W,P,P,P,P,P,P,W,P,P,P,P,P,P
+X-9,"Guard Three",P,P,P,W,P,P,P,P,P,P,W,P,P,P,P,P,P,W,P,P,P,P,P,P,W,P,P,P,A,A,A
+Y-1,"Old Tester",P,P,P,W,P,P,P,P,P,P,W,P,P,P,P,P,P,W,P,P,P,P,P,P,W,P,P,P,P,P,P
+,Total

@@ -1,4 +1,4 @@
-import { BadgeCheck, FolderArchive, BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, CirclePlus, ClipboardPen, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Scissors, Search, Settings, ShieldCheck, Siren, Stethoscope, TestTube, Truck, UserCog, Users, Wallet } from 'lucide-react';
+import { BadgeCheck, Banknote, FolderArchive, BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, CirclePlus, ClipboardPen, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Scissors, Search, Settings, ShieldCheck, Siren, Stethoscope, TestTube, Truck, UserCog, Users, Wallet } from 'lucide-react';
 import { ANALYTICS_ROLES } from '../pages/analytics/analyticsRoles.js';
 import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 import { CASE_REVIEW_ROLES, CLINICAL_AUDIT_ROLES, QUALITY_TABS } from '../pages/quality/qualityFormat.js';
@@ -302,6 +302,8 @@ const PHARMACIST_MENU = [
   { key: 'pharmacy', label: 'Sales bill', icon: ReceiptText, to: '/pharmacy', end: true, activeFor: ['/pharmacy/issue', '/pharmacy/invoices'] },
   // Search bill (23 Nov 2026, the developer): the earlier software's "Browse Sales Bill" window – a bill made earlier, found and printed again
   { key: 'pharmacy-search-bill', label: 'Search bill', icon: Search, to: '/pharmacy/search-bill' },
+  // Settlement (24 Nov 2026, the developer): the earlier software's "Pharmacy Settlement" window – credit bills settled
+  { key: 'pharmacy-settlement', label: 'Settlement', icon: Banknote, to: '/pharmacy/settlement' },
   { key: 'pharmacy-ward-requests', label: 'Ward requests', icon: BedDouble, to: '/pharmacy/ward-requests' }, // PH12
   { key: 'pharmacy-discharge', label: 'Discharge clearance', icon: ListChecks, to: '/pharmacy/discharge-clearance' }, // 18 Nov 2026
   { key: 'pharmacy-suppliers', label: 'Suppliers', icon: Truck, to: '/pharmacy/suppliers' },
@@ -539,9 +541,27 @@ export const HOSPITAL_FORMULARY = { key: 'formulary', label: 'Formulary', icon: 
 export const PRIVILEGE_MENU_ROLES = ['admin', 'quality', 'doctor'];
 export const HOSPITAL_PRIVILEGES = { key: 'privileges', label: 'Privileges', icon: BadgeCheck, to: '/privileges', tabs: [{ label: 'Clinical privileges', to: '/privileges', end: true }] };
 export const HOSPITAL_CLINICAL_AUDIT = { key: 'clinical-audit', label: 'Clinical audit', icon: ListChecks, to: '/clinical-audit', tabs: QUALITY_TABS };
+// Payroll (owner's choice of 23 Nov 2026 – docs/PAYROLL_BUILD_NOTE.md, Stage A): the accounts login and the hospital
+// admin only – never Perinexa's own staff inside a hospital. Same list as server/src/payroll/payrollRules.js.
+export const PAYROLL_ROLES = ['accounts', 'admin'];
+export const HOSPITAL_PAYROLL = {
+  key: 'payroll',
+  label: 'Payroll',
+  icon: Banknote,
+  to: '/payroll',
+  tabs: [
+    { label: 'Staff', to: '/payroll', end: true, activeFor: '/payroll/staff' },
+    { label: 'Run payroll', to: '/payroll/run', end: true }, // Stages B to D: the attendance file → the sheet → the locked month
+    { label: 'Advances', to: '/payroll/advances', end: true }, // Stage C: advances given and taken back from salary
+    { label: 'Lists', to: '/payroll/lists', end: true }, // Stage D: payslips and the monthly lists of every locked month
+    { label: 'Rates', to: '/payroll/rates', end: true }, // Stage C: PF, ESI, professional tax – DRAFT until confirmed
+    { label: 'Settings', to: '/payroll/settings', end: true },
+  ],
+};
 
-// Menu for someone working in a hospital, based on ALL their roles there.
-export function hospitalModules(roles = []) {
+// Menu for someone working in a hospital, based on ALL their roles there. platform: a super admin or platform admin
+// who opened the hospital (they carry every role) – they never get Payroll.
+export function hospitalModules(roles = [], { platform = false } = {}) {
   if (!roles.length) return [];
   const modules = [HOSPITAL_TODAY];
   if (any(roles, FOLLOW_UP_ROLES)) modules.push(HOSPITAL_FOLLOW_UPS);
@@ -577,6 +597,7 @@ export function hospitalModules(roles = []) {
   if (any(roles, FORMULARY_ROLES)) modules.push(HOSPITAL_FORMULARY);
   if (any(roles, INCIDENT_ROLES)) modules.push(HOSPITAL_INCIDENTS);
   if (any(roles, PRIVILEGE_MENU_ROLES)) modules.push(HOSPITAL_PRIVILEGES);
+  if (!platform && any(roles, PAYROLL_ROLES)) modules.push(HOSPITAL_PAYROLL);
   if (roles.includes('admin')) modules.push(HOSPITAL_ADMIN);
   return modules;
 }
@@ -591,6 +612,7 @@ const TAB_BAR_ORDER = {
   referral_desk: ['today', 'referrals', 'patients', 'appointments'],
   followup_coordinator: ['newborn-follow-up', 'today'],
   quality: ['incidents', 'clinical-audit', 'today'],
+  accounts: ['payroll', 'today'],
   sonographer: ['today', 'scans', 'patients', 'appointments'],
   lab: ['lab', 'patients', 'today', 'billing'],
   billing: ['today', 'billing', 'patients', 'expenses'],
@@ -652,7 +674,7 @@ export const accountTabs = (memberships = []) => {
 /** Doctors and RMOs (anywhere): their professional details print on prescriptions. */
 export const isPrescriber = (memberships = []) => any(allRoles(memberships), PRESCRIBER_ROLES);
 
-const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_FOLLOW_UPS, HOSPITAL_PATIENTS, HOSPITAL_RECORDS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_REFERRALS, HOSPITAL_BILLING, HOSPITAL_EXPENSES, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_THEATRE, HOSPITAL_SPECIMENS, HOSPITAL_NEWBORN_FOLLOW_UP, HOSPITAL_CLINICAL_AUDIT, HOSPITAL_FORMULARY, HOSPITAL_INCIDENTS, HOSPITAL_PRIVILEGES, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
+const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_FOLLOW_UPS, HOSPITAL_PATIENTS, HOSPITAL_RECORDS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_REFERRALS, HOSPITAL_BILLING, HOSPITAL_EXPENSES, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_THEATRE, HOSPITAL_SPECIMENS, HOSPITAL_NEWBORN_FOLLOW_UP, HOSPITAL_CLINICAL_AUDIT, HOSPITAL_FORMULARY, HOSPITAL_INCIDENTS, HOSPITAL_PRIVILEGES, HOSPITAL_PAYROLL, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
 export const moduleByKey = (key) => ALL.find((m) => m.key === key);
 
 // Platform admins see every platform page; a tab that only makes something new shows when they may change that area.

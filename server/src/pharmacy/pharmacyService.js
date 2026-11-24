@@ -494,6 +494,7 @@ export function invoiceTotals(inv) {
   const sold = sum(inv.lines);
   const returned = sum((inv.returns ?? []).flatMap((r) => r.lines));
   const paid = (inv.payments ?? []).reduce((s, p) => s + (p.kind === 'refund' ? -p.amountPaise : p.amountPaise), 0);
+  const settlementConcessionPaise = (inv.concessions ?? []).reduce((s, c) => s + c.amountPaise, 0);
   const net = sold.amountPaise - returned.amountPaise;
   return {
     grossPaise: inv.lines.reduce((s, l) => s + (l.grossPaise ?? l.qty * l.mrpPaise), 0),
@@ -505,7 +506,8 @@ export function invoiceTotals(inv) {
     sgstPaise: sold.sgstPaise - returned.sgstPaise,
     // Paid at the counter: a walk-in, or a patient who paid here (13 Nov 2026); null when it went on her hospital bill
     paidPaise: inv.billId ? null : paid,
-    balancePaise: inv.billId ? null : net - paid,
+    settlementConcessionPaise,
+    balancePaise: inv.billId ? null : Math.max(0, net - paid - settlementConcessionPaise),
   };
 }
 
@@ -551,6 +553,7 @@ export function invoiceView(inv, { patient = null, today = new Date() } = {}) {
     })),
     returns: (inv.returns ?? []).map((r) => ({ number: r.number, at: r.at, byName: r.byName ?? '', reason: r.reason ?? '', amountPaise: sum(r.lines).amountPaise, lines: r.lines.map((x) => ({ lineId: String(x.lineId), qty: x.qty, amountPaise: x.amountPaise })) })),
     payments: (inv.payments ?? []).map((p) => ({ kind: p.kind, mode: p.mode, amountPaise: p.amountPaise, reference: p.reference ?? '', bank: p.bank ?? '', on: p.on ? isoDay(p.on) : null, authorisedBy: p.authorisedBy ?? '', narration: p.narration ?? '', at: p.at, byName: p.byName ?? '' })),
+    concessions: (inv.concessions ?? []).map((c) => ({ amountPaise: c.amountPaise, reason: c.reason ?? '', remarks: c.remarks ?? '', at: c.at, byName: c.byName ?? '' })),
     paymentRemarks: inv.paymentRemarks ?? '',
     creditAuthorisedBy: inv.creditAuthorisedBy ?? '',
     ...invoiceTotals(inv),
@@ -574,7 +577,7 @@ export async function invoiceViews(req, invoices) {
 export async function patientDues(req, patientId, { except = null } = {}) {
   const invoices = await PharmacyInvoice.find(
     { tenantId: req.tenantId, patientId, billId: null, ...(except ? { _id: { $ne: except } } : {}) },
-    { number: 1, lines: 1, returns: 1, payments: 1, billId: 1, created: 1, createdAt: 1 },
+    { number: 1, lines: 1, returns: 1, payments: 1, concessions: 1, billId: 1, created: 1, createdAt: 1 },
   )
     .sort({ 'created.at': 1, _id: 1 })
     .lean();

@@ -3,10 +3,11 @@ import { ChevronDown, ChevronRight, FileSpreadsheet, Printer } from 'lucide-reac
 import { useSearchParams } from 'react-router-dom';
 import { downloadFile } from '../../components/print/pdfExport.js';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
-import { Alert, formatDate } from '../../components/ui.jsx';
+import { Alert, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PharmacyLetterhead, money } from './pharmacyUi.jsx';
 import { DateText } from '../../components/DateText.jsx';
+import { amount } from './searchBill.js';
 
 // Pharmacy → Reports → Report list (13 Nov 2026, the developer, after the pharmacy's earlier software): two trees,
 // Inventory MIS (purchase and stock) and Pharmacy MIS (sales and returns, GST, schedule drugs); beside them the chosen
@@ -189,6 +190,212 @@ function MisTable({ report }) {
   );
 }
 
+// ---------- Pharmacy Daily Collection (24 Nov 2026) ----------
+// Sales collection as the pharmacy's earlier software printed it (server/src/pharmacy/dailyCollection.js): Cash Sales,
+// Cash Sales Return, Credit Sale and Due Collection, each with its Sub Total, rows numbered on through the sections;
+// then the money by mode (Sales, Sales Return, Advance, Advance Refund), the net collection, the amount by mode and the
+// sale types. On A4 landscape with the store's heading, the period, when it was printed and "Page 1 of 2".
+
+const DC_MONEY = [
+  ['netPaise', 'Net amount'],
+  ['cashPaise', 'Cash'],
+  ['chequePaise', 'Cheque'],
+  ['cardPaise', 'Card'],
+  ['neftPaise', 'NEFT'],
+  ['upiPaise', 'UPI'],
+  ['advancePaise', 'Adv. use amount'],
+];
+const DC_MODES = { cash: 'Cash', cheque: 'Cheque', card: 'Card', neft: 'NEFT', upi: 'UPI Transaction' };
+// Dates as the brand guide writes them (23 Nov 2026), not the earlier paper's 23/11/2026
+const dmy = (iso) => (/^\d{4}-\d{2}-\d{2}$/.test(iso ?? '') ? formatDate(iso) : (iso ?? ''));
+/** The period in the report's words: one day, or from – to. */
+export const dcPeriod = (from, to) => (from === to ? dmy(from) : `${dmy(from)} to ${dmy(to)}`);
+
+/** The four sections, one table: the column headings repeat on every printed page. */
+export function DailyCollectionTable({ daily }) {
+  let sr = 0;
+  return (
+    <table className="bill-report ph-dc-table">
+      <thead>
+        <tr>
+          <th scope="col">Sr. No</th>
+          <th scope="col">Date</th>
+          <th scope="col">Sales no</th>
+          <th scope="col">MR No</th>
+          <th scope="col">Patient name</th>
+          {DC_MONEY.map(([k, label]) => (
+            <th key={k} scope="col" className="num">
+              {label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      {daily.sections.map((section) => (
+        <tbody key={section.key}>
+          <tr className="ph-dc-section">
+            <th colSpan={5 + DC_MONEY.length} scope="rowgroup">
+              {section.title}
+            </th>
+          </tr>
+          {section.rows.map((r) => {
+            sr += 1;
+            return (
+              <tr key={`${section.key}-${r.invoiceId}-${r.date}-${sr}`}>
+                <td className="num">{sr}</td>
+                <td>{dmy(r.date)}</td>
+                <td className="tabular">{r.saleNumber}</td>
+                <td className="tabular">{r.mrn || '–'}</td>
+                <td className="ph-dc-name">{r.name}</td>
+                {DC_MONEY.map(([k]) => (
+                  <td key={k} className="num">
+                    {amount(r[k])}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+          {!section.rows.length && (
+            <tr>
+              <td colSpan={5 + DC_MONEY.length} className="muted ph-dc-none">
+                None in this period.
+              </td>
+            </tr>
+          )}
+          <tr className="ph-dc-sub">
+            <th colSpan={5} scope="row">
+              Sub total
+            </th>
+            {DC_MONEY.map(([k]) => (
+              <td key={k} className="num">
+                {amount(section.total[k])}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      ))}
+    </table>
+  );
+}
+
+/** Under the sections: the money by mode, the net collection, the amount by mode and the sale types. */
+export function DailyCollectionEnd({ daily }) {
+  const m = daily.summary;
+  const total = (k) => daily.modes.reduce((n, x) => n + x[k], 0);
+  const byMode = Object.fromEntries(daily.modes.map((x) => [x.mode, x]));
+  return (
+    <div className="ph-dc-end">
+      <div className="ph-dc-money">
+        <table className="ph-dc-modes">
+          <caption className="sr-only">Collection by mode</caption>
+          <thead>
+            <tr>
+              <td />
+              <th scope="col">Sales</th>
+              <th scope="col">Sales return</th>
+              <th scope="col">Advance</th>
+              <th scope="col">Advance refund</th>
+            </tr>
+          </thead>
+          <tbody>
+            {daily.modes.map((x) => (
+              <tr key={x.mode}>
+                <th scope="row">{DC_MODES[x.mode] ?? x.mode}</th>
+                <td className="num">{amount(x.salesPaise)}</td>
+                <td className="num">{amount(x.returnPaise)}</td>
+                <td className="num">{amount(x.advancePaise)}</td>
+                <td className="num">{amount(x.advanceRefundPaise)}</td>
+              </tr>
+            ))}
+            <tr className="ph-dc-total">
+              <th scope="row">Total</th>
+              <td className="num">{amount(total('salesPaise'))}</td>
+              <td className="num">{amount(total('returnPaise'))}</td>
+              <td className="num">{amount(total('advancePaise'))}</td>
+              <td className="num">{amount(total('advanceRefundPaise'))}</td>
+            </tr>
+            <tr className="ph-dc-net">
+              <th scope="row">Net collection</th>
+              <td className="num">{amount(m.netCollectionPaise)}</td>
+              <td colSpan={3} className="ph-dc-net-how">
+                Sales − sales return + advance − advance refund
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <dl className="ph-dc-amts">
+          {['cash', 'cheque', 'card', 'neft', 'upi']
+            .filter((k) => k !== 'cheque' || byMode.cheque?.netPaise)
+            .map((k) => (
+              <div key={k}>
+                <dt>{k.toUpperCase()} AMT</dt>
+                <dd className="tabular">{amount(byMode[k]?.netPaise ?? 0)}</dd>
+              </div>
+            ))}
+        </dl>
+      </div>
+      <table className="ph-dc-types">
+        <thead>
+          <tr>
+            <th scope="col">Sale type</th>
+            <th scope="col" className="num">
+              Total
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {daily.saleTypes.map((t) => (
+            <tr key={t.key}>
+              <th scope="row">{t.label}</th>
+              <td className="num">{amount(t.paise)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** The printed Pharmacy Daily Collection. printedAt: when Print was pressed. */
+export function DailyCollectionPaper({ daily, from, to, settings, printedAt }) {
+  return (
+    <PrintDocument className="bill-doc ph-doc ph-dc-doc">
+      <PharmacyLetterhead settings={settings} />
+      <h1 className="ph-dc-title">{daily.title}</h1>
+      <p className="ph-dc-when">
+        <span>{dcPeriod(from, to)}</span>
+        <span>{printedAt}</span>
+      </p>
+      <DailyCollectionTable daily={daily} />
+      <DailyCollectionEnd daily={daily} />
+      <p className="bill-sign">Prepared by: ____________________ &nbsp; Checked by: ____________________</p>
+    </PrintDocument>
+  );
+}
+
+/** The Daily Collection as a file for Excel: every row with its section, the sub totals, then the money by mode. */
+export function dailyCsv(daily, { from, to }) {
+  const esc = (v) => {
+    const text = v == null ? '' : String(v);
+    const safe = /^[=+\-@]/.test(text) && !/^-?\d/.test(text) ? `'${text}` : text;
+    return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+  };
+  const rupees = (p) => (p / 100).toFixed(2);
+  const lines = [[daily.title, dcPeriod(from, to)], ['Section', 'Sr. No', 'Date', 'Sales no', 'MR No', 'Patient name', ...DC_MONEY.map(([, label]) => label)]];
+  let sr = 0;
+  for (const s of daily.sections) {
+    for (const r of s.rows) lines.push([s.title, (sr += 1), dmy(r.date), r.saleNumber, r.mrn, r.name, ...DC_MONEY.map(([k]) => rupees(r[k]))]);
+    lines.push([s.title, '', '', '', '', 'Sub total', ...DC_MONEY.map(([k]) => rupees(s.total[k]))]);
+  }
+  lines.push([], ['Mode', 'Sales', 'Sales return', 'Advance', 'Advance refund', 'Net']);
+  for (const x of daily.modes) lines.push([DC_MODES[x.mode] ?? x.mode, rupees(x.salesPaise), rupees(x.returnPaise), rupees(x.advancePaise), rupees(x.advanceRefundPaise), rupees(x.netPaise)]);
+  lines.push(['Net collection', '', '', '', '', rupees(daily.summary.netCollectionPaise)], [], ['Sale type', 'Total']);
+  for (const t of daily.saleTypes) lines.push([t.label, rupees(t.paise)]);
+  return `\uFEFF${lines.map((l) => l.map(esc).join(',')).join('\r\n')}\r\n`;
+}
+
+/** "Printed 24 Nov 2026, 09:53" – when the report was printed, at the right as on the earlier paper. */
+const printedNow = () => `Printed ${formatDateTime(new Date())}`;
+
 function Summary({ items }) {
   if (!items?.length) return null;
   return (
@@ -230,8 +437,11 @@ export function MisReports({ from, to, setFrom, setTo, admin, pharmacist, openDo
   const medicines = useFetch(uses('item') ? '/pharmacy/medicines' : null, { active: '1' });
   const [printing, setPrinting] = useState(false);
   const [summed, setSummed] = useState(false); // a Pharmacy MIS report shown as its day-by-day Summary
+  // Sales collection (24 Nov 2026): the Pharmacy Daily Collection first; the list of payments one click away
+  const [payments, setPayments] = useState(false);
   const loaded = res.data?.key === chosen.k ? res.data : null;
-  const summary = chosen.tree === 'pharmacy' && loaded ? daySummary(loaded) : null;
+  const daily = !payments && loaded?.daily ? loaded.daily : null;
+  const summary = chosen.tree === 'pharmacy' && loaded && !daily ? daySummary(loaded) : null;
   const r = summed && summary ? summary : loaded;
   const pick = (k) => {
     if (k === 'by-doctor') return openDoctorSales();
@@ -242,7 +452,16 @@ export function MisReports({ from, to, setFrom, setTo, admin, pharmacist, openDo
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const canExcel = r && (admin || !r.patients);
   const period = r ? (r.from === r.to ? formatDate(r.from) : `${formatDate(r.from)} to ${formatDate(r.to)}`) : '';
-  const printTitle = `${chosen.label}${uses('detail') ? (f.detail ? ' – detail' : ' – summary') : summary ? (summed ? ' – summary' : ' – details') : ''}`;
+  const printTitle = daily ? 'Pharmacy Daily Collection' : `${chosen.label}${uses('detail') ? (f.detail ? ' – detail' : ' – summary') : summary ? (summed ? ' – summary' : ' – details') : ''}`;
+  const [printedAt, setPrintedAt] = useState('');
+  const print = () => {
+    setPrintedAt(printedNow());
+    setPrinting(true);
+  };
+  const excel = () =>
+    daily
+      ? downloadFile(new Blob([dailyCsv(daily, r)], { type: 'text/csv;charset=utf-8' }), `daily-collection-${r.from}-to-${r.to}.csv`)
+      : downloadFile(new Blob([misCsv(r)], { type: 'text/csv;charset=utf-8' }), `${chosen.k}-${r.from}-to-${r.to}.csv`);
 
   return (
     <div className="ph-mis">
@@ -282,11 +501,11 @@ export function MisReports({ from, to, setFrom, setTo, admin, pharmacist, openDo
             {r && (
               <div className="row">
                 {canExcel && (
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => downloadFile(new Blob([misCsv(r)], { type: 'text/csv;charset=utf-8' }), `${chosen.k}-${r.from}-to-${r.to}.csv`)}>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={excel}>
                     <FileSpreadsheet aria-hidden="true" /> Excel
                   </button>
                 )}
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => setPrinting(true)}>
+                <button type="button" className="btn btn-primary btn-sm" onClick={print}>
                   <Printer aria-hidden="true" /> Print
                 </button>
               </div>
@@ -358,9 +577,22 @@ export function MisReports({ from, to, setFrom, setTo, admin, pharmacist, openDo
                 </div>
               </div>
             )}
-            {summary && (
+            {loaded?.daily && (
               <div className="ph-mis-f">
                 <span>Show</span>
+                <div className="segmented" role="group" aria-label="Daily collection or payment list">
+                  <button type="button" aria-pressed={!payments} onClick={() => setPayments(false)}>
+                    Daily collection
+                  </button>
+                  <button type="button" aria-pressed={payments} onClick={() => setPayments(true)}>
+                    Payment list
+                  </button>
+                </div>
+              </div>
+            )}
+            {summary && (
+              <div className="ph-mis-f">
+                <span>{loaded?.daily ? 'Payments' : 'Show'}</span>
                 <div className="segmented" role="group" aria-label="Details or summary">
                   <button type="button" aria-pressed={!summed} onClick={() => setSummed(false)}>
                     Details
@@ -378,7 +610,26 @@ export function MisReports({ from, to, setFrom, setTo, admin, pharmacist, openDo
         <section className="card ph-mis-view" aria-label={`${chosen.label} – result`}>
           {res.error && <Alert type="error">{res.error}</Alert>}
           {!r && !res.error && <p className="muted">Loading…</p>}
-          {r && (
+          {r && daily && (
+            <>
+              <p className="hint ph-mis-period">{period} · Counter sales by how they were paid. Ward issues are on the hospital bill and are not listed.</p>
+              <Summary
+                items={[
+                  { label: 'Net collection', paise: daily.summary.netCollectionPaise },
+                  { label: 'Sales', paise: daily.summary.salesPaise },
+                  { label: 'Sales return', paise: daily.summary.returnPaise },
+                  { label: 'Credit sale', paise: daily.saleTypes.find((t) => t.key === 'credit-sale')?.paise ?? 0 },
+                  ...(daily.summary.advanceUsedPaise ? [{ label: 'Advance used', paise: daily.summary.advanceUsedPaise }] : []),
+                ]}
+              />
+              <div className="ph-grn-scroll ph-dc-scroll">
+                <DailyCollectionTable daily={daily} />
+              </div>
+              <DailyCollectionEnd daily={daily} />
+              {!admin && <p className="hint">Holds patient and customer names: print only what you need and keep the paper with the pharmacy records.</p>}
+            </>
+          )}
+          {r && !daily && (
             <>
               <p className="hint ph-mis-period">
                 {period}
@@ -394,7 +645,12 @@ export function MisReports({ from, to, setFrom, setTo, admin, pharmacist, openDo
         </section>
       </div>
 
-      {printing && r && (
+      {printing && r && daily && (
+        <PrintPreview title="Pharmacy Daily Collection – print preview" hint="Print on A4 paper, landscape." page={{ size: 'A4 landscape', margin: '10mm 10mm 14mm' }} pageNumbers onClose={() => setPrinting(false)}>
+          <DailyCollectionPaper daily={daily} from={r.from} to={r.to} settings={r.settings} printedAt={printedAt} />
+        </PrintPreview>
+      )}
+      {printing && r && !daily && (
         <PrintPreview title={`${printTitle} – print preview`} hint="Print on A4 paper, landscape." page={{ size: 'A4 landscape', margin: '10mm' }} onClose={() => setPrinting(false)}>
           <PrintDocument className="bill-doc ph-doc ph-mis-doc">
             <PharmacyLetterhead settings={r.settings} />

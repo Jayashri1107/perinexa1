@@ -16,7 +16,9 @@ import { hasDoctorTitle, withDoctorTitle } from '../utils/doctorTitle.js';
 // "records" = the medical records staff (9 Nov 2026, the medical records module from the other Perinexa copy): a
 // patient role that sees a record's identity details and the documents attached to it – never the clinical notes – and
 // the Records menu (routes/records.js).
-export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk', 'followup_coordinator', 'quality', 'records'];
+// "accounts" = the accounts login (owner, 23 Nov 2026 – docs/PAYROLL_BUILD_NOTE.md): the payroll – the staff list with
+// pay and the payroll settings (routes/payroll.js). Not a patient role: no patient list, no record, no bills.
+export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk', 'followup_coordinator', 'quality', 'records', 'accounts'];
 
 // What a hospital admin may do to the hospital's staff – only what the super admin gave them (owner, 12 Oct 2026):
 // reset a password, remove or restore access, change roles, edit name and email. Without it they see who works there.

@@ -95,7 +95,7 @@ try {
   console.error('\n⚠️  WARNING: could not add "Dr." to the doctors\' names at startup. Details:', err.message, '\n');
 }
 
-// User groups (14 Nov 2026): the 13 groups made from the old roles, and every member moved into a group – once; running
+// User groups (14 Nov 2026): the 14 groups made from the roles, and every member moved into a group – once; running
 // again finds nothing to do (users/userGroups.js).
 try {
   const groups = await moveToUserGroups();

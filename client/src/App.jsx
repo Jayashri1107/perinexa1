@@ -7,6 +7,7 @@ import {
   RequireAuth,
   RequireCalendarRole,
   RequirePasswordChanged,
+  RequirePayroll,
   RequireSuperAdmin,
   RequireTenant,
   RequireTenantAdmin,
@@ -97,6 +98,7 @@ const load27 = () => import('./pages/pharmacy/SellPage.jsx');
 const loadNewBill = () => import('./pages/pharmacy/NewBillPage.jsx');
 const NewBillPage = screen(loadNewBill, 'NewBillPage');
 const SearchBillPage = screen(() => import('./pages/pharmacy/SearchBillPage.jsx'), 'SearchBillPage');
+const PharmacySettlementPage = screen(() => import('./pages/pharmacy/SettlementPage.jsx'), 'PharmacySettlementPage');
 const SellPage = screen(load27, 'SellPage');
 const loadWardRequests = () => import('./pages/pharmacy/WardRequests.jsx');
 const WardRequestsPage = screen(loadWardRequests, 'WardRequestsPage');
@@ -346,6 +348,17 @@ const NicuSettingsPage = screen(loadB13Units, 'NicuSettingsPage');
 const loadCrs6 = () => import('./pages/incidents/IncidentsPage.jsx');
 const IncidentsPage = screen(loadCrs6, 'IncidentsPage');
 const IncidentPage = screen(loadCrs6, 'IncidentPage');
+// Payroll, Stage A (docs/PAYROLL_BUILD_NOTE.md): the staff list with pay and the payroll settings
+const loadPayroll = () => import('./pages/payroll/PayrollPages.jsx');
+const PayrollStaffPage = screen(loadPayroll, 'PayrollStaffPage');
+const PayrollStaffFormPage = screen(loadPayroll, 'PayrollStaffFormPage');
+const PayrollSettingsPage = screen(loadPayroll, 'PayrollSettingsPage');
+const loadPayrollRun = () => import('./pages/payroll/PayrollRunPage.jsx');
+const PayrollRunPage = screen(loadPayrollRun, 'PayrollRunPage');
+// Stage C: the rate table and the advances
+const PayrollRatesPage = screen(() => import('./pages/payroll/PayrollRatesPage.jsx'), 'PayrollRatesPage');
+const PayrollAdvancesPage = screen(() => import('./pages/payroll/PayrollAdvancesPage.jsx'), 'PayrollAdvancesPage');
+const PayrollListsPage = screen(() => import('./pages/payroll/PayrollListsPage.jsx'), 'PayrollListsPage');
 const loadCrs7 = () => import('./pages/formulary/FormularyPage.jsx');
 const FormularyPage = screen(loadCrs7, 'FormularyPage');
 const loadMarks = () => import('./pages/pharmacy/MedicineMarks.jsx');
@@ -607,6 +620,17 @@ export function App() {
                   <Route path="incomplete" element={<IncompleteRecordsPage />} />
                   <Route path="copies" element={<RecordCopiesPage />} />
                 </Route>
+                {/* Payroll: the accounts login and the hospital admin – never Perinexa's own staff */}
+                <Route path="payroll" element={<RequirePayroll />}>
+                  <Route index element={<PayrollStaffPage />} />
+                  <Route path="staff/new" element={<PayrollStaffFormPage />} />
+                  <Route path="staff/:id" element={<PayrollStaffFormPage />} />
+                  <Route path="run" element={<PayrollRunPage />} />
+                  <Route path="advances" element={<PayrollAdvancesPage />} />
+                  <Route path="lists" element={<PayrollListsPage />} />
+                  <Route path="rates" element={<PayrollRatesPage />} />
+                  <Route path="settings" element={<PayrollSettingsPage />} />
+                </Route>
                 <Route path="formulary" element={<RequireTenantRole roles={FORMULARY_ROLES} message="The formulary is for doctors, RMOs, nurses and the pharmacist." />}>
                   <Route index element={<FormularyPage />} />
                   {/* PH7: high-alert and look-alike marks – a doctor and the pharmacist together */}
@@ -673,6 +697,7 @@ export function App() {
                     <Route index element={<NewBillPage />} />
                     <Route path="issue" element={<SellPage key="issue" kind="issue" />} />
                     <Route path="search-bill" element={<SearchBillPage />} /> {/* 23 Nov 2026: a bill made earlier, found and printed again */}
+                    <Route path="settlement" element={<PharmacySettlementPage />} /> {/* 24 Nov 2026: credit bills settled */}
                     {/* The day's OPD, IPD and External patients are on Today (owner, 26 Oct 2026) */}
                     <Route path="register" element={<RegisterRedirect />} />
                     <Route path="purchases/new" element={<NewPurchasePage />} />

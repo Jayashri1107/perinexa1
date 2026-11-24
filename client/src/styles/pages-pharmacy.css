@@ -1469,3 +1469,104 @@
   .ph-sb-actions .btn { flex: 1 1 100%; justify-content: center; }
   .ph-sb-actions .ph-sb-direct { flex: 1 1 100%; }
 }
+
+/* 24 Nov 2026 – Sales bill: which bills the list holds (today's when the page opens, or the dates chosen) */
+.ph-sold-period { margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--ink); }
+
+/* 24 Nov 2026 – Pharmacy → Settlement, after the earlier software's window: the Search bill page's left panel and
+   grids; Paid bills and Credit bills one above the other, then the three figures and the buttons on one row */
+.ph-st-field { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.ph-st-field > span { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.ph-st-field input { width: 100%; min-width: 0; height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
+.ph-st-people ul { list-style: none; margin: var(--space-1) 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 40vh; overflow: auto; }
+.ph-st-person { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 6px var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.ph-st-person:hover { background: var(--mist-50); }
+.ph-st-person.is-on { background: var(--selected-bg); border-color: transparent; box-shadow: var(--selected-edge); }
+.ph-st-person-name { font-size: 0.875rem; font-weight: 600; }
+.ph-st-person-sub { font-size: 0.75rem; color: var(--slate-600); }
+.ph-st-who { margin: 0; font-size: var(--fs-label); }
+.ph-st-grid { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.ph-st-grid-head { display: flex; align-items: center; gap: var(--space-4); }
+.ph-st-title { margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; color: var(--ink); }
+.ph-st-all { min-height: 28px; margin: 0; gap: 6px; font-size: var(--fs-label); }
+.ph-st .ph-sb-bills .dt-wrap { max-height: 30vh; min-height: 120px; }
+.ph-st-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-3); }
+.ph-st-facts { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.ph-st-fact { display: flex; flex-direction: column; gap: 4px; }
+.ph-st-fact label { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.ph-st-fact input { width: 140px; height: 32px; min-height: 0; padding: 4px 8px; background: var(--mist-50); text-align: right; font-weight: 600; font-size: 0.875rem; }
+.ph-st-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+/* The Settlement window: the Payment window's parts, packed to fit a 768-pixel-high screen – the patient and the
+   bills in one strip on top, then the advance and the discount, then the ways to pay */
+.modal.ph-st-window { padding: var(--space-6); }
+.ph-st-window .ph-pay-body { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+.ph-st-window .ph-pay-left { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); background: var(--mist-50); }
+.ph-st-window .ph-pay-right { gap: var(--space-1); padding: var(--space-2) var(--space-3); }
+.ph-st-window .ph-st-fact { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-2); }
+.ph-st-window .ph-st-fact input { width: 100%; text-align: left; font-weight: 600; background: var(--surface); }
+.ph-st-window .ph-pay-sums .ph-st-fact input { width: 130px; text-align: right; }
+.ph-st-window input:not([type='checkbox']) { height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
+.ph-st-window .ph-pay-way { padding: 2px var(--space-2); gap: var(--space-1) var(--space-2); }
+.ph-st-window .ph-pay-tick { padding-bottom: 6px; }
+.ph-st-window .ph-pay-foot { margin-top: var(--space-3); }
+.ph-st-adjust { display: grid; grid-template-columns: 140px 140px minmax(0, 1fr); gap: var(--space-2); align-items: end; margin-bottom: var(--space-3); }
+.ph-st-sub { margin: 0 0 var(--space-1); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+.ph-st-way { grid-template-columns: 150px 110px repeat(2, minmax(0, 1fr)); }
+.ph-st-problem { margin: var(--space-2) 0 0; }
+@media (min-width: 720px) {
+  .ph-st .ph-sb-bills .dt-wrap { height: clamp(140px, 26vh, 300px); }
+}
+@media (max-width: 719px) {
+  .ph-st-adjust { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-st-adjust .ph-st-reason { grid-column: 1 / -1; }
+  .ph-st-way { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-st-actions .btn { flex: 1 1 calc(50% - var(--space-2)); justify-content: center; }
+  .ph-st-fact input { width: 100%; }
+  .ph-st-facts, .ph-st-fact { flex: 1 1 100%; }
+}
+
+/* 24 Nov 2026 – Reports → Sales collection as the Pharmacy Daily Collection: section rows, sub totals, and under them
+   the money by mode and the sale types. On screen the table scrolls inside the card; on paper it is A4 landscape. */
+.ph-dc-table { font-size: 0.8125rem; }
+.bill-report.ph-dc-table :is(td, th) { padding: 4px 8px; white-space: nowrap; }
+.ph-dc-table .ph-dc-name { white-space: normal; min-width: 160px; }
+.ph-dc-table tr.ph-dc-section th { padding-top: var(--space-3); border-bottom: 0; font-weight: 700; color: var(--ink); text-align: left; }
+.ph-dc-table tr.ph-dc-sub :is(th, td) { font-weight: 700; border-top: 1px solid var(--ink); }
+.ph-dc-table tr.ph-dc-sub th { text-align: right; }
+.ph-dc-table td.ph-dc-none { color: var(--slate-600); }
+.ph-dc-scroll { max-height: 60vh; overflow: auto; }
+.ph-dc-scroll .ph-dc-table thead th { position: sticky; top: 0; background: var(--surface); }
+.ph-dc-end { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-6); margin-top: var(--space-4); }
+.ph-dc-money { display: flex; flex-direction: column; gap: var(--space-2); }
+table.ph-dc-modes, table.ph-dc-types { width: auto; border-collapse: collapse; font-size: 0.8125rem; }
+table.ph-dc-types { min-width: 260px; }
+table.ph-dc-modes :is(th, td), table.ph-dc-types :is(th, td) { padding: 4px 10px; border: 1px solid var(--border); background: none; color: var(--ink); font-size: 0.8125rem; line-height: 1.35; text-align: left; vertical-align: middle; font-weight: 400; }
+table.ph-dc-modes thead th, table.ph-dc-types thead th { background: var(--mist-50); font-weight: 600; text-align: center; }
+table.ph-dc-modes td.num, table.ph-dc-types td.num { text-align: right; font-variant-numeric: tabular-nums; min-width: 100px; }
+table.ph-dc-modes tr.ph-dc-total :is(th, td) { font-weight: 700; }
+table.ph-dc-modes tr.ph-dc-net :is(th, td) { font-weight: 700; font-size: 0.875rem; }
+table.ph-dc-modes td.ph-dc-net-how { font-weight: 400; font-size: 0.75rem; color: var(--slate-600); }
+.ph-dc-amts { display: grid; grid-template-columns: auto auto; gap: 0 var(--space-4); margin: 0; font-size: 0.8125rem; }
+.ph-dc-amts > div { display: contents; }
+.ph-dc-amts dt { color: var(--ink); }
+.ph-dc-amts dd { margin: 0; text-align: right; font-weight: 700; }
+/* On paper, like the earlier software's: small type, black lines, the store's heading, the title between rules, the
+   period on the left and when it was printed on the right */
+.ph-dc-doc .ph-dc-title { margin: 1mm 0 0; padding: 1mm 0; border-top: 1px solid var(--print-ink); border-bottom: 1px solid var(--print-ink); text-align: center; font-size: var(--fs-print-body); font-weight: 700; }
+.ph-dc-doc .ph-dc-when { display: flex; justify-content: space-between; margin: 1mm 0 2mm; padding: 0 2mm; font-size: var(--fs-print-small); }
+.ph-dc-doc .ph-dc-when span:first-child { margin-left: 40%; }
+.pdoc.ph-dc-doc table.ph-dc-table { font-size: 7.5pt; }
+.pdoc.ph-dc-doc table.ph-dc-table :is(th, td) { padding: 0.5mm 1.5mm; border: 0; background: none; color: var(--print-ink); font-size: 7.5pt; line-height: 1.25; }
+.pdoc.ph-dc-doc table.ph-dc-table thead th { font-weight: 400; border-top: 1px solid var(--print-ink); border-bottom: 1px solid var(--print-ink); }
+.pdoc.ph-dc-doc table.ph-dc-table tr.ph-dc-section th { padding-top: 2mm; font-weight: 700; }
+.pdoc.ph-dc-doc table.ph-dc-table tr.ph-dc-sub :is(th, td) { font-weight: 700; border-top: 1px solid var(--print-ink); border-bottom: 1px solid var(--print-ink); }
+/* a section's title never alone at the foot of a page */
+.ph-dc-doc tr.ph-dc-section { break-after: avoid; page-break-after: avoid; }
+.ph-dc-doc .ph-dc-name { min-width: 0; }
+.ph-dc-doc .ph-dc-end { gap: 8mm; margin-top: 4mm; }
+.ph-dc-doc :is(.ph-dc-money, table.ph-dc-types) { break-inside: avoid; }
+.ph-dc-doc table:is(.ph-dc-modes, .ph-dc-types) :is(th, td) { padding: 0.8mm 2mm; border-color: var(--print-ink); color: var(--print-ink); background: none; font-size: 7.5pt; line-height: 1.3; }
+.ph-dc-doc table.ph-dc-modes td.ph-dc-net-how { font-size: 6.5pt; }
+.ph-dc-doc .ph-dc-amts { font-size: 7.5pt; color: var(--print-ink); }
+.ph-dc-doc .ph-dc-amts :is(dt, dd) { color: var(--print-ink); }
+.ph-dc-doc .bill-sign { margin-top: 8mm; }

@@ -239,6 +239,10 @@ const SPECIAL_FILES = {
  * User, Membership and Tenant are written field by field as staff.json and hospital.json.
  */
 export const LEFT_OUT = {
+  AttendanceFile: 'The attendance files read for the payroll (staff names and days): for the accounts login and the hospital admin only, and not part of an export until the owner says so (docs/PAYROLL_BUILD_NOTE.md section 6).',
+  PayrollRun: 'A month\'s payroll working sheet (each person\'s days, corrections by hand): the same rule as the staff list above.',
+  StaffAdvance: 'Advances given to staff and taken back from their salary: the same rule as the staff list below.',
+  StaffMember: 'The payroll\'s staff list (pay, and the sealed PF, ESI, PAN and bank account numbers): for the accounts login and the hospital admin only, and not part of an export until the owner says so (docs/PAYROLL_BUILD_NOTE.md section 6).',
   User: 'Sign-in accounts are shared between hospitals and hold the password hash: only the name and a doctor\'s registration go in staff.json.',
   Membership: 'Written as staff.json (name and roles).',
   Tenant: 'Written as hospital.json, field by field (never the waiting-room screen key).',

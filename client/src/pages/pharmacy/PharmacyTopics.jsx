@@ -21,14 +21,14 @@ export const PHARMACY_TOPICS = [
       ['MRP adjustment', '/pharmacy/stock', 'Stock → a medicine → Change MRP on the batch.'],
       ['Batch adjustment', '/pharmacy/stock', 'Stock → a medicine → Count, Write off, Put on hold.'],
       ['Add stock', '/pharmacy/purchases/new', 'A new purchase bill (GRN).'],
-      ['Settlement', '/pharmacy', 'Click the patient’s name → Settle credit: one payment for all the bills due.'],
+      ['Settlement', '/pharmacy/settlement', 'Settlement: OP, IP or External, UHID or name, Search – then tick the credit bills and settle them with advance, discount and money received.'],
       ['Search sale return', '/pharmacy', 'Type the return number (CN-…) in the box above the bills.'],
     ],
   },
   {
     title: 'Pharmacy reports',
     items: [
-      ['Sale collection report', report('collection'), 'Details or Summary.'],
+      ['Sale collection report', report('collection'), 'Opens as the Pharmacy Daily Collection, printed like the earlier software’s; or the list of payments.'],
       ['Sale bill details report', report('sale-lines'), 'Every medicine sold.'],
       ['Card collection report', report('card-collection'), ''],
       ['UPI collection report', report('upi-collection'), ''],

@@ -11,6 +11,7 @@
 // "Doctor wise sales" is the existing Sales by doctor report (the pharmacist only – owner's decision 5).
 
 import { isoDay, timeIn, toHospitalDate } from '../careplans/dates.js';
+import { dailyCollection } from './dailyCollection.js';
 import { sum } from './gst.js';
 import { returnTotals } from './supplierReturnsService.js';
 
@@ -90,7 +91,8 @@ function billMoney(inv) {
   const net = sold.amountPaise - returned.amountPaise;
   const counter = !inv.billId; // paid at the counter (a walk-in, or a patient who paid here); else on the hospital bill
   const paid = counter ? (inv.payments ?? []).reduce((s, x) => s + (x.kind === 'refund' ? -x.amountPaise : x.amountPaise), 0) : 0;
-  return { sold, returned, net, counter, paid, due: counter ? net - paid : 0 };
+  const concession = (inv.concessions ?? []).reduce((s, x) => s + x.amountPaise, 0);
+  return { sold, returned, net, counter, paid, concession, due: counter ? Math.max(0, net - paid - concession) : 0 };
 }
 
 /**
@@ -115,7 +117,7 @@ export function misReport(key, data, { from, to }) {
       const who = personOf(inv, patients);
       const mny = billMoney(inv);
       const gross = inv.lines.reduce((s, l) => s + (l.grossPaise ?? l.qty * l.mrpPaise), 0);
-      return { date: day(inv.created.at), bill: inv.number, type: inv.kind === 'issue' ? 'Ward issue' : 'Sale', name: who.name, ref: who.ref, doctor: inv.doctor?.name ?? '', items: inv.lines.length, gross, discount: gross - mny.sold.amountPaise, amount: mny.sold.amountPaise, returned: mny.returned.amountPaise, net: mny.net };
+      return { date: day(inv.created.at), bill: inv.number, type: inv.kind === 'issue' ? 'Ward issue' : 'Sale', name: who.name, ref: who.ref, doctor: inv.doctor?.name ?? '', items: inv.lines.length, gross, discount: gross - mny.sold.amountPaise + mny.concession, amount: mny.sold.amountPaise, returned: mny.returned.amountPaise, net: mny.net };
     });
     const keys = ['items', 'gross', 'discount', 'amount', 'returned', 'net'];
     return {
@@ -172,6 +174,8 @@ export function misReport(key, data, { from, to }) {
       total: totalOf(out, ['received', 'refunded', 'net'], { date: `${out.length} payment${out.length === 1 ? '' : 's'}` }),
       summary: modes.map((m) => ({ label: m, paise: out.filter((r) => r.mode === m).reduce((s, r) => s + r.net, 0) })),
       note: 'Payments taken at the counter for walk-in sales. Bills of registered patients go on the hospital bill and are paid there.',
+      // 24 Nov 2026: Sales collection also as the earlier software's printed Pharmacy Daily Collection (dailyCollection.js)
+      ...(key === 'collection' ? { daily: dailyCollection({ invoices, patients, advances: data.advances ?? [] }, { from, to }) } : {}),
     };
   }
 

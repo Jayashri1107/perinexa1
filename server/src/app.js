@@ -42,6 +42,7 @@ import { medicineMarksRouter } from './routes/medicineMarks.js';
 import { pharmacyKitsRouter } from './routes/pharmacyKits.js';
 import { stockPlacesRouter } from './routes/stockPlaces.js';
 import { tallyRouter } from './routes/tally.js';
+import { payrollRouter } from './routes/payroll.js';
 import { abdmPublicRouter, abdmRouter } from './routes/abdm.js';
 import { beforePushBody } from './routes/abdmFetch.js';
 import { inpatientsRouter } from './routes/inpatients.js';
@@ -219,6 +220,8 @@ export function createApp({
   // released to the referral desk (at most 5 MB each, like the files above).
   app.use(/^\/api\/referrals\/[^/]+\/(attachments|releases)$/, big('8mb'));
   app.use(/^\/api\/billing\/expenses\/[^/]+\/file$/, big('8mb')); // an expense's bill (Daily Expenses)
+  // Payroll, Stage B: a month's attendance file (text, at most 1 MB – a little more as base64), shown back or read
+  app.use(/^\/api\/payroll\/runs\/[^/]+\/(preview|files)$/, big('1500kb'));
   // The medicine safety list is saved whole: 300 entries with their names, advice and sources do not fit in 100 kb.
   // (Each field has its own limit, so the list's "at most 300 entries" is reached before this one.)
   app.use('/api/medicine-safety', big('2mb'));
@@ -352,6 +355,8 @@ export function createApp({
   // The Tally link (docs/TALLY_PLAN.md – from the other Perinexa copy, 19 Oct 2026): the accountant's files, for the
   // hospital admin only (routes/tally.js)
   app.use('/api/tally', ...inTenant, tallyRouter);
+  // Payroll (docs/PAYROLL_BUILD_NOTE.md): the accounts login and the hospital admin – never Perinexa's own staff
+  app.use('/api/payroll', ...inTenant, payrollRouter);
   // The lab's test list and settings (routes/labSetup.js)
   app.use('/api/lab-setup', ...inTenant, labSetupRouter);
   // Lab version 2 (docs/LAB_V2_PLAN.md): quality control, the lab's stock and cost per test, USG and radiology

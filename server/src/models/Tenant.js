@@ -176,6 +176,39 @@ const tenantSchema = new mongoose.Schema(
       updatedByName: { type: String, trim: true, maxlength: 100, default: '' },
       updatedAt: { type: Date, default: null },
     },
+    // Payroll (docs/PAYROLL_BUILD_NOTE.md, Stage A), kept by the hospital admin: the salary parts the hospital uses
+    // (and whether each counts for PF and for ESI), how one day's pay is counted and the rounding, and the accountant
+    // who confirmed them – DRAFT until then. Read through payroll/payrollRules.js withDefaults. Leaves only through
+    // the payroll routes (never in the hospital's JSON, never to the platform).
+    payroll: {
+      parts: {
+        type: [new mongoose.Schema({ key: { type: String, maxlength: 40 }, name: { type: String, trim: true, maxlength: 40 }, countsForPf: { type: Boolean, default: false }, countsForEsi: { type: Boolean, default: false } }, { _id: false })],
+        default: undefined,
+      },
+      dayBasis: { type: String, enum: ['', 'calendar', 'thirty', 'twentySix'], default: '' },
+      weeklyOffsPaid: { type: Boolean, default: true },
+      holidaysPaid: { type: Boolean, default: true },
+      rounding: { type: String, enum: ['nearest', 'up', 'down', 'paise'], default: 'nearest' },
+      confirmedBy: { type: String, trim: true, maxlength: 120, default: '' },
+      confirmedOn: { type: Date, default: null },
+      // Files that carry numbers in full – off unless the hospital admin switches them on (the owner's yes):
+      // a bank payment list (full account numbers), and full PF and ESI numbers in the PF and ESI lists
+      bankList: { type: Boolean, default: false },
+      fullNumbers: { type: Boolean, default: false },
+      // Stage C: the rate table – PF, ESI, professional tax – as the hospital admin typed it from the accountant
+      // ({ pf, esi, pt }, each with status 'draft' | 'confirmed', confirmedBy, confirmedOn and the date it applies
+      // from, and `earlier`: the sets confirmed before, each in force from its own date). Empty until then:
+      // payroll/payrollDeductions.js supplies the DRAFT figures. Checked by routes/payroll.js.
+      rates: { type: mongoose.Schema.Types.Mixed, default: undefined },
+      // Stage B: the layouts of the hospital's attendance files, kept by name and offered again next month
+      // (payroll/attendanceRead.js says what a layout holds)
+      layouts: {
+        type: [new mongoose.Schema({ name: { type: String, trim: true, maxlength: 60 }, layout: { type: mongoose.Schema.Types.Mixed }, savedByName: { type: String, default: '' }, savedAt: { type: Date, default: null } }, { _id: false })],
+        default: undefined,
+      },
+      updatedByName: { type: String, trim: true, maxlength: 100, default: '' },
+      updatedAt: { type: Date, default: null },
+    },
     // NICU units (Build 13, NEO-A-01), kept by the hospital admin (Newborn follow-up → NICU units): each unit's key,
     // name, level of care (level_II | level_IIIA – PX-X-01 gates) and admission floor. Read through
     // clinical/nicuAdmission.js nicuUnitsFor, which gives the defaults when never saved. The beds are Bed.nicu.
@@ -239,6 +272,7 @@ tenantSchema.set('toJSON', {
     delete ret.billing; // the UPI ID leaves only through the billing routes (never to the platform's lists of hospitals)
     delete ret.referrals; // the consultants' direct lines leave only through the referral routes (never to the platform)
     delete ret.tally; // the accountant's account names leave only through the Tally routes (never to the platform)
+    delete ret.payroll; // the payroll settings leave only through the payroll routes (never to the platform)
     delete ret.consentRiskWording; // read through the consent-form routes only
     return ret;
   },
