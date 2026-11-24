@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CircleCheck, CircleX, Printer, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
@@ -7,7 +7,7 @@ import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview
 import { Alert, formatDate, formatDateTime, formatDayMonth } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { MODE_LABELS, expiryLabel } from './pharmacyFormat.js';
-import { PharmacyHeader, PharmacyLetterhead } from './pharmacyUi.jsx';
+import { PatientPickList, PharmacyHeader, PharmacyLetterhead, bringIntoView } from './pharmacyUi.jsx';
 import { amount } from './searchBill.js';
 import { RETURN_KINDS, findProblem, findQuery, lineForCode, linesShown, payWord, returnBody, returnFigures, typedQty } from './patientReturn.js';
 
@@ -117,6 +117,7 @@ export function PatientReturnPage() {
   const [error, setError] = useState(null);
   const [done, setDone] = useState(null);
   const [printing, setPrinting] = useState(false);
+  const split = useRef(null); // the screen under the title bar: brought to the top of the window by Search
   const found = useFetch(query ? '/pharmacy/patient-return' : null, query ?? undefined);
   const one = useFetch(patientId ? '/pharmacy/patient-return' : null, patientId ? { type: query?.type ?? form.type, patientId, ...(query?.doctor ? { doctor: query.doctor } : {}) } : undefined);
   const people = found.data?.patients ?? null;
@@ -145,6 +146,7 @@ export function PatientReturnPage() {
     setDone(null);
     setError(null);
     setQuery(findQuery(form));
+    bringIntoView(split.current);
   };
   const scan = (e) => {
     e.preventDefault();
@@ -235,7 +237,7 @@ export function PatientReturnPage() {
     <>
       <PharmacyHeader className="ph-counter-head" title="Sale return patient-wise" />
       <div className="pf-content bill-page ph-sb ph-st ph-pr">
-        <div className="ph-sb-split">
+        <div className="ph-sb-split" ref={split}>
           <form className="card ph-sb-panel" aria-label="Find the patient" onSubmit={search}>
             <fieldset className="ph-sb-set">
               <legend>Patient type</legend>
@@ -247,56 +249,46 @@ export function PatientReturnPage() {
                 ))}
               </div>
             </fieldset>
-            <label className="ph-st-field">
-              <span>Registration no</span>
-              <input type="search" value={form.mrn} maxLength={40} autoComplete="off" placeholder="UHID" onChange={(e) => set({ mrn: e.target.value })} />
-            </label>
-            <label className="ph-st-field">
-              <span>First name</span>
-              <input type="search" value={form.first} maxLength={50} autoComplete="off" onChange={(e) => set({ first: e.target.value })} />
-            </label>
-            <label className="ph-st-field">
-              <span>Doctor name</span>
-              <input type="search" value={form.doctor} maxLength={150} autoComplete="off" placeholder="Any doctor" onChange={(e) => set({ doctor: e.target.value })} />
-            </label>
-            <label className="ph-st-field">
-              <span>Date</span>
-              <input readOnly value={formatDate(todayIso)} aria-describedby="pr-date-hint" />
-            </label>
-            <label className="ph-st-field">
-              <span>Tax</span>
-              <select disabled defaultValue="gst">
-                <option value="gst">CGST / SGST</option>
-              </select>
-            </label>
-            <label className="check ph-sb-tick">
-              <input type="checkbox" checked={direct} onChange={(e) => setDirect(e.target.checked)} /> Direct print
-            </label>
-            <button type="submit" className="btn btn-secondary ph-sb-show" disabled={Boolean(problem)}>
-              <Search aria-hidden="true" /> Search
-            </button>
+            <div className="ph-st-pair ph-pr-fields">
+              <label className="ph-st-field">
+                <span>Registration no</span>
+                <input type="search" value={form.mrn} maxLength={40} autoComplete="off" placeholder="UHID" onChange={(e) => set({ mrn: e.target.value })} />
+              </label>
+              <label className="ph-st-field">
+                <span>First name</span>
+                <input type="search" value={form.first} maxLength={50} autoComplete="off" onChange={(e) => set({ first: e.target.value })} />
+              </label>
+              <label className="ph-st-field">
+                <span>Doctor name</span>
+                <input type="search" value={form.doctor} maxLength={150} autoComplete="off" placeholder="Any doctor" onChange={(e) => set({ doctor: e.target.value })} />
+              </label>
+              <label className="ph-st-field">
+                <span>Date</span>
+                <input readOnly value={formatDate(todayIso)} aria-describedby="pr-date-hint" />
+              </label>
+              <label className="ph-st-field">
+                <span>Tax</span>
+                <select disabled defaultValue="gst">
+                  <option value="gst">CGST / SGST</option>
+                </select>
+              </label>
+              <label className="check ph-sb-tick">
+                <input type="checkbox" checked={direct} onChange={(e) => setDirect(e.target.checked)} /> Direct print
+              </label>
+              <button type="submit" className="btn btn-secondary ph-sb-show" disabled={Boolean(problem)}>
+                <Search aria-hidden="true" /> Search
+              </button>
+            </div>
             {problem && (form.mrn || form.first) && <p className="field-error">{problem}</p>}
             {found.error && <Alert type="error">{found.error}</Alert>}
             {people && (people.length > 1 || (found.data?.list && people.length > 0)) && (
-              <div className="ph-st-people" role="group" aria-label="Patients found">
-                <p className="hint ph-sb-tip">
-                  {found.data?.list ? `${query?.type === 'ipd' ? 'Admitted now, with ward issues' : 'Billed today'} (${people.length}) – choose one:` : `${people.length} patients found – choose one:`}
-                </p>
-                <ul>
-                  {people.map((p) => (
-                    <li key={p.id}>
-                      <button type="button" className={p.id === patientId ? 'ph-st-person is-on' : 'ph-st-person'} aria-pressed={p.id === patientId} onClick={() => choose(p.id)}>
-                        <span className="ph-st-person-name">{p.fullName}</span>
-                        <span className="ph-st-person-sub tabular">{p.mrn}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <PatientPickList
+                title={found.data?.list ? `${query?.type === 'ipd' ? 'Admitted now, with ward issues' : 'Billed today'} (${people.length}) – choose one` : `${people.length} patients found – choose one`}
+                people={people}
+                chosenId={patientId}
+                onChoose={choose}
+              />
             )}
-            <p id="pr-date-hint" className="hint ph-sb-tip">
-              Only unopened medicines, before their expiry. Each bill gets its own credit note.
-            </p>
           </form>
 
           <div className="ph-sb-results">
@@ -313,6 +305,14 @@ export function PatientReturnPage() {
               {error}
             </Alert>
             {one.error && <Alert type="error">{one.error}</Alert>}
+            {data && (
+              <p className="ph-pr-who">
+                <strong>{data.patient.fullName}</strong>
+                <span className="tabular">
+                  Registration no {data.patient.mrn || '–'} · {(data.type ?? query?.type) === 'ipd' ? 'IPD' : 'OPD'} · {data.bills?.length ?? 0} bill{data.bills?.length === 1 ? '' : 's'}
+                </span>
+              </p>
+            )}
             <form className="ph-pr-item" onSubmit={scan}>
               <label className="ph-pr-item-box">
                 <span>{barcode ? 'Barcode' : 'Item name'}</span>
@@ -341,14 +341,12 @@ export function PatientReturnPage() {
                 Barcode
               </label>
             </form>
+            <p id="pr-date-hint" className="hint ph-sb-tip">
+              Only unopened medicines, before their expiry. Each bill gets its own credit note.
+            </p>
             {scanNote && (
               <p className="hint ph-sb-tip" role="status">
                 {scanNote}
-              </p>
-            )}
-            {data && (
-              <p className="ph-st-who">
-                <strong>{data.patient.fullName}</strong> <span className="muted tabular">· Registration no {data.patient.mrn || '–'}</span>
               </p>
             )}
             <section className="ph-st-grid" aria-label="Medicines on her bills">

@@ -2,6 +2,7 @@
 // UHID or name, her Paid and Credit bills, and the credit bills chosen settled in full with advance, a discount
 // (a concession – not money received) and money received; then the Sales collection as the Pharmacy Daily Collection,
 // and the Sales bill's list for a period. Sample data only.
+import { randomUUID } from 'node:crypto';
 import mongoose from 'mongoose';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
@@ -78,6 +79,31 @@ describe('Settlement', () => {
     // The counter's, not the reception's or the admin's
     expect((await ph('get', `/settlement?type=opd&search=${encodeURIComponent(p.mrn)}`, undefined, 'reception')).status).toBe(403);
     expect((await ph('get', `/settlement?patientId=${p.id}`, undefined, 'admin')).status).toBe(403);
+  });
+
+  it('IP with nothing typed lists everyone admitted now, with the counter bills of her stay', async () => {
+    const { m, p } = await patientWithCredit(); // an OP patient, not admitted
+    const ward = await newPatient('Sample Ward Mother');
+    const quiet = await newPatient('Sample Quiet Mother');
+    for (const x of [quiet, ward]) {
+      const admitted = await (await as('drA')).post(`/api/patients/${x.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', ward: 'Labour room', reason: 'In labour' });
+      expect(admitted.status, JSON.stringify(admitted.body)).toBe(201);
+    }
+    const credit = (await ph('post', '/invoices', { kind: 'sale', patientId: ward.id, onCredit: true, creditAuthorisedBy: 'Sample Admin 07', lines: [{ medicineId: m.id, qty: 2 }] })).body.invoice; // ₹4 owed
+    const issued = await ph('post', '/invoices', { kind: 'issue', patientId: ward.id, lines: [{ medicineId: m.id, qty: 1 }] }); // on her hospital bill
+    expect(issued.status, JSON.stringify(issued.body)).toBe(201);
+    const ip = (await ph('get', '/settlement?type=ipd')).body;
+    expect(ip).toMatchObject({ list: true, scope: 'admitted', day: DAY, paidBills: [], totalCreditPaise: 400 });
+    expect(ip.creditBills.map((x) => [x.number, x.patientId, x.balancePaise])).toEqual([[credit.number, ward.id, 400]]); // not the ward issue
+    // both admitted, the one who owes first – even with no counter bill; the OP patient is not here
+    expect(ip.patients.map((x) => [x.id, x.type, x.creditPaise, x.billCount, x.ward])).toEqual([
+      [ward.id, 'ipd', 400, 1, 'Labour room'],
+      [quiet.id, 'ipd', 0, 0, 'Labour room'],
+    ]);
+    expect((await ph('get', '/settlement?type=opd')).body.patients.map((x) => x.id)).toEqual([p.id]);
+    // typing her name finds an admitted patient before her first counter bill too
+    expect((await ph('get', '/settlement?type=ipd&search=Quiet')).body.patients).toEqual([expect.objectContaining({ id: quiet.id, type: 'ipd', billCount: 0, creditPaise: 0 })]);
+    expect((await ph('get', '/settlement?type=ipd', undefined, 'reception')).status).toBe(403);
   });
 
   it('settles the credit bills chosen with advance, a discount and two ways of paying – oldest bill first', async () => {

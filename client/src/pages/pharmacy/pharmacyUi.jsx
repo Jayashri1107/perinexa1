@@ -313,3 +313,62 @@ export function PharmacyTodayNotice() {
     </Alert>
   );
 }
+
+/**
+ * The patients a Search found, beside the search boxes – Settlement and Sale return patient-wise (24 Nov 2026, the
+ * developer: "at least 20 patients at once, covering the page"). One line a patient: the name, the UHID and, when the
+ * page gives one, a figure (what she owes), under a header that stays in view while the list scrolls. On a wide screen
+ * the list takes all the height left in the panel (pages-pharmacy.css). The whole line is clicked; the name is also a
+ * button, for the keyboard.
+ * extra: { header, render(p) } – a right-aligned column after the UHID
+ */
+export function PatientPickList({ title, people, chosenId, onChoose, extra }) {
+  return (
+    <div className="ph-plist" role="group" aria-label="Patients found">
+      <p className="ph-plist-title">{title}</p>
+      <div className="ph-plist-scroll">
+        <table className="ph-plist-table">
+          <thead>
+            <tr>
+              <th scope="col">Patient name</th>
+              <th scope="col" className="ph-plist-uhid">
+                UHID
+              </th>
+              {extra && (
+                <th scope="col" className="ph-plist-extra">
+                  {extra.header}
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {people.map((p) => {
+              const on = p.id === chosenId;
+              return (
+                <tr key={p.id} className={on ? 'is-on' : undefined} onClick={(e) => !e.target.closest('button') && onChoose(p.id)}>
+                  <td>
+                    <button type="button" className="ph-plist-name" aria-pressed={on} title={p.fullName} onClick={() => onChoose(p.id)}>
+                      {p.fullName}
+                    </button>
+                  </td>
+                  <td className="tabular">{p.mrn || '–'}</td>
+                  {extra && <td className="ph-plist-extra tabular">{extra.render(p)}</td>}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Wide screens: a page drawn to fill the window's height (Settlement, Sale return patient-wise) is brought to the top
+ * of the window when Search is pressed – the title bar scrolls away – so the whole of it, the patient list's 20 and
+ * more included, is in view. Phones and short screens scroll as usual.
+ */
+export function bringIntoView(el) {
+  if (!el || typeof window === 'undefined' || !window.matchMedia?.('(min-width: 1024px) and (min-height: 640px)').matches) return;
+  el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}

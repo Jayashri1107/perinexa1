@@ -1,5 +1,48 @@
 # Progress
 
+## Settlement: IP lists the patients admitted now (24 Nov 2026)
+The developer's request ("when IP is chosen it should display the IP patients"). Built with Claude in the Claude app –
+**`npm test` and `npm run build` still to run**.
+- **IP and Search with nothing typed:** every patient admitted now (as the pharmacy's Inpatients list) on the left – the
+  one who owes most first, then the latest admitted – even before her first counter bill. Beside them the counter
+  bills of their stays (Paid and Credit), and an older counter bill while something is still owed on it. Heading "IP
+  patients admitted now – date · n patients · n counter bills of their stays · ₹ on credit"; "Back to the admitted
+  patients" from one patient. Before, IP listed only today's counter bills of admitted patients – usually nobody.
+- **IP and a name typed** finds an admitted patient before her first counter bill too.
+- Unchanged: only counter bills are settled here; ward issues and bills put on the hospital bill are paid at the billing
+  desk – the screen now says so under IP.
+- **Server:** `GET /api/pharmacy/settlement?type=ipd` (nothing typed) answers `{ list: true, scope: 'admitted', day,
+  paidBills, creditBills, totalCreditPaise, patients: [{ …, ward, bed, admittedAt }] }` –
+  `admittedNowList()` in `server/src/pharmacy/settlement.js`; audited as before. The advance by patient is one helper
+  (`advanceByPatient`) for OP and IP.
+- **Tests:** `pharmacySettlement.test.js` (two admitted patients, one with a credit bill and a ward issue: both listed,
+  the one who owes first, the ward issue not; a name typed finds the other). Checked here with the stand-in runner and
+  in a browser with sample data.
+
+## Settlement and Sale return patient-wise: the patient list, wider and the full height (24 Nov 2026)
+The developer's request after the first version went live ("the list should show at least 20 patients at once,
+covering the page – wider, proper UI"). Built with Claude in the Claude app – **`npm test` and `npm run build` still
+to run**. Look only; nothing on the server changed.
+- **The patients found are a compact list:** one line a patient – Patient name, UHID and (Settlement) Due (₹) – under
+  a dark header that stays in view while the list scrolls; the chosen patient is marked. Click anywhere on the line.
+  A long name ends in "…" and shows in full on hover. On a phone it stays a list (other tables become cards there).
+  Shared by both pages: `PatientPickList` in `client/src/pages/pharmacy/pharmacyUi.jsx`.
+- **Wider panel:** 320 px (laptop), 380 px (from 1440 px wide), 420 px (from 1680 px) – was 230 px. The boxes are two
+  to a row, "Patient type" sits on the line of its choices, Search and Clear share a row; on Sale return (wide
+  screens) Doctor name, Date and Tax share a row and Direct print sits beside Search, and the "Only unopened
+  medicines…" note moved beside the medicines.
+- **Sale return: the patient chosen is named at the top of the right side** – her name in bold, then Registration
+  no, OPD or IPD and how many bills – instead of a small line under Item name.
+- **Full height:** on a wide screen the page under the title bar fills the window's height; the list takes all the
+  height left in the panel (23 patients at once at 1920 × 1080 on Settlement, 20 on Sale return) and the bill grids
+  beside it share the rest. Pressing Search brings the page to the top of the window (the title bar scrolls away), so
+  all of it is in view. Short or narrow screens scroll as before.
+- **Fixed:** in today's list the Credit bills table said "No paid OP bills today." when nobody owed – it now says "No
+  OP bills on credit today."
+- **Tests:** `settlement.test.jsx` (the list: one line a patient, the chosen one marked, the Due column only on
+  Settlement). Checked here with the stand-in runner and in a browser with sample data at 1916 × 853, 1366 × 657 and
+  a phone.
+
 ## Settlement and Sale return patient-wise: Search with nothing typed lists today's (24 Nov 2026)
 The developer's request (built with Claude in the Claude app – **`npm test` and `npm run build` still to run**):
 - **Settlement:** choose OP or IP and press **Search with nothing typed** – today's bills of that type, every

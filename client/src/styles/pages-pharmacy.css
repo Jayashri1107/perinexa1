@@ -1478,12 +1478,6 @@
 .ph-st-field { display: flex; flex-direction: column; gap: 4px; margin: 0; }
 .ph-st-field > span { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
 .ph-st-field input { width: 100%; min-width: 0; height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
-.ph-st-people ul { list-style: none; margin: var(--space-1) 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 40vh; overflow: auto; }
-.ph-st-person { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 6px var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
-.ph-st-person:hover { background: var(--mist-50); }
-.ph-st-person.is-on { background: var(--selected-bg); border-color: transparent; box-shadow: var(--selected-edge); }
-.ph-st-person-name { font-size: 0.875rem; font-weight: 600; }
-.ph-st-person-sub { font-size: 0.75rem; color: var(--slate-600); }
 .ph-st-who { margin: 0; font-size: var(--fs-label); }
 .ph-st-grid { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .ph-st-grid-head { display: flex; align-items: center; gap: var(--space-4); }
@@ -1519,9 +1513,6 @@
   .ph-st .ph-sb-bills .dt { font-size: 0.78rem; }
   .ph-st .ph-sb-bills .dt :is(th, td) { padding: 4px 6px; white-space: nowrap; }
   .ph-st-paid .dt :is(th, td):first-child { padding: 4px 8px; text-align: left; }
-}
-@media (min-width: 1024px) {
-  .ph-st .ph-sb-split { grid-template-columns: 230px minmax(0, 1fr); }
 }
 @media (max-width: 719px) {
   .ph-st-adjust { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1610,9 +1601,74 @@ input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
   .ph-pr-lines .dt :is(th, td) { padding: 4px 6px; white-space: nowrap; }
   .ph-pr-lines .dt :is(th, td):first-child { padding: 4px 8px; text-align: left; }
 }
-@media (min-width: 1024px) {
-  .ph-pr .ph-sb-split { grid-template-columns: 230px minmax(0, 1fr); }
-}
 @media (max-width: 1023px) {
   .ph-pr-sums { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* 24 Nov 2026, second look (the developer: "the list should show at least 20 patients at once, covering the page –
+   wider"): Settlement and Sale return patient-wise. A wider panel, its boxes two to a row, and the patients found as a
+   compact list – one line each under a header that stays in view – taking all the height left in the panel. On a wide
+   screen the page under the title bar fills the window's height (Search brings it to the top of the window:
+   bringIntoView in pharmacyUi.jsx) and the grids beside the panel share that height. */
+.ph-st-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.ph-st-pair .check { align-self: end; min-height: 32px; }
+.ph-st-field select { width: 100%; min-width: 0; height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
+.ph-st-find { display: flex; align-items: center; gap: var(--space-2); }
+.ph-st-find .ph-sb-show { flex: 1 1 auto; width: auto; }
+.ph-pr-fields .ph-sb-show { grid-column: 1 / -1; }
+/* Sale return: the patient chosen, at the top of the right side */
+.ph-pr-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); margin: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-left: 3px solid var(--indigo-700); border-radius: var(--radius-md); background: var(--surface); }
+.ph-pr-who strong { font-size: 1rem; line-height: 1.4; font-weight: 700; color: var(--ink); }
+.ph-pr-who span { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.ph-plist { display: flex; flex-direction: column; gap: var(--space-1); min-height: 0; }
+.ph-plist-title { margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; color: var(--ink); }
+.ph-plist-scroll { max-height: 60vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.ph-plist .ph-plist-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.8125rem; }
+.ph-plist .ph-plist-table th { position: sticky; top: 0; z-index: 1; height: 30px; padding: 4px 8px; background: var(--indigo-800); color: var(--on-solid); font-size: 0.75rem; font-weight: 600; text-align: left; white-space: nowrap; }
+.ph-plist .ph-plist-table th.ph-plist-uhid { width: 96px; }
+.ph-plist .ph-plist-table th.ph-plist-extra { width: 72px; }
+.ph-plist .ph-plist-table .ph-plist-extra { text-align: right; }
+.ph-plist .ph-plist-table td { height: 26px; padding: 0 8px; border-bottom: 1px solid var(--border); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-plist .ph-plist-table tbody tr { cursor: pointer; }
+.ph-plist .ph-plist-table tbody tr:nth-child(even) td { background: var(--mist-50); }
+.ph-plist .ph-plist-table tbody tr:hover td { background: var(--indigo-100); }
+.ph-plist .ph-plist-table tbody tr.is-on td { background: var(--selected-bg); font-weight: 600; }
+.ph-plist .ph-plist-table tbody tr.is-on td:first-child { box-shadow: inset 3px 0 0 var(--indigo-700); }
+/* a list on phones too (other tables become one card per row there – components.css) */
+.ph-plist table.ph-plist-table { display: table; }
+.ph-plist table.ph-plist-table thead { display: table-header-group; }
+.ph-plist table.ph-plist-table tbody { display: table-row-group; }
+.ph-plist table.ph-plist-table tr { display: table-row; width: auto; margin: 0; padding: 0; border: 0; border-radius: 0; }
+.ph-plist table.ph-plist-table :is(th, td) { display: table-cell; }
+.ph-plist table.ph-plist-table td { width: auto; }
+.ph-plist-name { display: block; width: 100%; min-height: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.ph-plist-name:focus-visible { outline: none; border-radius: var(--radius-sm); box-shadow: var(--focus-ring-inset); }
+@media (min-width: 1024px) {
+  .ph-st .ph-sb-split { grid-template-columns: 320px minmax(0, 1fr); }
+  .ph-st .ph-sb-panel { gap: var(--space-2); padding: var(--space-3); }
+  /* "Patient type" on the line of its choices */
+  .ph-st .ph-sb-set { display: block; }
+  .ph-st .ph-sb-set legend { float: left; margin: 0 var(--space-3) 0 0; line-height: 28px; }
+}
+@media (min-width: 1440px) {
+  .ph-st .ph-sb-split { grid-template-columns: 380px minmax(0, 1fr); }
+}
+@media (min-width: 1680px) {
+  .ph-st .ph-sb-split { grid-template-columns: 420px minmax(0, 1fr); }
+  /* Sale return: Doctor name, Date and Tax on one line, Direct print beside Search – more room for the list */
+  .ph-pr-fields { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .ph-pr-fields > :nth-child(-n + 2) { grid-column: span 3; }
+  .ph-pr-fields > :nth-child(n + 3) { grid-column: span 2; }
+  .ph-pr-fields > .ph-sb-show { grid-column: span 4; }
+}
+@media (min-width: 1024px) and (min-height: 640px) {
+  .ph-st .ph-sb-split { align-items: stretch; height: max(600px, calc(100dvh - 2 * var(--space-4))); scroll-margin-top: var(--space-4); }
+  .ph-st .ph-sb-panel { min-height: 0; overflow-y: auto; }
+  .ph-st .ph-plist { flex: 1 1 0; min-height: 180px; }
+  .ph-st .ph-plist-scroll { flex: 1 1 0; min-height: 0; max-height: none; }
+  .ph-st .ph-sb-results { min-height: 0; overflow-y: auto; }
+  .ph-st .ph-st-grid { flex: 1 1 0; min-height: 150px; }
+  .ph-st .ph-sb-bills { display: flex; flex: 1 1 0; flex-direction: column; min-height: 0; }
+  .ph-st .ph-sb-bills .dt-card { display: flex; flex: 1 1 0; flex-direction: column; min-height: 0; }
+  .ph-st .ph-sb-bills .dt-wrap { flex: 1 1 0; height: auto; min-height: 0; max-height: none; }
 }

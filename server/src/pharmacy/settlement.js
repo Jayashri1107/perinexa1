@@ -4,6 +4,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { stampOf } from '../billing/billingService.js';
+import { Admission } from '../models/Admission.js';
 import { Patient } from '../models/Patient.js';
 import { PharmacyAdvance, PharmacyInvoice } from '../models/Pharmacy.js';
 import { HttpError } from '../utils/httpError.js';
@@ -36,6 +37,49 @@ export function settlementRow(inv, patient = null) {
     balancePaise: t.balancePaise ?? 0,
     eligible: !inv.billId && inv.kind === 'sale' && Boolean(inv.patientId) && (t.balancePaise ?? 0) > 0,
   };
+}
+
+/** Each patient's pharmacy advance available now (deposits less what was used or refunded), by patient id. */
+export async function advanceByPatient(req, pids) {
+  const entries = pids.length ? await PharmacyAdvance.find({ tenantId: req.tenantId, patientId: { $in: pids } }, { patientId: 1, kind: 1, amountPaise: 1 }).lean() : [];
+  const byPatient = new Map();
+  for (const e of entries) byPatient.set(String(e.patientId), (byPatient.get(String(e.patientId)) ?? 0) + (e.kind === 'deposit' ? 1 : -1) * e.amountPaise);
+  return byPatient;
+}
+
+/**
+ * Settlement, IP with nothing typed (24 Nov 2026, the pharmacy's request: "IP should show the IP patients"): everyone
+ * admitted now, as the pharmacy's Inpatients list – the one who owes most first, then the latest admitted – with the
+ * counter bills of her stay, and an older counter bill while something is still owed on it. Medicines on her hospital
+ * bill (ward issues, bills put on it) are paid at the billing desk and are not listed. when/dated: From and To, when
+ * given (then the bills of those days).
+ */
+export async function admittedNowList(req, { when = {}, dated = false } = {}) {
+  const stays = await Admission.find({ tenantId: req.tenantId, status: 'admitted' }, { patientId: 1, ward: 1, bed: 1, admittedAt: 1 }).sort({ admittedAt: -1, _id: -1 }).limit(500).lean();
+  const stayOf = new Map();
+  for (const s of stays) if (!stayOf.has(String(s.patientId))) stayOf.set(String(s.patientId), s);
+  const pids = [...stayOf.keys()];
+  const people = new Map((pids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
+  const ids = [...people.keys()];
+  const invoices = ids.length ? await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: { $in: ids }, billId: null, kind: 'sale', ...when }).sort({ 'created.at': -1, _id: -1 }).limit(1000).lean() : [];
+  const rows = invoices
+    .map((inv) => settlementRow(inv, people.get(String(inv.patientId))))
+    .filter((r) => dated || r.balancePaise > 0 || new Date(r.date) >= new Date(stayOf.get(r.patientId).admittedAt));
+  const advance = await advanceByPatient(req, ids);
+  const patients = pids
+    .filter((id) => people.has(id))
+    .map((id) => {
+      const p = people.get(id);
+      const stay = stayOf.get(id);
+      const own = rows.filter((r) => r.patientId === id);
+      return {
+        id, fullName: p.fullName, mrn: p.mrn ?? '', type: 'ipd', ward: stay.ward ?? '', bed: stay.bed ?? '', admittedAt: stay.admittedAt,
+        billCount: own.length, creditPaise: own.reduce((n, r) => n + r.balancePaise, 0), advancePaise: Math.max(0, advance.get(id) ?? 0), lastAt: own[0]?.date ?? null,
+      };
+    })
+    .sort((a, b) => b.creditPaise - a.creditPaise);
+  const creditBills = rows.filter((r) => r.balancePaise > 0);
+  return { paidBills: rows.filter((r) => r.balancePaise <= 0), creditBills, totalCreditPaise: creditBills.reduce((n, r) => n + r.balancePaise, 0), patients };
 }
 
 /** The patient's Paid and Credit bills, plus the advance available now. */

@@ -6,7 +6,7 @@ import { DataTable } from '../../components/DataTable.jsx';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { Alert, formatDate, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
-import { PharmacyHeader, PharmacyLetterhead } from './pharmacyUi.jsx';
+import { PatientPickList, PharmacyHeader, PharmacyLetterhead, bringIntoView } from './pharmacyUi.jsx';
 import { amount } from './searchBill.js';
 import { SETTLE_TYPES, SETTLE_WAYS, findProblem, findQuery, newSettle, selectedOf, settleBody, settleSums, settledWords } from './settlement.js';
 
@@ -224,6 +224,7 @@ export function PharmacySettlementPage() {
   const [done, setDone] = useState(null); // the last settlement: { result, words, patient, at }
   const [printing, setPrinting] = useState(false);
   const [oneNote, setOneNote] = useState(''); // a tick of another patient's bill in today's list
+  const split = useRef(null); // the screen under the title bar: brought to the top of the window by Search
   const found = useFetch(query ? '/pharmacy/settlement' : null, query ?? undefined);
   const one = useFetch(patientId ? '/pharmacy/settlement' : null, patientId ? { patientId } : undefined);
   const settings = useFetch(done ? '/pharmacy/settings' : null);
@@ -251,6 +252,7 @@ export function PharmacySettlementPage() {
     setChosen(new Set());
     setDone(null);
     setQuery(findQuery(form));
+    bringIntoView(split.current);
   };
   const set = (change) => setForm((f) => ({ ...f, ...change }));
   const clear = () => {
@@ -324,6 +326,7 @@ export function PharmacySettlementPage() {
     { ...money('balance'), header: 'Balance' },
   ];
   const typeWord = query?.type === 'ipd' ? 'IP' : 'OP';
+  const admittedNow = found.data?.scope === 'admitted'; // IP with nothing typed: everyone admitted now
   const nothingWords = !query
     ? 'Choose OP, IP or External and press Search – today’s bills – or type a UHID or name.'
     : external
@@ -331,7 +334,11 @@ export function PharmacySettlementPage() {
       : data
         ? 'No paid bills.'
         : list
-          ? `No paid ${typeWord} bills today.`
+          ? admittedNow
+            ? list.patients.length
+              ? 'No counter bills paid during their stays.'
+              : 'Nobody is admitted now.'
+            : `No paid ${typeWord} bills today.`
           : people?.length
           ? 'Choose the patient on the left.'
           : found.loading
@@ -342,7 +349,7 @@ export function PharmacySettlementPage() {
     <>
       <PharmacyHeader className="ph-counter-head" title="Settlement" />
       <div className="pf-content bill-page ph-sb ph-st">
-        <div className="ph-sb-split">
+        <div className="ph-sb-split" ref={split}>
           <form className="card ph-sb-panel" aria-label="Find the patient" onSubmit={search}>
             <fieldset className="ph-sb-set">
               <legend>Patient type</legend>
@@ -354,41 +361,37 @@ export function PharmacySettlementPage() {
                 ))}
               </div>
             </fieldset>
-            <label className="ph-st-field">
-              <span>UHID</span>
-              <input type="search" value={form.mrn} maxLength={40} autoComplete="off" onChange={(e) => set({ mrn: e.target.value })} />
-            </label>
-            <label className="ph-st-field">
-              <span>{form.type === 'external' ? 'Customer name' : 'Patient name'}</span>
-              <input type="search" value={form.name} maxLength={80} autoComplete="off" onChange={(e) => set({ name: e.target.value })} />
-            </label>
+            <div className="ph-st-pair">
+              <label className="ph-st-field">
+                <span>UHID</span>
+                <input type="search" value={form.mrn} maxLength={40} autoComplete="off" onChange={(e) => set({ mrn: e.target.value })} />
+              </label>
+              <label className="ph-st-field">
+                <span>{form.type === 'external' ? 'Customer name' : 'Patient name'}</span>
+                <input type="search" value={form.name} maxLength={80} autoComplete="off" onChange={(e) => set({ name: e.target.value })} />
+              </label>
+            </div>
             {form.type === 'external' && <p className="hint ph-sb-tip">A walk-in customer pays the whole bill at the counter: their bills are listed to look at (today’s when nothing is typed).</p>}
-            <button type="submit" className="btn btn-secondary ph-sb-show" disabled={Boolean(problem)}>
-              <Search aria-hidden="true" /> Search
-            </button>
+            <div className="ph-st-find">
+              <button type="submit" className="btn btn-secondary ph-sb-show" disabled={Boolean(problem)}>
+                <Search aria-hidden="true" /> Search
+              </button>
+              {(query || form.mrn || form.name) && (
+                <button type="button" className="btn btn-link btn-sm" onClick={clear}>
+                  Clear
+                </button>
+              )}
+            </div>
             {problem && (form.mrn || form.name) && <p className="field-error">{problem}</p>}
             {found.error && <Alert type="error">{found.error}</Alert>}
             {people && (people.length > 1 || (found.data?.list && people.length > 0)) && (
-              <div className="ph-st-people" role="group" aria-label="Patients found">
-                <p className="hint ph-sb-tip">{found.data?.list ? `Today’s ${typeWord} patients (${people.length}) – click one for all her bills:` : `${people.length} patients found – choose one:`}</p>
-                <ul>
-                  {people.map((p) => (
-                    <li key={p.id}>
-                      <button type="button" className={p.id === patientId ? 'ph-st-person is-on' : 'ph-st-person'} aria-pressed={p.id === patientId} onClick={() => choosePatient(p.id)}>
-                        <span className="ph-st-person-name">{p.fullName}</span>
-                        <span className="ph-st-person-sub tabular">
-                          {p.mrn} · {p.type === 'ipd' ? 'IP' : 'OP'} · {p.creditPaise > 0 ? `₹${amount(p.creditPaise)} due` : 'nothing due'}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {(query || form.mrn || form.name) && (
-              <button type="button" className="btn btn-link btn-sm" onClick={clear}>
-                Clear
-              </button>
+              <PatientPickList
+                title={found.data?.list ? (admittedNow ? `Admitted now (${people.length}) – click one` : `Today’s ${typeWord} patients (${people.length}) – click one`) : `${people.length} patients found – choose one`}
+                people={people}
+                chosenId={patientId}
+                onChoose={choosePatient}
+                extra={{ header: 'Due (₹)', render: (p) => (p.creditPaise > 0 ? amount(p.creditPaise) : '–') }}
+              />
             )}
           </form>
 
@@ -409,7 +412,7 @@ export function PharmacySettlementPage() {
                   <>
                     {' '}
                     <button type="button" className="btn btn-link btn-sm" onClick={() => choosePatient(null)}>
-                      Back to today’s {typeWord} bills
+                      {admittedNow ? 'Back to the admitted patients' : `Back to today’s ${typeWord} bills`}
                     </button>
                   </>
                 )}
@@ -417,11 +420,9 @@ export function PharmacySettlementPage() {
             )}
             {list && (
               <p className="ph-st-who">
-                <strong>
-                  Today’s {typeWord} bills – {formatDate(list.day)}
-                </strong>{' '}
+                <strong>{admittedNow ? `IP patients admitted now – ${formatDate(list.day)}` : `Today’s ${typeWord} bills – ${formatDate(list.day)}`}</strong>{' '}
                 <span className="muted tabular">
-                  · {list.patients.length} patient{list.patients.length === 1 ? '' : 's'} · {list.paidBills.length + list.creditBills.length} bills · ₹{amount(list.totalCreditPaise)} on credit
+                  · {list.patients.length} patient{list.patients.length === 1 ? '' : 's'} · {list.paidBills.length + list.creditBills.length} {admittedNow ? 'counter bills of their stays' : 'bills'} · ₹{amount(list.totalCreditPaise)} on credit
                 </span>
               </p>
             )}
@@ -449,7 +450,7 @@ export function PharmacySettlementPage() {
                   loading={one.loading}
                   columns={creditColumns}
                   pageSize={0}
-                  emptyText={external ? 'A walk-in customer has no credit to settle.' : data ? 'Nothing is owed on this patient’s counter bills.' : nothingWords}
+                  emptyText={external ? 'A walk-in customer has no credit to settle.' : data ? 'Nothing is owed on this patient’s counter bills.' : list ? (admittedNow ? 'No counter bills on credit for the patients admitted now.' : `No ${typeWord} bills on credit today.`) : nothingWords}
                   onRowClick={(r) => tick(r.id, !chosen.has(r.id))}
                   rowClassName={(r) => (chosen.has(r.id) ? 'is-picked' : undefined)}
                 />
@@ -478,12 +479,13 @@ export function PharmacySettlementPage() {
               </div>
             </div>
             {data && credit.length > 0 && !selected.rows.length && <p className="hint ph-sb-tip">Tick the credit bills to settle (or Select all), then Advance, Discount or Settlement.</p>}
-            {list && credit.length > 0 && !selected.rows.length && <p className="hint ph-sb-tip">Tick the credit bills of one patient, then Advance, Discount or Settlement – or click a patient on the left for all her bills.</p>}
+            {list && credit.length > 0 && !selected.rows.length && <p className="hint ph-sb-tip">Tick the credit bills of one patient, then Advance, Discount or Settlement – or click a patient on the left for all their bills.</p>}
             {oneNote && (
               <p className="hint ph-sb-tip" role="status">
                 {oneNote}
               </p>
             )}
+            {query?.type === 'ipd' && (data || list) && <p className="hint ph-sb-tip">Only counter bills are settled here: ward issues, and bills put on the hospital bill, are paid at the billing desk.</p>}
             {data && data.from && <p className="hint ph-sb-tip">Bills from {formatDate(data.from)} to {formatDate(data.to)}.</p>}
           </div>
         </div>

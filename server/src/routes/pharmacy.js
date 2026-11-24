@@ -44,7 +44,7 @@ import {
 import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, invoiceTotals, invoiceViews, isExpired, patientDues, returnItems, stockOf, writeOff, usableMatch, HOLD_REASONS, padded } from '../pharmacy/pharmacyService.js';
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { advanceOf, depositAdvance, refundAdvance, useAdvance } from '../pharmacy/advance.js';
-import { settleSelected, settlementData, settlementRow } from '../pharmacy/settlement.js';
+import { admittedNowList, advanceByPatient, settleSelected, settlementData, settlementRow } from '../pharmacy/settlement.js';
 import { isClosed } from '../patients/deathRules.js';
 import { NOT_CANCELLED, returnTotals } from '../pharmacy/supplierReturnsService.js';
 import { checkOpening, nameKey, openingSchema, saveOpening } from '../pharmacy/openingStock.js';
@@ -1534,7 +1534,8 @@ pharmacyRouter.post('/patients/:id/settle', async (req, res) => {
 // bill stays owed until it is settled, however old it is (From and To narrow the list when given).
 // Search with nothing typed (24 Nov 2026, the pharmacy's request): the type's bills of today, every patient's, in the
 // Paid and Credit tables, with the patients beside them (what each owes and her advance) – External: today's walk-in
-// bills, as before.
+// bills, as before. IP (the same day's request: "IP should show the IP patients"): everyone admitted now, as the
+// pharmacy's Inpatients list, with the counter bills of her stay – an older one while something is still owed on it.
 const settlementQuery = z.object({
   from: requiredDateOnly('From').optional(),
   to: requiredDateOnly('To').optional(),
@@ -1565,6 +1566,11 @@ pharmacyRouter.get('/settlement', async (req, res) => {
     await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'settlement', patientIds: [], walkInBills: invoices.length } });
     return res.json({ ...dates, externalBills: invoices.map((inv) => settlementRow(inv)) });
   }
+  if (!q.search && q.type === 'ipd') {
+    const found = await admittedNowList(req, { when, dated });
+    await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'settlement', patientIds: found.patients.map((p) => p.id), rows: found.paidBills.length + found.creditBills.length } });
+    return res.json({ ...dates, day: isoDay(today(req)), list: true, scope: 'admitted', ...found });
+  }
   if (!q.search) {
     const day = dated ? q.from ?? q.to : today(req);
     const [dayStart, dayEnd] = dated ? [start, end] : [hospitalDayStart(day), hospitalDayStart(addDays(day, 1))];
@@ -1573,9 +1579,7 @@ pharmacyRouter.get('/settlement', async (req, res) => {
       .filter((inv) => q.type === 'all' || (q.type === 'ipd') === admitted.has(String(inv.patientId)));
     const pids = [...new Set(invoices.map((inv) => String(inv.patientId)))];
     const people = new Map((pids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
-    const advances = pids.length ? await PharmacyAdvance.find({ tenantId: req.tenantId, patientId: { $in: pids } }, { patientId: 1, kind: 1, amountPaise: 1 }).lean() : [];
-    const advanceOfPatient = new Map();
-    for (const e of advances) advanceOfPatient.set(String(e.patientId), (advanceOfPatient.get(String(e.patientId)) ?? 0) + (e.kind === 'deposit' ? 1 : -1) * e.amountPaise);
+    const advanceOfPatient = await advanceByPatient(req, pids);
     const rows = invoices.filter((inv) => people.has(String(inv.patientId))).map((inv) => settlementRow(inv, people.get(String(inv.patientId))));
     const patients = [...new Map(rows.map((r) => [r.patientId, r])).values()]
       .map((r) => {
@@ -1604,9 +1608,10 @@ pharmacyRouter.get('/settlement', async (req, res) => {
     if (new Date(inv.created.at) > new Date(found.lastAt)) found.lastAt = inv.created.at;
     by.set(String(inv.patientId), found);
   }
+  // IP: an admitted patient is found even before her first counter bill (24 Nov 2026), as in the list of everyone admitted
   const patients = people
-    .filter((p) => by.has(String(p._id)))
-    .map((p) => ({ id: String(p._id), fullName: p.fullName, mrn: p.mrn ?? '', type: admittedNow.has(String(p._id)) ? 'ipd' : 'opd', ...by.get(String(p._id)) }))
+    .filter((p) => by.has(String(p._id)) || (q.type === 'ipd' && admittedNow.has(String(p._id))))
+    .map((p) => ({ id: String(p._id), fullName: p.fullName, mrn: p.mrn ?? '', type: admittedNow.has(String(p._id)) ? 'ipd' : 'opd', billCount: 0, creditPaise: 0, lastAt: null, ...by.get(String(p._id)) }))
     // a UHID typed in full first, then those who owe most, then the latest bill
     .sort((a, b) => Number(exact.test(b.mrn)) - Number(exact.test(a.mrn)) || b.creditPaise - a.creditPaise || new Date(b.lastAt) - new Date(a.lastAt));
   await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'settlement', patientIds: patients.map((p) => p.id), rows: patients.length } });

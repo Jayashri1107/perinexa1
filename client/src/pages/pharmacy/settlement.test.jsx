@@ -16,6 +16,8 @@ const { PharmacySettlementPage, SettlementReceipt } = await import('./Settlement
 const { findProblem, findQuery, newSettle, selectedOf, settleBody, settleSums, settledWords, toPaise } = await import('./settlement.js');
 const { InvoicesPage } = await import('./InvoicesPage.jsx');
 const { describeAudit } = await import('../../components/auditFormat.js');
+const { PatientPickList } = await import('./pharmacyUi.jsx');
+const { amount } = await import('./searchBill.js');
 
 const words = (html) => html.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 const text = (html) => words(html).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
@@ -86,6 +88,20 @@ describe('the Settlement window', () => {
     expect(selectedOf(credit, new Set())).toEqual({ rows: [], paise: 0 });
     expect(settledWords({ receivedPaise: 80000, advancePaise: 40000, concessionPaise: 10000 }, ['cash', 'upi'])).toBe('₹800.00 received in Cash and UPI, ₹400.00 from the advance, ₹100.00 discount');
     expect(settledWords({ receivedPaise: 0, advancePaise: 40000, concessionPaise: 0 }, [])).toBe('₹400.00 from the advance');
+  });
+});
+
+describe('the list of patients found (Settlement, Sale return patient-wise)', () => {
+  it('shows one line a patient – name, UHID and what she owes – the chosen one marked', () => {
+    const people = Array.from({ length: 22 }, (_, i) => ({ id: `p${i}`, fullName: `Sample Patient ${i + 1}`, mrn: `SH-${1000 + i}`, creditPaise: i === 1 ? 40800 : 0 }));
+    const html = renderToStaticMarkup(
+      <PatientPickList title="Today’s OP patients (22) – click one" people={people} chosenId="p1" onChoose={() => {}} extra={{ header: 'Due (₹)', render: (p) => (p.creditPaise > 0 ? amount(p.creditPaise) : '–') }} />,
+    );
+    expect(text(html)).toMatch(/^ ?Today’s OP patients \(22\) – click one Patient name UHID Due \(₹\) Sample Patient 1 SH-1000 – Sample Patient 2 SH-1001 408\.00 Sample Patient 3/);
+    expect((html.match(/<tr/g) ?? []).length).toBe(23); // the header and the 22 patients, one line each
+    expect(words(html)).toContain('<tr class="is-on"><td><button type="button" class="ph-plist-name" aria-pressed="true" title="Sample Patient 2">');
+    // Sale return: no money column
+    expect(text(renderToStaticMarkup(<PatientPickList title="Billed today (1) – choose one" people={people.slice(0, 1)} onChoose={() => {}} />))).toMatch(/Patient name UHID Sample Patient 1 SH-1000 $/);
   });
 });
 
