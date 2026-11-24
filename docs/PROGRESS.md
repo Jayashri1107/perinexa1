@@ -1,5 +1,48 @@
 # Progress
 
+## Pharmacy → Sale return patient-wise, as the earlier software's Sales Return window (24 Nov 2026)
+The developer's request with a photo of the earlier software's "Sales Return" window. Built with Claude in the Claude
+app – **`npm test` and `npm run build` are still to be run by the developer**. Fake data only.
+- **New menu item after Settlement** (pharmacist only – `/pharmacy/patient-return`). On the left: OPD or IPD,
+  Registration no (UHID), First name, Doctor name, Date (today), Tax (CGST / SGST, as on the bills), Direct print,
+  Search. One patient found opens at once; several are listed to choose from.
+- **Her medicines from all her bills in one list** – OPD her counter sales, IPD her ward issues – newest bill first:
+  Item name, Batch no, Exp date, Unit MRP, **Return qty** (typed), Return amt, Qty (still returnable), Disc %, Bill no,
+  Bill date, Pay (Cash, Credit or Hospital bill). Lines already returned, expired, or on a final or cancelled hospital
+  bill are not listed. Item name shows only that medicine; with **Barcode** ticked, each scan adds one to the newest
+  line with that barcode.
+- **The figures, as on the earlier window:** Total cash return / disc / N disc / Net cash return; the same for
+  credit; and Total return amt, Total discount amt, Total N discount amt, Net return amt. Cash: bills paid in full;
+  Credit: bills with something owed, and ward issues. **Net cash return is the money given back** – only what was paid
+  beyond what is still owed after the return; **Net credit return comes off what she owes** (or off her hospital
+  bill). A reason is required; "Money given back by" (cash, UPI, card, cheque, NEFT) when money is due.
+- **Save** takes everything back at once: each bill gets its own GST credit note (printable from the bill as before),
+  the stock goes back to its batches, a ward issue lowers its line on the hospital bill. Everything is checked before
+  anything is taken back (quantities, expiry, her own bills, the hospital bill not final). Then **Print return slip**
+  (A5: every medicine with its bill and credit note, and the money) – straight to the printer with Direct print.
+- **Server:** `pharmacy/patientReturn.js` (the list, `returnSplit`, `returnedMoney`), `routes/pharmacyPatientReturn.js`
+  (GET the patients, GET her medicines, POST the return), mounted in `routes/pharmacy.js`; `returnItems` in
+  `pharmacyService.js` takes `refund.onlyPaid` (the rule above) and returns `refundPaise` – the bill page's own "Take
+  medicines back" is unchanged. Audit: PHARMACY_PATIENT_LOOKED_UP by "patient-return"; PHARMACY_RETURNED per bill
+  with `patientWise` and the money given back.
+  **Website:** `PatientReturnPage.jsx`, `patientReturn.js`, `modules.js`, `App.jsx`, `PharmacyTopics.jsx` (the
+  department's topic "Sale return patient-wise" now opens this page), `auditFormat.js`, `pages-pharmacy.css` (`.ph-pr-*`).
+- **Noticed, not changed:** the bill page's "Take medicines back" gives the whole return back in money even on a bill
+  that is still on credit (the patient keeps owing the full credit). The new page doesn't; the bill page can be
+  brought in line if the owner agrees.
+- **Tests (new, not yet run with `npm test`):** `server/tests/pharmacyPatientReturn.test.js` (the lookups, a return
+  from a paid and a credit bill at once: refund, credit, stock, the Daily Collection), `client/.../patientReturn.test.jsx`;
+  `modules.test.js` updated. Checked here with a stand-in runner and an in-memory database stand-in (the route:
+  lookups, the split, refusals, a ward issue, a final hospital bill), and in a browser with sample data.
+
+### How to test (fake data only)
+1. Make a sample OPD patient with one bill paid in cash and one on credit (Sales bill → Payment window).
+2. Pharmacy → **Sale return patient-wise** → OPD → her registration no → Search: both bills' medicines are listed.
+3. Type a Return qty on a line of each bill: the cash figures show the paid bill's line, the credit figures the other;
+   Net cash return is what is given back. Type a reason → Save → credit notes are named; Print return slip.
+4. Open each bill: a credit note each; the paid bill shows the refund, the credit bill's balance went down (no refund).
+5. IPD with an admitted sample patient: her ward issues are listed; a return comes off her hospital bill.
+
 ## Pharmacy → Settlement; Sales bill and every pharmacy report open on today; the Daily Collection print (24 Nov 2026)
 The developer's request with a photo of the earlier software's "Pharmacy Settlement" window and its printed
 "Pharmacy Daily Collection" (23 Nov). Built with Claude in the Claude app on top of the settlement and daily

@@ -12,7 +12,7 @@ export const PHARMACY_TOPICS = [
       ['Sale bill', '/pharmacy', 'Sales bill: choose OPD, IPD or External, then the patient.'],
       ['Search sale bill', '/pharmacy/search-bill', 'Search bill: patient type, name, UHID, sales no, dates, item, cash or credit. Double-click a bill to print it again.'],
       ['Current stock', '/pharmacy/stock', 'Stock: every medicine with what is left.'],
-      ['Sale return patient-wise', report('patient-returns'), 'Each patient’s returns in the period.'],
+      ['Sale return patient-wise', '/pharmacy/patient-return', 'Sale return patient-wise: OPD or IPD, registration no or first name, Search – her medicines from all her bills; type the return qty, the reason, Save. (The report of returns by patient is Report list → Sales return patient-wise.)'],
       ['Sale return bill-wise (External)', '/pharmacy', 'Open the bill → Take medicines back. A walk-in gets the money back at once.'],
       ['Discharge clearance pharmacy', '/pharmacy/discharge-clearance', 'Discharged patients waiting to leave, with what they owe the pharmacy.'],
       ['Sale window', '/pharmacy', 'The bill itself (Sales bill).'],

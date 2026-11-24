@@ -1570,3 +1570,42 @@ table.ph-dc-modes td.ph-dc-net-how { font-weight: 400; font-size: 0.75rem; color
 .ph-dc-doc .ph-dc-amts { font-size: 7.5pt; color: var(--print-ink); }
 .ph-dc-doc .ph-dc-amts :is(dt, dd) { color: var(--print-ink); }
 .ph-dc-doc .bill-sign { margin-top: 8mm; }
+
+/* 24 Nov 2026 – Pharmacy → Sale return patient-wise, after the earlier software's Sales Return window: the Settlement
+   page's left panel; Item name (or a barcode) over the grid of her medicines with a Return qty box on each; under it
+   the cash, credit and total figures in three columns, then the reason, how money is given back, Save and Close */
+.ph-pr-item { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); margin: 0; }
+.ph-pr-item-box { display: flex; flex: 1 1 320px; flex-direction: column; gap: 4px; margin: 0; }
+.ph-pr-item-box > span { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.ph-pr-item-box input { width: 100%; height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
+.ph-pr-item .check { min-height: 32px; margin: 0; gap: 6px; font-size: var(--fs-label); }
+.ph-pr .ph-sb-bills .dt-wrap { max-height: 40vh; }
+.ph-pr-name { display: inline-block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+input.ph-pr-qty { width: 64px; height: 26px; min-height: 0; padding: 2px 6px; text-align: right; font-size: 0.8125rem; }
+input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
+.ph-pr-sums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2) var(--space-4); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.ph-pr-col { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.ph-pr-fact { display: grid; grid-template-columns: minmax(0, 1fr) 96px; align-items: center; gap: var(--space-2); }
+.ph-pr-fact label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-pr-fact label { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.ph-pr-fact input { width: 100%; height: 28px; min-height: 0; padding: 2px 8px; background: var(--mist-50); text-align: right; font-size: 0.8125rem; }
+.ph-pr-fact.is-strong label { color: var(--ink); font-weight: 600; }
+.ph-pr-fact.is-strong input { font-weight: 700; color: var(--ink); }
+.ph-pr-foot { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
+.ph-pr-foot .ph-pr-reason { flex: 1 1 260px; }
+.ph-pr-foot select { height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
+.ph-pr-foot .ph-st-actions { margin-left: auto; }
+.ph-pr-slip-money { margin: 3mm 0 0; font-weight: 600; }
+@media (min-width: 720px) {
+  /* the list keeps its height and scrolls inside; its first column is the item's name, not a tick box as on Search bill */
+  .ph-pr .ph-sb-bills .dt-wrap { height: clamp(200px, 36vh, 420px); max-height: none; }
+  .ph-pr-lines .dt { font-size: 0.78rem; }
+  .ph-pr-lines .dt :is(th, td) { padding: 4px 6px; white-space: nowrap; }
+  .ph-pr-lines .dt :is(th, td):first-child { padding: 4px 8px; text-align: left; }
+}
+@media (min-width: 1024px) {
+  .ph-pr .ph-sb-split { grid-template-columns: 230px minmax(0, 1fr); }
+}
+@media (max-width: 1023px) {
+  .ph-pr-sums { grid-template-columns: minmax(0, 1fr); }
+}

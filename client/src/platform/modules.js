@@ -1,4 +1,4 @@
-import { BadgeCheck, Banknote, FolderArchive, BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, CirclePlus, ClipboardPen, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Scissors, Search, Settings, ShieldCheck, Siren, Stethoscope, TestTube, Truck, UserCog, Users, Wallet } from 'lucide-react';
+import { BadgeCheck, Banknote, RotateCcw, FolderArchive, BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, CirclePlus, ClipboardPen, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Scissors, Search, Settings, ShieldCheck, Siren, Stethoscope, TestTube, Truck, UserCog, Users, Wallet } from 'lucide-react';
 import { ANALYTICS_ROLES } from '../pages/analytics/analyticsRoles.js';
 import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 import { CASE_REVIEW_ROLES, CLINICAL_AUDIT_ROLES, QUALITY_TABS } from '../pages/quality/qualityFormat.js';
@@ -304,6 +304,8 @@ const PHARMACIST_MENU = [
   { key: 'pharmacy-search-bill', label: 'Search bill', icon: Search, to: '/pharmacy/search-bill' },
   // Settlement (24 Nov 2026, the developer): the earlier software's "Pharmacy Settlement" window – credit bills settled
   { key: 'pharmacy-settlement', label: 'Settlement', icon: Banknote, to: '/pharmacy/settlement' },
+  // Sale return patient-wise (24 Nov 2026, the developer): the earlier software's "Sales Return" window – one patient's medicines from all her bills
+  { key: 'pharmacy-patient-return', label: 'Sale return patient-wise', icon: RotateCcw, to: '/pharmacy/patient-return' },
   { key: 'pharmacy-ward-requests', label: 'Ward requests', icon: BedDouble, to: '/pharmacy/ward-requests' }, // PH12
   { key: 'pharmacy-discharge', label: 'Discharge clearance', icon: ListChecks, to: '/pharmacy/discharge-clearance' }, // 18 Nov 2026
   { key: 'pharmacy-suppliers', label: 'Suppliers', icon: Truck, to: '/pharmacy/suppliers' },

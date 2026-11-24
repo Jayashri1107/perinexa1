@@ -25,6 +25,7 @@ import { earlierRecordIds } from '../patients/duplicateService.js';
 import { HttpError } from '../utils/httpError.js';
 import { buyerState } from './einvoice.js';
 import { lineMoney, partOf, sum, grossOf, suggestedQty } from './gst.js';
+import { returnSplit } from './patientReturn.js';
 import { CONTROLLED, NEEDS_PRESCRIPTION } from './pharmacyRules.js';
 import { givenFromPrescriptions, givenWords } from './rxGiven.js';
 import { neverSubstitute, substituteFor } from './substitutes.js';
@@ -438,10 +439,13 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
 /**
  * Takes back unopened medicines (before their expiry – owner's choice): stock returns to its batch, a GST credit note
  * (CN-000001) is made, and her bill line is lowered (a walk-in gets the money back at the counter, `refund`).
- * items: [{ lineId, qty }].
+ * items: [{ lineId, qty }]. refund.onlyPaid (Sale return patient-wise, 24 Nov 2026): a counter bill is credited first
+ * and money is given back only for what was paid beyond what is still owed after the return (patientReturn.js).
+ * Returns { invoice, number, credit, refundPaise }.
  */
 export async function returnItems(req, invoice, items, reason, refund) {
   const today = hospitalToday(req.now);
+  const before = invoiceTotals(invoice);
   const parts = [];
   for (const it of items) {
     const line = invoice.lines.id(it.lineId);
@@ -458,8 +462,9 @@ export async function returnItems(req, invoice, items, reason, refund) {
     p.line.returnedQty += p.qty;
   }
   const credit = sum(parts.map((p) => p.money));
+  const refundPaise = invoice.billId ? 0 : refund?.onlyPaid ? returnSplit(before, credit.amountPaise).refundPaise : credit.amountPaise;
   invoice.returns.push({ number, lines: parts.map((p) => ({ lineId: p.line._id, qty: p.qty, ...p.money })), reason, ...stampOf(req) });
-  if (!invoice.billId) invoice.payments.push({ kind: 'refund', mode: refund.mode, amountPaise: credit.amountPaise, reference: refund.reference ?? '', ...stampOf(req) });
+  if (refundPaise > 0) invoice.payments.push({ kind: 'refund', mode: refund.mode, amountPaise: refundPaise, reference: refund.reference ?? '', ...stampOf(req) });
   await invoice.save();
 
   // Her bill: the invoice line now shows what is still charged
@@ -471,7 +476,7 @@ export async function returnItems(req, invoice, items, reason, refund) {
       { arrayFilters: [{ 'l.ref.id': invoice._id, 'l.removed': null }] },
     );
   }
-  return { invoice, number, credit };
+  return { invoice, number, credit, refundPaise };
 }
 
 /** Writes off stock (expired, damaged, lost) with a reason (and the witness of a controlled medicine – PH7). */

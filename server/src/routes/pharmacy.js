@@ -54,6 +54,7 @@ import { escapeRegex, exportReason, objectId, parse, requiredDateOnly } from '..
 import { pharmacyOrdersRouter } from './pharmacyOrders.js';
 import { pharmacyRegisterRouter } from './pharmacyRegister.js';
 import { pharmacyBillSearchRouter } from './pharmacyBillSearch.js';
+import { pharmacyPatientReturnRouter } from './pharmacyPatientReturn.js';
 import { pharmacySupplierReturnsRouter } from './pharmacySupplierReturns.js';
 import { capitalizeName } from '../utils/personName.js';
 import { stampOf } from '../billing/billingService.js';
@@ -92,6 +93,9 @@ import { formularyHighAlerts, withFormularyAlert } from '../pharmacy/formularyAl
 // Search bill (23 Nov 2026):
 //  - /api/pharmacy/bill-search      the bills that fit a type, name, UHID, sales number, dates, item, cash or credit
 //                                    (routes/pharmacyBillSearch.js)
+// Sale return patient-wise (24 Nov 2026):
+//  - /api/pharmacy/patient-return   one patient's medicines from all her bills, taken back from several bills at once
+//                                    (routes/pharmacyPatientReturn.js)
 // Pharmacists see patients' names, numbers and phones, and the medicines prescribed – never diagnoses or notes.
 
 export const pharmacyRouter = Router();
@@ -104,6 +108,7 @@ pharmacyRouter.use('/orders', pharmacyOrdersRouter);
 pharmacyRouter.use('/supplier-returns', pharmacySupplierReturnsRouter);
 pharmacyRouter.use('/register', pharmacyRegisterRouter);
 pharmacyRouter.use('/bill-search', pharmacyBillSearchRouter); // Search bill (23 Nov 2026)
+pharmacyRouter.use('/patient-return', pharmacyPatientReturnRouter); // Sale return patient-wise (24 Nov 2026)
 
 // ---------- The pharmacy's details ----------
 

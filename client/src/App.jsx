@@ -99,6 +99,7 @@ const loadNewBill = () => import('./pages/pharmacy/NewBillPage.jsx');
 const NewBillPage = screen(loadNewBill, 'NewBillPage');
 const SearchBillPage = screen(() => import('./pages/pharmacy/SearchBillPage.jsx'), 'SearchBillPage');
 const PharmacySettlementPage = screen(() => import('./pages/pharmacy/SettlementPage.jsx'), 'PharmacySettlementPage');
+const PatientReturnPage = screen(() => import('./pages/pharmacy/PatientReturnPage.jsx'), 'PatientReturnPage');
 const SellPage = screen(load27, 'SellPage');
 const loadWardRequests = () => import('./pages/pharmacy/WardRequests.jsx');
 const WardRequestsPage = screen(loadWardRequests, 'WardRequestsPage');
@@ -698,6 +699,7 @@ export function App() {
                     <Route path="issue" element={<SellPage key="issue" kind="issue" />} />
                     <Route path="search-bill" element={<SearchBillPage />} /> {/* 23 Nov 2026: a bill made earlier, found and printed again */}
                     <Route path="settlement" element={<PharmacySettlementPage />} /> {/* 24 Nov 2026: credit bills settled */}
+                    <Route path="patient-return" element={<PatientReturnPage />} /> {/* 24 Nov 2026: sale return patient-wise */}
                     {/* The day's OPD, IPD and External patients are on Today (owner, 26 Oct 2026) */}
                     <Route path="register" element={<RegisterRedirect />} />
                     <Route path="purchases/new" element={<NewPurchasePage />} />

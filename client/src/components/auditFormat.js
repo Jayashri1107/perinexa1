@@ -1954,7 +1954,7 @@ export function describeAudit(entry) {
     case 'PHARMACY_INVOICE_VIEWED':
       return invoiceOf(d);
     case 'PHARMACY_RETURNED':
-      return joined(d.creditNote ? `credit note ${d.creditNote}${d.number ? ` of invoice ${d.number}` : ''}` : invoiceOf(d), d.amountPaise != null ? rupeesOf(d.amountPaise) : '');
+      return joined(d.creditNote ? `credit note ${d.creditNote}${d.number ? ` of invoice ${d.number}` : ''}` : invoiceOf(d), d.amountPaise != null ? rupeesOf(d.amountPaise) : '', d.patientWise ? `patient-wise, ${rupeesOf(d.refundPaise ?? 0)} given back` : '');
     case 'PHARMACY_PRINTED':
       return d.what === 'credit_note' ? `Credit note of ${d.number ? `invoice ${d.number}` : 'an invoice'}` : invoiceOf(d);
     case 'PHARMACY_REGISTER_VIEWED':
@@ -1976,6 +1976,7 @@ export function describeAudit(entry) {
       return joined(MIS_WORDS[d.report] ?? 'Pharmacy report', periodOf(d), d.rows != null ? count(d.rows, 'row') : '');
     case 'PHARMACY_PATIENT_LOOKED_UP':
       if (d.by === 'list') return joined('List of people billed', count(d.people ?? 0, 'person', 'people'));
+      if (d.by === 'patient-return') return joined('Sale return patient-wise', count(d.patientIds?.length ?? 0, 'record'));
       if (d.by === 'settlement') return joined('Settlement', count(d.patientIds?.length ?? 0, 'record'), d.walkInBills != null ? count(d.walkInBills, 'walk-in bill') : '');
       return joined(d.by === 'phone' ? 'By phone number' : d.by === 'name' ? 'By name, among people billed' : 'By patient number', count(d.patientIds?.length ?? 0, 'record'), d.walkInBills ? count(d.walkInBills, d.by === 'name' ? 'walk-in customer' : 'walk-in bill') : '');
     case 'PHARMACY_EXPORTED':
