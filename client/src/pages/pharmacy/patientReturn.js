@@ -111,6 +111,12 @@ export function lineForCode(lines, typed, code) {
   return (lines ?? []).find((l) => (l.barcodes ?? []).includes(c) && (typedQty(typed[l.key], l.canReturnQty) ?? l.canReturnQty) < l.canReturnQty) ?? null;
 }
 
+/**
+ * The Item name list (24 Nov 2026, as the earlier window: type, then choose): her bills' medicines whose name or generic
+ * name has what is typed – all of them when nothing is – that can still be taken back and are not in the return yet.
+ */
+export const pickChoices = (lines, text, picked = [], limit = 100) => linesShown(lines, text).filter((l) => l.canReturnQty > 0 && !picked.includes(l.key)).slice(0, limit);
+
 /** The lines shown: those whose name or generic name has what is typed in Item name. */
 export const linesShown = (lines, item) => {
   const t = item.trim().toLowerCase();

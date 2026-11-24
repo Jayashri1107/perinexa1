@@ -82,6 +82,53 @@ export async function admittedNowList(req, { when = {}, dated = false } = {}) {
   return { paidBills: rows.filter((r) => r.balancePaise <= 0), creditBills, totalCreditPaise: creditBills.reduce((n, r) => n + r.balancePaise, 0), patients };
 }
 
+/**
+ * Settlement's Find patient window (24 Nov 2026, the developer's video of the earlier software's Pharmacy Settlement):
+ * IPD – everyone admitted now, with her admission's date and time, IPD number and doctor (start/end: admitted between
+ * them); OPD – the patients with counter bills (start/end: on those days), with her latest bill's date and time, number
+ * and doctor; someone admitted now is IPD, not OPD. who: a Patient filter of what was typed (the name's parts, the
+ * mobile number, the UHID). Newest first, at most 500.
+ */
+export async function settlementPatients(req, { type, start = null, end = null, who = {} }) {
+  const tenantId = req.tenantId;
+  const typed = Object.keys(who).length > 0;
+  if (type === 'ipd') {
+    const stays = await Admission.find({ tenantId, status: 'admitted', ...(start ? { admittedAt: { $gte: start, $lt: end } } : {}) }, { patientId: 1, admittedAt: 1, ipdNo: 1, doctorName: 1 })
+      .sort({ admittedAt: -1, _id: -1 })
+      .limit(500)
+      .lean();
+    const people = new Map((stays.length ? await Patient.find({ tenantId, _id: { $in: stays.map((s) => s.patientId) }, ...who }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
+    const seen = new Set();
+    return stays
+      .filter((s) => people.has(String(s.patientId)) && !seen.has(String(s.patientId)) && seen.add(String(s.patientId)))
+      .map((s) => {
+        const p = people.get(String(s.patientId));
+        return { id: String(p._id), mrn: p.mrn ?? '', fullName: p.fullName, type: 'ipd', at: s.admittedAt, number: s.ipdNo ?? '', doctor: s.doctorName ?? '' };
+      });
+  }
+  const admitted = new Set((await Admission.distinct('patientId', { tenantId, status: 'admitted' })).map(String));
+  // What was typed: the patients first (so that many bills of others never push hers out); else the bills of the days
+  const matched = typed ? await Patient.find({ tenantId, ...who }, { fullName: 1, mrn: 1 }).limit(500).lean() : null;
+  const invoices = await PharmacyInvoice.find(
+    { tenantId, patientId: matched ? { $in: matched.map((p) => p._id) } : { $ne: null }, billId: null, kind: 'sale', ...(start ? { 'created.at': { $gte: start, $lt: end } } : {}) },
+    { patientId: 1, number: 1, doctor: 1, created: 1 },
+  )
+    .sort({ 'created.at': -1, _id: -1 })
+    .limit(2000)
+    .lean();
+  const latest = new Map();
+  for (const inv of invoices) if (!admitted.has(String(inv.patientId)) && !latest.has(String(inv.patientId))) latest.set(String(inv.patientId), inv);
+  const ids = [...latest.keys()].slice(0, 500);
+  const people = new Map((matched ?? (ids.length ? await Patient.find({ tenantId, _id: { $in: ids } }, { fullName: 1, mrn: 1 }).lean() : [])).map((p) => [String(p._id), p]));
+  return ids
+    .filter((id) => people.has(id))
+    .map((id) => {
+      const p = people.get(id);
+      const inv = latest.get(id);
+      return { id, mrn: p.mrn ?? '', fullName: p.fullName, type: 'opd', at: inv.created?.at ?? null, number: inv.number, doctor: inv.doctor?.name ?? '' };
+    });
+}
+
 /** The patient's Paid and Credit bills, plus the advance available now. */
 export async function settlementData(req, patient, invoices) {
   const rows = invoices.map((inv) => settlementRow(inv, patient)).sort((a, b) => new Date(b.date) - new Date(a.date));

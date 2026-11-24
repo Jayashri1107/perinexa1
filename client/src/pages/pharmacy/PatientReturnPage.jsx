@@ -1,25 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
-import { CircleCheck, CircleX, Printer, Search } from 'lucide-react';
+import { CircleCheck, CircleX, Printer, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
-import { Alert, formatDate, formatDateTime, formatDayMonth } from '../../components/ui.jsx';
+import { Alert, formatDate, formatDayMonth } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { MODE_LABELS, expiryLabel } from './pharmacyFormat.js';
-import { PatientPickList, PharmacyHeader, PharmacyLetterhead, bringIntoView } from './pharmacyUi.jsx';
+import { PatientPickList, PharmacyHeader, bringIntoView } from './pharmacyUi.jsx';
 import { amount } from './searchBill.js';
-import { RETURN_KINDS, findProblem, findQuery, lineForCode, linesShown, payWord, returnBody, returnFigures, typedQty } from './patientReturn.js';
+import { RETURN_KINDS, findProblem, findQuery, lineForCode, payWord, pickChoices, returnBody, returnFigures, typedQty } from './patientReturn.js';
 
 // Pharmacy → Sale return patient-wise (24 Nov 2026, the developer, after the "Sales Return" window of the pharmacy's
 // earlier software), the menu item after Settlement. On the left OPD or IPD, Registration no (UHID), First name, Doctor
 // name, the Date (today), the Tax, Direct print and Search. Beside it Item name (or a barcode, with Barcode ticked) and
-// the patient's medicines from all her bills – OPD her counter sales, IPD her ward issues – with a Return qty box on
-// each; under them the cash, credit and total figures, the reason, how money is given back, Save and Close.
+// the medicines in the return. As the earlier window (the developer's video, 24 Nov 2026): typing in Item name lists her
+// bills' medicines – OPD her counter sales, IPD her ward issues – with Sales no, Date, Bill type, Batch, Expiry and MRP;
+// the one chosen comes into the return with Return qty 1 (its box ready to change); under them the cash, credit and
+// total figures, the reason, how money is given back, Save and Close.
 // Save takes the quantities back from every bill at once: each bill gets its own GST credit note (printable from the
 // bill), stock goes back to its batch. Money is given back only for what was paid beyond what is still owed; the rest
-// comes off her credit, and a ward issue comes off her hospital bill (never a final one). A return slip of the whole
-// return prints after Save (straight away with Direct print).
+// comes off her credit, and a ward issue comes off her hospital bill (never a final one). The Pharmacy Sales Return Bill
+// of the whole return opens after Save, as on the earlier window (printed straight away with Direct print).
 // Made on the server: server/src/routes/pharmacyPatientReturn.js and pharmacy/patientReturn.js.
 
 const EMPTY = { type: 'opd', mrn: '', first: '', doctor: '' };
@@ -34,69 +36,114 @@ function Fact({ label, value, id, strong = false }) {
   );
 }
 
-/** The paper given with the return: every medicine taken back, its bill and credit note, and the money. */
+// The return bill's date and time as the store's earlier papers print them: 24/11/2026 and 16:43:05 (India time)
+const slipDay = (iso) => new Date(iso).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' });
+const slipTime = (iso) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' });
+
+/**
+ * The paper given with the return, as the earlier software's "Pharmacy Sales Return Bill" (24 Nov 2026, the developer's
+ * video): the store's heading, Reg No, Patient Name, Sales Ret. No (each bill's credit note), Date and Time; the medicines
+ * (Item Name, Batch No, Expiry, Qty, Total Amount); Total Amount, Cash Return and Credit Return; the store's lines and the
+ * pharmacist. The same look as the Sales bill's paper.
+ */
 export function ReturnSlip({ done, settings }) {
-  const noteOf = (invoiceId) => done.creditNotes.find((c) => c.invoiceId === invoiceId)?.creditNote ?? '';
   const t = done.totals;
+  const licences = [settings.licence20, settings.licence21].filter(Boolean).join(' ');
   const hospital = done.creditNotes.filter((c) => c.onHospitalBill).reduce((n, c) => n + c.creditPaise, 0);
+  const plain = (paise) => amount(paise);
   return (
     <PrintDocument className="bill-doc ph-doc ph-pr-slip">
-      <PharmacyLetterhead settings={settings} />
-      <h1 className="pdoc-title">Sale return</h1>
-      <dl className="pdoc-facts">
-        <div>
-          <dt>Patient</dt>
-          <dd>{done.patient.fullName}</dd>
-        </div>
-        <div>
-          <dt>Registration no</dt>
-          <dd>{done.patient.mrn || '—'}</dd>
-        </div>
-        <div>
-          <dt>Date</dt>
-          <dd>{formatDateTime(done.at)}</dd>
-        </div>
-      </dl>
-      <table className="bill-report">
-        <thead>
-          <tr>
-            <th scope="col">Item</th>
-            <th scope="col">Batch</th>
-            <th scope="col">Bill no</th>
-            <th scope="col">Credit note</th>
-            <th scope="col" className="num">
-              Qty
-            </th>
-            <th scope="col" className="num">
-              Amount
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {done.chosen.map((c) => (
-            <tr key={c.line.key}>
-              <td>{c.line.name}</td>
-              <td>{c.line.batch}</td>
-              <td>{c.line.number}</td>
-              <td>{noteOf(c.line.invoiceId)}</td>
-              <td className="num">{c.qty}</td>
-              <td className="num">{amount(c.amountPaise)}</td>
+      <div className="ph-slip">
+        <header className="ph-slip-head">
+          <div className="lh-name">{settings.name}</div>
+          {settings.address && <div>{settings.address}</div>}
+          {(licences || settings.gstin) && (
+            <div className="ph-slip-ids">
+              {licences && <span>D.L. No. {licences}</span>}
+              {settings.gstin && <span>GSTN No. {settings.gstin}</span>}
+            </div>
+          )}
+          {settings.phone && <div className="ph-slip-mobile">Mobile No. {settings.phone}</div>}
+          <div className="ph-slip-mobile">Pharmacy Sales Return Bill</div>
+        </header>
+        <dl className="ph-slip-facts">
+          <div>
+            <dt>Reg No</dt>
+            <dd>{done.patient.mrn || ''}</dd>
+          </div>
+          <div className="is-long">
+            <dt>Sales Ret. No</dt>
+            <dd>{done.creditNotes.map((c) => c.creditNote).join(', ')}</dd>
+          </div>
+          <div className="is-long">
+            <dt>Patient Name</dt>
+            <dd>{done.patient.fullName}</dd>
+          </div>
+          <div>
+            <dt>Date</dt>
+            <dd>{slipDay(done.at)}</dd>
+          </div>
+          <div className="is-long">
+            <dt>Against bill</dt>
+            <dd>{done.creditNotes.map((c) => c.number).join(', ')}</dd>
+          </div>
+          <div>
+            <dt>Time</dt>
+            <dd>{slipTime(done.at)}</dd>
+          </div>
+        </dl>
+        <table className="ptable ph-slip-lines">
+          <thead>
+            <tr>
+              <th scope="col">Item Name</th>
+              <th scope="col">Batch No</th>
+              <th scope="col">Expiry</th>
+              <th scope="col" className="num">
+                Qty
+              </th>
+              <th scope="col" className="num">
+                Total Amount
+              </th>
             </tr>
-          ))}
-          <tr className="bill-report-total">
-            <th scope="row" colSpan={5}>
-              Net return amount
-            </th>
-            <td className="num">{amount(t.amountPaise)}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p className="ph-pr-slip-money">
-        {t.refundPaise > 0 && <span>Given back: ₹{amount(t.refundPaise)} by {MODE_LABELS[done.mode] ?? done.mode}. </span>}
-        {t.creditPaise - hospital > 0 && <span>Taken off what is owed to the pharmacy: ₹{amount(t.creditPaise - hospital)}. </span>}
-        {hospital > 0 && <span>Taken off the hospital bill: ₹{amount(hospital)}.</span>}
-      </p>
-      <p className="bill-sign">Received by: ____________________ &nbsp; Pharmacist: ____________________</p>
+          </thead>
+          <tbody>
+            {done.chosen.map((c) => (
+              <tr key={c.line.key}>
+                <td>{c.line.name}</td>
+                <td>{c.line.batch}</td>
+                <td className="nowrap">{c.line.expiry ? expiryLabel(c.line.expiry).replace(' ', '-') : ''}</td>
+                <td className="num">{c.qty}</td>
+                <td className="num">{plain(c.amountPaise)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="ph-slip-sums">
+          <div>
+            <span>Total Amount</span>
+            <span>{plain(t.amountPaise)}</span>
+          </div>
+          <div className="ph-slip-credit">
+            <span>Cash Return{t.refundPaise > 0 && done.mode !== 'cash' ? ` (${MODE_LABELS[done.mode] ?? done.mode})` : ''}</span>
+            <span>{plain(t.refundPaise)}</span>
+          </div>
+          <div>
+            <span>Credit Return{hospital > 0 ? ' (hospital bill ' + plain(hospital) + ')' : ''}</span>
+            <span>{plain(t.creditPaise)}</span>
+          </div>
+        </div>
+        <div className="ph-slip-foot">
+          <div>
+            <p>OVERCHARGE IF ANY IS REFUNDABLE, E.&amp;O.E</p>
+            <p>* * * GET WELL SOON * * *</p>
+            {settings.place && <p>Subject to {settings.place} Jurisdiction</p>}
+          </div>
+          <div className="ph-slip-sign">
+            <div className="ph-slip-sign-line">Pharmacist</div>
+            {settings.pharmacistName && <div>{settings.pharmacistName}</div>}
+          </div>
+        </div>
+      </div>
     </PrintDocument>
   );
 }
@@ -107,6 +154,10 @@ export function PatientReturnPage() {
   const [query, setQuery] = useState(null);
   const [patientId, setPatientId] = useState(null);
   const [typed, setTyped] = useState({}); // return qty typed, by line
+  const [picked, setPicked] = useState([]); // the lines in the return, in the order chosen (24 Nov 2026, as the earlier window)
+  const [open, setOpen] = useState(false); // the Item name list is showing
+  const [hi, setHi] = useState(0); // the line lit in it (arrow keys)
+  const [focusKey, setFocusKey] = useState(null); // a line just added: its Return qty box gets the cursor
   const [item, setItem] = useState('');
   const [barcode, setBarcode] = useState(false);
   const [scanNote, setScanNote] = useState('');
@@ -124,7 +175,8 @@ export function PatientReturnPage() {
   const data = patientId && one.data?.patient?.id === patientId ? one.data : null;
   const problem = findProblem(form);
   const figures = returnFigures(data, typed);
-  const shown = linesShown(data?.lines, barcode ? '' : item);
+  const rows = picked.map((k) => data?.lines?.find((l) => l.key === k)).filter(Boolean);
+  const choices = data && !barcode && open ? pickChoices(data.lines, item, picked) : [];
   const todayIso = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
   // One patient found by number or name: her medicines at once (the list of today's patients stays a list)
@@ -135,7 +187,47 @@ export function PatientReturnPage() {
   const choose = (id) => {
     setPatientId(id);
     setTyped({});
+    setPicked([]);
+    setItem('');
     setError(null);
+  };
+  // A line chosen from the Item name list (or scanned): into the return with Return qty 1, its box ready to change
+  const pick = (line, qty = 1) => {
+    setPicked((p) => (p.includes(line.key) ? p : [...p, line.key]));
+    setTyped((t) => ({ ...t, [line.key]: String(qty) }));
+    setItem('');
+    setOpen(false);
+    setHi(0);
+    setFocusKey(line.key);
+  };
+  const unpick = (key) => {
+    setPicked((p) => p.filter((k) => k !== key));
+    setTyped((t) => {
+      const next = { ...t };
+      delete next[key];
+      return next;
+    });
+  };
+  useEffect(() => {
+    if (!focusKey) return;
+    const box = document.getElementById(`pr-qty-${focusKey}`);
+    box?.focus();
+    box?.select();
+    setFocusKey(null);
+  }, [focusKey]);
+  const itemKeys = (e) => {
+    if (barcode) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!open) setOpen(true);
+      else setHi((h) => Math.min(h + 1, Math.max(0, choices.length - 1)));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHi((h) => Math.max(0, h - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (choices[hi]) pick(choices[hi]);
+    } else if (e.key === 'Escape') setOpen(false);
   };
   const set = (change) => setForm((f) => ({ ...f, ...change }));
   const search = (e) => {
@@ -143,6 +235,7 @@ export function PatientReturnPage() {
     if (problem) return;
     setPatientId(null);
     setTyped({});
+    setPicked([]);
     setDone(null);
     setError(null);
     setQuery(findQuery(form));
@@ -155,7 +248,8 @@ export function PatientReturnPage() {
     if (!line) setScanNote('No medicine on her bills has this barcode, or all of it is already in the return.');
     else {
       const next = (typedQty(typed[line.key], line.canReturnQty) ?? 0) + 1;
-      setTyped((t) => ({ ...t, [line.key]: String(next) }));
+      pick(line, next);
+      setFocusKey(null); // the scanner keeps the cursor
       setScanNote(`${line.name} (bill ${line.number}): return qty ${next}.`);
     }
     setItem('');
@@ -168,8 +262,9 @@ export function PatientReturnPage() {
       const answer = await api('/pharmacy/patient-return', { method: 'POST', body: returnBody({ patientId, type: data.type, chosen: figures.chosen, reason, mode }) });
       setDone({ ...answer, chosen: figures.chosen, patient: data.patient, mode: answer.refundMode ?? mode, at: new Date().toISOString() });
       setTyped({});
+      setPicked([]);
       setReason('');
-      setPrinting(direct);
+      setPrinting(true); // the return bill straight after Save, as the earlier window (printed at once with Direct print)
       one.reload();
     } catch (err) {
       setError(err.message);
@@ -193,6 +288,7 @@ export function PatientReturnPage() {
           <input
             className="ph-pr-qty tabular"
             inputMode="numeric"
+            id={`pr-qty-${l.key}`}
             aria-label={`Return qty of ${l.name}, bill ${l.number}`}
             aria-invalid={bad || undefined}
             value={typed[l.key] ?? ''}
@@ -208,7 +304,7 @@ export function PatientReturnPage() {
       align: 'right',
       render: (l) => {
         const c = figures.chosen.find((x) => x.line.key === l.key);
-        return c ? amount(c.amountPaise) : '';
+        return c ? amount(c.grossPaise) : ''; // at MRP, as the earlier window; the discount is in the figures under the list
       },
     },
     { key: 'qty', header: 'Qty', align: 'right', render: (l) => <span title={`Sold ${l.qty}, taken back before ${l.returnedQty}`}>{l.canReturnQty}</span> },
@@ -216,12 +312,24 @@ export function PatientReturnPage() {
     { key: 'bill', header: 'Bill no', render: (l) => <span className="tabular">{l.number}</span> },
     { key: 'date', header: 'Bill date', render: (l) => <span title={formatDate(l.date)}>{formatDayMonth(l.date)}</span> },
     { key: 'pay', header: 'Pay', render: (l) => payWord(data?.bills?.find((b) => b.invoiceId === l.invoiceId)) },
+    {
+      key: 'remove',
+      width: '40px',
+      header: <span className="sr-only">Remove</span>,
+      render: (l) => (
+        <button type="button" className="icon-btn ph-pr-remove" aria-label={`Take ${l.name} (bill ${l.number}) out of the return`} onClick={() => unpick(l.key)}>
+          <X aria-hidden="true" />
+        </button>
+      ),
+    },
   ];
   const emptyWords = !query
     ? 'Choose OPD or IPD and press Search for today’s patients – or type a registration no or first name.'
     : data
       ? data.lines.length
-        ? 'No medicine with that name on her bills.'
+        ? barcode
+          ? 'Scan the pack: its medicine comes into the return.'
+          : 'Type the medicine’s name in Item name and choose it from the list – it comes here with Return qty 1.'
         : 'Nothing on her bills can be taken back (already returned, expired, or on a final hospital bill).'
       : people?.length
         ? 'Choose the patient on the left.'
@@ -294,10 +402,10 @@ export function PatientReturnPage() {
           <div className="ph-sb-results">
             {done && (
               <Alert type="success" onClose={() => setDone(null)}>
-                {`Taken back for ${done.patient.fullName}: ₹${amount(done.totals.amountPaise)} – credit note${done.creditNotes.length === 1 ? '' : 's'} ${done.creditNotes.map((c) => c.creditNote).join(', ')}. `}
+                {`Return saved. Taken back for ${done.patient.fullName}: ₹${amount(done.totals.amountPaise)} – credit note${done.creditNotes.length === 1 ? '' : 's'} ${done.creditNotes.map((c) => c.creditNote).join(', ')}. `}
                 {done.totals.refundPaise > 0 ? `Give back ₹${amount(done.totals.refundPaise)} by ${MODE_LABELS[done.mode] ?? done.mode}. ` : 'No money to give back. '}
                 <button type="button" className="btn btn-link btn-sm" onClick={() => setPrinting(true)}>
-                  <Printer aria-hidden="true" /> Print return slip
+                  <Printer aria-hidden="true" /> Print the return bill again
                 </button>
               </Alert>
             )}
@@ -314,20 +422,66 @@ export function PatientReturnPage() {
               </p>
             )}
             <form className="ph-pr-item" onSubmit={scan}>
-              <label className="ph-pr-item-box">
-                <span>{barcode ? 'Barcode' : 'Item name'}</span>
+              <div className="ph-pr-item-box">
+                <label htmlFor="pr-item">{barcode ? 'Barcode' : 'Item name'}</label>
                 <input
+                  id="pr-item"
                   type="search"
                   value={item}
                   maxLength={100}
                   autoComplete="off"
-                  placeholder={barcode ? 'Scan the pack, or type the number and press Enter' : 'Type to show only that medicine'}
+                  disabled={!data}
+                  role={barcode ? undefined : 'combobox'}
+                  aria-expanded={barcode ? undefined : choices.length > 0}
+                  aria-controls={barcode ? undefined : 'pr-choices'}
+                  aria-activedescendant={choices[hi] ? `pr-choice-${hi}` : undefined}
+                  placeholder={!data ? 'Choose the patient first' : barcode ? 'Scan the pack, or type the number and press Enter' : 'Type the medicine’s name, then choose it from the list (↓ shows all)'}
                   onChange={(e) => {
                     setItem(e.target.value);
+                    setOpen(Boolean(e.target.value.trim()));
+                    setHi(0);
                     setScanNote('');
                   }}
+                  onKeyDown={itemKeys}
+                  onBlur={() => setOpen(false)}
                 />
-              </label>
+                {choices.length > 0 && (
+                  <div className="ph-pr-choices" id="pr-choices" role="listbox" aria-label="Medicines on her bills">
+                    <div className="ph-pr-choice ph-pr-choice-head" aria-hidden="true">
+                      <span>Sales no</span>
+                      <span>Date</span>
+                      <span>Bill type</span>
+                      <span>Item name</span>
+                      <span>Batch no</span>
+                      <span>Exp date</span>
+                      <span className="num">Unit MRP</span>
+                      <span className="num">Can return</span>
+                    </div>
+                    {choices.map((l, i) => (
+                      <div
+                        key={l.key}
+                        id={`pr-choice-${i}`}
+                        role="option"
+                        aria-selected={i === hi}
+                        className={i === hi ? 'ph-pr-choice is-on' : 'ph-pr-choice'}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onMouseEnter={() => setHi(i)}
+                        onClick={() => pick(l)}
+                      >
+                        <span className="tabular">{l.number}</span>
+                        <span className="tabular">{formatDayMonth(l.date)}</span>
+                        <span>{payWord(data.bills?.find((b) => b.invoiceId === l.invoiceId))}</span>
+                        <span className="ph-pr-choice-name">{l.name}</span>
+                        <span>{l.batch}</span>
+                        <span>{l.expiry ? expiryLabel(l.expiry) : '–'}</span>
+                        <span className="num tabular">{amount(l.mrpPaise)}</span>
+                        <span className="num tabular">{l.canReturnQty}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {data && !barcode && open && item.trim() && !choices.length && <p className="hint ph-pr-nomatch">No medicine on her bills has this name, or it is already in the return.</p>}
+              </div>
               <label className="check">
                 <input
                   type="checkbox"
@@ -349,9 +503,9 @@ export function PatientReturnPage() {
                 {scanNote}
               </p>
             )}
-            <section className="ph-st-grid" aria-label="Medicines on her bills">
+            <section className="ph-st-grid" aria-label="Medicines in the return">
               <div className="ph-sb-bills ph-pr-lines">
-                <DataTable caption="Medicines on her bills" rows={data ? shown : []} rowKey="key" loading={one.loading || found.loading} columns={columns} pageSize={0} emptyText={emptyWords} rowClassName={(l) => (figures.chosen.some((c) => c.line.key === l.key) ? 'is-picked' : undefined)} />
+                <DataTable caption="Medicines in the return" rows={rows} rowKey="key" loading={one.loading || found.loading} columns={columns} pageSize={0} emptyText={emptyWords} />
               </div>
             </section>
             {data?.more && <p className="hint ph-sb-tip">Only her newest 500 medicines are listed.</p>}

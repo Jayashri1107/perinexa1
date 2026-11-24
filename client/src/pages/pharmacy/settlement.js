@@ -28,11 +28,37 @@ export function toPaise(text) {
 /** Paise → what goes back in a box: 1234.50. */
 export const typed = (paise) => (paise / 100).toFixed(2);
 
-/** Why Search can't be pressed yet ('' when it can). Nothing typed: today's bills of the type (24 Nov 2026). */
+/** Why Search can't be pressed yet ('' when it can). Nothing typed: the Find patient window lists the type's patients. */
 export function findProblem(form) {
   if (form.type === 'external') return '';
   const text = form.mrn.trim() || form.name.trim();
-  return !text || text.length >= 2 ? '' : 'Type the UHID or at least two letters of the patient’s name – or nothing, for today’s bills.';
+  return !text || text.length >= 2 ? '' : 'Type the UHID or at least two letters of the patient’s name – or nothing, to choose from the list.';
+}
+
+/**
+ * The Find patient window's boxes when Search opens it (24 Nov 2026, as the earlier software): what was typed on the
+ * left goes into Patient name or UHID, ticked; with nothing typed OPD ticks Date for today, IPD lists everyone admitted.
+ */
+export function newFindFilters(form, todayIso) {
+  const name = form.name.trim();
+  const mrn = form.mrn.trim();
+  return { byName: Boolean(name), first: name, middle: '', last: '', phone: '', byMrn: Boolean(mrn), mrn, byDate: form.type === 'opd' && !name && !mrn, from: todayIso, to: todayIso };
+}
+
+/** What's wrong with the Find patient window's boxes ('' when Show can be pressed). */
+export function findWindowProblem(f) {
+  if (f.byName && f.phone.trim() && !/^[\d\s+-]{3,20}$/.test(f.phone.trim())) return 'Write the mobile number in digits.';
+  if (f.byDate && (!f.from || !f.to)) return 'Choose the From and To dates.';
+  if (f.byDate && f.to < f.from) return 'The To date is before the From date.';
+  return '';
+}
+
+/** What Show asks the server for (GET /api/pharmacy/settlement/patients): only the ticked boxes count. */
+export function findWindowQuery(type, f) {
+  const name = f.byName ? [f.first, f.middle, f.last].map((x) => x.trim()).filter(Boolean).join(' ') : '';
+  const phone = f.byName ? f.phone.trim() : '';
+  const mrn = f.byMrn ? f.mrn.trim() : '';
+  return { type, ...(name ? { name } : {}), ...(phone ? { phone } : {}), ...(mrn ? { mrn } : {}), ...(f.byDate ? { from: f.from, to: f.to } : {}) };
 }
 
 /** What Search asks the server for: the UHID when one is typed, otherwise the name. */

@@ -9,7 +9,7 @@ vi.mock('../../hooks/useFetch.js', () => ({ useFetch: () => ({ data: null, loadi
 vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembership: { roles: ['pharmacist'] }, user: { name: 'Sample Pharmacist' }, activeTenantId: 't1' }) }));
 
 const { PatientReturnPage, ReturnSlip } = await import('./PatientReturnPage.jsx');
-const { findProblem, findQuery, lineForCode, lineReturn, linesShown, payWord, returnBody, returnFigures, returnSplit, typedQty } = await import('./patientReturn.js');
+const { findProblem, findQuery, lineForCode, lineReturn, linesShown, payWord, pickChoices, returnBody, returnFigures, returnSplit, typedQty } = await import('./patientReturn.js');
 
 const words = (html) => html.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 const text = (html) => words(html).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
@@ -73,6 +73,12 @@ describe('the figures under the list', () => {
     expect(lineForCode(DATA.lines, { a: '10' }, '8901000000011').key).toBe('b'); // the first is all in the return already
     expect(lineForCode(DATA.lines, {}, '123')).toBe(null);
     expect(linesShown(DATA.lines, 'folic').map((l) => l.key)).toEqual(['c']);
+    // Item name, as the earlier window (24 Nov 2026): what is typed lists her bills' medicines to choose; one already in
+    // the return, or with nothing left to take back, is not offered again; nothing typed (↓) lists them all
+    expect(pickChoices(DATA.lines, 'iron', []).map((l) => [l.key, l.number])).toEqual([['a', 'PH-000100'], ['b', 'PH-000101']]);
+    expect(pickChoices(DATA.lines, 'IRON', ['a']).map((l) => l.key)).toEqual(['b']);
+    expect(pickChoices(DATA.lines, '', ['c']).map((l) => l.key)).toEqual(['a', 'b']);
+    expect(pickChoices([{ ...DATA.lines[2], canReturnQty: 0 }], 'folic', [])).toEqual([]);
   });
 });
 
@@ -109,10 +115,12 @@ describe('the Sale return patient-wise screen', () => {
       totals: { amountPaise: 3900, refundPaise: 900, creditPaise: 3000 },
     };
     const shown = text(renderToStaticMarkup(<ReturnSlip done={done} settings={SETTINGS} />));
-    expect(shown).toContain('Sale return');
-    expect(shown).toContain('Patient Sample Asha Kale Registration no SH-0001');
-    expect(shown).toContain('Sample Iron 100 B1 PH-000100 CN-000007 2 9.00');
-    expect(shown).toContain('Net return amount 39.00');
-    expect(shown).toContain('Given back: ₹9.00 by Cash. Taken off what is owed to the pharmacy: ₹30.00.');
+    // as the earlier software's Pharmacy Sales Return Bill (24 Nov 2026)
+    expect(shown).toContain('Pharmacy Sales Return Bill');
+    expect(shown).toContain('Reg No SH-0001 Sales Ret. No CN-000007, CN-000008 Patient Name Sample Asha Kale Date 24/11/2026 Against bill PH-000100, PH-000101 Time 11:30:00');
+    expect(shown).toContain('Item Name Batch No Expiry Qty Total Amount Sample Iron 100 B1 Jun-2028 2 9.00 Sample Iron 100 B1 Jun-2028 3 30.00');
+    expect(shown).toContain('Total Amount 39.00 Cash Return 9.00 Credit Return 30.00');
+    expect(shown).toContain('OVERCHARGE IF ANY IS REFUNDABLE, E.&O.E');
+    expect(shown).toContain('Pharmacist');
   });
 });

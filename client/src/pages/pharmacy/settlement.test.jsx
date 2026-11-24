@@ -13,7 +13,7 @@ vi.mock('../../hooks/useFetch.js', () => ({
 vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembership: { roles: ['pharmacist'] }, user: { name: 'Sample Pharmacist' }, activeTenantId: 't1' }) }));
 
 const { PharmacySettlementPage, SettlementReceipt } = await import('./SettlementPage.jsx');
-const { findProblem, findQuery, newSettle, selectedOf, settleBody, settleSums, settledWords, toPaise } = await import('./settlement.js');
+const { findProblem, findQuery, findWindowProblem, findWindowQuery, newFindFilters, newSettle, selectedOf, settleBody, settleSums, settledWords, toPaise } = await import('./settlement.js');
 const { InvoicesPage } = await import('./InvoicesPage.jsx');
 const { describeAudit } = await import('../../components/auditFormat.js');
 const { PatientPickList } = await import('./pharmacyUi.jsx');
@@ -38,9 +38,27 @@ describe('what Search asks for', () => {
     expect(findQuery({ type: 'external', mrn: '', name: '' })).toEqual({ type: 'external' });
     expect(findProblem({ type: 'opd', mrn: '', name: 'A' })).toContain('at least two letters');
     expect(findProblem({ type: 'opd', mrn: 'SH', name: '' })).toBe('');
-    expect(findProblem({ type: 'opd', mrn: '', name: '' })).toBe(''); // nothing typed: today's OPD bills (24 Nov 2026)
+    expect(findProblem({ type: 'opd', mrn: '', name: '' })).toBe(''); // nothing typed: the list of patients (24 Nov 2026)
     expect(findQuery({ type: 'ipd', mrn: ' ', name: '' })).toEqual({ type: 'ipd' });
     expect(findProblem({ type: 'external', mrn: '', name: '' })).toBe('');
+  });
+
+  it('Search opens the Find patient window, as the earlier software: what was typed goes in, ticked', () => {
+    const day = '2026-11-24';
+    // nothing typed: OPD – Date ticked for today; IPD – everyone admitted now
+    expect(newFindFilters({ type: 'opd', mrn: '', name: '' }, day)).toMatchObject({ byName: false, byMrn: false, byDate: true, from: day, to: day });
+    expect(findWindowQuery('opd', newFindFilters({ type: 'opd', mrn: '', name: '' }, day))).toEqual({ type: 'opd', from: day, to: day });
+    expect(findWindowQuery('ipd', newFindFilters({ type: 'ipd', mrn: '', name: '' }, day))).toEqual({ type: 'ipd' });
+    // typed: that, any day
+    const typed = newFindFilters({ type: 'opd', mrn: ' SH-0001 ', name: ' Asha Kale ' }, day);
+    expect(typed).toMatchObject({ byName: true, first: 'Asha Kale', byMrn: true, mrn: 'SH-0001', byDate: false });
+    expect(findWindowQuery('opd', typed)).toEqual({ type: 'opd', name: 'Asha Kale', mrn: 'SH-0001' });
+    // only the ticked boxes count; the name's parts and the mobile number
+    const f = { ...typed, byMrn: false, first: 'Asha', middle: ' ', last: 'Kale', phone: '98220 12345', byDate: true, from: '2026-11-01', to: day };
+    expect(findWindowQuery('ipd', f)).toEqual({ type: 'ipd', name: 'Asha Kale', phone: '98220 12345', from: '2026-11-01', to: day });
+    expect(findWindowProblem(f)).toBe('');
+    expect(findWindowProblem({ ...f, phone: '98ab' })).toBe('Write the mobile number in digits.');
+    expect(findWindowProblem({ ...f, from: day, to: '2026-11-01' })).toBe('The To date is before the From date.');
   });
 });
 
@@ -117,7 +135,7 @@ describe('the Settlement screen', () => {
     expect(shown).toMatch(/Paid bills .*Sales date Print bill no UHID Bill amt Con\. amt Net pay amt Paid amt Balance/);
     expect(shown).toMatch(/Credit bills Select all .*Sales date Print bill no UHID Bill amt Con\. amt Net pay amt Balance/);
     expect(shown).toMatch(/Advance available .*Total credit .*Selected total .*Advance Discount Settlement Close/);
-    expect(shown).toContain('Choose OPD, IPD or External and press Search – today’s bills – or type a UHID or name.');
+    expect(shown).toContain('Choose OPD, IPD or External and press Search – the list of patients opens – or type the UHID or name first.');
     // OPD chosen to begin with; nothing to settle until bills are ticked
     const radios = words(html).match(/<input type="radio" name="st-type"[^>]*>/g);
     const checked = radios.filter((tag) => tag.includes('checked=""'));

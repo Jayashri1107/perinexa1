@@ -1,5 +1,46 @@
 # Progress
 
+## Settlement as the earlier window in the developer's video: the Find patient window (24 Nov 2026)
+The developer's video of the earlier software's Pharmacy Settlement. Built with Claude in the Claude app – **`npm test`
+and `npm run build` still to run**.
+- **Search opens the Find patient window**, as the earlier software: on its left the patient type (as chosen), and
+  Patient name (first, middle, last name, mobile no), UHID and Date (from, to) – each used when ticked – and Show;
+  beside them the patients: UHID, Patient name, Date, Time, Number and Doctor name. **IPD** lists everyone admitted
+  now (her admission's date and time, IPD number, doctor); **OPD** the patients with counter bills on the dates – Date
+  is ticked for today when nothing is typed (her latest bill's date and time, number, doctor). ↑ ↓ and Enter, a double
+  click, or Select chooses; Close or Esc closes.
+- **What is typed on the left** (UHID or name) goes into the window, ticked, for any date; when it finds only her, she
+  is chosen at once without the window.
+- **The screen shows one patient at a time**, as the earlier window: her UHID and name fill the boxes on the left with
+  her **Advance balance** under them, Search at the panel's foot; Paid bills and Credit bills are hers. (Today's
+  bills of every patient in the two tables – from earlier today – are gone from the screen; the server still answers
+  `GET /api/pharmacy/settlement` with nothing typed, unused by the screen.) External is unchanged.
+- **Server:** `GET /api/pharmacy/settlement/patients?type=opd|ipd&name=&phone=&mrn=&from=&to=` (the pharmacist; audited)
+  – `settlementPatients()` in `server/src/pharmacy/settlement.js`.
+- **Tests:** `pharmacySettlement.test.js` (the window: IPD admitted now, OPD by days, a name typed, the mobile no
+  checked, reception refused) and `settlement.test.jsx` (what Search puts in the window and what Show asks). Checked
+  here with the stand-in runner and in a browser with sample data.
+
+## Sale return patient-wise, as the earlier window in the developer's video (24 Nov 2026)
+The developer's video of the earlier software's "Sales Return" window. Built with Claude in the Claude app – **`npm
+test` and `npm run build` still to run**. Look and behaviour only; nothing on the server changed.
+- **The list starts empty.** Typing in **Item name** opens a list under the box of her bills' medicines (OPD her
+  counter sales, IPD her ward issues): Sales no, Date, Bill type (Cash, Credit, Hospital bill), Item name, Batch no, Exp
+  date, Unit MRP and how many can still be taken back. ↓ and ↑ move, Enter or a click chooses; ↓ with nothing typed
+  lists them all. The one chosen comes into the return with **Return qty 1**, its box ready to change; a medicine
+  already in the return is not offered again; the × at the end of a line takes it out. Barcode: a scan adds the
+  medicine (or one more of it).
+- **Return amt** is at MRP, as on the earlier window; the discount is in the figures under the list.
+- **After Save** the return bill opens at once (printed straight away with Direct print), and the list is empty for
+  the next return. "Print the return bill again" stays on the saved line.
+- **The return bill is the earlier "Pharmacy Sales Return Bill"**, in the Sales bill paper's look: the store's
+  heading, Reg No, Sales Ret. No (each bill's credit note), Patient Name, Date, Against bill, Time; Item Name, Batch
+  No, Expiry, Qty, Total Amount; Total Amount, Cash Return, Credit Return; the store's lines and Pharmacist.
+- Kept from before (not in the earlier window): Reason for the return (it goes into the audit log) and Money given
+  back by.
+- **Tests:** `patientReturn.test.jsx` (the Item name list; the return bill). Checked here with the stand-in runner and
+  in a browser with sample data, on a computer screen and a phone.
+
 ## Settlement: IP lists the patients admitted now (24 Nov 2026)
 The developer's request ("when IP is chosen it should display the IP patients"). Built with Claude in the Claude app –
 **`npm test` and `npm run build` still to run**.

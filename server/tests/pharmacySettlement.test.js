@@ -106,6 +106,24 @@ describe('Settlement', () => {
     expect((await ph('get', '/settlement?type=ipd', undefined, 'reception')).status).toBe(403);
   });
 
+  it('the Find patient window: IPD everyone admitted now, OPD the patients of the days; a name typed finds her', async () => {
+    const { p } = await patientWithCredit(); // her bills are today's
+    const ward = await newPatient('Sample Ward Mother');
+    const admitted = await (await as('drA')).post(`/api/patients/${ward.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', ward: 'Labour room', reason: 'In labour' });
+    expect(admitted.status, JSON.stringify(admitted.body)).toBe(201);
+    const ipd = (await ph('get', '/settlement/patients?type=ipd')).body;
+    expect(ipd.patients).toEqual([expect.objectContaining({ id: ward.id, mrn: ward.mrn, fullName: 'Sample Ward Mother', type: 'ipd', at: expect.any(String) })]);
+    const opd = (await ph('get', `/settlement/patients?type=opd&from=${DAY}&to=${DAY}`)).body; // Date ticked: today
+    expect(opd).toMatchObject({ from: DAY, to: DAY });
+    expect(opd.patients).toEqual([expect.objectContaining({ id: p.id, type: 'opd', number: expect.stringMatching(/^PH-/) })]);
+    expect((await ph('get', '/settlement/patients?type=opd')).body.patients.map((x) => x.id)).toEqual([p.id]); // no dates: any day
+    expect((await ph('get', '/settlement/patients?type=opd&from=2026-09-01&to=2026-09-01')).body.patients).toEqual([]); // another day
+    expect((await ph('get', '/settlement/patients?type=opd&name=settlement%20mother')).body.patients.map((x) => x.id)).toEqual([p.id]);
+    expect((await ph('get', '/settlement/patients?type=ipd&name=Settlement')).body.patients).toEqual([]); // not admitted
+    expect((await ph('get', '/settlement/patients?type=opd&phone=12ab')).status).toBe(400);
+    expect((await ph('get', '/settlement/patients?type=ipd', undefined, 'reception')).status).toBe(403);
+  });
+
   it('settles the credit bills chosen with advance, a discount and two ways of paying – oldest bill first', async () => {
     const { p, a, b, c } = await patientWithCredit();
     const before = (await ph('get', `/settlement?patientId=${p.id}`)).body;

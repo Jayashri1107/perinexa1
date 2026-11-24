@@ -44,7 +44,7 @@ import {
 import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, invoiceTotals, invoiceViews, isExpired, patientDues, returnItems, stockOf, writeOff, usableMatch, HOLD_REASONS, padded } from '../pharmacy/pharmacyService.js';
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { advanceOf, depositAdvance, refundAdvance, useAdvance } from '../pharmacy/advance.js';
-import { admittedNowList, advanceByPatient, settleSelected, settlementData, settlementRow } from '../pharmacy/settlement.js';
+import { admittedNowList, advanceByPatient, settleSelected, settlementData, settlementPatients, settlementRow } from '../pharmacy/settlement.js';
 import { isClosed } from '../patients/deathRules.js';
 import { NOT_CANCELLED, returnTotals } from '../pharmacy/supplierReturnsService.js';
 import { checkOpening, nameKey, openingSchema, saveOpening } from '../pharmacy/openingStock.js';
@@ -1616,6 +1616,33 @@ pharmacyRouter.get('/settlement', async (req, res) => {
     .sort((a, b) => Number(exact.test(b.mrn)) - Number(exact.test(a.mrn)) || b.creditPaise - a.creditPaise || new Date(b.lastAt) - new Date(a.lastAt));
   await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'settlement', patientIds: patients.map((p) => p.id), rows: patients.length } });
   res.json({ ...dates, patients });
+});
+// Settlement's Find patient window (24 Nov 2026, the developer's video of the earlier software): OPD or IPD, what was
+// typed – the name's parts (first, middle and last, in any order), the mobile number, the UHID – and the dates when Date
+// is ticked (the screen ticks it, for today, when OPD is searched with nothing typed). Audited as the other lookups.
+const settlementPatientsQuery = z.object({
+  type: z.enum(['opd', 'ipd']).default('opd'),
+  name: z.string().trim().max(150).optional(),
+  phone: z.string().trim().regex(/^[\d\s+-]{3,20}$/, 'Write the mobile number in digits.').optional(),
+  mrn: z.string().trim().max(40).optional(),
+  from: requiredDateOnly('From date').optional(),
+  to: requiredDateOnly('To date').optional(),
+}).strict();
+pharmacyRouter.get('/settlement/patients', async (req, res) => {
+  desk(req);
+  const q = parse(settlementPatientsQuery, req.query);
+  const parts = (q.name ?? '').split(/\s+/).filter(Boolean).map((x) => new RegExp(escapeRegex(x), 'i'));
+  const digits = (q.phone ?? '').replace(/\D/g, '');
+  const who = {
+    ...(parts.length ? { $and: parts.map((x) => ({ fullName: x })) } : {}),
+    ...(digits ? { phone: new RegExp(digits.split('').join('\\D*')) } : {}),
+    ...(q.mrn ? { mrn: new RegExp(escapeRegex(q.mrn), 'i') } : {}),
+  };
+  const dated = Boolean(q.from || q.to);
+  const [start, end] = dated ? period({ from: q.from ?? q.to, to: q.to ?? q.from }) : [null, null];
+  const patients = await settlementPatients(req, { type: q.type, start, end, who });
+  await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'settlement', patientIds: patients.map((p) => p.id), rows: patients.length } });
+  res.json({ type: q.type, from: dated ? isoDay(q.from ?? q.to) : null, to: dated ? isoDay(q.to ?? q.from) : null, patients });
 });
 const settlementBody = z.object({
   patientId: objectId,

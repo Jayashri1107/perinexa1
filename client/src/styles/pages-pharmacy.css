@@ -1573,13 +1573,13 @@ table.ph-dc-modes td.ph-dc-net-how { font-weight: 400; font-size: 0.75rem; color
    page's left panel; Item name (or a barcode) over the grid of her medicines with a Return qty box on each; under it
    the cash, credit and total figures in three columns, then the reason, how money is given back, Save and Close */
 .ph-pr-item { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); margin: 0; }
-.ph-pr-item-box { display: flex; flex: 1 1 320px; flex-direction: column; gap: 4px; margin: 0; }
-.ph-pr-item-box > span { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.ph-pr-item-box { position: relative; display: flex; flex: 1 1 320px; flex-direction: column; gap: 4px; margin: 0; }
+.ph-pr-item-box > label { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
 .ph-pr-item-box input { width: 100%; height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
 .ph-pr-item .check { min-height: 32px; margin: 0; gap: 6px; font-size: var(--fs-label); }
 .ph-pr .ph-sb-bills .dt-wrap { max-height: 40vh; }
 .ph-pr-name { display: inline-block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
-input.ph-pr-qty { width: 64px; height: 26px; min-height: 0; padding: 2px 6px; text-align: right; font-size: 0.8125rem; }
+input.ph-pr-qty { width: 64px; height: 26px; min-height: 0; padding: 2px 6px; border-color: var(--indigo-700); text-align: right; font-size: 0.8125rem; font-weight: 600; }
 input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
 .ph-pr-sums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2) var(--space-4); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
 .ph-pr-col { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
@@ -1594,6 +1594,53 @@ input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
 .ph-pr-foot select { height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
 .ph-pr-foot .ph-st-actions { margin-left: auto; }
 .ph-pr-slip-money { margin: 3mm 0 0; font-weight: 600; }
+/* 24 Nov 2026, as the earlier window (the developer's video): Item name opens a list of her bills' medicines – Sales no,
+   Date, Bill type, Item name, Batch no, Exp date, Unit MRP – under the box; the one chosen comes into the return with
+   Return qty 1. Arrow keys and Enter, or a click. */
+.ph-pr-choices { position: absolute; top: 100%; left: 0; right: 0; z-index: 30; max-height: min(360px, 50vh); margin-top: 2px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-pop); }
+.ph-pr-choice { display: grid; grid-template-columns: 96px 64px 92px minmax(180px, 1fr) 100px 80px 76px 76px; gap: 0 var(--space-2); align-items: center; width: max-content; min-width: 100%; min-height: 28px; padding: 2px var(--space-3); border-bottom: 1px solid var(--border); color: var(--ink); font-size: 0.8125rem; cursor: pointer; }
+.ph-pr-choice .num { text-align: right; }
+.ph-pr-choice-head { position: sticky; top: 0; z-index: 1; min-height: 30px; border-bottom: 0; background: var(--indigo-800); color: var(--on-solid); font-size: 0.75rem; font-weight: 600; cursor: default; }
+.ph-pr-choice:not(.ph-pr-choice-head):hover { background: var(--indigo-100); }
+.ph-pr-choice.is-on { background: var(--selected-bg); box-shadow: inset 3px 0 0 var(--indigo-700); font-weight: 600; }
+.ph-pr-choice-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ph-pr-nomatch { position: absolute; top: 100%; left: 0; z-index: 30; margin: 2px 0 0; padding: var(--space-1) var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.ph-pr-lines .ph-pr-remove { width: 28px; height: 28px; min-width: 0; min-height: 0; }
+.ph-pr-lines .ph-pr-remove svg.lucide { width: 16px; height: 16px; }
+
+/* 24 Nov 2026, Settlement as the earlier window (the developer's video): the panel narrow again – Patient type, UHID,
+   Patient name, the patient's advance, and Search at its foot; Search opens the Find patient window */
+.ph-st-advance { margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--ink); }
+@media (min-width: 1024px) {
+  .ph-st.ph-st-main .ph-sb-split { grid-template-columns: 260px minmax(0, 1fr); }
+}
+@media (min-width: 1440px) {
+  .ph-st.ph-st-main .ph-sb-split { grid-template-columns: 310px minmax(0, 1fr); }
+}
+@media (min-width: 1024px) and (min-height: 640px) {
+  .ph-st.ph-st-main .ph-sb-panel .ph-st-find { margin-top: auto; }
+}
+/* The Find patient window: the boxes on the left (each used when ticked), the patients beside them, Select and Close */
+.modal.ph-st-find-window { width: min(1120px, calc(100vw - 32px)); max-width: none; padding: var(--space-4) var(--space-6); }
+.ph-st-find-body { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.ph-st-find-filters { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--mist-50); }
+.ph-st-find-filters .check { min-height: 28px; margin: 2px 0 0; gap: 6px; font-size: var(--fs-label); line-height: var(--lh-label); }
+.ph-st-find-filters .ph-sb-field { grid-template-columns: 84px minmax(0, 1fr); }
+.ph-st-find-filters .ph-sb-field.is-wide { grid-template-columns: minmax(0, 1fr); }
+.ph-st-find-scroll { height: clamp(240px, calc(100vh - 210px), 520px); max-height: none; }
+.ph-st-find-window .ph-pay-foot { justify-content: flex-end; margin-top: var(--space-3); }
+.ph-st-find-filters .ph-sb-field input:not([type='checkbox']) { height: 30px; }
+.ph-plist .ph-st-find-table th.ph-st-find-uhid { width: 100px; }
+.ph-plist .ph-st-find-table th.ph-st-find-date { width: 104px; }
+.ph-plist .ph-st-find-table th.ph-st-find-time { width: 60px; }
+.ph-plist .ph-st-find-table th.ph-st-find-no { width: 132px; }
+.ph-plist .ph-st-find-table th.ph-st-find-doc { width: 170px; }
+.ph-plist .ph-st-find-table td.ph-st-find-none { height: auto; padding: var(--space-4); color: var(--slate-600); white-space: normal; cursor: default; }
+@media (max-width: 799px) {
+  .ph-st-find-body { grid-template-columns: minmax(0, 1fr); }
+  .ph-st-find-scroll { height: 50vh; overflow-x: auto; }
+  .ph-plist .ph-st-find-table { min-width: 640px; }
+}
 @media (min-width: 720px) {
   /* the list keeps its height and scrolls inside; its first column is the item's name, not a tick box as on Search bill */
   .ph-pr .ph-sb-bills .dt-wrap { height: clamp(200px, 36vh, 420px); max-height: none; }
