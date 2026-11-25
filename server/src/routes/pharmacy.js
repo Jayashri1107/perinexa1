@@ -223,9 +223,10 @@ pharmacyRouter.get('/medicines', async (req, res) => {
   if (q.search) {
     // 25 Nov 2026 (the pharmacy's request): typing a letter anywhere in a name matched it, so a name with that letter
     // buried inside it (an "Albendazole" has a b, an "Augmentin" has a g) could still show, ahead of the medicines the
-    // letter was meant to find, since the list sorts by name and that letter comes early in the alphabet. Only a name
-    // or generic name that starts with what was typed, or has a word starting with it, counts as found now.
-    const rx = new RegExp(`(^|\\s)${escapeRegex(q.search)}`, 'i');
+    // letter was meant to find, since the list sorts by name and that letter comes early in the alphabet. The pharmacy
+    // then asked again (25 Nov 2026) for the first letters typed to be just that – the start of the name or generic
+    // name itself, a "Cough syrup" no longer shown for a typed "c" because some later word of its name starts with it.
+    const rx = new RegExp(`^${escapeRegex(q.search)}`, 'i');
     filter.$or = [{ name: rx }, { generic: rx }];
   }
   if (q.active === '1') filter.active = true;

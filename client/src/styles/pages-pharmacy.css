@@ -707,6 +707,23 @@
 .ph-ip-box th { text-align: left; font-weight: 600; padding: 3px 24px 3px 0; }
 .ph-ip-box td { padding: 3px 0; }
 .ph-ip-box .bill-report-total th, .ph-ip-box .bill-report-total td { border-top: 1px solid var(--border); padding-top: 5px; }
+
+/* IP bill summary, smaller again (25 Nov 2026, the pharmacy's request): "make this print appear in one page make its
+   format smaller" – a long stay's bills and returns pushed it onto a second sheet, so the letterhead, title, the gaps
+   between the sections and every row of the two bill tables are tighter here (nowhere else: the chain
+   .ph-ip-doc.bill-doc keeps these off the hospital's other pharmacy slips, which share the same bill-report rules). */
+.ph-ip-doc.bill-doc .ph-doc-head { padding-bottom: 1mm; margin-bottom: 1.5mm; font-size: 8pt; line-height: 1.25; }
+.ph-ip-doc.bill-doc .ph-doc-head .lh-name { font-size: 12pt; line-height: 1.3; margin-bottom: 0.4mm; }
+.ph-ip-doc.bill-doc .pdoc-title { margin: 1mm 0 2mm; font-size: 11pt; }
+.ph-ip-doc .ph-ip-facts { margin: 1mm 0 2mm; }
+.ph-ip-doc .ph-ip-facts td { padding: 1px 8px 1px 0; font-size: 8pt; }
+.ph-ip-doc .ph-ip-section { margin: 2mm 0 1mm; font-size: 8.5pt; }
+.ph-ip-doc.bill-doc .ph-mis-table { font-size: 8pt; }
+.ph-ip-doc.bill-doc .bill-report td, .ph-ip-doc.bill-doc .bill-report th { padding: 0.6mm 1.5mm; }
+.ph-ip-doc .ph-ip-box { margin-top: 2mm; font-size: 8.5pt; }
+.ph-ip-doc .ph-ip-box th, .ph-ip-doc .ph-ip-box td { padding: 1.5px 0; }
+.ph-ip-doc .ph-ip-box th { padding-right: 16px; }
+.ph-ip-doc.bill-doc .bill-sign { margin-top: 3mm; padding-top: 1mm; font-size: 8pt; }
 @media (max-width: 900px) {
   .ph-mis { grid-template-columns: minmax(0, 1fr); }
   .ph-mis-list { position: static; }
