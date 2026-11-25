@@ -1664,8 +1664,12 @@ input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
 .ph-tick-rows { display: flex; flex-direction: column; gap: var(--space-2); }
 .ph-tick-row { display: flex; align-items: center; gap: var(--space-2); }
 .ph-tick-row .ph-tick-label { flex: 0 0 128px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.8125rem; font-weight: 600; color: var(--ink); }
-.ph-tick-row :is(input, select) { flex: 1 1 auto; width: 100%; min-width: 0; height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
-.ph-tick-row :is(input, select):disabled { background: var(--mist-50); color: var(--slate-500); }
+/* 25 Nov 2026 (the pharmacy's request): never the tick itself (:not([type='checkbox']) – it had been matching the
+   checkbox nested in .ph-tick-label too, stretching it big on a box row with no field beside it (Patient name, Date)
+   while UHID/Doctor name, with a field beside their tick, looked normal); the date box's own input, inside DateText's
+   span, still needs matching, so this stays a descendant selector, just narrowed to exclude the checkbox. */
+.ph-tick-row :is(input, select):not([type='checkbox']) { flex: 1 1 auto; width: 100%; min-width: 0; height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
+.ph-tick-row :is(input, select):not([type='checkbox']):disabled { background: var(--mist-50); color: var(--slate-500); }
 @media (max-width: 420px) {
   .ph-tick-row { flex-wrap: wrap; }
   .ph-tick-row .ph-tick-label { flex-basis: 100%; }
