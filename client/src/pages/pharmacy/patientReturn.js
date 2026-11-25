@@ -12,17 +12,22 @@ export const RETURN_KINDS = [
  * today, IPD those admitted now with ward issues.
  */
 export function findProblem(form) {
-  const mrn = form.mrn.trim();
-  const first = form.first.trim();
+  const mrn = form.byMrn ? form.mrn.trim() : '';
+  const first = form.byFirst ? form.first.trim() : '';
   return (!mrn && !first) || mrn.length >= 2 || first.length >= 2 ? '' : 'Type the registration number (UHID) or at least two letters of the first name – or nothing, for today’s patients.';
 }
 
-/** What Search asks the server for. */
+/**
+ * What Search asks the server for. byMrn/byFirst/byDoctor/byDate (25 Nov 2026, the pharmacy's request): each box's own
+ * tick, so a typed box left unticked is never sent – as the earlier software's windows. date: a day to browse instead of
+ * today, only when neither Registration no nor First name is sent.
+ */
 export const findQuery = (form) => ({
   type: form.type,
-  ...(form.mrn.trim() ? { mrn: form.mrn.trim() } : {}),
-  ...(form.first.trim() ? { first: form.first.trim() } : {}),
-  ...(form.doctor.trim() ? { doctor: form.doctor.trim() } : {}),
+  ...(form.byMrn && form.mrn.trim() ? { mrn: form.mrn.trim() } : {}),
+  ...(form.byFirst && form.first.trim() ? { first: form.first.trim() } : {}),
+  ...(form.byDoctor && form.doctor.trim() ? { doctor: form.doctor.trim() } : {}),
+  ...(form.byDate && form.date ? { date: form.date } : {}),
 });
 
 /** A quantity typed: a whole number from 0 to what can be taken back, or null when it isn't one. '' is 0. */

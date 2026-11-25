@@ -11,6 +11,10 @@ describe('the paper', () => {
     expect(paperOf({ size: 'A4', margin: '45mm 12mm 20mm 12mm' }).margin).toEqual({ top: 45, right: 12, bottom: 20, left: 12 });
     expect(paperOf({ margin: '10mm 5mm' }).margin).toEqual({ top: 10, right: 5, bottom: 10, left: 5 });
   });
+
+  it('is wider than tall for "A4 landscape" (Sales bills, IP bill summary)', () => {
+    expect(paperOf({ size: 'A4 landscape', margin: '10mm' })).toEqual({ size: 'A4', width: 297, height: 210, margin: { top: 10, right: 10, bottom: 10, left: 10 } });
+  });
 });
 
 describe('where pages end', () => {

@@ -326,6 +326,14 @@ function FindPatientWindow({ type, initial, autoOne, onSelect, onClose }) {
               <span className="sr-only">UHID</span>
               <input type="search" value={f.mrn} maxLength={40} disabled={!f.byMrn} aria-label="UHID" onChange={(e) => set({ mrn: e.target.value })} />
             </label>
+            {/* 25 Nov 2026 (the pharmacy's request): Doctor name, as on the Sale return window */}
+            <label className="check ph-sb-tick">
+              <input type="checkbox" checked={f.byDoctor} onChange={(e) => set({ byDoctor: e.target.checked })} /> Doctor name
+            </label>
+            <label className="ph-sb-field is-wide">
+              <span className="sr-only">Doctor name</span>
+              <input type="search" value={f.doctor} maxLength={150} disabled={!f.byDoctor} aria-label="Doctor name" onChange={(e) => set({ doctor: e.target.value })} />
+            </label>
             <label className="check ph-sb-tick">
               <input type="checkbox" checked={f.byDate} onChange={(e) => set({ byDate: e.target.checked })} /> Date
             </label>

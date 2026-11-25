@@ -948,6 +948,10 @@
 .bill-lines.ph-grn-lines tr.ph-grn-row-on td { background: var(--status-watch-bg); }
 @media (max-width: 1000px) { .ph-gl-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ph-gl-pop-actions { grid-column: 1 / -1; } }
 .ph-gi-item .ph-find p.hint { display: none; } .ph-gi-item .ph-find { min-width: 0; }
+/* 25 Nov 2026 (the pharmacy's request): the GRN's Item name box sat beside Scan a barcode in a narrow card (the
+   Supplier invoice panel takes the rest of the row), squeezing the found medicines' name column to almost nothing –
+   "A.", "B." … Name above barcode here gives the found list its full width to show the whole name. */
+.ph-gi-item .ph-find { grid-template-columns: minmax(0, 1fr); }
 
 /* The bill's header, light and small like the rest of the page (14 Nov 2026): "Sales bill" and the time on one row, then
    Net amount with the amount in a small box beside it, then how many medicines */
@@ -1659,6 +1663,12 @@ input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
    bringIntoView in pharmacyUi.jsx) and the grids beside the panel share that height. */
 .ph-st-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
 .ph-st-pair .check { align-self: end; min-height: 32px; }
+/* 25 Nov 2026 (the pharmacy's request): Registration no, First name, Doctor name, Date and Tax each ticked on or off –
+   the tick sits above its own box, the pair staying one cell of the Sale return panel's grid so nothing else moves. */
+.ph-pr-field-group { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ph-pr-field-group .ph-pr-tick { font-size: 0.8125rem; font-weight: 600; color: var(--ink); }
+.ph-pr-field-group :is(input, select) { width: 100%; min-width: 0; height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
+.ph-pr-field-group :is(input, select):disabled { background: var(--mist-50); color: var(--slate-500); }
 .ph-st-field select { width: 100%; min-width: 0; height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
 .ph-st-find { display: flex; align-items: center; gap: var(--space-2); }
 .ph-st-find .ph-sb-show { flex: 1 1 auto; width: auto; }

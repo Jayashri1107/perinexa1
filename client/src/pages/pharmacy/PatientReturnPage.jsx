@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
+import { DateText } from '../../components/DateText.jsx';
 import { Alert, formatDate, formatDayMonth } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { MODE_LABELS, expiryLabel } from './pharmacyFormat.js';
@@ -24,7 +25,9 @@ import { RETURN_KINDS, findProblem, findQuery, lineForCode, payWord, pickChoices
 // of the whole return opens after Save, as on the earlier window (printed straight away with Direct print).
 // Made on the server: server/src/routes/pharmacyPatientReturn.js and pharmacy/patientReturn.js.
 
-const EMPTY = { type: 'opd', mrn: '', first: '', doctor: '' };
+// 25 Nov 2026 (the pharmacy's request): Registration no and First name ticked from the start (how Search already
+// worked); Doctor name, Date and Tax start unticked (extras, as on the earlier software's window)
+const EMPTY = { type: 'opd', mrn: '', first: '', doctor: '', byMrn: true, byFirst: true, byDoctor: false, byDate: false, date: '', byTax: false };
 const MODES = ['cash', 'upi', 'card', 'cheque', 'neft'];
 
 function Fact({ label, value, id, strong = false }) {
@@ -46,7 +49,7 @@ const slipTime = (iso) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-d
  * (Item Name, Batch No, Expiry, Qty, Total Amount); Total Amount, Cash Return and Credit Return; the store's lines and the
  * pharmacist. The same look as the Sales bill's paper.
  */
-export function ReturnSlip({ done, settings }) {
+export function ReturnSlip({ done, settings, showTax = false }) {
   const t = done.totals;
   const licences = [settings.licence20, settings.licence21].filter(Boolean).join(' ');
   const hospital = done.creditNotes.filter((c) => c.onHospitalBill).reduce((n, c) => n + c.creditPaise, 0);
@@ -123,6 +126,22 @@ export function ReturnSlip({ done, settings }) {
             <span>Total Amount</span>
             <span>{plain(t.amountPaise)}</span>
           </div>
+          {showTax && (
+            <>
+              <div>
+                <span>Taxable Value</span>
+                <span>{plain(t.taxablePaise)}</span>
+              </div>
+              <div>
+                <span>CGST</span>
+                <span>{plain(t.cgstPaise)}</span>
+              </div>
+              <div>
+                <span>SGST</span>
+                <span>{plain(t.sgstPaise)}</span>
+              </div>
+            </>
+          )}
           <div className="ph-slip-credit">
             <span>Cash Return{t.refundPaise > 0 && done.mode !== 'cash' ? ` (${MODE_LABELS[done.mode] ?? done.mode})` : ''}</span>
             <span>{plain(t.refundPaise)}</span>
@@ -357,29 +376,47 @@ export function PatientReturnPage() {
                 ))}
               </div>
             </fieldset>
+            {/* 25 Nov 2026 (the pharmacy's request): a tick before each box, as the earlier software's windows – ticked,
+                the box is used; unticked, it is skipped (Registration no and First name start ticked, how Search
+                already worked; Date, unticked, stays today; Tax, unticked, is left off the printed slip). Each tick and
+                its box stay one grid cell (ph-pr-field-group) so the panel's layout is unchanged otherwise. */}
             <div className="ph-st-pair ph-pr-fields">
-              <label className="ph-st-field">
-                <span>Registration no</span>
-                <input type="search" value={form.mrn} maxLength={40} autoComplete="off" placeholder="UHID" onChange={(e) => set({ mrn: e.target.value })} />
-              </label>
-              <label className="ph-st-field">
-                <span>First name</span>
-                <input type="search" value={form.first} maxLength={50} autoComplete="off" onChange={(e) => set({ first: e.target.value })} />
-              </label>
-              <label className="ph-st-field">
-                <span>Doctor name</span>
-                <input type="search" value={form.doctor} maxLength={150} autoComplete="off" placeholder="Any doctor" onChange={(e) => set({ doctor: e.target.value })} />
-              </label>
-              <label className="ph-st-field">
-                <span>Date</span>
-                <input readOnly value={formatDate(todayIso)} aria-describedby="pr-date-hint" />
-              </label>
-              <label className="ph-st-field">
-                <span>Tax</span>
-                <select disabled defaultValue="gst">
+              <div className="ph-pr-field-group">
+                <label className="check ph-pr-tick">
+                  <input type="checkbox" checked={form.byMrn} onChange={(e) => set({ byMrn: e.target.checked })} /> Registration no
+                </label>
+                <input type="search" value={form.mrn} maxLength={40} autoComplete="off" placeholder="UHID" aria-label="Registration no" disabled={!form.byMrn} onChange={(e) => set({ mrn: e.target.value })} />
+              </div>
+              <div className="ph-pr-field-group">
+                <label className="check ph-pr-tick">
+                  <input type="checkbox" checked={form.byFirst} onChange={(e) => set({ byFirst: e.target.checked })} /> First name
+                </label>
+                <input type="search" value={form.first} maxLength={50} autoComplete="off" aria-label="First name" disabled={!form.byFirst} onChange={(e) => set({ first: e.target.value })} />
+              </div>
+              <div className="ph-pr-field-group">
+                <label className="check ph-pr-tick">
+                  <input type="checkbox" checked={form.byDoctor} onChange={(e) => set({ byDoctor: e.target.checked })} /> Doctor name
+                </label>
+                <input type="search" value={form.doctor} maxLength={150} autoComplete="off" placeholder="Any doctor" aria-label="Doctor name" disabled={!form.byDoctor} onChange={(e) => set({ doctor: e.target.value })} />
+              </div>
+              <div className="ph-pr-field-group">
+                <label className="check ph-pr-tick">
+                  <input type="checkbox" checked={form.byDate} onChange={(e) => set({ byDate: e.target.checked, date: e.target.checked ? form.date || todayIso : form.date })} /> Date
+                </label>
+                {form.byDate ? (
+                  <DateText aria-label="Date" aria-describedby="pr-date-hint" value={form.date || todayIso} onChange={(v) => set({ date: v })} />
+                ) : (
+                  <input readOnly value={formatDate(todayIso)} aria-label="Date" aria-describedby="pr-date-hint" />
+                )}
+              </div>
+              <div className="ph-pr-field-group">
+                <label className="check ph-pr-tick">
+                  <input type="checkbox" checked={form.byTax} onChange={(e) => set({ byTax: e.target.checked })} /> Tax
+                </label>
+                <select disabled={!form.byTax} aria-label="Tax" defaultValue="gst">
                   <option value="gst">CGST / SGST</option>
                 </select>
-              </label>
+              </div>
               <label className="check ph-sb-tick">
                 <input type="checkbox" checked={direct} onChange={(e) => setDirect(e.target.checked)} /> Direct print
               </label>
@@ -564,7 +601,7 @@ export function PatientReturnPage() {
 
       {printing && done && (one.data?.settings || done.settings) && (
         <PrintPreview title="Sale return – print preview" hint="Check it, then print on A5 paper." page={{ size: 'A5', margin: '8mm' }} autoPrint={direct} onClose={() => setPrinting(false)}>
-          <ReturnSlip done={done} settings={done.settings ?? one.data.settings} />
+          <ReturnSlip done={done} settings={done.settings ?? one.data.settings} showTax={form.byTax} />
         </PrintPreview>
       )}
     </>

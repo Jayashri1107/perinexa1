@@ -42,7 +42,7 @@ export function findProblem(form) {
 export function newFindFilters(form, todayIso) {
   const name = form.name.trim();
   const mrn = form.mrn.trim();
-  return { byName: Boolean(name), first: name, middle: '', last: '', phone: '', byMrn: Boolean(mrn), mrn, byDate: form.type === 'opd' && !name && !mrn, from: todayIso, to: todayIso };
+  return { byName: Boolean(name), first: name, middle: '', last: '', phone: '', byMrn: Boolean(mrn), mrn, byDoctor: false, doctor: '', byDate: form.type === 'opd' && !name && !mrn, from: todayIso, to: todayIso };
 }
 
 /** What's wrong with the Find patient window's boxes ('' when Show can be pressed). */
@@ -58,7 +58,8 @@ export function findWindowQuery(type, f) {
   const name = f.byName ? [f.first, f.middle, f.last].map((x) => x.trim()).filter(Boolean).join(' ') : '';
   const phone = f.byName ? f.phone.trim() : '';
   const mrn = f.byMrn ? f.mrn.trim() : '';
-  return { type, ...(name ? { name } : {}), ...(phone ? { phone } : {}), ...(mrn ? { mrn } : {}), ...(f.byDate ? { from: f.from, to: f.to } : {}) };
+  const doctor = f.byDoctor ? f.doctor.trim() : '';
+  return { type, ...(name ? { name } : {}), ...(phone ? { phone } : {}), ...(mrn ? { mrn } : {}), ...(doctor ? { doctor } : {}), ...(f.byDate ? { from: f.from, to: f.to } : {}) };
 }
 
 /** What Search asks the server for: the UHID when one is typed, otherwise the name. */

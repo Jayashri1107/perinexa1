@@ -1247,7 +1247,17 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
   const phoneRx = phoneDigits ? new RegExp(phoneDigits.split('').join('\\D*')) : null;
   const byPerson = parts.length > 0 || Boolean(phoneRx);
   const ranged = Boolean(fromDay || toDay);
-  const dateMatch = date ? { $gte: hospitalDayStart(date), $lt: hospitalDayStart(addDays(date, 1)) } : ranged ? { ...(fromDay ? { $gte: hospitalDayStart(fromDay) } : {}), ...(toDay ? { $lt: hospitalDayStart(addDays(toDay, 1)) } : {}) } : null;
+  // 25 Nov 2026 (the pharmacy's request): OPD chosen with nothing else typed shows only patients registered today –
+  // never the back-catalogue of every OPD patient ever billed, which "browsing" below used to add once the day's
+  // arrivals ran out of room
+  const opdToday = type === 'opd' && !search && !mrn && !byPerson && !doctor && !date && !ranged && !amount && !paidBy;
+  const dateMatch = date
+    ? { $gte: hospitalDayStart(date), $lt: hospitalDayStart(addDays(date, 1)) }
+    : ranged
+      ? { ...(fromDay ? { $gte: hospitalDayStart(fromDay) } : {}), ...(toDay ? { $lt: hospitalDayStart(addDays(toDay, 1)) } : {}) }
+      : opdToday
+        ? { $gte: hospitalDayStart(today(req)), $lt: hospitalDayStart(addDays(today(req), 1)) }
+        : null;
   let unbilledFilter = null;
   const match = { tenantId: new mongoose.Types.ObjectId(String(req.tenantId)), ...(type ? BILL_TYPES[type] : {}), ...(doctor ? { 'doctor.name': doctor } : {}), ...(dateMatch ? { 'created.at': dateMatch } : {}) };
   // An amount by its first digits (12 finds 12, 120 and 1,200); "hospital": a patient's bill, paid at the billing desk
@@ -1337,10 +1347,11 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
   for (const p of unbilled.slice(0, room)) people.push({ key: String(p._id), type: type ?? '', name: p.fullName, mrn: p.mrn, phone: '', lastAt: null, billCount: 0, bills: [] });
 
   // Search with nothing typed (owner's approval, 9 Nov 2026): after the people to bill now and those billed, every patient
-  // of the type from the first registration to today, newest registration first, a page at a time ("Show more")
+  // of the type from the first registration to today, newest registration first, a page at a time ("Show more").
+  // Never for OPD clicked with nothing else typed (25 Nov 2026): that stays today's registrations only.
   let fullMore = false;
   let fullCount = 0;
-  const browsing = !search && !mrn && !byPerson && !doctor && !date && !ranged && !amount && !paidBy && type !== 'external';
+  const browsing = !opdToday && !search && !mrn && !byPerson && !doctor && !date && !ranged && !amount && !paidBy && type !== 'external';
   if (browsing) {
     const { filter, ipd, opd } = await fullListFilter(req, type);
     const listed = people.map((x) => x.key).filter((k) => !k.startsWith('walkin-'));
@@ -1625,6 +1636,8 @@ const settlementPatientsQuery = z.object({
   name: z.string().trim().max(150).optional(),
   phone: z.string().trim().regex(/^[\d\s+-]{3,20}$/, 'Write the mobile number in digits.').optional(),
   mrn: z.string().trim().max(40).optional(),
+  // 25 Nov 2026 (the pharmacy's request): Doctor name ticked, as on the Sale return window
+  doctor: z.string().trim().max(150).optional(),
   from: requiredDateOnly('From date').optional(),
   to: requiredDateOnly('To date').optional(),
 }).strict();
@@ -1638,9 +1651,10 @@ pharmacyRouter.get('/settlement/patients', async (req, res) => {
     ...(digits ? { phone: new RegExp(digits.split('').join('\\D*')) } : {}),
     ...(q.mrn ? { mrn: new RegExp(escapeRegex(q.mrn), 'i') } : {}),
   };
+  const doctor = q.doctor ? new RegExp(escapeRegex(q.doctor), 'i') : null;
   const dated = Boolean(q.from || q.to);
   const [start, end] = dated ? period({ from: q.from ?? q.to, to: q.to ?? q.from }) : [null, null];
-  const patients = await settlementPatients(req, { type: q.type, start, end, who });
+  const patients = await settlementPatients(req, { type: q.type, start, end, who, doctor });
   await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'settlement', patientIds: patients.map((p) => p.id), rows: patients.length } });
   res.json({ type: q.type, from: dated ? isoDay(q.from ?? q.to) : null, to: dated ? isoDay(q.to ?? q.from) : null, patients });
 });

@@ -13,13 +13,17 @@ const PAPER_MM = { A4: { width: 210, height: 297 }, A5: { width: 148, height: 21
  */
 export function paperOf(page) {
   const size = page?.size === 'A5' ? 'A5' : 'A4';
+  // 25 Nov 2026 (the pharmacy's request): "A4 landscape" (Sales bills and IP bill summary) is wider than tall – its
+  // width and height were swapped here before, so the sheet was laid out and paginated on a portrait-width page.
+  const landscape = /landscape/i.test(page?.size ?? '');
+  const { width, height } = PAPER_MM[size];
   const mm = String(page?.margin ?? '12mm')
     .trim()
     .split(/\s+/)
     .map((x) => Number.parseFloat(x))
     .map((x) => (Number.isFinite(x) && x >= 0 ? x : 12));
   const [top, right = top, bottom = top, left = right] = mm;
-  return { size, ...PAPER_MM[size], margin: { top, right, bottom, left } };
+  return { size, width: landscape ? height : width, height: landscape ? width : height, margin: { top, right, bottom, left } };
 }
 
 /**

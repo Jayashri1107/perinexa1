@@ -89,28 +89,55 @@ export async function admittedNowList(req, { when = {}, dated = false } = {}) {
  * and doctor; someone admitted now is IPD, not OPD. who: a Patient filter of what was typed (the name's parts, the
  * mobile number, the UHID). Newest first, at most 500.
  */
-export async function settlementPatients(req, { type, start = null, end = null, who = {} }) {
+export async function settlementPatients(req, { type, start = null, end = null, who = {}, doctor = null }) {
   const tenantId = req.tenantId;
   const typed = Object.keys(who).length > 0;
   if (type === 'ipd') {
-    const stays = await Admission.find({ tenantId, status: 'admitted', ...(start ? { admittedAt: { $gte: start, $lt: end } } : {}) }, { patientId: 1, admittedAt: 1, ipdNo: 1, doctorName: 1 })
+    const stays = await Admission.find({ tenantId, status: 'admitted', ...(start ? { admittedAt: { $gte: start, $lt: end } } : {}), ...(doctor ? { doctorName: doctor } : {}) }, { patientId: 1, admittedAt: 1, ipdNo: 1, doctorName: 1 })
       .sort({ admittedAt: -1, _id: -1 })
       .limit(500)
       .lean();
     const people = new Map((stays.length ? await Patient.find({ tenantId, _id: { $in: stays.map((s) => s.patientId) }, ...who }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
     const seen = new Set();
-    return stays
+    const rows = stays
       .filter((s) => people.has(String(s.patientId)) && !seen.has(String(s.patientId)) && seen.add(String(s.patientId)))
       .map((s) => {
         const p = people.get(String(s.patientId));
         return { id: String(p._id), mrn: p.mrn ?? '', fullName: p.fullName, type: 'ipd', at: s.admittedAt, number: s.ipdNo ?? '', doctor: s.doctorName ?? '' };
       });
+    // 25 Nov 2026 (the pharmacy's request): typed – her UHID or name – still finds a patient with an unsettled IPD
+    // counter bill once she is discharged, not only everyone admitted now; a plain IPD browse stays as it was
+    if (typed && !start) {
+      const matched = await Patient.find({ tenantId, ...who }, { fullName: 1, mrn: 1 }).limit(500).lean();
+      const rest = matched.filter((p) => !seen.has(String(p._id)));
+      if (rest.length) {
+        const owed = await PharmacyInvoice.find(
+          { tenantId, patientId: { $in: rest.map((p) => p._id) }, admissionId: { $ne: null }, billId: null, kind: 'sale', ...(doctor ? { 'doctor.name': doctor } : {}) },
+          { patientId: 1, number: 1, doctor: 1, created: 1, lines: 1, returns: 1, payments: 1, concessions: 1 },
+        )
+          .sort({ 'created.at': -1, _id: -1 })
+          .lean();
+        const latestOwed = new Map();
+        for (const inv of owed) {
+          if ((invoiceTotals(inv).balancePaise ?? 0) <= 0) continue;
+          const id = String(inv.patientId);
+          if (!latestOwed.has(id)) latestOwed.set(id, inv);
+        }
+        for (const p of rest) {
+          const inv = latestOwed.get(String(p._id));
+          if (!inv) continue;
+          seen.add(String(p._id));
+          rows.push({ id: String(p._id), mrn: p.mrn ?? '', fullName: p.fullName, type: 'ipd', at: inv.created?.at ?? null, number: inv.number, doctor: inv.doctor?.name ?? '' });
+        }
+      }
+    }
+    return rows;
   }
   const admitted = new Set((await Admission.distinct('patientId', { tenantId, status: 'admitted' })).map(String));
   // What was typed: the patients first (so that many bills of others never push hers out); else the bills of the days
   const matched = typed ? await Patient.find({ tenantId, ...who }, { fullName: 1, mrn: 1 }).limit(500).lean() : null;
   const invoices = await PharmacyInvoice.find(
-    { tenantId, patientId: matched ? { $in: matched.map((p) => p._id) } : { $ne: null }, billId: null, kind: 'sale', ...(start ? { 'created.at': { $gte: start, $lt: end } } : {}) },
+    { tenantId, patientId: matched ? { $in: matched.map((p) => p._id) } : { $ne: null }, billId: null, kind: 'sale', ...(start ? { 'created.at': { $gte: start, $lt: end } } : {}), ...(doctor ? { 'doctor.name': doctor } : {}) },
     { patientId: 1, number: 1, doctor: 1, created: 1 },
   )
     .sort({ 'created.at': -1, _id: -1 })

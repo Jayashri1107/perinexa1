@@ -32,13 +32,21 @@ const DATA = {
 };
 
 describe('what Search asks for', () => {
+  const ALL_ON = { byMrn: true, byFirst: true, byDoctor: true, byDate: false, date: '' };
   it('the registration no, the first name and the doctor, as typed', () => {
-    expect(findQuery({ type: 'ipd', mrn: ' SH-0001 ', first: '', doctor: ' rao ' })).toEqual({ type: 'ipd', mrn: 'SH-0001', doctor: 'rao' });
-    expect(findQuery({ type: 'opd', mrn: '', first: 'Asha', doctor: '' })).toEqual({ type: 'opd', first: 'Asha' });
-    expect(findProblem({ type: 'opd', mrn: '', first: 'A', doctor: 'Rao' })).toContain('at least two letters');
-    expect(findProblem({ type: 'opd', mrn: 'SH', first: '', doctor: '' })).toBe('');
-    expect(findProblem({ type: 'ipd', mrn: '', first: '', doctor: '' })).toBe(''); // nothing typed: today's patients (24 Nov 2026)
-    expect(findQuery({ type: 'ipd', mrn: '', first: ' ', doctor: '' })).toEqual({ type: 'ipd' });
+    expect(findQuery({ type: 'ipd', mrn: ' SH-0001 ', first: '', doctor: ' rao ', ...ALL_ON })).toEqual({ type: 'ipd', mrn: 'SH-0001', doctor: 'rao' });
+    expect(findQuery({ type: 'opd', mrn: '', first: 'Asha', doctor: '', ...ALL_ON })).toEqual({ type: 'opd', first: 'Asha' });
+    expect(findProblem({ type: 'opd', mrn: '', first: 'A', doctor: 'Rao', byMrn: true, byFirst: true })).toContain('at least two letters');
+    expect(findProblem({ type: 'opd', mrn: 'SH', first: '', doctor: '', byMrn: true, byFirst: true })).toBe('');
+    expect(findProblem({ type: 'ipd', mrn: '', first: '', doctor: '', byMrn: true, byFirst: true })).toBe(''); // nothing typed: today's patients (24 Nov 2026)
+    expect(findQuery({ type: 'ipd', mrn: '', first: ' ', doctor: '', ...ALL_ON })).toEqual({ type: 'ipd' });
+  });
+  // 25 Nov 2026 (the pharmacy's request): a box left unticked is never sent, even when something is typed in it – and a
+  // Date ticked is sent, to browse a day other than today
+  it('a box unticked is skipped; Date ticked browses that day', () => {
+    expect(findQuery({ type: 'opd', mrn: 'SH-0001', first: 'Asha', doctor: 'Rao', byMrn: false, byFirst: false, byDoctor: false, byDate: false, date: '' })).toEqual({ type: 'opd' });
+    expect(findQuery({ type: 'opd', mrn: '', first: '', doctor: '', byMrn: false, byFirst: false, byDoctor: false, byDate: true, date: '2026-11-20' })).toEqual({ type: 'opd', date: '2026-11-20' });
+    expect(findProblem({ type: 'opd', mrn: 'SH', first: '', doctor: '', byMrn: false, byFirst: true })).toBe(''); // the UHID is typed but unticked: not "typed" at all
   });
 });
 

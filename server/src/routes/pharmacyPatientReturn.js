@@ -10,7 +10,7 @@ import { COUNTER_MODES } from '../pharmacy/pharmacyRules.js';
 import { invoiceTotals, isExpired, returnItems } from '../pharmacy/pharmacyService.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { escapeRegex, objectId, parse } from '../utils/validate.js';
+import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
 import { addDays, hospitalDayStart, isoDay } from '../careplans/dates.js';
 
 // Sale return patient-wise (24 Nov 2026, the developer, after the earlier software's "Sales Return" window):
@@ -54,6 +54,8 @@ const findSchema = z
     mrn: z.string().trim().max(40).optional(),
     first: z.string().trim().max(50).optional(),
     doctor: z.string().trim().max(150).optional(),
+    // 25 Nov 2026 (the pharmacy's request): the Date box, ticked – OPD billed/IPD admitted that day instead of today
+    date: requiredDateOnly('Date').optional(),
     patientId: objectId.optional(),
   })
   .strict();
@@ -70,7 +72,7 @@ pharmacyPatientReturnRouter.get('/', async (req, res) => {
   const mrn = q.mrn ?? '';
   const first = q.first ?? '';
   if (!mrn && !first) {
-    const day = today(req);
+    const day = q.date ?? today(req);
     const ids =
       q.type === 'ipd'
         ? await PharmacyInvoice.distinct('patientId', { tenantId: req.tenantId, kind: 'issue', patientId: { $in: await Admission.distinct('patientId', { tenantId: req.tenantId, status: 'admitted' }) }, ...doctorFilter(q.doctor) })
@@ -149,6 +151,11 @@ pharmacyPatientReturnRouter.post('/', async (req, res) => {
       number: p.inv.number,
       creditNote: out.number,
       amountPaise: out.credit.amountPaise,
+      // 25 Nov 2026 (the pharmacy's request): the Tax box, ticked – CGST/SGST already worked out for the credit note
+      // (partOf, in returnItems), only not carried this far before
+      taxablePaise: out.credit.taxablePaise,
+      cgstPaise: out.credit.cgstPaise,
+      sgstPaise: out.credit.sgstPaise,
       refundPaise: out.refundPaise,
       creditPaise: out.credit.amountPaise - out.refundPaise,
       onHospitalBill: Boolean(p.inv.billId),
@@ -157,6 +164,16 @@ pharmacyPatientReturnRouter.post('/', async (req, res) => {
       details: { invoiceId: String(p.inv._id), number: p.inv.number, creditNote: out.number, amountPaise: out.credit.amountPaise, refundPaise: out.refundPaise, reason: body.reason, patientWise: true },
     });
   }
-  const totals = creditNotes.reduce((t, c) => ({ amountPaise: t.amountPaise + c.amountPaise, refundPaise: t.refundPaise + c.refundPaise, creditPaise: t.creditPaise + c.creditPaise }), { amountPaise: 0, refundPaise: 0, creditPaise: 0 });
+  const totals = creditNotes.reduce(
+    (t, c) => ({
+      amountPaise: t.amountPaise + c.amountPaise,
+      taxablePaise: t.taxablePaise + c.taxablePaise,
+      cgstPaise: t.cgstPaise + c.cgstPaise,
+      sgstPaise: t.sgstPaise + c.sgstPaise,
+      refundPaise: t.refundPaise + c.refundPaise,
+      creditPaise: t.creditPaise + c.creditPaise,
+    }),
+    { amountPaise: 0, taxablePaise: 0, cgstPaise: 0, sgstPaise: 0, refundPaise: 0, creditPaise: 0 },
+  );
   res.status(201).json({ creditNotes, totals, refundMode: body.refund.mode, ...(await patientData(req, patient, body.type)), settings: await settingsOf(req.tenantId) });
 });
