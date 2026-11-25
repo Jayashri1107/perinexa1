@@ -28,10 +28,14 @@ export function toPaise(text) {
 /** Paise → what goes back in a box: 1234.50. */
 export const typed = (paise) => (paise / 100).toFixed(2);
 
-/** Why Search can't be pressed yet ('' when it can). Nothing typed: the Find patient window lists the type's patients. */
+/**
+ * Why Search can't be pressed yet ('' when it can). Nothing typed: the Find patient window lists the type's patients.
+ * byMrn/byName (25 Nov 2026, the pharmacy's request): a box left unticked counts as empty, even when something is
+ * still typed in it – as on the Sale return window.
+ */
 export function findProblem(form) {
   if (form.type === 'external') return '';
-  const text = form.mrn.trim() || form.name.trim();
+  const text = (form.byMrn && form.mrn.trim()) || (form.byName && form.name.trim());
   return !text || text.length >= 2 ? '' : 'Type the UHID or at least two letters of the patient’s name – or nothing, to choose from the list.';
 }
 
@@ -40,8 +44,8 @@ export function findProblem(form) {
  * left goes into Patient name or UHID, ticked; with nothing typed OPD ticks Date for today, IPD lists everyone admitted.
  */
 export function newFindFilters(form, todayIso) {
-  const name = form.name.trim();
-  const mrn = form.mrn.trim();
+  const name = form.byName ? form.name.trim() : '';
+  const mrn = form.byMrn ? form.mrn.trim() : '';
   return { byName: Boolean(name), first: name, middle: '', last: '', phone: '', byMrn: Boolean(mrn), mrn, byDoctor: false, doctor: '', byDate: form.type === 'opd' && !name && !mrn, from: todayIso, to: todayIso };
 }
 
@@ -62,9 +66,9 @@ export function findWindowQuery(type, f) {
   return { type, ...(name ? { name } : {}), ...(phone ? { phone } : {}), ...(mrn ? { mrn } : {}), ...(doctor ? { doctor } : {}), ...(f.byDate ? { from: f.from, to: f.to } : {}) };
 }
 
-/** What Search asks the server for: the UHID when one is typed, otherwise the name. */
+/** What Search asks the server for: the UHID when one is ticked and typed, otherwise the name. */
 export function findQuery(form) {
-  const text = form.mrn.trim() || form.name.trim();
+  const text = (form.byMrn && form.mrn.trim()) || (form.byName && form.name.trim());
   return { type: form.type, ...(text ? { search: text } : {}) };
 }
 

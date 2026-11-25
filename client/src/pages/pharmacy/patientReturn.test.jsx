@@ -98,7 +98,7 @@ describe('the Sale return patient-wise screen', () => {
       </MemoryRouter>,
     );
     const shown = text(html);
-    expect(shown).toMatch(/Patient type OPD IPD Registration no First name Doctor name Date Tax CGST \/ SGST Direct print Search/);
+    expect(shown).toMatch(/Patient type OPD IPD Search Direct print Registration no First name Doctor name Date Tax CGST \/ SGST/);
     expect(shown).toMatch(/Item name Barcode .*Item name Batch no Exp date Unit MRP Return qty Return amt Qty Disc % Bill no Bill date Pay/);
     expect(shown).toContain('Total cash return Total cash disc Total cash N disc Net cash return Total credit return Total credit disc Total credit N disc Net credit return Total return amt Total discount amt Total N discount amt Net return amt');
     expect((html.match(/<input id="pr-[a-z-]+"[^>]*value="0.00"/g) ?? []).length).toBe(12);

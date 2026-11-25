@@ -1621,9 +1621,6 @@ input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
 @media (min-width: 1440px) {
   .ph-st.ph-st-main .ph-sb-split { grid-template-columns: 310px minmax(0, 1fr); }
 }
-@media (min-width: 1024px) and (min-height: 640px) {
-  .ph-st.ph-st-main .ph-sb-panel .ph-st-find { margin-top: auto; }
-}
 /* The Find patient window: the boxes on the left (each used when ticked), the patients beside them, Select and Close */
 .modal.ph-st-find-window { width: min(1120px, calc(100vw - 32px)); max-width: none; padding: var(--space-4) var(--space-6); }
 .ph-st-find-body { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: var(--space-4); align-items: start; }
@@ -1663,16 +1660,22 @@ input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
    bringIntoView in pharmacyUi.jsx) and the grids beside the panel share that height. */
 .ph-st-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
 .ph-st-pair .check { align-self: end; min-height: 32px; }
-/* 25 Nov 2026 (the pharmacy's request): Registration no, First name, Doctor name, Date and Tax each ticked on or off –
-   the tick sits above its own box, the pair staying one cell of the Sale return panel's grid so nothing else moves. */
-.ph-pr-field-group { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ph-pr-field-group .ph-pr-tick { font-size: 0.8125rem; font-weight: 600; color: var(--ink); }
-.ph-pr-field-group :is(input, select) { width: 100%; min-width: 0; height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
-.ph-pr-field-group :is(input, select):disabled { background: var(--mist-50); color: var(--slate-500); }
+/* 25 Nov 2026 (the pharmacy's request): on Settlement and Sale return patient-wise, Search sits right under Patient
+   type, reachable before the boxes below are even touched, and each box below is ticked on or off, one to a row: the
+   tick and its label a fixed width so every box lines up at the same place instead of wrapping or going ragged. */
+.ph-tick-search-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
+.ph-tick-search-btn { flex: 1 1 auto; }
+.ph-tick-extra { flex: 0 0 auto; white-space: nowrap; }
+.ph-tick-rows { display: flex; flex-direction: column; gap: var(--space-2); }
+.ph-tick-row { display: flex; align-items: center; gap: var(--space-2); }
+.ph-tick-row .ph-tick-label { flex: 0 0 128px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.8125rem; font-weight: 600; color: var(--ink); }
+.ph-tick-row :is(input, select) { flex: 1 1 auto; width: 100%; min-width: 0; height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
+.ph-tick-row :is(input, select):disabled { background: var(--mist-50); color: var(--slate-500); }
+@media (max-width: 420px) {
+  .ph-tick-row { flex-wrap: wrap; }
+  .ph-tick-row .ph-tick-label { flex-basis: 100%; }
+}
 .ph-st-field select { width: 100%; min-width: 0; height: 32px; min-height: 0; padding: 4px 8px; font-size: 0.875rem; }
-.ph-st-find { display: flex; align-items: center; gap: var(--space-2); }
-.ph-st-find .ph-sb-show { flex: 1 1 auto; width: auto; }
-.ph-pr-fields .ph-sb-show { grid-column: 1 / -1; }
 /* Sale return: the patient chosen, at the top of the right side */
 .ph-pr-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); margin: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-left: 3px solid var(--indigo-700); border-radius: var(--radius-md); background: var(--surface); }
 .ph-pr-who strong { font-size: 1rem; line-height: 1.4; font-weight: 700; color: var(--ink); }
@@ -1712,11 +1715,6 @@ input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
 }
 @media (min-width: 1680px) {
   .ph-st .ph-sb-split { grid-template-columns: 420px minmax(0, 1fr); }
-  /* Sale return: Doctor name, Date and Tax on one line, Direct print beside Search – more room for the list */
-  .ph-pr-fields { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .ph-pr-fields > :nth-child(-n + 2) { grid-column: span 3; }
-  .ph-pr-fields > :nth-child(n + 3) { grid-column: span 2; }
-  .ph-pr-fields > .ph-sb-show { grid-column: span 4; }
 }
 @media (min-width: 1024px) and (min-height: 640px) {
   .ph-st .ph-sb-split { align-items: stretch; height: max(600px, calc(100dvh - 2 * var(--space-4))); scroll-margin-top: var(--space-4); }

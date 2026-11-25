@@ -26,7 +26,8 @@ import { SETTLE_TYPES, SETTLE_WAYS, findProblem, findQuery, findWindowProblem, f
 // Made on the server: server/src/pharmacy/settlement.js (GET and POST /api/pharmacy/settlement, and GET
 // /api/pharmacy/settlement/patients for the Find patient window).
 
-const EMPTY = { type: 'opd', mrn: '', name: '' };
+// 25 Nov 2026 (the pharmacy's request): UHID and Patient name ticked from the start, how Search already worked
+const EMPTY = { type: 'opd', mrn: '', name: '', byMrn: true, byName: true };
 
 function Fact({ label, value, id }) {
   return (
@@ -442,7 +443,7 @@ export function PharmacySettlementPage() {
       return;
     }
     setQuery(null);
-    setFinding({ type: form.type, initial: newFindFilters(form, hospitalToday()), autoOne: Boolean(form.mrn.trim() || form.name.trim()) });
+    setFinding({ type: form.type, initial: newFindFilters(form, hospitalToday()), autoOne: Boolean((form.byMrn && form.mrn.trim()) || (form.byName && form.name.trim())) });
   };
   // A patient chosen in the Find patient window: her UHID and name on the left, her bills beside them
   const choose = (p) => {
@@ -530,24 +531,11 @@ export function PharmacySettlementPage() {
                 ))}
               </div>
             </fieldset>
-            <label className="ph-st-field">
-              <span>UHID</span>
-              <input type="search" value={form.mrn} maxLength={40} autoComplete="off" onChange={(e) => set({ mrn: e.target.value })} />
-            </label>
-            <label className="ph-st-field">
-              <span>{form.type === 'external' ? 'Customer name' : 'Patient name'}</span>
-              <input type="search" value={form.name} maxLength={80} autoComplete="off" onChange={(e) => set({ name: e.target.value })} />
-            </label>
-            {data && (
-              <p className="ph-st-advance">
-                Advance balance: <strong className="tabular">₹{amount(advancePaise)}</strong>
-              </p>
-            )}
-            {form.type === 'external' && <p className="hint ph-sb-tip">A walk-in customer pays the whole bill at the counter: their bills are listed to look at (today’s when nothing is typed).</p>}
-            {problem && (form.mrn || form.name) && <p className="field-error">{problem}</p>}
-            {walkIns.error && <Alert type="error">{walkIns.error}</Alert>}
-            <div className="ph-st-find">
-              <button type="submit" className="btn btn-secondary ph-sb-show" disabled={Boolean(problem)}>
+            {/* 25 Nov 2026 (the pharmacy's request): Search sits right under Patient type, reachable before UHID and
+                Patient name are even touched – pressing it with neither ticked still opens the Find patient window, as
+                before. Each box below ticked on or off, one to a row, the tick and its label a fixed width. */}
+            <div className="ph-tick-search-bar">
+              <button type="submit" className="btn btn-secondary ph-tick-search-btn" disabled={Boolean(problem)}>
                 <Search aria-hidden="true" /> Search
               </button>
               {(query || patientId || form.mrn || form.name) && (
@@ -556,6 +544,28 @@ export function PharmacySettlementPage() {
                 </button>
               )}
             </div>
+            <div className="ph-tick-rows">
+              <div className="ph-tick-row">
+                <label className="check ph-tick-label">
+                  <input type="checkbox" checked={form.byMrn} onChange={(e) => set({ byMrn: e.target.checked })} /> UHID
+                </label>
+                <input type="search" value={form.mrn} maxLength={40} autoComplete="off" aria-label="UHID" disabled={!form.byMrn} onChange={(e) => set({ mrn: e.target.value })} />
+              </div>
+              <div className="ph-tick-row">
+                <label className="check ph-tick-label">
+                  <input type="checkbox" checked={form.byName} onChange={(e) => set({ byName: e.target.checked })} /> {form.type === 'external' ? 'Customer name' : 'Patient name'}
+                </label>
+                <input type="search" value={form.name} maxLength={80} autoComplete="off" aria-label={form.type === 'external' ? 'Customer name' : 'Patient name'} disabled={!form.byName} onChange={(e) => set({ name: e.target.value })} />
+              </div>
+            </div>
+            {data && (
+              <p className="ph-st-advance">
+                Advance balance: <strong className="tabular">₹{amount(advancePaise)}</strong>
+              </p>
+            )}
+            {form.type === 'external' && <p className="hint ph-sb-tip">A walk-in customer pays the whole bill at the counter: their bills are listed to look at (today’s when nothing is typed).</p>}
+            {problem && (form.mrn || form.name) && <p className="field-error">{problem}</p>}
+            {walkIns.error && <Alert type="error">{walkIns.error}</Alert>}
           </form>
 
           <div className="ph-sb-results">

@@ -376,31 +376,41 @@ export function PatientReturnPage() {
                 ))}
               </div>
             </fieldset>
-            {/* 25 Nov 2026 (the pharmacy's request): a tick before each box, as the earlier software's windows – ticked,
-                the box is used; unticked, it is skipped (Registration no and First name start ticked, how Search
-                already worked; Date, unticked, stays today; Tax, unticked, is left off the printed slip). Each tick and
-                its box stay one grid cell (ph-pr-field-group) so the panel's layout is unchanged otherwise. */}
-            <div className="ph-st-pair ph-pr-fields">
-              <div className="ph-pr-field-group">
-                <label className="check ph-pr-tick">
+            {/* 25 Nov 2026 (the pharmacy's request): Search sits right under Patient type, in reach before the boxes
+                below are even touched – pressing it with nothing ticked still lists the type's patients, as before.
+                A tick before each box, as the earlier software's windows – ticked, the box is used; unticked, it is
+                skipped (Registration no and First name start ticked, how Search already worked; Date, unticked, stays
+                today; Tax, unticked, is left off the printed slip). One row per box, the tick and its label a fixed
+                width so every box starts at the same place – no wrapped labels, no ragged columns. */}
+            <div className="ph-tick-search-bar">
+              <button type="submit" className="btn btn-secondary ph-tick-search-btn" disabled={Boolean(problem)}>
+                <Search aria-hidden="true" /> Search
+              </button>
+              <label className="check ph-tick-extra">
+                <input type="checkbox" checked={direct} onChange={(e) => setDirect(e.target.checked)} /> Direct print
+              </label>
+            </div>
+            <div className="ph-tick-rows">
+              <div className="ph-tick-row">
+                <label className="check ph-tick-label">
                   <input type="checkbox" checked={form.byMrn} onChange={(e) => set({ byMrn: e.target.checked })} /> Registration no
                 </label>
                 <input type="search" value={form.mrn} maxLength={40} autoComplete="off" placeholder="UHID" aria-label="Registration no" disabled={!form.byMrn} onChange={(e) => set({ mrn: e.target.value })} />
               </div>
-              <div className="ph-pr-field-group">
-                <label className="check ph-pr-tick">
+              <div className="ph-tick-row">
+                <label className="check ph-tick-label">
                   <input type="checkbox" checked={form.byFirst} onChange={(e) => set({ byFirst: e.target.checked })} /> First name
                 </label>
                 <input type="search" value={form.first} maxLength={50} autoComplete="off" aria-label="First name" disabled={!form.byFirst} onChange={(e) => set({ first: e.target.value })} />
               </div>
-              <div className="ph-pr-field-group">
-                <label className="check ph-pr-tick">
+              <div className="ph-tick-row">
+                <label className="check ph-tick-label">
                   <input type="checkbox" checked={form.byDoctor} onChange={(e) => set({ byDoctor: e.target.checked })} /> Doctor name
                 </label>
                 <input type="search" value={form.doctor} maxLength={150} autoComplete="off" placeholder="Any doctor" aria-label="Doctor name" disabled={!form.byDoctor} onChange={(e) => set({ doctor: e.target.value })} />
               </div>
-              <div className="ph-pr-field-group">
-                <label className="check ph-pr-tick">
+              <div className="ph-tick-row">
+                <label className="check ph-tick-label">
                   <input type="checkbox" checked={form.byDate} onChange={(e) => set({ byDate: e.target.checked, date: e.target.checked ? form.date || todayIso : form.date })} /> Date
                 </label>
                 {form.byDate ? (
@@ -409,20 +419,14 @@ export function PatientReturnPage() {
                   <input readOnly value={formatDate(todayIso)} aria-label="Date" aria-describedby="pr-date-hint" />
                 )}
               </div>
-              <div className="ph-pr-field-group">
-                <label className="check ph-pr-tick">
+              <div className="ph-tick-row">
+                <label className="check ph-tick-label">
                   <input type="checkbox" checked={form.byTax} onChange={(e) => set({ byTax: e.target.checked })} /> Tax
                 </label>
                 <select disabled={!form.byTax} aria-label="Tax" defaultValue="gst">
                   <option value="gst">CGST / SGST</option>
                 </select>
               </div>
-              <label className="check ph-sb-tick">
-                <input type="checkbox" checked={direct} onChange={(e) => setDirect(e.target.checked)} /> Direct print
-              </label>
-              <button type="submit" className="btn btn-secondary ph-sb-show" disabled={Boolean(problem)}>
-                <Search aria-hidden="true" /> Search
-              </button>
             </div>
             {problem && (form.mrn || form.first) && <p className="field-error">{problem}</p>}
             {found.error && <Alert type="error">{found.error}</Alert>}

@@ -32,25 +32,30 @@ beforeEach(() => {
 });
 
 describe('what Search asks for', () => {
-  it('the UHID when one is typed, otherwise the name; External needs nothing typed', () => {
-    expect(findQuery({ type: 'opd', mrn: ' SH-0001 ', name: 'asha' })).toEqual({ type: 'opd', search: 'SH-0001' });
-    expect(findQuery({ type: 'ipd', mrn: '', name: ' Asha ' })).toEqual({ type: 'ipd', search: 'Asha' });
-    expect(findQuery({ type: 'external', mrn: '', name: '' })).toEqual({ type: 'external' });
-    expect(findProblem({ type: 'opd', mrn: '', name: 'A' })).toContain('at least two letters');
-    expect(findProblem({ type: 'opd', mrn: 'SH', name: '' })).toBe('');
-    expect(findProblem({ type: 'opd', mrn: '', name: '' })).toBe(''); // nothing typed: the list of patients (24 Nov 2026)
-    expect(findQuery({ type: 'ipd', mrn: ' ', name: '' })).toEqual({ type: 'ipd' });
-    expect(findProblem({ type: 'external', mrn: '', name: '' })).toBe('');
+  const ALL_ON = { byMrn: true, byName: true };
+  it('the UHID when one is ticked and typed, otherwise the name; External needs nothing typed', () => {
+    expect(findQuery({ type: 'opd', mrn: ' SH-0001 ', name: 'asha', ...ALL_ON })).toEqual({ type: 'opd', search: 'SH-0001' });
+    expect(findQuery({ type: 'ipd', mrn: '', name: ' Asha ', ...ALL_ON })).toEqual({ type: 'ipd', search: 'Asha' });
+    expect(findQuery({ type: 'external', mrn: '', name: '', ...ALL_ON })).toEqual({ type: 'external' });
+    expect(findProblem({ type: 'opd', mrn: '', name: 'A', ...ALL_ON })).toContain('at least two letters');
+    expect(findProblem({ type: 'opd', mrn: 'SH', name: '', ...ALL_ON })).toBe('');
+    expect(findProblem({ type: 'opd', mrn: '', name: '', ...ALL_ON })).toBe(''); // nothing typed: the list of patients (24 Nov 2026)
+    expect(findQuery({ type: 'ipd', mrn: ' ', name: '', ...ALL_ON })).toEqual({ type: 'ipd' });
+    expect(findProblem({ type: 'external', mrn: '', name: '', ...ALL_ON })).toBe('');
+    // 25 Nov 2026 (the pharmacy's request): UHID and Patient name each ticked on or off, as on the Sale return window –
+    // a box left unticked is skipped even when something is typed in it
+    expect(findQuery({ type: 'opd', mrn: 'SH-0001', name: 'Asha', byMrn: false, byName: false })).toEqual({ type: 'opd' });
+    expect(findQuery({ type: 'opd', mrn: 'SH-0001', name: 'Asha', byMrn: false, byName: true })).toEqual({ type: 'opd', search: 'Asha' });
   });
 
   it('Search opens the Find patient window, as the earlier software: what was typed goes in, ticked', () => {
     const day = '2026-11-24';
     // nothing typed: OPD – Date ticked for today; IPD – everyone admitted now
-    expect(newFindFilters({ type: 'opd', mrn: '', name: '' }, day)).toMatchObject({ byName: false, byMrn: false, byDate: true, from: day, to: day });
-    expect(findWindowQuery('opd', newFindFilters({ type: 'opd', mrn: '', name: '' }, day))).toEqual({ type: 'opd', from: day, to: day });
-    expect(findWindowQuery('ipd', newFindFilters({ type: 'ipd', mrn: '', name: '' }, day))).toEqual({ type: 'ipd' });
+    expect(newFindFilters({ type: 'opd', mrn: '', name: '', ...ALL_ON }, day)).toMatchObject({ byName: false, byMrn: false, byDate: true, from: day, to: day });
+    expect(findWindowQuery('opd', newFindFilters({ type: 'opd', mrn: '', name: '', ...ALL_ON }, day))).toEqual({ type: 'opd', from: day, to: day });
+    expect(findWindowQuery('ipd', newFindFilters({ type: 'ipd', mrn: '', name: '', ...ALL_ON }, day))).toEqual({ type: 'ipd' });
     // typed: that, any day
-    const typed = newFindFilters({ type: 'opd', mrn: ' SH-0001 ', name: ' Asha Kale ' }, day);
+    const typed = newFindFilters({ type: 'opd', mrn: ' SH-0001 ', name: ' Asha Kale ', ...ALL_ON }, day);
     expect(typed).toMatchObject({ byName: true, first: 'Asha Kale', byMrn: true, mrn: 'SH-0001', byDate: false });
     expect(findWindowQuery('opd', typed)).toEqual({ type: 'opd', name: 'Asha Kale', mrn: 'SH-0001' });
     // only the ticked boxes count; the name's parts and the mobile number
@@ -131,7 +136,7 @@ describe('the Settlement screen', () => {
       </MemoryRouter>,
     );
     const shown = text(html);
-    expect(shown).toMatch(/Patient type OPD IPD External UHID Patient name Search/);
+    expect(shown).toMatch(/Patient type OPD IPD External Search UHID Patient name/);
     expect(shown).toMatch(/Paid bills .*Sales date Print bill no UHID Bill amt Con\. amt Net pay amt Paid amt Balance/);
     expect(shown).toMatch(/Credit bills Select all .*Sales date Print bill no UHID Bill amt Con\. amt Net pay amt Balance/);
     expect(shown).toMatch(/Advance available .*Total credit .*Selected total .*Advance Discount Settlement Close/);
