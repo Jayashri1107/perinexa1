@@ -1612,8 +1612,8 @@ input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
 .ph-pr-lines .ph-pr-remove { width: 28px; height: 28px; min-width: 0; min-height: 0; }
 .ph-pr-lines .ph-pr-remove svg.lucide { width: 16px; height: 16px; }
 
-/* 24 Nov 2026, Settlement as the earlier window (the developer's video): the panel narrow again – Patient type, UHID,
-   Patient name, the patient's advance, and Search at its foot; Search opens the Find patient window */
+/* 24 Nov 2026, Settlement as the earlier window (the developer's video): the panel narrow – Patient type, Search,
+   the boxes to search by, the patient's advance, and (25 Nov 2026) the patients found, all in this one column */
 .ph-st-advance { margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--ink); }
 @media (min-width: 1024px) {
   .ph-st.ph-st-main .ph-sb-split { grid-template-columns: 260px minmax(0, 1fr); }
@@ -1621,26 +1621,21 @@ input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
 @media (min-width: 1440px) {
   .ph-st.ph-st-main .ph-sb-split { grid-template-columns: 310px minmax(0, 1fr); }
 }
-/* The Find patient window: the boxes on the left (each used when ticked), the patients beside them, Select and Close */
-.modal.ph-st-find-window { width: min(1120px, calc(100vw - 32px)); max-width: none; padding: var(--space-4) var(--space-6); }
-.ph-st-find-body { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: var(--space-4); align-items: start; }
-.ph-st-find-filters { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--mist-50); }
-.ph-st-find-filters .check { min-height: 28px; margin: 2px 0 0; gap: 6px; font-size: var(--fs-label); line-height: var(--lh-label); }
-.ph-st-find-filters .ph-sb-field { grid-template-columns: 84px minmax(0, 1fr); }
-.ph-st-find-filters .ph-sb-field.is-wide { grid-template-columns: minmax(0, 1fr); }
-.ph-st-find-scroll { height: clamp(240px, calc(100vh - 210px), 520px); max-height: none; }
-.ph-st-find-window .ph-pay-foot { justify-content: flex-end; margin-top: var(--space-3); }
-.ph-st-find-filters .ph-sb-field input:not([type='checkbox']) { height: 30px; }
+/* 25 Nov 2026 (the pharmacy's request): the OPD/IPD boxes and the patients they find, in the left column itself – no
+   pop-up window. A sub-row's label (First name, Mob. no, From date…) sits under its tick, indented the same width. */
+.ph-tick-row .ph-tick-sub { flex: 0 0 128px; padding-left: var(--space-3); font-size: 0.75rem; font-weight: 400; color: var(--slate-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-st-inline-list { margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--border); }
+.ph-st-inline-scroll { max-height: 280px; }
 .ph-plist .ph-st-find-table th.ph-st-find-uhid { width: 100px; }
 .ph-plist .ph-st-find-table th.ph-st-find-date { width: 104px; }
 .ph-plist .ph-st-find-table th.ph-st-find-time { width: 60px; }
 .ph-plist .ph-st-find-table th.ph-st-find-no { width: 132px; }
 .ph-plist .ph-st-find-table th.ph-st-find-doc { width: 170px; }
 .ph-plist .ph-st-find-table td.ph-st-find-none { height: auto; padding: var(--space-4); color: var(--slate-600); white-space: normal; cursor: default; }
+.ph-plist .ph-plist-table tbody tr.is-picked td { background: var(--selected-bg); }
 @media (max-width: 799px) {
-  .ph-st-find-body { grid-template-columns: minmax(0, 1fr); }
-  .ph-st-find-scroll { height: 50vh; overflow-x: auto; }
-  .ph-plist .ph-st-find-table { min-width: 640px; }
+  .ph-st-inline-scroll { overflow-x: auto; }
+  .ph-plist .ph-st-find-table { min-width: 560px; }
 }
 @media (min-width: 720px) {
   /* the list keeps its height and scrolls inside; its first column is the item's name, not a tick box as on Search bill */
