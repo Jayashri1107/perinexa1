@@ -103,3 +103,41 @@ export function sumBills(rows) {
 
 /** The listed IPD bills of the same patient as this bill (IP bill summary); none for a bill that is not a patient's IPD bill. */
 export const ipBills = (rows, bill) => (bill?.type === 'ipd' && bill.mrn ? rows.filter((r) => r.type === 'ipd' && r.mrn === bill.mrn) : []);
+
+// 25 Nov 2026 (the pharmacy's request): the IP bill summary laid out as the earlier software's – Credit Sales Bill and
+// Sales Return as two sections, each with its own total row, and underneath Credit Amount, Advance Amount and Amount.
+
+/** Her day, "21 Nov 2026" (this computer's time zone – paired with timeWords below for a bill's Date and Time columns;
+ * dayWords above is for a date typed into a search box, always a plain calendar day with no time of its own). */
+export function dateWords(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** Her hour and minute, "9:11 AM" (the earlier software's print). */
+export function timeWords(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  let h = d.getHours();
+  const ampm = h < 12 ? 'AM' : 'PM';
+  h = h % 12 || 12;
+  return `${h}:${pad2(d.getMinutes())} ${ampm}`;
+}
+
+/** A total amount rounded off to the nearest rupee, the way the earlier software's Net Amount was: 91.84 → 92.00. */
+export const roundedPaise = (paise) => Math.round((paise ?? 0) / 100) * 100;
+
+/** Every return (credit note) against this patient's listed bills, newest first – the Sales Return section. */
+export const ipReturns = (bills) => bills.flatMap((b) => b.returns ?? []).sort((a, b) => new Date(b.at) - new Date(a.at));
+
+/** The Credit Sales Bill section's total row: count, Total amt, Net amt (rounded), Paid amt, Balance amt. */
+export function ipBillSums(bills) {
+  const add = (pick) => bills.reduce((n, r) => n + pick(r), 0);
+  return { count: bills.length, totalPaise: add((r) => r.totalPaise), netPaise: add((r) => roundedPaise(r.totalPaise)), paidPaise: add((r) => r.paidPaise), balPaise: add((r) => r.balPaise) };
+}
+
+/** The Sales Return section's total row: count and the amount credited back. */
+export function ipReturnSums(returns) {
+  return { count: returns.length, amountPaise: returns.reduce((n, r) => n + r.amountPaise, 0) };
+}

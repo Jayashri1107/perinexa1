@@ -9,29 +9,14 @@ import { Alert, formatDate, formatDateTime, useDialogFocus } from '../../compone
 import { useFetch } from '../../hooks/useFetch.js';
 import { PharmacyHeader, PharmacyLetterhead, bringIntoView } from './pharmacyUi.jsx';
 import { amount } from './searchBill.js';
-import {
-  SETTLE_TYPES,
-  SETTLE_WAYS,
-  emptyFindFilters,
-  findProblem,
-  findQuery,
-  findWindowProblem,
-  findWindowQuery,
-  findWindowTyped,
-  newSettle,
-  selectedOf,
-  settleBody,
-  settleSums,
-  settledWords,
-} from './settlement.js';
+import { SETTLE_TYPES, SETTLE_WAYS, findProblem, findQuery, findWindowProblem, findWindowQuery, newFindFilters, newSettle, selectedOf, settleBody, settleSums, settledWords } from './settlement.js';
 
 // Pharmacy → Settlement (24 Nov 2026, the developer, after the "Pharmacy Settlement" window of the pharmacy's earlier
-// software; 25 Nov 2026, the pharmacy's request: the Find patient boxes moved into this column itself, no pop-up
-// window), the menu item after Search bill. On the left OPD, IPD or External, and Search. External: the UHID and
-// customer's name. OPD/IPD: Patient name (first, middle, last, mobile), UHID, Doctor name, Date (from, to) – each
-// used when ticked – and the patients found (IPD everyone admitted now, OPD today's, when nothing is ticked):
-// clicking one, or ↑ ↓ and Enter, chooses her; what was typed finds her at once when she is the only one. Beside the
-// panel the chosen patient's Paid bills and Credit bills (Select all, or tick each); under them Advance available,
+// software), the menu item after Search bill. On the left OPD, IPD or External, the UHID and the patient's name, her
+// advance balance, and Search – which opens the Find patient window, as the earlier software (the developer's video,
+// 24 Nov 2026): the patients of the type (IPD everyone admitted now, OPD today's) to choose from, narrowed by name,
+// mobile, UHID and dates; what was typed on the left finds her at once when she is the only one. Beside the panel the
+// chosen patient's Paid bills and Credit bills (Select all, or tick each); under them Advance available,
 // Total credit and Selected total, and the buttons Advance, Discount, Settlement and Close. Each of the three opens the
 // Settlement window for the credit bills ticked – Advance with the advance filled in, Discount ready for a discount
 // and its reason, Settlement with the whole amount in cash – where the bills are settled in full, by the advance, a
@@ -39,8 +24,13 @@ import {
 // Only a registered patient's counter bills are settled here: hospital bills and ward issues are paid at the billing
 // desk, and a walk-in (External) customer pays the whole bill at the counter, so External lists bills to look at only.
 // Made on the server: server/src/pharmacy/settlement.js (GET and POST /api/pharmacy/settlement, and GET
-// /api/pharmacy/settlement/patients). 25 Nov 2026 (the pharmacy's request): the search and the patients it finds stay
-// in the left column itself – no pop-up window, as on the Sale return screen.
+// /api/pharmacy/settlement/patients for the Find patient window).
+// 25 Nov 2026 (the pharmacy's request): tried with the boxes and the patients found moved into the left column
+// itself (no pop-up window); the pharmacy asked for the Find patient window back, as the earlier software and the
+// developer's video show it, so this stays the Find patient window.
+
+// 25 Nov 2026 (the pharmacy's request): UHID and Patient name ticked from the start, how Search already worked
+const EMPTY = { type: 'opd', mrn: '', name: '', byMrn: true, byName: true };
 
 function Fact({ label, value, id }) {
   return (
@@ -233,93 +223,246 @@ export function SettlementReceipt({ done, settings }) {
   );
 }
 
-// The hospital's today (India), for the date boxes before the server has said which day it is
+// The hospital's today (India), for the Find patient window's dates before the server has said which day it is
 const hospitalToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 const timeOf = (iso) => (iso ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' }) : '');
 
+/**
+ * The Find patient window (24 Nov 2026, the developer's video of the earlier software's Pharmacy Settlement): Search
+ * opens it. On the left the patient type (as chosen), and the boxes – Patient name (first, middle, last, mobile no), UHID,
+ * Date (from, to) – each used when ticked, and Show; beside them the patients: UHID, Patient name, Date, Time, Number
+ * (IPD her admission's, OPD her latest bill's) and Doctor name. ↑ ↓ and Enter, a double click, or Select chooses one.
+ * autoOne: what was typed on the screen found exactly one patient – she is chosen at once, the window never shows.
+ */
+/** A window over the screen: the keyboard stays in it, Esc closes it (mounted only when it is to be seen). */
+function ModalFrame({ onClose, labelledBy, className, onKeyDown, children }) {
+  const ref = useDialogFocus(onClose);
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={ref} tabIndex={-1} className={`modal modal-wide ${className}`} role="dialog" aria-modal="true" aria-labelledby={labelledBy} onKeyDown={onKeyDown}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function FindPatientWindow({ type, initial, autoOne, onSelect, onClose }) {
+  const [f, setF] = useState(initial);
+  const [asked, setAsked] = useState(() => findWindowQuery(type, initial));
+  const [hi, setHi] = useState(0);
+  const [ready, setReady] = useState(!autoOne); // with autoOne: shown only when the one typed isn't found alone
+  const res = useFetch('/pharmacy/settlement/patients', asked);
+  const list = res.data?.patients ?? null;
+  const problem = findWindowProblem(f);
+  const set = (change) => setF((x) => ({ ...x, ...change }));
+  useEffect(() => {
+    setHi(0);
+    if (!list || ready) return;
+    if (list.length === 1) onSelect(list[0]);
+    else setReady(true);
+  }, [res.data]);
+  const show = (e) => {
+    e?.preventDefault();
+    if (problem) return;
+    const next = findWindowQuery(type, f);
+    if (JSON.stringify(next) === JSON.stringify(asked)) res.reload();
+    else setAsked(next);
+  };
+  const keys = (e) => {
+    if (!list?.length || e.target.closest('input, select, button, textarea')) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHi((h) => Math.min(h + 1, list.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHi((h) => Math.max(0, h - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      onSelect(list[hi]);
+    }
+  };
+  useEffect(() => {
+    document.getElementById(`st-find-row-${hi}`)?.scrollIntoView({ block: 'nearest' });
+  }, [hi]);
+  const word = type === 'ipd' ? 'IPD' : 'OPD';
+  if (!ready) return res.error ? <ModalFrame onClose={onClose} labelledBy="st-find-title" className="ph-st-find-window"><h2 id="st-find-title" className="ph-pay-title">Find patient – {word}</h2><Alert type="error">{res.error}</Alert></ModalFrame> : null;
+
+  return (
+    <ModalFrame onClose={onClose} labelledBy="st-find-title" className="ph-st-find-window" onKeyDown={keys}>
+        <h2 id="st-find-title" className="ph-pay-title">
+          Find patient – {word}
+        </h2>
+        <div className="ph-st-find-body">
+          <form className="ph-st-find-filters" onSubmit={show} aria-label="What to look for">
+            <fieldset className="ph-sb-set">
+              <legend>Patient type</legend>
+              <div className="ph-sb-choices">
+                {SETTLE_TYPES.filter(([k]) => k !== 'external').map(([k, label]) => (
+                  <label key={k} className="check">
+                    <input type="radio" name="st-find-type" checked={type === k} disabled readOnly /> {label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <label className="check ph-sb-tick">
+              <input type="checkbox" checked={f.byName} onChange={(e) => set({ byName: e.target.checked })} /> Patient name
+            </label>
+            <label className="ph-sb-field">
+              <span>First name</span>
+              <input type="search" value={f.first} maxLength={50} disabled={!f.byName} onChange={(e) => set({ first: e.target.value })} />
+            </label>
+            <label className="ph-sb-field">
+              <span>Middle name</span>
+              <input type="search" value={f.middle} maxLength={50} disabled={!f.byName} onChange={(e) => set({ middle: e.target.value })} />
+            </label>
+            <label className="ph-sb-field">
+              <span>Last name</span>
+              <input type="search" value={f.last} maxLength={50} disabled={!f.byName} onChange={(e) => set({ last: e.target.value })} />
+            </label>
+            <label className="ph-sb-field">
+              <span>Mob. no</span>
+              <input type="search" inputMode="tel" value={f.phone} maxLength={20} disabled={!f.byName} onChange={(e) => set({ phone: e.target.value })} />
+            </label>
+            <label className="check ph-sb-tick">
+              <input type="checkbox" checked={f.byMrn} onChange={(e) => set({ byMrn: e.target.checked })} /> UHID
+            </label>
+            <label className="ph-sb-field is-wide">
+              <span className="sr-only">UHID</span>
+              <input type="search" value={f.mrn} maxLength={40} disabled={!f.byMrn} aria-label="UHID" onChange={(e) => set({ mrn: e.target.value })} />
+            </label>
+            {/* 25 Nov 2026 (the pharmacy's request): Doctor name, as on the Sale return window */}
+            <label className="check ph-sb-tick">
+              <input type="checkbox" checked={f.byDoctor} onChange={(e) => set({ byDoctor: e.target.checked })} /> Doctor name
+            </label>
+            <label className="ph-sb-field is-wide">
+              <span className="sr-only">Doctor name</span>
+              <input type="search" value={f.doctor} maxLength={150} disabled={!f.byDoctor} aria-label="Doctor name" onChange={(e) => set({ doctor: e.target.value })} />
+            </label>
+            <label className="check ph-sb-tick">
+              <input type="checkbox" checked={f.byDate} onChange={(e) => set({ byDate: e.target.checked })} /> Date
+            </label>
+            <label className="ph-sb-field">
+              <span>From date</span>
+              <DateText aria-label="From date" value={f.from} disabled={!f.byDate} onChange={(v) => set({ from: v })} />
+            </label>
+            <label className="ph-sb-field">
+              <span>To date</span>
+              <DateText aria-label="To date" value={f.to} disabled={!f.byDate} onChange={(v) => set({ to: v })} />
+            </label>
+            {problem && <p className="field-error">{problem}</p>}
+            <button type="submit" className="btn btn-secondary ph-sb-show" disabled={Boolean(problem)}>
+              <Search aria-hidden="true" /> Show
+            </button>
+          </form>
+          <div className="ph-st-find-list ph-plist">
+            {res.error && <Alert type="error">{res.error}</Alert>}
+            <p className="ph-plist-title" role="status">
+              {res.loading && !list ? 'Looking…' : list ? `${list.length} patient${list.length === 1 ? '' : 's'}${list.length === 500 ? ' (the newest 500)' : ''}` : ''}
+            </p>
+            <div className="ph-plist-scroll ph-st-find-scroll" tabIndex={0} role="listbox" aria-label="Patients" aria-activedescendant={list?.length ? `st-find-row-${hi}` : undefined}>
+              <table className="ph-plist-table ph-st-find-table">
+                <thead>
+                  <tr>
+                    <th scope="col" className="ph-st-find-uhid">
+                      UHID
+                    </th>
+                    <th scope="col">Patient name</th>
+                    <th scope="col" className="ph-st-find-date">
+                      Date
+                    </th>
+                    <th scope="col" className="ph-st-find-time">
+                      Time
+                    </th>
+                    <th scope="col" className="ph-st-find-no">
+                      Number
+                    </th>
+                    <th scope="col" className="ph-st-find-doc">
+                      Doctor name
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(list ?? []).map((p, i) => (
+                    <tr key={p.id} id={`st-find-row-${i}`} role="option" aria-selected={i === hi} className={i === hi ? 'is-on' : undefined} onClick={() => setHi(i)} onDoubleClick={() => onSelect(p)}>
+                      <td className="tabular">{p.mrn || '–'}</td>
+                      <td title={p.fullName}>{p.fullName}</td>
+                      <td className="tabular">{p.at ? formatDate(p.at) : ''}</td>
+                      <td className="tabular">{timeOf(p.at)}</td>
+                      <td className="tabular">{p.number}</td>
+                      <td title={p.doctor}>{p.doctor}</td>
+                    </tr>
+                  ))}
+                  {list && list.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="ph-st-find-none">
+                        {type === 'ipd' ? 'Nobody admitted now fits.' : 'No patient with counter bills fits.'} Change the boxes on the left and press Show.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div className="ph-pay-foot">
+          <button type="button" className="btn btn-primary" disabled={!list?.[hi]} onClick={() => onSelect(list[hi])}>
+            <CircleCheck aria-hidden="true" /> Select
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            <CircleX aria-hidden="true" /> Close
+          </button>
+        </div>
+    </ModalFrame>
+  );
+}
+
 export function PharmacySettlementPage() {
   const navigate = useNavigate();
-  const [type, setType] = useState('opd');
-  const [ext, setExt] = useState({ mrn: '', name: '', byMrn: true, byName: true }); // External: a plain UHID/name box, as before
-  const [f, setF] = useState(() => emptyFindFilters('opd', hospitalToday())); // OPD/IPD: the boxes, in the column itself (25 Nov 2026, the pharmacy's request: no pop-up window)
-  const [asked, setAsked] = useState(null); // OPD/IPD: what Search last asked for (null: nothing searched yet)
-  const [autoOne, setAutoOne] = useState(false); // this search typed a UHID or name: if it finds exactly one patient, choose her at once
-  const [hi, setHi] = useState(0); // the patient list: the row lit by the arrow keys
+  const [form, setForm] = useState(EMPTY);
   const [query, setQuery] = useState(null); // External: the walk-in bills asked for
+  const [finding, setFinding] = useState(null); // the Find patient window: { type, initial, autoOne }
   const [patientId, setPatientId] = useState(null);
   const [chosen, setChosen] = useState(() => new Set());
   const [opened, setOpened] = useState(null); // 'advance' | 'discount' | 'settle'
   const [done, setDone] = useState(null); // the last settlement: { result, words, patient, at }
   const [printing, setPrinting] = useState(false);
   const split = useRef(null); // the screen under the title bar: brought to the top of the window by Search
-  const list = useFetch(type !== 'external' && asked ? '/pharmacy/settlement/patients' : null, asked ?? undefined);
-  const patients = list.data?.patients ?? null;
   const walkIns = useFetch(query ? '/pharmacy/settlement' : null, query ?? undefined);
   const one = useFetch(patientId ? '/pharmacy/settlement' : null, patientId ? { patientId } : undefined);
   const settings = useFetch(done ? '/pharmacy/settings' : null);
-  const problem = type === 'external' ? findProblem({ type, mrn: ext.mrn, name: ext.name, byMrn: ext.byMrn, byName: ext.byName }) : findWindowProblem(f);
+  const problem = findProblem(form);
   const external = query?.type === 'external' ? (walkIns.data?.externalBills ?? null) : null;
   const data = patientId && one.data?.patientId === patientId ? one.data : null;
-
-  // A patient chosen from the list: her bills load on the right, at once – nothing else to close
-  const choose = (p) => {
-    setPatientId(p.id);
-    setChosen(new Set());
-  };
-  useEffect(() => {
-    setHi(0);
-    if (!patients || !autoOne) return;
-    if (patients.length === 1) choose(patients[0]);
-  }, [list.data]);
-  useEffect(() => {
-    document.getElementById(`st-find-row-${hi}`)?.scrollIntoView({ block: 'nearest' });
-  }, [hi]);
 
   const search = (e) => {
     e?.preventDefault();
     if (problem) return;
     setChosen(new Set());
     setDone(null);
-    setPatientId(null);
     bringIntoView(split.current);
-    if (type === 'external') {
-      setAsked(null);
-      setQuery(findQuery({ type, mrn: ext.mrn, name: ext.name, byMrn: ext.byMrn, byName: ext.byName }));
+    if (form.type === 'external') {
+      setPatientId(null);
+      setQuery(findQuery(form));
       return;
     }
     setQuery(null);
-    setAutoOne(findWindowTyped(f));
-    const next = findWindowQuery(type, f);
-    if (asked && JSON.stringify(next) === JSON.stringify(asked)) list.reload();
-    else setAsked(next);
+    setFinding({ type: form.type, initial: newFindFilters(form, hospitalToday()), autoOne: Boolean((form.byMrn && form.mrn.trim()) || (form.byName && form.name.trim())) });
   };
-  const keys = (e) => {
-    if (!patients?.length || e.target.closest('input, select, button, textarea')) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setHi((h) => Math.min(h + 1, patients.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setHi((h) => Math.max(0, h - 1));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      choose(patients[hi]);
-    }
+  // A patient chosen in the Find patient window: her UHID and name on the left, her bills beside them
+  const choose = (p) => {
+    setFinding(null);
+    setPatientId(p.id);
+    setChosen(new Set());
+    setForm((f) => ({ ...f, mrn: p.mrn ?? '', name: p.fullName }));
   };
-  const setExtField = (change) => setExt((x) => ({ ...x, ...change }));
-  const setFField = (change) => setF((x) => ({ ...x, ...change }));
-  const changeType = (k) => {
+  const set = (change) => setForm((f) => ({ ...f, ...change }));
+  const clear = () => {
+    setForm(EMPTY);
+    setQuery(null);
+    setPatientId(null);
     setChosen(new Set());
     setDone(null);
-    setPatientId(null);
-    setQuery(null);
-    setAsked(null);
-    setAutoOne(false);
-    if (k === 'external') setExt({ mrn: '', name: '', byMrn: true, byName: true });
-    else setF(emptyFindFilters(k, hospitalToday()));
-    setType(k);
   };
-  const clear = () => changeType('opd');
 
   const credit = data?.creditBills ?? [];
   const paid = external ?? data?.paidBills ?? [];
@@ -373,8 +516,7 @@ export function PharmacySettlementPage() {
       ? 'No paid bills.'
       : patientId || walkIns.loading
         ? 'Loading…'
-        : 'Choose OPD, IPD or External, tick what to search by, and press Search.';
-  const canClear = Boolean(query || patientId || asked || ext.mrn || ext.name);
+        : 'Choose OPD, IPD or External and press Search – the list of patients opens – or type the UHID or name first.';
 
   return (
     <>
@@ -387,171 +529,46 @@ export function PharmacySettlementPage() {
               <div className="ph-sb-choices">
                 {SETTLE_TYPES.map(([k, label]) => (
                   <label key={k} className="check">
-                    <input type="radio" name="st-type" value={k} checked={type === k} onChange={() => changeType(k)} /> {label}
+                    <input type="radio" name="st-type" value={k} checked={form.type === k} onChange={() => set({ type: k })} /> {label}
                   </label>
                 ))}
               </div>
             </fieldset>
-            {/* 25 Nov 2026 (the pharmacy's request): Search sits right under Patient type, and for OPD/IPD everything
-                it looks by – and the patients it finds – stay in this column: no pop-up window, as on the Sale
-                return screen. Each box ticked on or off, one to a row, the tick and its label a fixed width. */}
+            {/* 25 Nov 2026 (the pharmacy's request): Search sits right under Patient type, reachable before UHID and
+                Patient name are even touched – pressing it with neither ticked still opens the Find patient window, as
+                before. Each box below ticked on or off, one to a row, the tick and its label a fixed width. */}
             <div className="ph-tick-search-bar">
               <button type="submit" className="btn btn-secondary ph-tick-search-btn" disabled={Boolean(problem)}>
                 <Search aria-hidden="true" /> Search
               </button>
-              {canClear && (
+              {(query || patientId || form.mrn || form.name) && (
                 <button type="button" className="btn btn-link btn-sm" onClick={clear}>
                   Clear
                 </button>
               )}
             </div>
-            {type === 'external' ? (
-              <div className="ph-tick-rows">
-                <div className="ph-tick-row">
-                  <label className="check ph-tick-label">
-                    <input type="checkbox" checked={ext.byMrn} onChange={(e) => setExtField({ byMrn: e.target.checked })} /> UHID
-                  </label>
-                  <input type="search" value={ext.mrn} maxLength={40} autoComplete="off" aria-label="UHID" disabled={!ext.byMrn} onChange={(e) => setExtField({ mrn: e.target.value })} />
-                </div>
-                <div className="ph-tick-row">
-                  <label className="check ph-tick-label">
-                    <input type="checkbox" checked={ext.byName} onChange={(e) => setExtField({ byName: e.target.checked })} /> Customer name
-                  </label>
-                  <input type="search" value={ext.name} maxLength={80} autoComplete="off" aria-label="Customer name" disabled={!ext.byName} onChange={(e) => setExtField({ name: e.target.value })} />
-                </div>
+            <div className="ph-tick-rows">
+              <div className="ph-tick-row">
+                <label className="check ph-tick-label">
+                  <input type="checkbox" checked={form.byMrn} onChange={(e) => set({ byMrn: e.target.checked })} /> UHID
+                </label>
+                <input type="search" value={form.mrn} maxLength={40} autoComplete="off" aria-label="UHID" disabled={!form.byMrn} onChange={(e) => set({ mrn: e.target.value })} />
               </div>
-            ) : (
-              <div className="ph-tick-rows">
-                <div className="ph-tick-row">
-                  <label className="check ph-tick-label">
-                    <input type="checkbox" checked={f.byName} onChange={(e) => setFField({ byName: e.target.checked })} /> Patient name
-                  </label>
-                </div>
-                <div className="ph-tick-row">
-                  <span className="ph-tick-label ph-tick-sub">First name</span>
-                  <input type="search" value={f.first} maxLength={50} disabled={!f.byName} onChange={(e) => setFField({ first: e.target.value })} />
-                </div>
-                <div className="ph-tick-row">
-                  <span className="ph-tick-label ph-tick-sub">Middle name</span>
-                  <input type="search" value={f.middle} maxLength={50} disabled={!f.byName} onChange={(e) => setFField({ middle: e.target.value })} />
-                </div>
-                <div className="ph-tick-row">
-                  <span className="ph-tick-label ph-tick-sub">Last name</span>
-                  <input type="search" value={f.last} maxLength={50} disabled={!f.byName} onChange={(e) => setFField({ last: e.target.value })} />
-                </div>
-                <div className="ph-tick-row">
-                  <span className="ph-tick-label ph-tick-sub">Mob. no</span>
-                  <input type="search" inputMode="tel" value={f.phone} maxLength={20} disabled={!f.byName} onChange={(e) => setFField({ phone: e.target.value })} />
-                </div>
-                <div className="ph-tick-row">
-                  <label className="check ph-tick-label">
-                    <input type="checkbox" checked={f.byMrn} onChange={(e) => setFField({ byMrn: e.target.checked })} /> UHID
-                  </label>
-                  <input type="search" value={f.mrn} maxLength={40} disabled={!f.byMrn} aria-label="UHID" onChange={(e) => setFField({ mrn: e.target.value })} />
-                </div>
-                {/* 25 Nov 2026 (the pharmacy's request): Doctor name, as on the Sale return window */}
-                <div className="ph-tick-row">
-                  <label className="check ph-tick-label">
-                    <input type="checkbox" checked={f.byDoctor} onChange={(e) => setFField({ byDoctor: e.target.checked })} /> Doctor name
-                  </label>
-                  <input type="search" value={f.doctor} maxLength={150} disabled={!f.byDoctor} aria-label="Doctor name" onChange={(e) => setFField({ doctor: e.target.value })} />
-                </div>
-                <div className="ph-tick-row">
-                  <label className="check ph-tick-label">
-                    <input type="checkbox" checked={f.byDate} onChange={(e) => setFField({ byDate: e.target.checked })} /> Date
-                  </label>
-                </div>
-                <div className="ph-tick-row">
-                  <span className="ph-tick-label ph-tick-sub">From date</span>
-                  <DateText aria-label="From date" value={f.from} disabled={!f.byDate} onChange={(v) => setFField({ from: v })} />
-                </div>
-                <div className="ph-tick-row">
-                  <span className="ph-tick-label ph-tick-sub">To date</span>
-                  <DateText aria-label="To date" value={f.to} disabled={!f.byDate} onChange={(v) => setFField({ to: v })} />
-                </div>
+              <div className="ph-tick-row">
+                <label className="check ph-tick-label">
+                  <input type="checkbox" checked={form.byName} onChange={(e) => set({ byName: e.target.checked })} /> {form.type === 'external' ? 'Customer name' : 'Patient name'}
+                </label>
+                <input type="search" value={form.name} maxLength={80} autoComplete="off" aria-label={form.type === 'external' ? 'Customer name' : 'Patient name'} disabled={!form.byName} onChange={(e) => set({ name: e.target.value })} />
               </div>
-            )}
+            </div>
             {data && (
               <p className="ph-st-advance">
                 Advance balance: <strong className="tabular">₹{amount(advancePaise)}</strong>
               </p>
             )}
-            {type === 'external' && <p className="hint ph-sb-tip">A walk-in customer pays the whole bill at the counter: their bills are listed to look at (today’s when nothing is typed).</p>}
-            {problem && <p className="field-error">{problem}</p>}
+            {form.type === 'external' && <p className="hint ph-sb-tip">A walk-in customer pays the whole bill at the counter: their bills are listed to look at (today’s when nothing is typed).</p>}
+            {problem && (form.mrn || form.name) && <p className="field-error">{problem}</p>}
             {walkIns.error && <Alert type="error">{walkIns.error}</Alert>}
-
-            {type !== 'external' && asked && (
-              <div className="ph-plist ph-st-inline-list">
-                {list.error && <Alert type="error">{list.error}</Alert>}
-                <p className="ph-plist-title" role="status">
-                  {list.loading && !patients
-                    ? 'Looking…'
-                    : patients
-                      ? `${patients.length} patient${patients.length === 1 ? '' : 's'}${patients.length === 500 ? ' (the newest 500)' : ''}`
-                      : ''}
-                </p>
-                <div
-                  className="ph-plist-scroll ph-st-inline-scroll"
-                  tabIndex={0}
-                  onKeyDown={keys}
-                  role="listbox"
-                  aria-label="Patients"
-                  aria-activedescendant={patients?.length ? `st-find-row-${hi}` : undefined}
-                >
-                  <table className="ph-plist-table ph-st-find-table">
-                    <thead>
-                      <tr>
-                        <th scope="col" className="ph-st-find-uhid">
-                          UHID
-                        </th>
-                        <th scope="col">Patient name</th>
-                        <th scope="col" className="ph-st-find-date">
-                          Date
-                        </th>
-                        <th scope="col" className="ph-st-find-time">
-                          Time
-                        </th>
-                        <th scope="col" className="ph-st-find-no">
-                          Number
-                        </th>
-                        <th scope="col" className="ph-st-find-doc">
-                          Doctor name
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(patients ?? []).map((p, i) => (
-                        <tr
-                          key={p.id}
-                          id={`st-find-row-${i}`}
-                          role="option"
-                          aria-selected={i === hi}
-                          className={[i === hi ? 'is-on' : '', p.id === patientId ? 'is-picked' : ''].filter(Boolean).join(' ') || undefined}
-                          onClick={() => {
-                            setHi(i);
-                            choose(p);
-                          }}
-                        >
-                          <td className="tabular">{p.mrn || '–'}</td>
-                          <td title={p.fullName}>{p.fullName}</td>
-                          <td className="tabular">{p.at ? formatDate(p.at) : ''}</td>
-                          <td className="tabular">{timeOf(p.at)}</td>
-                          <td className="tabular">{p.number}</td>
-                          <td title={p.doctor}>{p.doctor}</td>
-                        </tr>
-                      ))}
-                      {patients && patients.length === 0 && (
-                        <tr>
-                          <td colSpan={6} className="ph-st-find-none">
-                            {type === 'ipd' ? 'Nobody admitted now fits.' : 'No patient with counter bills fits.'} Change the boxes above and press Search.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
           </form>
 
           <div className="ph-sb-results">
@@ -622,11 +639,12 @@ export function PharmacySettlementPage() {
               </div>
             </div>
             {data && credit.length > 0 && !selected.rows.length && <p className="hint ph-sb-tip">Tick the credit bills to settle (or Select all), then Advance, Discount or Settlement.</p>}
-            {type === 'ipd' && data && <p className="hint ph-sb-tip">Only counter bills are settled here: ward issues, and bills put on the hospital bill, are paid at the billing desk.</p>}
+            {form.type === 'ipd' && data && <p className="hint ph-sb-tip">Only counter bills are settled here: ward issues, and bills put on the hospital bill, are paid at the billing desk.</p>}
           </div>
         </div>
       </div>
 
+      {finding && <FindPatientWindow key={JSON.stringify(finding)} type={finding.type} initial={finding.initial} autoOne={finding.autoOne} onSelect={choose} onClose={() => setFinding(null)} />}
       {opened && patient && (
         <SettleWindow
           preset={opened}

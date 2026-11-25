@@ -13,7 +13,7 @@ vi.mock('../../hooks/useFetch.js', () => ({
 vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembership: { roles: ['pharmacist'] }, user: { name: 'Sample Pharmacist' }, activeTenantId: 't1' }) }));
 
 const { PharmacySettlementPage, SettlementReceipt } = await import('./SettlementPage.jsx');
-const { emptyFindFilters, findProblem, findQuery, findWindowProblem, findWindowQuery, findWindowTyped, newSettle, selectedOf, settleBody, settleSums, settledWords, toPaise } = await import('./settlement.js');
+const { findProblem, findQuery, findWindowProblem, findWindowQuery, newFindFilters, newSettle, selectedOf, settleBody, settleSums, settledWords, toPaise } = await import('./settlement.js');
 const { InvoicesPage } = await import('./InvoicesPage.jsx');
 const { describeAudit } = await import('../../components/auditFormat.js');
 const { PatientPickList } = await import('./pharmacyUi.jsx');
@@ -48,24 +48,22 @@ describe('what Search asks for', () => {
     expect(findQuery({ type: 'opd', mrn: 'SH-0001', name: 'Asha', byMrn: false, byName: true })).toEqual({ type: 'opd', search: 'Asha' });
   });
 
-  it('OPD/IPD: the boxes in the column itself (25 Nov 2026, no pop-up window) – nothing ticked, except OPD by Date', () => {
+  it('Search opens the Find patient window, as the earlier software: what was typed goes in, ticked', () => {
     const day = '2026-11-24';
-    expect(emptyFindFilters('opd', day)).toMatchObject({ byName: false, byMrn: false, byDoctor: false, byDate: true, from: day, to: day });
-    expect(emptyFindFilters('ipd', day)).toMatchObject({ byName: false, byMrn: false, byDoctor: false, byDate: false });
-    expect(findWindowQuery('opd', emptyFindFilters('opd', day))).toEqual({ type: 'opd', from: day, to: day });
-    expect(findWindowQuery('ipd', emptyFindFilters('ipd', day))).toEqual({ type: 'ipd' });
-    // typed: UHID or the name's parts ticked and filled in find her outright (autoOne)
-    const f = { ...emptyFindFilters('opd', day), byName: true, first: 'Asha', middle: ' ', last: 'Kale', phone: '', byMrn: true, mrn: ' SH-0001 ', byDate: false };
-    expect(findWindowQuery('opd', f)).toEqual({ type: 'opd', name: 'Asha Kale', mrn: 'SH-0001' });
-    expect(findWindowTyped(f)).toBe(true);
-    expect(findWindowTyped({ ...f, byMrn: false, byName: false })).toBe(false);
-    expect(findWindowTyped(emptyFindFilters('opd', day))).toBe(false); // Date alone isn't a typed search
-    // only the ticked boxes count; the name's parts and the mobile number; Doctor name (25 Nov 2026)
-    const g = { ...f, byMrn: false, phone: '98220 12345', byDoctor: true, doctor: 'Dr. Rao', byDate: true, from: '2026-11-01', to: day };
-    expect(findWindowQuery('ipd', g)).toEqual({ type: 'ipd', name: 'Asha Kale', phone: '98220 12345', doctor: 'Dr. Rao', from: '2026-11-01', to: day });
-    expect(findWindowProblem(g)).toBe('');
-    expect(findWindowProblem({ ...g, phone: '98ab' })).toBe('Write the mobile number in digits.');
-    expect(findWindowProblem({ ...g, from: day, to: '2026-11-01' })).toBe('The To date is before the From date.');
+    // nothing typed: OPD – Date ticked for today; IPD – everyone admitted now
+    expect(newFindFilters({ type: 'opd', mrn: '', name: '', ...ALL_ON }, day)).toMatchObject({ byName: false, byMrn: false, byDate: true, from: day, to: day });
+    expect(findWindowQuery('opd', newFindFilters({ type: 'opd', mrn: '', name: '', ...ALL_ON }, day))).toEqual({ type: 'opd', from: day, to: day });
+    expect(findWindowQuery('ipd', newFindFilters({ type: 'ipd', mrn: '', name: '', ...ALL_ON }, day))).toEqual({ type: 'ipd' });
+    // typed: that, any day
+    const typed = newFindFilters({ type: 'opd', mrn: ' SH-0001 ', name: ' Asha Kale ', ...ALL_ON }, day);
+    expect(typed).toMatchObject({ byName: true, first: 'Asha Kale', byMrn: true, mrn: 'SH-0001', byDate: false });
+    expect(findWindowQuery('opd', typed)).toEqual({ type: 'opd', name: 'Asha Kale', mrn: 'SH-0001' });
+    // only the ticked boxes count; the name's parts and the mobile number
+    const f = { ...typed, byMrn: false, first: 'Asha', middle: ' ', last: 'Kale', phone: '98220 12345', byDate: true, from: '2026-11-01', to: day };
+    expect(findWindowQuery('ipd', f)).toEqual({ type: 'ipd', name: 'Asha Kale', phone: '98220 12345', from: '2026-11-01', to: day });
+    expect(findWindowProblem(f)).toBe('');
+    expect(findWindowProblem({ ...f, phone: '98ab' })).toBe('Write the mobile number in digits.');
+    expect(findWindowProblem({ ...f, from: day, to: '2026-11-01' })).toBe('The To date is before the From date.');
   });
 });
 
@@ -138,13 +136,11 @@ describe('the Settlement screen', () => {
       </MemoryRouter>,
     );
     const shown = text(html);
-    // 25 Nov 2026 (the pharmacy's request): OPD/IPD's detailed search – Patient name's parts, UHID, Doctor name,
-    // Date – sits in the column itself from the start, no pop-up window
-    expect(shown).toMatch(/Patient type OPD IPD External Search Patient name First name Middle name Last name Mob\. no UHID Doctor name Date From date To date/);
+    expect(shown).toMatch(/Patient type OPD IPD External Search UHID Patient name/);
     expect(shown).toMatch(/Paid bills .*Sales date Print bill no UHID Bill amt Con\. amt Net pay amt Paid amt Balance/);
     expect(shown).toMatch(/Credit bills Select all .*Sales date Print bill no UHID Bill amt Con\. amt Net pay amt Balance/);
     expect(shown).toMatch(/Advance available .*Total credit .*Selected total .*Advance Discount Settlement Close/);
-    expect(shown).toContain('Choose OPD, IPD or External, tick what to search by, and press Search.');
+    expect(shown).toContain('Choose OPD, IPD or External and press Search – the list of patients opens – or type the UHID or name first.');
     // OPD chosen to begin with; nothing to settle until bills are ticked
     const radios = words(html).match(/<input type="radio" name="st-type"[^>]*>/g);
     const checked = radios.filter((tag) => tag.includes('checked=""'));

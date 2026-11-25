@@ -29,24 +29,27 @@ export function toPaise(text) {
 export const typed = (paise) => (paise / 100).toFixed(2);
 
 /**
- * Why Search can't be pressed yet ('' when it can). External only – OPD/IPD use findWindowProblem instead (25 Nov
- * 2026, the pharmacy's request: the boxes moved into the column itself). Nothing typed lists today's walk-in bills.
- * byMrn/byName: a box left unticked counts as empty, even when something is still typed in it.
+ * Why Search can't be pressed yet ('' when it can). Nothing typed: the Find patient window lists the type's patients.
+ * byMrn/byName (25 Nov 2026, the pharmacy's request): a box left unticked counts as empty, even when something is
+ * still typed in it – as on the Sale return window.
  */
 export function findProblem(form) {
+  if (form.type === 'external') return '';
   const text = (form.byMrn && form.mrn.trim()) || (form.byName && form.name.trim());
-  return !text || text.length >= 2 ? '' : 'Type the UHID or at least two letters of the customer’s name – or nothing, for today’s bills.';
+  return !text || text.length >= 2 ? '' : 'Type the UHID or at least two letters of the patient’s name – or nothing, to choose from the list.';
 }
 
 /**
- * The OPD/IPD boxes to start with (25 Nov 2026, the pharmacy's request: in the column itself, no pop-up window) – as
- * the earlier software: nothing ticked yet, except OPD ticks Date for today (IPD lists everyone admitted).
+ * The Find patient window's boxes when Search opens it (24 Nov 2026, as the earlier software): what was typed on the
+ * left goes into Patient name or UHID, ticked; with nothing typed OPD ticks Date for today, IPD lists everyone admitted.
  */
-export function emptyFindFilters(type, todayIso) {
-  return { byName: false, first: '', middle: '', last: '', phone: '', byMrn: false, mrn: '', byDoctor: false, doctor: '', byDate: type === 'opd', from: todayIso, to: todayIso };
+export function newFindFilters(form, todayIso) {
+  const name = form.byName ? form.name.trim() : '';
+  const mrn = form.byMrn ? form.mrn.trim() : '';
+  return { byName: Boolean(name), first: name, middle: '', last: '', phone: '', byMrn: Boolean(mrn), mrn, byDoctor: false, doctor: '', byDate: form.type === 'opd' && !name && !mrn, from: todayIso, to: todayIso };
 }
 
-/** What's wrong with the OPD/IPD boxes ('' when Search can be pressed). */
+/** What's wrong with the Find patient window's boxes ('' when Show can be pressed). */
 export function findWindowProblem(f) {
   if (f.byName && f.phone.trim() && !/^[\d\s+-]{3,20}$/.test(f.phone.trim())) return 'Write the mobile number in digits.';
   if (f.byDate && (!f.from || !f.to)) return 'Choose the From and To dates.';
@@ -54,7 +57,7 @@ export function findWindowProblem(f) {
   return '';
 }
 
-/** What Search asks the server for (GET /api/pharmacy/settlement/patients): only the ticked boxes count. */
+/** What Show asks the server for (GET /api/pharmacy/settlement/patients): only the ticked boxes count. */
 export function findWindowQuery(type, f) {
   const name = f.byName ? [f.first, f.middle, f.last].map((x) => x.trim()).filter(Boolean).join(' ') : '';
   const phone = f.byName ? f.phone.trim() : '';
@@ -63,10 +66,7 @@ export function findWindowQuery(type, f) {
   return { type, ...(name ? { name } : {}), ...(phone ? { phone } : {}), ...(mrn ? { mrn } : {}), ...(doctor ? { doctor } : {}), ...(f.byDate ? { from: f.from, to: f.to } : {}) };
 }
 
-/** Whether what was ticked and typed (UHID or the name's parts) would find at most one patient outright. */
-export const findWindowTyped = (f) => Boolean((f.byMrn && f.mrn.trim()) || (f.byName && [f.first, f.middle, f.last, f.phone].some((x) => x.trim())));
-
-/** What Search asks the server for (External): the UHID when one is ticked and typed, otherwise the name. */
+/** What Search asks the server for: the UHID when one is ticked and typed, otherwise the name. */
 export function findQuery(form) {
   const text = (form.byMrn && form.mrn.trim()) || (form.byName && form.name.trim());
   return { type: form.type, ...(text ? { search: text } : {}) };

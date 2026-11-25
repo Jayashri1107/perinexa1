@@ -11,8 +11,27 @@ vi.mock('../../hooks/useFetch.js', () => ({
 }));
 vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembership: { roles: ['pharmacist'] }, user: { name: 'Sample Pharmacist' } }) }));
 
-const { BillItems, BillListDocument, SearchBillPage } = await import('./SearchBillPage.jsx');
-const { admittedSearch, amount, filterWords, ipBills, isSearch, newSearch, noBillsWords, periodWords, searchProblem, searchQuery, sumBills, yearBefore } = await import('./searchBill.js');
+const { BillItems, BillListDocument, IpSummaryDocument, SearchBillPage } = await import('./SearchBillPage.jsx');
+const {
+  admittedSearch,
+  amount,
+  dateWords,
+  filterWords,
+  ipBillSums,
+  ipBills,
+  ipReturnSums,
+  ipReturns,
+  isSearch,
+  newSearch,
+  noBillsWords,
+  periodWords,
+  roundedPaise,
+  searchProblem,
+  searchQuery,
+  sumBills,
+  timeWords,
+  yearBefore,
+} = await import('./searchBill.js');
 
 const words = (html) => html.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 const text = (html) => words(html).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
@@ -101,6 +120,53 @@ describe('the words and sums of the printed list', () => {
     expect(shown).toContain('3 bills 21.00 580.00 180.00 400.00');
     expect(shown).toContain('Of the balance, 400.00 is on hospital bills, paid at the billing desk.');
     expect(text(renderToStaticMarkup(<BillListDocument title="IP bill summary" rows={[opd]} settings={SETTINGS} />))).toContain('1 bill 2.00 140.00 140.00 0.00');
+  });
+
+  it('IP bill summary: rounds Net amt to the rupee, and lists her returns under Sales Return (25 Nov 2026)', () => {
+    expect([9184, 2500, 82067].map(roundedPaise)).toEqual([9200, 2500, 82100]);
+    // This computer's own time zone, whatever it is (as formatDateTime/formatTime use): built from local wall-clock
+    // moments, so the test passes wherever it runs
+    expect(timeWords(new Date(2026, 10, 21, 9, 11).toISOString())).toBe('9:11 AM');
+    expect(timeWords(new Date(2026, 10, 21, 15, 5).toISOString())).toBe('3:05 PM');
+    expect(timeWords(new Date(2026, 10, 21, 0, 0).toISOString())).toBe('12:00 AM');
+    expect(timeWords(new Date(2026, 10, 21, 12, 0).toISOString())).toBe('12:00 PM');
+    expect(timeWords(null)).toBe('');
+    expect(dateWords(new Date(2026, 10, 21, 9, 11).toISOString())).toBe('21 Nov 2026');
+    expect(dateWords(null)).toBe('');
+
+    const billA = { ...ward, totalPaise: 9184, returns: [{ number: 'CN-00001', at: '2026-11-21T06:00:00Z', amountPaise: 9200 }] };
+    const billB = { ...ward, id: 'i6', totalPaise: 2500, returns: [] };
+    expect(ipReturns([billA, billB])).toEqual([{ number: 'CN-00001', at: '2026-11-21T06:00:00Z', amountPaise: 9200 }]);
+    expect(ipBillSums([billA, billB])).toEqual({ count: 2, totalPaise: 11684, netPaise: 11700, paidPaise: 0, balPaise: 80000 });
+    expect(ipReturnSums(ipReturns([billA, billB]))).toEqual({ count: 1, amountPaise: 9200 });
+    expect(ipReturnSums([])).toEqual({ count: 0, amountPaise: 0 });
+  });
+
+  it('IP bill summary print: UHID, patient and doctor; Credit Sales Bill and Sales Return, each with its own total; Credit, Advance and Amount', () => {
+    const billA = { ...ward, totalPaise: 9184, paidPaise: 0, balPaise: 9200, returns: [{ number: 'CN-00001', at: '2026-11-21T06:00:00Z', amountPaise: 9200 }] };
+    const billB = { ...ward, id: 'i6', number: 'PH-000010', date: '2026-11-20T10:00:00Z', totalPaise: 2500, paidPaise: 0, balPaise: 2500, returns: [] };
+    const shown = text(renderToStaticMarkup(<IpSummaryDocument who={{ name: 'Sample Meera Patil', mrn: 'SH-0050' }} doctorName="Dr Sample Shinde" advancePaise={1000} bills={[billA, billB]} settings={SETTINGS} />));
+    expect(shown).toContain('IP bill summary');
+    expect(shown).toContain('UHID: SH-0050');
+    expect(shown).toContain('Patient name: Sample Meera Patil');
+    expect(shown).toContain('Doctor name: Dr Sample Shinde');
+    expect(shown).toMatch(/Date Time Sales no Total amt Net amt Paid amt Balance amt/);
+    expect(shown).toContain('PH-000009 91.84 92.00 0.00 92.00');
+    expect(shown).toContain('PH-000010 25.00 25.00 0.00 25.00');
+    expect(shown).toContain('2 bills 116.84 117.00 0.00 117.00');
+    expect(shown).toMatch(/Sales Return/);
+    expect(shown).toMatch(/Date Time Credit no Total amt Net amt Paid amt Credit Sales Return/);
+    expect(shown).toContain('CN-00001 92.00 92.00 0.00 92.00');
+    expect(shown).toContain('1 return 92.00');
+    expect(shown).toContain('Credit Amount 117.00');
+    expect(shown).toContain('Advance Amount 10.00');
+    expect(shown).toContain('Amount 107.00');
+    // No returns: the Sales Return section is left out, and Advance Amount still loading shows a dash while it waits
+    const noReturns = text(renderToStaticMarkup(<IpSummaryDocument who={{ name: 'Sample Meera Patil', mrn: 'SH-0050' }} doctorName="" advancePaise={null} bills={[billB]} settings={SETTINGS} />));
+    expect(noReturns).not.toMatch(/Sales Return/);
+    expect(noReturns).toContain('Doctor name: —');
+    expect(noReturns).toContain('Advance Amount …');
+    expect(noReturns).toContain('Amount …');
   });
 });
 

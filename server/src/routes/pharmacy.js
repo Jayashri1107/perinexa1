@@ -221,7 +221,11 @@ pharmacyRouter.get('/medicines', async (req, res) => {
   const q = parse(z.object({ search: z.string().trim().max(100).optional(), active: z.enum(['1', '0']).optional() }).strict(), req.query);
   const filter = { tenantId: req.tenantId };
   if (q.search) {
-    const rx = new RegExp(escapeRegex(q.search), 'i');
+    // 25 Nov 2026 (the pharmacy's request): typing a letter anywhere in a name matched it, so a name with that letter
+    // buried inside it (an "Albendazole" has a b, an "Augmentin" has a g) could still show, ahead of the medicines the
+    // letter was meant to find, since the list sorts by name and that letter comes early in the alphabet. Only a name
+    // or generic name that starts with what was typed, or has a word starting with it, counts as found now.
+    const rx = new RegExp(`(^|\\s)${escapeRegex(q.search)}`, 'i');
     filter.$or = [{ name: rx }, { generic: rx }];
   }
   if (q.active === '1') filter.active = true;

@@ -5,6 +5,7 @@
 // the bills out.
 
 import { isoDay } from '../careplans/dates.js';
+import { sum } from './gst.js';
 
 // The same three types as the Sales bill's search (BILL_TYPES in routes/pharmacy.js): OPD – a registered patient's
 // counter sale; IPD – an issue to an admitted patient; External – a walk-in customer.
@@ -42,6 +43,9 @@ export function billFilter({ tenantId, type = null, since = null, before = null,
  * patient's { fullName, mrn }, or null for a walk-in.
  * Credit is counted as on the Credit report (misReports.js): what is still due at the counter, or the whole bill when it
  * went on the patient's hospital bill (paid at the billing desk).
+ * patientId, doctorName, totalPaise and returns (25 Nov 2026, the pharmacy's request: an IP bill summary laid out as
+ * the earlier software's) – totalPaise is the bill's own total before any return against it (t.netPaise already has
+ * the return taken off); patientId is for looking up her advance (GET /pharmacy/settlement?patientId=…).
  */
 export function billRow(inv, t, patient = null) {
   const counter = !inv.billId;
@@ -52,11 +56,15 @@ export function billRow(inv, t, patient = null) {
     type: inv.kind === 'issue' ? 'ipd' : inv.patientId ? 'opd' : 'external',
     mrn: patient?.mrn ?? '',
     name: patient ? patient.fullName : inv.patientId ? '' : inv.buyer?.name || inv.customer?.name || 'Walk-in customer',
+    patientId: inv.patientId ? String(inv.patientId) : null,
+    doctorName: inv.doctor?.name ?? '',
+    totalPaise: t.totalPaise,
     discPaise: Math.max(0, t.grossPaise - t.totalPaise) + (t.settlementConcessionPaise ?? 0),
     netPaise: t.netPaise,
     paidPaise: counter ? (t.paidPaise ?? 0) : 0,
     balPaise: counter ? (t.balancePaise ?? 0) : t.netPaise,
     onHospitalBill: !counter,
+    returns: (inv.returns ?? []).map((r) => ({ number: r.number, at: r.at, amountPaise: sum(r.lines).amountPaise })),
     lines: (inv.lines ?? []).map((l) => ({ id: String(l._id), name: l.name, batch: l.batch, expiry: isoDay(l.expiry), mrpPaise: l.mrpPaise, qty: l.qty, returnedQty: l.returnedQty ?? 0, amountPaise: l.amountPaise })),
   };
 }

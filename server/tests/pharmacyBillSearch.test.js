@@ -199,6 +199,18 @@ describe('Search bill – the pure parts', () => {
     const row = billRow(inv, sums, { fullName: 'Sample Asha Kale', mrn: 'SH-0001' });
     expect(row).toMatchObject({ id: 'i1', type: 'opd', mrn: 'SH-0001', name: 'Sample Asha Kale', discPaise: 200, netPaise: 1800, paidPaise: 500, balPaise: 1300, onHospitalBill: false });
     expect(row.lines).toEqual([{ id: 'l1', name: 'Sample Tab', batch: 'B1', expiry: '2028-06-30', mrpPaise: 1000, qty: 2, returnedQty: 0, amountPaise: 1800 }]);
+    // IP bill summary (25 Nov 2026): her own total (before any return), the doctor, patientId (for her advance) and returns
+    expect(row).toMatchObject({ patientId: 'p1', doctorName: '', totalPaise: 1800, returns: [] });
+    const withReturn = {
+      ...inv,
+      doctor: { name: 'Dr Sample Shinde' },
+      returns: [{ number: 'CN-00001', at: new Date('2026-09-29T07:00:00Z'), lines: [{ lineId: 'l1', qty: 1, amountPaise: 900 }] }],
+    };
+    expect(billRow(withReturn, sums, { fullName: 'Sample Asha Kale', mrn: 'SH-0001' })).toMatchObject({
+      doctorName: 'Dr Sample Shinde',
+      returns: [{ number: 'CN-00001', at: new Date('2026-09-29T07:00:00Z'), amountPaise: 900 }],
+    });
+    expect(billRow({ ...inv, patientId: null }, sums).patientId).toBeNull();
     // On the hospital bill: nothing paid at the counter, the whole bill is credit
     const onBill = billRow({ ...inv, kind: 'issue', billId: 'b1' }, { ...sums, paidPaise: null, balancePaise: null }, { fullName: 'Sample Asha Kale', mrn: 'SH-0001' });
     expect(onBill).toMatchObject({ type: 'ipd', paidPaise: 0, balPaise: 1800, onHospitalBill: true });

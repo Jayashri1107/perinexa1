@@ -10,7 +10,28 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { BillPaper } from './InvoicesPage.jsx';
 import { expiryLabel } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, PharmacyLetterhead } from './pharmacyUi.jsx';
-import { PAY_CHOICES, TYPE_CHOICES, admittedSearch, amount, filterWords, ipBills, isSearch, isoOf, newSearch, noBillsWords, periodWords, searchProblem, searchQuery, sumBills } from './searchBill.js';
+import {
+  PAY_CHOICES,
+  TYPE_CHOICES,
+  admittedSearch,
+  amount,
+  dateWords,
+  filterWords,
+  ipBillSums,
+  ipBills,
+  ipReturnSums,
+  ipReturns,
+  isSearch,
+  isoOf,
+  newSearch,
+  noBillsWords,
+  periodWords,
+  roundedPaise,
+  searchProblem,
+  searchQuery,
+  sumBills,
+  timeWords,
+} from './searchBill.js';
 
 // Pharmacy → Search bill (23 Nov 2026, the developer, after the "Browse Sales Bill" window of the pharmacy's earlier
 // software), the menu item after Sales bill. On the left what to search for, with the same boxes: patient type, and –
@@ -134,6 +155,153 @@ export function BillListDocument({ title, facts = [], rows, settings }) {
   );
 }
 
+/** IP bill summary, laid out as the earlier software's print: Credit Sales Bill and Sales Return as two sections, each
+ * with its own total row, Date and Time apart, Total amt next to Net amt (rounded to the rupee), then a small box –
+ * Credit Amount, Advance Amount, Amount – under everything. who: the patient { name, mrn }; doctorName: the bill's
+ * doctor; advancePaise: her pharmacy advance available now, or null while it is still loading. */
+export function IpSummaryDocument({ who, doctorName, advancePaise, bills, settings }) {
+  const billSums = ipBillSums(bills);
+  const returns = ipReturns(bills);
+  const returnSums = ipReturnSums(returns);
+  const creditPaise = billSums.balPaise;
+  const amountPaise = Math.max(0, creditPaise - (advancePaise ?? 0));
+  return (
+    <PrintDocument className="bill-doc ph-doc ph-mis-doc ph-ip-doc">
+      <PharmacyLetterhead settings={settings} />
+      <h1 className="pdoc-title">IP bill summary</h1>
+      <table className="ph-ip-facts">
+        <tbody>
+          <tr>
+            <td>
+              <b>UHID:</b> {who.mrn}
+            </td>
+            <td>
+              <b>Patient name:</b> {who.name}
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <b>Doctor name:</b> {doctorName || '—'}
+            </td>
+            <td>
+              <b>Print date:</b> {dateWords(new Date().toISOString())}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 className="pdoc-small ph-ip-section">Credit Sales Bill</h2>
+      <table className="bill-report ph-mis-table">
+        <thead>
+          <tr>
+            <th scope="col">Date</th>
+            <th scope="col">Time</th>
+            <th scope="col">Sales no</th>
+            <th scope="col" className="num">
+              Total amt
+            </th>
+            <th scope="col" className="num">
+              Net amt
+            </th>
+            <th scope="col" className="num">
+              Paid amt
+            </th>
+            <th scope="col" className="num">
+              Balance amt
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {bills.map((r) => (
+            <tr key={r.id}>
+              <td>{dateWords(r.date)}</td>
+              <td>{timeWords(r.date)}</td>
+              <td>{r.number}</td>
+              <td className="num">{amount(r.totalPaise)}</td>
+              <td className="num">{amount(roundedPaise(r.totalPaise))}</td>
+              <td className="num">{amount(r.paidPaise)}</td>
+              <td className="num">{amount(r.balPaise)}</td>
+            </tr>
+          ))}
+          <tr className="bill-report-total">
+            <td colSpan={3}>
+              {billSums.count} {billSums.count === 1 ? 'bill' : 'bills'}
+            </td>
+            <td className="num">{amount(billSums.totalPaise)}</td>
+            <td className="num">{amount(billSums.netPaise)}</td>
+            <td className="num">{amount(billSums.paidPaise)}</td>
+            <td className="num">{amount(billSums.balPaise)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {returns.length > 0 && (
+        <>
+          <h2 className="pdoc-small ph-ip-section">Sales Return</h2>
+          <table className="bill-report ph-mis-table">
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Time</th>
+                <th scope="col">Credit no</th>
+                <th scope="col" className="num">
+                  Total amt
+                </th>
+                <th scope="col" className="num">
+                  Net amt
+                </th>
+                <th scope="col" className="num">
+                  Paid amt
+                </th>
+                <th scope="col" className="num">
+                  Credit Sales Return
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {returns.map((r) => (
+                <tr key={r.number}>
+                  <td>{dateWords(r.at)}</td>
+                  <td>{timeWords(r.at)}</td>
+                  <td>{r.number}</td>
+                  <td className="num">{amount(r.amountPaise)}</td>
+                  <td className="num">{amount(r.amountPaise)}</td>
+                  <td className="num">{amount(0)}</td>
+                  <td className="num">{amount(r.amountPaise)}</td>
+                </tr>
+              ))}
+              <tr className="bill-report-total">
+                <td colSpan={6}>
+                  {returnSums.count} {returnSums.count === 1 ? 'return' : 'returns'}
+                </td>
+                <td className="num">{amount(returnSums.amountPaise)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </>
+      )}
+
+      <table className="ph-ip-box">
+        <tbody>
+          <tr>
+            <th scope="row">Credit Amount</th>
+            <td className="num">{amount(creditPaise)}</td>
+          </tr>
+          <tr>
+            <th scope="row">Advance Amount</th>
+            <td className="num">{advancePaise == null ? '…' : amount(advancePaise)}</td>
+          </tr>
+          <tr className="bill-report-total">
+            <th scope="row">Amount</th>
+            <td className="num">{advancePaise == null ? '…' : amount(amountPaise)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="bill-sign">Prepared by: ____________________ &nbsp; Checked by: ____________________</p>
+    </PrintDocument>
+  );
+}
+
 /** Current admitted list: those in the hospital now; one chosen lists the pharmacy bills of the stay. */
 function AdmittedList({ onPick, onClose }) {
   const res = useFetch('/pharmacy/inpatients');
@@ -239,6 +407,9 @@ export function SearchBillPage() {
   const bill = rows?.find((r) => r.id === picked) ?? null;
   const chosen = (rows ?? []).filter((r) => !skipped.has(r.id));
   const ip = ipBills(rows ?? [], bill);
+  // Her advance (Advance Amount, on the IP bill summary): only once there is an IPD bill picked worth summarising
+  const advanceRes = useFetch(ip.length && bill?.patientId ? '/pharmacy/settlement' : null, bill?.patientId ? { patientId: bill.patientId } : undefined);
+  const advancePaise = advanceRes.data?.advance?.balancePaise ?? null;
   const tick = (id, on) =>
     setSkipped((was) => {
       const next = new Set(was);
@@ -500,7 +671,7 @@ export function SearchBillPage() {
       )}
       {printing?.what === 'ip' && res.data && (
         <PrintPreview title="IP bill summary – print preview" hint="Print on A4 paper, landscape." page={{ size: 'A4 landscape', margin: '10mm' }} onClose={() => setPrinting(null)}>
-          <BillListDocument title="IP bill summary" facts={[`${printing.who.name} · UHID ${printing.who.mrn}`, periodWords(query)]} rows={printing.rows} settings={res.data.settings} />
+          <IpSummaryDocument who={printing.who} doctorName={printing.who.doctorName} advancePaise={advancePaise} bills={printing.rows} settings={res.data.settings} />
         </PrintPreview>
       )}
     </>
