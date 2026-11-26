@@ -160,11 +160,14 @@ describe('Search bill', () => {
   });
 
   it('Search sale return: the returns only, a cash return or a credit return, with their sums (26 Nov 2026)', async () => {
-    const { walkIn, credit } = await threeBills();
+    const { walkIn, credit, asha } = await threeBills();
     later('2026-09-29T06:00:00Z');
-    // One of the walk-in's tablets back for cash; one of Asha's (on credit, nothing paid) off what she owes
+    // One of the walk-in's tablets back for cash; one of Asha's (on credit, nothing paid) off what she owes – taken back
+    // on Sale return patient-wise, which gives money back only for what was paid
     const cash = ok(await ph('post', `/invoices/${walkIn.id}/returns`, { items: [{ lineId: walkIn.lines[0].id, qty: 1 }], reason: 'Not needed', refund: { mode: 'cash' } }));
-    const owed = ok(await ph('post', `/invoices/${credit.id}/returns`, { items: [{ lineId: credit.lines[0].id, qty: 1 }], reason: 'Not needed' }));
+    const back = ok(await ph('post', '/patient-return', { patientId: asha.id, type: 'opd', reason: 'Not needed', refund: { mode: 'cash' }, items: [{ invoiceId: credit.id, lineId: credit.lines[0].id, qty: 1 }] }), 201);
+    expect(back.totals).toMatchObject({ amountPaise: 500, refundPaise: 0, creditPaise: 500 });
+    const owed = { creditNote: back.creditNotes[0].creditNote };
     const returns = (query = {}) => search({ show: 'returns', from: '2026-09-28', to: '2026-09-29', ...query });
     const all = ok(await returns());
     expect(all.bills).toHaveLength(2); // the bills themselves are not listed

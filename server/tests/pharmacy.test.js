@@ -442,12 +442,14 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
 
     const all = await ph('get', '/invoices/people');
     expect(all.status).toBe(200);
-    // Those billed first; then (owner's approval, 9 Nov 2026) every other registered patient, by name and number only
-    expect(all.body.people.map((x) => x.name)).toEqual(['Sample Walkin', 'Sample Asha Kale', 'Sample Never Billed']);
-    expect(all.body.people[2]).toMatchObject({ billCount: 0, phone: '', bills: [] });
-    expect(all.body.people[0]).toMatchObject({ type: 'external', billCount: 1, bills: [{ id: walkIn.id, number: walkIn.number }] });
-    expect(all.body.people[1]).toMatchObject({ key: billed.id, type: 'opd', mrn: billed.mrn, billCount: 2 });
-    expect(all.body.people[1].bills.map((b) => b.id)).toEqual([second.id, first.id]);
+    // Those to bill now first – 26 Nov 2026 (the pharmacy's request): those registered today too, with when –; then those
+    // billed; then (owner's approval, 9 Nov 2026) every other registered patient, by name and number only
+    expect(all.body.people.map((x) => x.name)).toEqual(['Sample Never Billed', 'Sample Walkin', 'Sample Asha Kale']);
+    expect(all.body.people[0]).toMatchObject({ type: 'opd', billCount: 0, phone: '', bills: [] });
+    expect(all.body.people[0].at).toBeTruthy(); // registered today: the time of her registration
+    expect(all.body.people[1]).toMatchObject({ type: 'external', billCount: 1, bills: [{ id: walkIn.id, number: walkIn.number }] });
+    expect(all.body.people[2]).toMatchObject({ key: billed.id, type: 'opd', mrn: billed.mrn, billCount: 2 });
+    expect(all.body.people[2].bills.map((b) => b.id)).toEqual([second.id, first.id]);
 
     const found = await (await as('pharm')).get('/api/pharmacy/invoices/people').query({ search: 'asha' });
     expect(found.body.people.map((x) => x.name)).toEqual(['Sample Asha Kale']);
@@ -474,7 +476,7 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     const found = await q({ search: 'mira' });
     expect(found.people.map((x) => x.name)).toEqual(['Sample Mira Billed', 'Sample Mira Unbilled']);
     const { doctor, ...rest } = found.people[1];
-    expect(rest).toEqual({ key: plain.id, type: '', name: 'Sample Mira Unbilled', mrn: plain.mrn, phone: '', lastAt: null, billCount: 0, bills: [] });
+    expect(rest).toEqual({ key: plain.id, type: '', name: 'Sample Mira Unbilled', mrn: plain.mrn, phone: '', lastAt: null, at: null, billCount: 0, bills: [] }); // at: the list's Date and Time (26 Nov 2026)
     expect(typeof doctor).toBe('string');
     expect((await q({ mrn: plain.mrn })).people.map((x) => x.name)).toEqual(['Sample Mira Unbilled']);
     // With nothing typed (owner's approval, 9 Nov 2026) the whole list – still never a sensitive record or a duplicate;

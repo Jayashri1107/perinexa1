@@ -179,15 +179,26 @@ describe('Settlement', () => {
     expect(shown.concessions).toEqual([expect.objectContaining({ amountPaise: 100, reason: 'Sample reason' })]);
     expect((await ph('post', '/settlement', body)).status).toBe(400); // nothing left to settle
 
-    // The Daily Collection: settled on the day of sale, so Cash Sales; the discount in no money column
+    // The Daily Collection (26 Nov 2026, the pharmacy's request): the bills as they were saved – a and b on credit, so
+    // Credit Sale – and the settlement's money in Due Collection, the same day too; the discount in no money column
     const col = (await ph('get', `/reports/mis?report=collection&from=${DAY}&to=${DAY}`)).body;
-    const cash = col.daily.sections.find((s) => s.key === 'cash-sales');
-    expect(cash.rows.map((r) => [r.saleNumber, r.netPaise, r.cashPaise, r.upiPaise, r.advancePaise])).toEqual([
-      [a.number, 500, 200, 0, 300],
-      [b.number, 400, 200, 200, 0],
-      [c.number, 200, 200, 0, 0],
+    const section = (key) => col.daily.sections.find((s) => s.key === key);
+    expect(section('cash-sales').rows.map((r) => [r.saleNumber, r.netPaise, r.cashPaise, r.upiPaise, r.advancePaise])).toEqual([[c.number, 200, 200, 0, 0]]);
+    expect(section('credit-sale').rows.map((r) => [r.saleNumber, r.netPaise])).toEqual([
+      [a.number, 600],
+      [b.number, 400],
     ]);
-    expect(col.daily.sections.find((s) => s.key === 'credit-sale').rows).toEqual([]);
+    const due = section('due-collection');
+    expect(due.rows.map((r) => [r.saleNumber, r.netPaise, r.cashPaise, r.upiPaise, r.advancePaise])).toEqual(
+      expect.arrayContaining([
+        [a.number, 300, 0, 0, 300],
+        [a.number, 200, 200, 0, 0],
+        [b.number, 200, 200, 0, 0],
+        [b.number, 200, 0, 200, 0],
+      ]),
+    );
+    expect(due.rows).toHaveLength(4);
+    expect(due.total).toMatchObject({ netPaise: 900, cashPaise: 400, upiPaise: 200, advancePaise: 300 });
     expect(col.daily.modes.find((x) => x.mode === 'cash')).toMatchObject({ salesPaise: 600, advancePaise: 300, netPaise: 900 });
     expect(col.daily.summary).toMatchObject({ netCollectionPaise: 1100, advanceUsedPaise: 300 });
   });

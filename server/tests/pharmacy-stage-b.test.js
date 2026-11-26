@@ -225,18 +225,18 @@ describe('PH7 – warnings at the counter', () => {
     expect((await marks('reception', 'get', '/')).status).toBe(403);
     const proposed = ok(await marks('pharm', 'put', `/${a.id}`, { highAlert: true, lookAlike: [b.id], version: 0 })).medicine;
     expect(proposed.marks).toMatchObject({ highAlert: true, inForce: false, version: 1, confirmations: [{ role: 'pharmacist' }] });
-    // Not shown at the counter yet
-    let shown = ok(await ph('get', '/medicines?search=Insulin Regular')).medicines[0];
+    // Not shown at the counter yet (searched by the start of its name – 25 Nov 2026, the pharmacy's request)
+    let shown = ok(await ph('get', '/medicines?search=Sample Insulin Regular')).medicines[0];
     expect(shown).toMatchObject({ highAlert: false, lookAlike: [] });
     // The same person cannot confirm twice
     expect((await marks('pharm', 'post', `/${a.id}/confirm`, { version: 1 })).body.error.code).toBe('SAME_PERSON');
     const confirmed = ok(await marks('drA', 'post', `/${a.id}/confirm`, { version: 1 })).medicine;
     expect(confirmed.marks.inForce).toBe(true);
-    shown = ok(await ph('get', '/medicines?search=Insulin Regular')).medicines[0];
+    shown = ok(await ph('get', '/medicines?search=Sample Insulin Regular')).medicines[0];
     expect(shown).toMatchObject({ highAlert: true, lookAlike: [{ id: b.id, name: 'Sample Insulin Rapid' }] });
     // Any change clears the agreement
     ok(await marks('drA', 'put', `/${a.id}`, { highAlert: true, lookAlike: [], version: 1 }));
-    expect(ok(await ph('get', '/medicines?search=Insulin Regular')).medicines[0].highAlert).toBe(false);
+    expect(ok(await ph('get', '/medicines?search=Sample Insulin Regular')).medicines[0].highAlert).toBe(false);
     expect((await marks('drA', 'put', `/${a.id}`, { highAlert: false, lookAlike: [], version: 1 })).body.error.code).toBe('STALE');
     expect(await AuditLog.countDocuments({ action: { $in: ['MEDICINE_MARKS_CHANGED', 'MEDICINE_MARKS_CONFIRMED'] } })).toBe(3);
   });
