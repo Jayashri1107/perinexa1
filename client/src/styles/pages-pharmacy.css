@@ -1665,14 +1665,17 @@ input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
 .ph-plist .ph-st-find-table th.ph-st-find-uhid { width: 100px; }
 .ph-plist .ph-st-find-table th.ph-st-find-date { width: 104px; }
 .ph-plist .ph-st-find-table th.ph-st-find-time { width: 60px; }
-.ph-plist .ph-st-find-table th.ph-st-find-no { width: 132px; }
-.ph-plist .ph-st-find-table th.ph-st-find-doc { width: 170px; }
+.ph-plist .ph-st-find-table th.ph-st-find-no { width: 120px; }
+.ph-plist .ph-st-find-table th.ph-st-find-doc { width: 150px; }
+.ph-plist .ph-st-find-table th.ph-st-find-bal { width: 92px; }
+.ph-plist .ph-st-find-table th.num,
+.ph-plist .ph-st-find-table td.num { text-align: right; }
 .ph-plist .ph-st-find-table td.ph-st-find-none { height: auto; padding: var(--space-4); color: var(--slate-600); white-space: normal; cursor: default; }
 .ph-plist .ph-plist-table tbody tr.is-picked td { background: var(--selected-bg); }
 @media (max-width: 799px) {
   .ph-st-find-body { grid-template-columns: minmax(0, 1fr); }
   .ph-st-find-scroll { height: 50vh; overflow-x: auto; }
-  .ph-plist .ph-st-find-table { min-width: 640px; }
+  .ph-plist .ph-st-find-table { min-width: 740px; }
 }
 @media (min-width: 720px) {
   /* the list keeps its height and scrolls inside; its first column is the item's name, not a tick box as on Search bill */

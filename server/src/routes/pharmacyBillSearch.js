@@ -3,9 +3,9 @@ import { z } from 'zod';
 import { addDays, daysBetween, hospitalDayStart, isoDay } from '../careplans/dates.js';
 import { Patient } from '../models/Patient.js';
 import { PharmacyInvoice } from '../models/Pharmacy.js';
-import { BILL_SEARCH_LIMIT, BILL_TYPES, PAY_CHOICES, billFilter, billRow, billTotals, payFits } from '../pharmacy/billSearch.js';
+import { BILL_SEARCH_LIMIT, BILL_TYPES, PAY_CHOICES, billFilter, billRow, billTotals, payFits, returnRows } from '../pharmacy/billSearch.js';
 import { desk, settingsOf } from '../pharmacy/pharmacyHttp.js';
-import { invoiceTotals } from '../pharmacy/pharmacyService.js';
+import { asMade, invoiceTotals } from '../pharmacy/pharmacyService.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, parse, requiredDateOnly } from '../utils/validate.js';
@@ -13,7 +13,8 @@ import { escapeRegex, parse, requiredDateOnly } from '../utils/validate.js';
 // Search bill (23 Nov 2026, the developer, after the "Browse Sales Bill" window of the pharmacy's earlier software):
 //  - GET /api/pharmacy/bill-search?type=&first=&last=&mrn=&number=&from=&to=&item=&pay=
 //    the bills that fit every part given, newest first (at most BILL_SEARCH_LIMIT), each with its medicines, and the
-//    sums of those listed. type: opd | ipd | external; first, last: parts of the patient's or customer's name; mrn:
+//    sums of those listed – and (26 Nov 2026) each return as a row of its own, its amounts as minus figures, so a bill
+//    stays as it was made. type: opd | ipd | external; first, last: parts of the patient's or customer's name; mrn:
 //    the UHID; number: the sales number (or a return's CN number); from, to: the bills' dates; item: part of a
 //    medicine's name; pay: cash (paid in full at the counter) | credit (something due, or on the hospital bill).
 // Names, numbers and what was sold only; nothing medical. The pharmacist only, as the Sales bill's search; audited as a
@@ -58,20 +59,28 @@ pharmacyBillSearchRouter.get('/', async (req, res) => {
     person = { patientIds, parts, walkIns: !q.mrn }; // a walk-in has no UHID: a number finds only patients
   }
 
-  const filter = billFilter({
-    tenantId: req.tenantId,
-    type: q.type,
-    since: q.from ? hospitalDayStart(q.from) : null,
-    before: q.to ? hospitalDayStart(addDays(q.to, 1)) : null,
-    number: q.number ? rx(q.number) : null,
-    item: q.item ? rx(q.item) : null,
-    person,
-  });
+  const since = q.from ? hospitalDayStart(q.from) : null;
+  const before = q.to ? hospitalDayStart(addDays(q.to, 1)) : null;
+  const number = q.number ? rx(q.number) : null;
+  const item = q.item ? rx(q.item) : null;
+  const filter = billFilter({ tenantId: req.tenantId, type: q.type, since, before, number, item, person });
   const found = await PharmacyInvoice.find(filter).sort({ 'created.at': -1, _id: -1 }).limit(BILL_SEARCH_LIMIT + 1).lean();
   const list = found.slice(0, BILL_SEARCH_LIMIT);
   const ids = [...new Set(list.map((i) => i.patientId && String(i.patientId)).filter(Boolean))];
   const patients = new Map((ids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: ids } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
-  const bills = list.map((i) => billRow(i, invoiceTotals(i), i.patientId ? (patients.get(String(i.patientId)) ?? null) : null)).filter((r) => payFits(r, q.pay));
+  // 26 Nov 2026 (the developer): each bill as it was made, and each return as a row of its own (on its own day) – a
+  // bill is listed when it was made on those days and fits the number typed; a return when it was made on those days
+  // and its CN number (or its bill's number) fits
+  const inRange = (at) => (!since || new Date(at) >= since) && (!before || new Date(at) < before);
+  const rows = [];
+  for (const i of list) {
+    const patient = i.patientId ? (patients.get(String(i.patientId)) ?? null) : null;
+    const made = asMade(i);
+    if (inRange(i.created?.at ?? i.createdAt) && (!number || number.test(i.number))) rows.push(billRow(i, invoiceTotals(i), patient, made));
+    rows.push(...returnRows(i, patient, { since, before, number, item, made }));
+  }
+  rows.sort((a, b) => new Date(b.date) - new Date(a.date) || (a.isReturn === b.isReturn ? 0 : a.isReturn ? -1 : 1));
+  const bills = rows.filter((r) => payFits(r, q.pay));
 
   await audit(req, 'PHARMACY_MIS_VIEWED', { details: { report: 'bill-search', ...(q.from ? { from: isoDay(q.from) } : {}), ...(q.to ? { to: isoDay(q.to) } : {}), rows: bills.length } });
   res.json({ bills, totals: billTotals(bills), more: found.length > BILL_SEARCH_LIMIT, limit: BILL_SEARCH_LIMIT, settings: await settingsOf(req.tenantId) });

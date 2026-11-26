@@ -379,6 +379,9 @@ function FindPatientWindow({ type, initial, autoOne, onSelect, onClose }) {
                     <th scope="col" className="ph-st-find-doc">
                       Doctor name
                     </th>
+                    <th scope="col" className="num ph-st-find-bal">
+                      Balance
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -390,11 +393,12 @@ function FindPatientWindow({ type, initial, autoOne, onSelect, onClose }) {
                       <td className="tabular">{timeOf(p.at)}</td>
                       <td className="tabular">{p.number}</td>
                       <td title={p.doctor}>{p.doctor}</td>
+                      <td className="num tabular">{p.balancePaise > 0 ? amount(p.balancePaise) : '–'}</td>
                     </tr>
                   ))}
                   {list && list.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="ph-st-find-none">
+                      <td colSpan={7} className="ph-st-find-none">
                         {type === 'ipd' ? 'Nobody admitted now fits.' : 'No patient with counter bills fits.'} Change the boxes on the left and press Show.
                       </td>
                     </tr>
@@ -493,7 +497,8 @@ export function PharmacySettlementPage() {
     { ...money('concession'), header: 'Con. amt' },
     { ...money('netPayable'), header: 'Net pay amt' },
     { ...money('paid'), header: 'Paid amt' },
-    { ...money('balance'), header: 'Balance' },
+    // Nothing owed on a paid bill: no credit figure (26 Nov 2026)
+    { key: 'balance', align: 'right', header: 'Balance', render: (r) => (r.balancePaise > 0 ? amount(r.balancePaise) : '–') },
   ];
   const creditColumns = [
     {
@@ -620,7 +625,8 @@ export function PharmacySettlementPage() {
             <div className="ph-st-foot">
               <div className="ph-st-facts">
                 <Fact label="Advance available" value={patient ? amount(advancePaise) : ''} id="st-advance" />
-                <Fact label="Total credit" value={data ? amount(data.totalCreditPaise) : ''} id="st-credit-total" />
+                {/* 26 Nov 2026 (the pharmacy's request): once every bill is settled, no credit figure is shown */}
+                <Fact label="Total credit" value={data ? (data.totalCreditPaise > 0 ? amount(data.totalCreditPaise) : 'Nothing owed') : ''} id="st-credit-total" />
                 <Fact label="Selected total" value={data ? amount(selected.paise) : ''} id="st-selected" />
               </div>
               <div className="ph-st-actions">

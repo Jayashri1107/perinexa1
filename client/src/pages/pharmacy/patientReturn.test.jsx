@@ -74,6 +74,10 @@ describe('the figures under the list', () => {
       refund: { mode: 'upi' },
     });
     expect(DATA.bills.map(payWord)).toEqual(['Cash', 'Credit', 'Hospital bill']);
+    // As the bill was made (26 Nov 2026): a credit bill settled since is still Credit, a cash bill with a return still Cash
+    expect(payWord({ madeAs: 'credit', onHospitalBill: false, balancePaise: 0 })).toBe('Credit');
+    expect(payWord({ madeAs: 'cash', onHospitalBill: false, balancePaise: 500 })).toBe('Cash');
+    expect(payWord({ madeAs: 'hospital', onHospitalBill: true, balancePaise: null })).toBe('Hospital bill');
   });
 
   it('a scanned barcode adds one to the newest line with it; Item name shows only that medicine', () => {

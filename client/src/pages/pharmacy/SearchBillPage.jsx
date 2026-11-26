@@ -8,6 +8,7 @@ import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview
 import { Alert, formatDateTime, useDebounced } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { BillPaper } from './InvoicesPage.jsx';
+import { ReturnSlip } from './PatientReturnPage.jsx';
 import { expiryLabel } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, PharmacyLetterhead } from './pharmacyUi.jsx';
 import {
@@ -19,13 +20,16 @@ import {
   filterWords,
   ipBillSums,
   ipBills,
+  ipCreditPaise,
   ipReturnSums,
   ipReturns,
   isSearch,
   isoOf,
   newSearch,
   noBillsWords,
+  owed,
   periodWords,
+  returnSlipOf,
   roundedPaise,
   searchProblem,
   searchQuery,
@@ -87,10 +91,8 @@ export function BillItems({ bill }) {
               <td>{l.batch}</td>
               <td className="nowrap">{expiryLabel(l.expiry)}</td>
               <td className="num">{amount(l.mrpPaise)}</td>
-              <td className="num">
-                {l.qty}
-                {l.returnedQty > 0 && <span className="muted"> ({l.returnedQty} returned)</span>}
-              </td>
+              {/* the bill as it was made (26 Nov 2026): a return is listed as a bill of its own */}
+              <td className="num">{l.qty}</td>
               <td className="num">{amount(l.amountPaise)}</td>
             </tr>
           ))}
@@ -129,13 +131,16 @@ export function BillListDocument({ title, facts = [], rows, settings }) {
           {rows.map((r) => (
             <tr key={r.id}>
               <td>{formatDateTime(r.date)}</td>
-              <td>{r.number}</td>
+              <td>
+                {r.number}
+                {r.isReturn ? ` (return of ${r.returnOf})` : ''}
+              </td>
               <td>{r.mrn}</td>
               <td>{r.name}</td>
               <td className="num">{amount(r.discPaise)}</td>
               <td className="num">{amount(r.netPaise)}</td>
               <td className="num">{amount(r.paidPaise)}</td>
-              <td className="num">{amount(r.balPaise)}</td>
+              <td className="num">{owed(r.balPaise)}</td>
             </tr>
           ))}
           <tr className="bill-report-total">
@@ -145,7 +150,7 @@ export function BillListDocument({ title, facts = [], rows, settings }) {
             <td className="num">{amount(rows.reduce((n, r) => n + r.discPaise, 0))}</td>
             <td className="num">{amount(t.salesPaise)}</td>
             <td className="num">{amount(t.receivedPaise)}</td>
-            <td className="num">{amount(t.creditPaise)}</td>
+            <td className="num">{owed(t.creditPaise)}</td>
           </tr>
         </tbody>
       </table>
@@ -163,7 +168,7 @@ export function IpSummaryDocument({ who, doctorName, advancePaise, bills, settin
   const billSums = ipBillSums(bills);
   const returns = ipReturns(bills);
   const returnSums = ipReturnSums(returns);
-  const creditPaise = billSums.balPaise;
+  const creditPaise = ipCreditPaise(bills); // 0.00 once she has settled everything
   const amountPaise = Math.max(0, creditPaise - (advancePaise ?? 0));
   return (
     <PrintDocument className="bill-doc ph-doc ph-mis-doc ph-ip-doc">
@@ -220,7 +225,7 @@ export function IpSummaryDocument({ who, doctorName, advancePaise, bills, settin
               <td className="num">{amount(r.totalPaise)}</td>
               <td className="num">{amount(roundedPaise(r.totalPaise))}</td>
               <td className="num">{amount(r.paidPaise)}</td>
-              <td className="num">{amount(r.balPaise)}</td>
+              <td className="num">{owed(r.balPaise)}</td>
             </tr>
           ))}
           <tr className="bill-report-total">
@@ -230,7 +235,7 @@ export function IpSummaryDocument({ who, doctorName, advancePaise, bills, settin
             <td className="num">{amount(billSums.totalPaise)}</td>
             <td className="num">{amount(billSums.netPaise)}</td>
             <td className="num">{amount(billSums.paidPaise)}</td>
-            <td className="num">{amount(billSums.balPaise)}</td>
+            <td className="num">{owed(billSums.balPaise)}</td>
           </tr>
         </tbody>
       </table>
@@ -420,15 +425,18 @@ export function SearchBillPage() {
   const tickAll = (on) => setSkipped(on ? new Set() : new Set((rows ?? []).map((r) => r.id)));
 
   // Re-print: the whole bill is read again (its payments and the patient's earlier credit print on it), then its
-  // preview opens – as on Sales bill. Opening it is in the audit log, like every bill opened.
+  // preview opens – as on Sales bill. Opening it is in the audit log, like every bill opened. A return's row (26 Nov
+  // 2026) prints its own bill, the Pharmacy Sales Return Bill, read from the bill it was made against.
   const reprint = async (row) => {
     if (opening) return;
     setPicked(row.id);
     setError(null);
     setOpening(row.id);
     try {
-      const { invoice, settings } = await api(`/pharmacy/invoices/${row.id}`);
-      setPrinting({ what: 'bill', invoice, settings });
+      const { invoice, settings } = await api(`/pharmacy/invoices/${row.isReturn ? row.invoiceId : row.id}`);
+      const slip = row.isReturn ? returnSlipOf(invoice, row.number) : null;
+      if (row.isReturn && !slip) throw new Error(`Return ${row.number} was not found on bill ${invoice.number}.`);
+      setPrinting(slip ? { what: 'return', invoice, done: slip, settings } : { what: 'bill', invoice, settings });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -450,7 +458,16 @@ export function SearchBillPage() {
       render: (r) => <input type="checkbox" aria-label={`Bill ${r.number} on the printed list`} checked={!skipped.has(r.id)} onChange={(e) => tick(r.id, e.target.checked)} />,
     },
     { key: 'date', header: 'Sales date', render: (r) => formatDateTime(r.date) },
-    { key: 'number', header: 'Sales no', render: (r) => <span className="tabular">{r.number}</span> },
+    {
+      key: 'number',
+      header: 'Sales no',
+      render: (r) => (
+        <>
+          <span className="tabular">{r.number}</span>
+          {r.isReturn && <span className="ph-sb-where"> return of {r.returnOf}</span>}
+        </>
+      ),
+    },
     { key: 'mrn', header: 'UHID', render: (r) => (r.mrn ? <span className="tabular">{r.mrn}</span> : <span className="muted">–</span>) },
     {
       key: 'name',
@@ -469,7 +486,7 @@ export function SearchBillPage() {
       align: 'right',
       render: (r) => (
         <>
-          {amount(r.balPaise)}
+          {owed(r.balPaise)}
           {r.onHospitalBill && <span className="ph-sb-where"> on hospital bill</span>}
         </>
       ),
@@ -596,7 +613,7 @@ export function SearchBillPage() {
                 </div>
                 <div>
                   <dt>Credit amount</dt>
-                  <dd>{amount(totals.creditPaise)}</dd>
+                  <dd>{owed(totals.creditPaise)}</dd>
                 </div>
                 {totals.hospitalPaise > 0 && (
                   <div>
@@ -610,16 +627,16 @@ export function SearchBillPage() {
             <section className="card ph-sb-items" aria-label="Medicines on the bill">
               <div className="ph-sb-items-head">
                 <h2>
-                  {bill ? `Bill ${bill.number}` : 'Medicines on the bill'}
+                  {bill ? (bill.isReturn ? `Return ${bill.number} (bill ${bill.returnOf})` : `Bill ${bill.number}`) : 'Medicines on the bill'}
                   {bill?.name && <span className="muted"> · {bill.name}</span>}
                 </h2>
                 {bill && (
                   <div className="ph-sb-items-acts">
                     <button type="button" className="btn btn-secondary btn-sm" disabled={Boolean(opening)} onClick={() => reprint(bill)}>
-                      <Printer aria-hidden="true" /> {opening === bill.id ? 'Opening…' : 'Re-print bill'}
+                      <Printer aria-hidden="true" /> {opening === bill.id ? 'Opening…' : bill.isReturn ? 'Re-print return bill' : 'Re-print bill'}
                     </button>
-                    <Link className="btn btn-link btn-sm" to={`/pharmacy/invoices/${bill.id}`}>
-                      Open the bill
+                    <Link className="btn btn-link btn-sm" to={`/pharmacy/invoices/${bill.isReturn ? bill.invoiceId : bill.id}`}>
+                      {bill.isReturn ? `Open bill ${bill.returnOf}` : 'Open the bill'}
                     </Link>
                   </div>
                 )}
@@ -662,6 +679,18 @@ export function SearchBillPage() {
           <PrintDocument className="bill-doc ph-doc">
             <BillPaper invoice={printing.invoice} settings={printing.settings} />
           </PrintDocument>
+        </PrintPreview>
+      )}
+      {printing?.what === 'return' && (
+        <PrintPreview
+          title="Sales return bill – print preview"
+          hint="Check it, then print on A5 paper."
+          page={{ size: 'A5', margin: '8mm' }}
+          autoPrint={direct}
+          onPrint={() => api(`/pharmacy/invoices/${printing.invoice.id}/printed`, { method: 'POST', body: { what: 'credit_note' } })}
+          onClose={() => setPrinting(null)}
+        >
+          <ReturnSlip done={printing.done} settings={printing.settings} />
         </PrintPreview>
       )}
       {printing?.what === 'list' && res.data && (

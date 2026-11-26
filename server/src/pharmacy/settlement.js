@@ -83,11 +83,61 @@ export async function admittedNowList(req, { when = {}, dated = false } = {}) {
 }
 
 /**
+ * What each patient still owes at the pharmacy counter (26 Nov 2026, the pharmacy's request: "a patient with a balance
+ * should show in Settlement"): her counter sales with something left to pay – any day – as invoiceTotals counts it
+ * (sold − returned − paid + refunded − concessions). By patient id: { balancePaise, opd, ipd }, opd/ipd being her latest
+ * such bill made outside a stay and during one ({ number, at, doctor }). doctor: only bills of that doctor.
+ */
+export async function owedByPatient(req, { doctor = null } = {}) {
+  const sumOf = (input, value) => ({ $sum: { $map: { input: { $ifNull: [input, []] }, as: 'x', in: value } } });
+  const bills = await PharmacyInvoice.aggregate([
+    { $match: { tenantId: req.tenantId, patientId: { $ne: null }, billId: null, kind: 'sale', ...(doctor ? { 'doctor.name': doctor } : {}) } },
+    {
+      $project: {
+        patientId: 1,
+        admissionId: 1,
+        number: 1,
+        at: '$created.at',
+        doctor: '$doctor.name',
+        due: {
+          $subtract: [
+            sumOf('$lines', '$$x.amountPaise'),
+            {
+              $add: [
+                sumOf('$returns', { $sum: '$$x.lines.amountPaise' }),
+                sumOf('$payments', { $cond: [{ $eq: ['$$x.kind', 'refund'] }, { $multiply: ['$$x.amountPaise', -1] }, '$$x.amountPaise'] }),
+                sumOf('$concessions', '$$x.amountPaise'),
+              ],
+            },
+          ],
+        },
+      },
+    },
+    { $match: { due: { $gt: 0 } } },
+    { $sort: { at: -1, _id: -1 } },
+    { $limit: 5000 },
+  ]);
+  const owed = new Map();
+  for (const b of bills) {
+    const id = String(b.patientId);
+    const o = owed.get(id) ?? { balancePaise: 0, opd: null, ipd: null };
+    o.balancePaise += b.due;
+    const side = b.admissionId ? 'ipd' : 'opd';
+    o[side] ??= { number: b.number, at: b.at ?? null, doctor: b.doctor ?? '' };
+    owed.set(id, o);
+  }
+  return owed;
+}
+
+/**
  * Settlement's Find patient window (24 Nov 2026, the developer's video of the earlier software's Pharmacy Settlement):
  * IPD – everyone admitted now, with her admission's date and time, IPD number and doctor (start/end: admitted between
  * them); OPD – the patients with counter bills (start/end: on those days), with her latest bill's date and time, number
  * and doctor; someone admitted now is IPD, not OPD. who: a Patient filter of what was typed (the name's parts, the
  * mobile number, the UHID). Newest first, at most 500.
+ * 26 Nov 2026 (the pharmacy's request): every patient who still owes the counter is found too, whatever the dates –
+ * after those of the list, her latest bill still owed shown (OPD: one made outside a stay, for someone not admitted now;
+ * IPD: one made during a stay, for someone discharged since) – and each row has balancePaise, all she owes the counter.
  */
 export async function settlementPatients(req, { type, start = null, end = null, who = {}, doctor = null }) {
   const tenantId = req.tenantId;
@@ -105,33 +155,9 @@ export async function settlementPatients(req, { type, start = null, end = null, 
         const p = people.get(String(s.patientId));
         return { id: String(p._id), mrn: p.mrn ?? '', fullName: p.fullName, type: 'ipd', at: s.admittedAt, number: s.ipdNo ?? '', doctor: s.doctorName ?? '' };
       });
-    // 25 Nov 2026 (the pharmacy's request): typed – her UHID or name – still finds a patient with an unsettled IPD
-    // counter bill once she is discharged, not only everyone admitted now; a plain IPD browse stays as it was
-    if (typed && !start) {
-      const matched = await Patient.find({ tenantId, ...who }, { fullName: 1, mrn: 1 }).limit(500).lean();
-      const rest = matched.filter((p) => !seen.has(String(p._id)));
-      if (rest.length) {
-        const owed = await PharmacyInvoice.find(
-          { tenantId, patientId: { $in: rest.map((p) => p._id) }, admissionId: { $ne: null }, billId: null, kind: 'sale', ...(doctor ? { 'doctor.name': doctor } : {}) },
-          { patientId: 1, number: 1, doctor: 1, created: 1, lines: 1, returns: 1, payments: 1, concessions: 1 },
-        )
-          .sort({ 'created.at': -1, _id: -1 })
-          .lean();
-        const latestOwed = new Map();
-        for (const inv of owed) {
-          if ((invoiceTotals(inv).balancePaise ?? 0) <= 0) continue;
-          const id = String(inv.patientId);
-          if (!latestOwed.has(id)) latestOwed.set(id, inv);
-        }
-        for (const p of rest) {
-          const inv = latestOwed.get(String(p._id));
-          if (!inv) continue;
-          seen.add(String(p._id));
-          rows.push({ id: String(p._id), mrn: p.mrn ?? '', fullName: p.fullName, type: 'ipd', at: inv.created?.at ?? null, number: inv.number, doctor: inv.doctor?.name ?? '' });
-        }
-      }
-    }
-    return rows;
+    // 25 Nov 2026: typed, a patient with an unsettled IPD counter bill once she is discharged; 26 Nov 2026 (the
+    // pharmacy's request): with or without anything typed or dates – whoever still owes is found
+    return withOwed(req, rows, seen, { side: 'ipd', who, doctor });
   }
   const admitted = new Set((await Admission.distinct('patientId', { tenantId, status: 'admitted' })).map(String));
   // What was typed: the patients first (so that many bills of others never push hers out); else the bills of the days
@@ -147,13 +173,32 @@ export async function settlementPatients(req, { type, start = null, end = null, 
   for (const inv of invoices) if (!admitted.has(String(inv.patientId)) && !latest.has(String(inv.patientId))) latest.set(String(inv.patientId), inv);
   const ids = [...latest.keys()].slice(0, 500);
   const people = new Map((matched ?? (ids.length ? await Patient.find({ tenantId, _id: { $in: ids } }, { fullName: 1, mrn: 1 }).lean() : [])).map((p) => [String(p._id), p]));
-  return ids
+  const rows = ids
     .filter((id) => people.has(id))
     .map((id) => {
       const p = people.get(id);
       const inv = latest.get(id);
       return { id, mrn: p.mrn ?? '', fullName: p.fullName, type: 'opd', at: inv.created?.at ?? null, number: inv.number, doctor: inv.doctor?.name ?? '' };
     });
+  return withOwed(req, rows, new Set(rows.map((r) => r.id)), { side: 'opd', who, doctor, admitted });
+}
+
+/**
+ * The Find window's rows with what each owes (balancePaise), and after them those who still owe the counter and are not
+ * listed yet (26 Nov 2026): side 'opd' – her latest owed bill made outside a stay, not admitted now; 'ipd' – made
+ * during a stay, discharged since (someone admitted now is in the list already). who/doctor: as the list's.
+ */
+async function withOwed(req, rows, seen, { side, who, doctor, admitted = null }) {
+  const owedAll = await owedByPatient(req);
+  const owed = doctor ? await owedByPatient(req, { doctor }) : owedAll;
+  const nowIn = side === 'ipd' ? new Set((await Admission.distinct('patientId', { tenantId: req.tenantId, status: 'admitted' })).map(String)) : admitted;
+  const extra = [...owed.entries()].filter(([id, o]) => o[side] && !seen.has(id) && !nowIn.has(id));
+  const people = new Map((extra.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: extra.map(([id]) => id) }, ...who }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
+  const more = extra
+    .filter(([id]) => people.has(id))
+    .sort(([, a], [, b]) => new Date(b[side].at ?? 0) - new Date(a[side].at ?? 0))
+    .map(([id, o]) => ({ id, mrn: people.get(id).mrn ?? '', fullName: people.get(id).fullName, type: side, at: o[side].at, number: o[side].number, doctor: o[side].doctor }));
+  return [...rows, ...more].slice(0, 500).map((r) => ({ ...r, balancePaise: owedAll.get(r.id)?.balancePaise ?? 0 }));
 }
 
 /** The patient's Paid and Credit bills, plus the advance available now. */

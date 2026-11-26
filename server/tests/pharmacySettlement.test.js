@@ -115,13 +115,38 @@ describe('Settlement', () => {
     expect(ipd.patients).toEqual([expect.objectContaining({ id: ward.id, mrn: ward.mrn, fullName: 'Sample Ward Mother', type: 'ipd', at: expect.any(String) })]);
     const opd = (await ph('get', `/settlement/patients?type=opd&from=${DAY}&to=${DAY}`)).body; // Date ticked: today
     expect(opd).toMatchObject({ from: DAY, to: DAY });
-    expect(opd.patients).toEqual([expect.objectContaining({ id: p.id, type: 'opd', number: expect.stringMatching(/^PH-/) })]);
+    // 26 Nov 2026: each row with all she owes the counter
+    expect(opd.patients).toEqual([expect.objectContaining({ id: p.id, type: 'opd', number: expect.stringMatching(/^PH-/), balancePaise: 1000 })]);
     expect((await ph('get', '/settlement/patients?type=opd')).body.patients.map((x) => x.id)).toEqual([p.id]); // no dates: any day
-    expect((await ph('get', '/settlement/patients?type=opd&from=2026-09-01&to=2026-09-01')).body.patients).toEqual([]); // another day
+    // 26 Nov 2026 (the pharmacy's request): another day – she still owes, so she is found all the same, with her latest
+    // bill still owed
+    expect((await ph('get', '/settlement/patients?type=opd&from=2026-09-01&to=2026-09-01')).body.patients.map((x) => [x.id, x.balancePaise])).toEqual([[p.id, 1000]]);
     expect((await ph('get', '/settlement/patients?type=opd&name=settlement%20mother')).body.patients.map((x) => x.id)).toEqual([p.id]);
     expect((await ph('get', '/settlement/patients?type=ipd&name=Settlement')).body.patients).toEqual([]); // not admitted
     expect((await ph('get', '/settlement/patients?type=opd&phone=12ab')).status).toBe(400);
     expect((await ph('get', '/settlement/patients?type=ipd', undefined, 'reception')).status).toBe(403);
+  });
+
+  it('the Find patient window finds whoever still owes, whatever the days – until she has settled (26 Nov 2026)', async () => {
+    const { m, p, a, b } = await patientWithCredit(); // owes ₹10 on two bills of 28 Sep
+    vi.setSystemTime(new Date('2026-10-05T06:00:00Z'));
+    sessions = {};
+    const other = await newPatient('Sample Other Mother');
+    const paid = (await ph('post', '/invoices', { kind: 'sale', patientId: other.id, payments: [{ mode: 'cash', amountPaise: 200 }], lines: [{ medicineId: m.id, qty: 1 }] })).body.invoice;
+    expect(paid.number).toMatch(/^PH-/);
+    const today = '2026-10-05';
+    // Today's bills first, then those who still owe from other days – with what each owes
+    const list = (await ph('get', `/settlement/patients?type=opd&from=${today}&to=${today}`)).body.patients;
+    expect(list.map((x) => [x.id, x.number, x.balancePaise])).toEqual([[other.id, paid.number, 0], [p.id, b.number, 1000]]);
+    // Typed: still only her; a doctor ticked: only bills of that doctor
+    expect((await ph('get', `/settlement/patients?type=opd&from=${today}&to=${today}&name=settlement`)).body.patients.map((x) => x.id)).toEqual([p.id]);
+    expect((await ph('get', `/settlement/patients?type=opd&from=${today}&to=${today}&doctor=Nobody%20Such`)).body.patients).toEqual([]);
+    // Not an IPD patient: her bills were not made during a stay
+    expect((await ph('get', '/settlement/patients?type=ipd')).body.patients).toEqual([]);
+    // Settled in full: no longer found for another day
+    const settled = await ph('post', '/settlement', { patientId: p.id, invoiceIds: [a.id, b.id], payments: [{ mode: 'cash', amountPaise: 1000 }], advancePaise: 0, concessionPaise: 0 });
+    expect(settled.status, JSON.stringify(settled.body)).toBe(201);
+    expect((await ph('get', `/settlement/patients?type=opd&from=${today}&to=${today}`)).body.patients.map((x) => [x.id, x.balancePaise])).toEqual([[other.id, 0]]);
   });
 
   it('settles the credit bills chosen with advance, a discount and two ways of paying – oldest bill first', async () => {

@@ -180,10 +180,14 @@ const later = (a, b) => (a == null ? b : b == null ? a : a > b ? a : b);
 
 /**
  * A hospital bill's charges as the books should hold them (empty when cancelled): the patient owes the hospital's
- * items less the discount; the income accounts are credited per group. The pharmacy's line ("Pharmacy – invoice
- * PH-…", ref.kind 'pharmacy') is left out – that money reaches Tally through the pharmacy invoice itself, so nothing
+ * items less the discount; the income accounts are credited per group. The pharmacy's lines ("Pharmacy – invoice
+ * PH-…", ref.kind 'pharmacy', and "Pharmacy – return CN-…", 'pharmacy-return') are left out – that money reaches
+ * Tally through the pharmacy invoice and its credit note themselves, so nothing
  * is counted twice; the whole discount is taken on the hospital's side.
  */
+// The pharmacy's lines on a hospital bill: its invoice, and (26 Nov 2026) the medicines taken back against it
+const pharmacyLine = (l) => l.ref?.kind === 'pharmacy' || l.ref?.kind === 'pharmacy-return';
+
 export function billVector(bill) {
   const vec = new Map();
   if (bill.status === 'cancelled') return vec;
@@ -192,7 +196,7 @@ export function billVector(bill) {
   const discount = Math.min(bill.discount?.paise ?? 0, subtotal);
   let items = 0;
   for (const l of live) {
-    if (l.ref?.kind === 'pharmacy') continue;
+    if (pharmacyLine(l)) continue;
     add(vec, `income:${l.group}`, -l.amountPaise);
     items += l.amountPaise;
   }
@@ -513,7 +517,7 @@ export function deriveEvents({ settings, booksFrom, from = booksFrom, to, bills,
       if (b.kind === 'ipd' && b.status !== 'cancelled' && !existingMain.length) stillIn.push(b.number);
       continue;
     }
-    if (b.status !== 'cancelled' && liveLines(b).some((l) => l.ref?.kind !== 'pharmacy' && l.ratePaise === 0)) {
+    if (b.status !== 'cancelled' && liveLines(b).some((l) => !pharmacyLine(l) && l.ratePaise === 0)) {
       unpriced.push(b.number);
       continue;
     }

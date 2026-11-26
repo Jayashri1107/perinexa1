@@ -675,19 +675,16 @@ export function BillPaper({ invoice: v, settings }) {
           <span>Disc</span>
           <span>{plain(Math.max(0, gross - v.totalPaise))}</span>
         </div>
-        {v.returnedPaise > 0 && (
-          <div>
-            <span>Returned</span>
-            <span>−{plain(v.returnedPaise)}</span>
-          </div>
-        )}
+        {/* 26 Nov 2026 (the pharmacy's request): the bill prints as it was made – a return is a bill of its own (the
+            Sales Return Bill), so no Returned line here and Paid Amount is what was taken for the bill, its refunds left
+            on the return's bill. Credit Amt is what is still owed on it: none once she has settled */}
         {v.billId ? (
           <div>Payable at the billing desk with the hospital bill</div>
         ) : (
           <>
             <div>
               <span>Paid Amount</span>
-              <span>{plain(v.paidPaise ?? 0)}</span>
+              <span>{plain(v.receivedPaise ?? v.paidPaise ?? 0)}</span>
             </div>
             {/* a walk-in (External) pays the whole bill: never credit. 21 Nov 2026 (the pharmacy): a bill paid in full
                 prints no Credit Amt 0.00 line */}
@@ -745,7 +742,11 @@ function InvoicePrint({ invoice: v, settings, stay, creditNote = null, onClose }
   const record = () => api(`/pharmacy/invoices/${v.id}/printed`, { method: 'POST', body: { what: creditNote ? 'credit_note' : 'invoice' } });
   const total = lines.reduce((s, l) => s + l.amountPaise, 0);
   const atMrp = lines.reduce((s, l) => s + l.qty * l.mrpPaise, 0);
-  const due = creditNote ? total : v.netPaise;
+  // 26 Nov 2026: the tax invoice as it was made – its own sums, whatever was returned since (each return has its own
+  // credit note)
+  const due = creditNote ? total : v.totalPaise;
+  const made = { taxablePaise: 0, cgstPaise: 0, sgstPaise: 0 };
+  for (const l of v.lines) for (const k of Object.keys(made)) made[k] += l[k] ?? 0;
   const who = v.patient ? `${v.patient.fullName} (${v.patient.mrn})` : v.buyer ? v.buyer.name : v.customer?.name || 'Walk-in customer';
   const facts = [
     [creditNote ? 'Credit note no.' : 'Bill no.', creditNote ?? v.number],
@@ -830,22 +831,16 @@ function InvoicePrint({ invoice: v, settings, stay, creditNote = null, onClose }
                 <>
                   <tr>
                     <th scope="row">Taxable value</th>
-                    <td>{paper(v.taxablePaise)}</td>
+                    <td>{paper(made.taxablePaise)}</td>
                   </tr>
                   <tr>
                     <th scope="row">CGST</th>
-                    <td>{paper(v.cgstPaise)}</td>
+                    <td>{paper(made.cgstPaise)}</td>
                   </tr>
                   <tr>
                     <th scope="row">SGST</th>
-                    <td>{paper(v.sgstPaise)}</td>
+                    <td>{paper(made.sgstPaise)}</td>
                   </tr>
-                  {v.returnedPaise > 0 && (
-                    <tr>
-                      <th scope="row">Returned</th>
-                      <td>−{paper(v.returnedPaise)}</td>
-                    </tr>
-                  )}
                 </>
               )}
               <tr className="ph-bill-net">

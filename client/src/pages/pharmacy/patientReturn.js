@@ -58,8 +58,9 @@ export function returnSplit(bill, amountPaise) {
 /** Where a bill's return is counted on the screen: a bill paid in full is Cash; one with credit, or on the hospital bill, Credit. */
 export const sideOf = (bill) => (bill.onHospitalBill || (bill.balancePaise ?? 0) > 0 ? 'credit' : 'cash');
 
-/** The pay word of a bill in the list. */
-export const payWord = (bill) => (!bill ? '' : bill.onHospitalBill ? 'Hospital bill' : (bill.balancePaise ?? 0) > 0 ? 'Credit' : 'Cash');
+const MADE_WORDS = { hospital: 'Hospital bill', credit: 'Credit', cash: 'Cash' };
+/** The pay word of a bill in the list: as the bill was made (26 Nov 2026) – a return or a settlement doesn't change it. */
+export const payWord = (bill) => (!bill ? '' : MADE_WORDS[bill.madeAs] ?? (bill.onHospitalBill ? 'Hospital bill' : (bill.balancePaise ?? 0) > 0 ? 'Credit' : 'Cash'));
 
 /**
  * The figures under the list, as on the earlier window. typed: { [line key]: text }. Returns

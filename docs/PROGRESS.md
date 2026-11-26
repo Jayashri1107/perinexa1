@@ -1,5 +1,38 @@
 # Progress
 
+## A return is a bill of its own; owing patients in Settlement; no credit once settled (26 Nov 2026)
+The pharmacy's request. Built with Claude in the Claude app – **`npm test` and `npm run build` still to run**.
+- **The bill stays as it was made.** A return (Sale return patient-wise, or Take medicines back) is its own bill – the
+  Pharmacy Sales Return Bill with its CN number – and changes nothing on the bill it was made against:
+  - **Printed bill**: no Returned line; Paid Amount is what was taken for the bill (its refunds are on the return's
+    bill). The A5 tax invoice prints its own Taxable value, CGST, SGST and Net amount as sold.
+  - **Search bill**: each bill as made (Net amt, medicines and quantities as sold – no "(1 returned)"); each return
+    is a row of its own on the day it was made – its CN number, "return of PH-…", the amounts as minus figures – so
+    the sums under the list are still what the bills came to after their returns. Double-click a return's row (or
+    Re-print return bill) to print its Pharmacy Sales Return Bill again. A return's CN number, or its bill's number,
+    finds it.
+  - **Bill type (Cash, Credit, Hospital bill)** is how the bill was made (paid in full when it was saved, or not), on
+    Search bill's Cash or credit choice and on Sale return patient-wise – a return or a settlement never moves it.
+  - **The hospital bill**: the invoice's line "Pharmacy – invoice PH-…" stays as billed; the return comes off as its
+    own line "Pharmacy – return CN-… (invoice PH-…)", a minus amount (`ref.kind` `pharmacy-return` – the one kind of
+    line allowed below ₹0). Tally leaves it out as it leaves out the invoice's line (the credit note itself goes to
+    Tally). A return against a final hospital bill is now refused on every screen (the billing desk reopens it first).
+  - New refunds record their return's number (`creditNote` on the refund); older ones are matched by their time.
+- **Settlement – Find patient**: a patient who still owes the counter is found whatever the dates – after the list's
+  own patients, with her latest bill still owed (OPD: a bill made outside a stay, for someone not admitted now; IPD:
+  one made during a stay she has left). A new **Balance** column shows all she owes the counter.
+- **No credit figure once nothing is owed**: Bal amt and Credit amount on Search bill (screen and printed list) show
+  "–"; the IP bill summary's Credit Amount is what is still owed (0.00 once settled; on the hospital bill, the bills
+  less their returns); Settlement's Paid bills show "–" for Balance and Total credit says "Nothing owed".
+- **Server:** `returnItems` and `asMade` in `server/src/pharmacy/pharmacyService.js`; `returnRows` in
+  `pharmacy/billSearch.js`; `owedByPatient` in `pharmacy/settlement.js` (an aggregate with its own tenantId match);
+  `models/Bill.js` (the return line), `models/Pharmacy.js` (refund `creditNote`), `tally/events.js`.
+- **Tests:** `pharmacy.test.js` (the hospital bill's return line), `pharmacyBillSearch.test.js` (bills as made, return
+  rows, the sums), `pharmacySettlement.test.js` (owing patients on another day, gone once settled),
+  `pharmacyPatientReturn.test.js` (bills as made; also its totals now carry the GST of 25 Nov), and the client tests
+  `searchBill.test.jsx`, `soldSide.test.jsx`, `patientReturn.test.jsx`. Checked here with the stand-in runner and in a
+  browser with sample data.
+
 ## Settlement as the earlier window in the developer's video: the Find patient window (24 Nov 2026)
 The developer's video of the earlier software's Pharmacy Settlement. Built with Claude in the Claude app – **`npm test`
 and `npm run build` still to run**.

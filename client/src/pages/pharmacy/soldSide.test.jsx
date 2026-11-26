@@ -48,6 +48,20 @@ describe('the pharmacy bill', () => {
     expect(paidHere).not.toContain('Previous Credit');
   });
 
+  it('prints as it was made after a return or a settlement (26 Nov 2026): no Returned line, what was taken for it, no credit once paid', () => {
+    // Paid ₹665 in full, then ₹35 taken back and given back: the bill still says Paid Amount 665.00
+    const returned = paper({ ...invoice, billId: null, returnedPaise: 3500, paidPaise: 63000, receivedPaise: 66500, balancePaise: 0 });
+    expect(returned).toContain('Gross 700.00 Disc 35.00 Paid Amount 665.00');
+    expect(returned).not.toContain('Returned');
+    expect(returned).not.toContain('Credit Amt');
+    // On credit, settled in full since: what was taken for it, and no Credit Amt
+    const settled = paper({ ...invoice, billId: null, paidPaise: 66500, receivedPaise: 66500, balancePaise: 0, madeAs: 'credit' });
+    expect(settled).toContain('Paid Amount 665.00');
+    expect(settled).not.toContain('Credit');
+    // Still owed: Credit Amt is what is owed now
+    expect(paper({ ...invoice, billId: null, paidPaise: 0, receivedPaise: 0, balancePaise: 30000 })).toContain('Paid Amount 0.00 Credit Amt 300.00');
+  });
+
   it('shows what a walk-in paid, an IPD issue’s type, and no jurisdiction line without a city', () => {
     const walkIn = paper({ ...invoice, patient: null, customer: { name: 'Sample Walkin' }, paidPaise: 66500 }, { ...settings, place: '' });
     expect(walkIn).toContain('Type External');

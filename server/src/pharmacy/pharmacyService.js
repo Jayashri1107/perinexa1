@@ -455,6 +455,11 @@ export async function returnItems(req, invoice, items, reason, refund) {
     parts.push({ line, qty: it.qty, money: partOf(line, it.qty) });
   }
   if (!invoice.billId && !refund?.mode) throw bad('Choose how the money is given back.');
+  // Her hospital bill takes the return as a line of its own: never once the bill is final (or closed)
+  if (invoice.billId) {
+    const bill = await Bill.findOne({ tenantId: req.tenantId, _id: invoice.billId }, { number: 1, status: 1, final: 1 }).lean();
+    if (!bill || bill.status !== 'open' || bill.final) throw conflict(`The hospital bill${bill?.number ? ` ${bill.number}` : ''} is final: the billing desk reopens it before medicines are taken back.`, 'BILL_FINAL');
+  }
   const number = padded('CN', await nextNumber(req.tenantId, 'pharmacy-credit'));
   const meta = { kind: 'return', ref: { kind: 'invoice', id: invoice._id, number: invoice.number }, patientId: invoice.patientId, customer: invoice.customer?.name ?? '', doctorName: invoice.doctor?.name ?? '', doctorReg: invoice.doctor?.reg ?? '', reason };
   for (const p of parts) {
@@ -464,17 +469,13 @@ export async function returnItems(req, invoice, items, reason, refund) {
   const credit = sum(parts.map((p) => p.money));
   const refundPaise = invoice.billId ? 0 : refund?.onlyPaid ? returnSplit(before, credit.amountPaise).refundPaise : credit.amountPaise;
   invoice.returns.push({ number, lines: parts.map((p) => ({ lineId: p.line._id, qty: p.qty, ...p.money })), reason, ...stampOf(req) });
-  if (refundPaise > 0) invoice.payments.push({ kind: 'refund', mode: refund.mode, amountPaise: refundPaise, reference: refund.reference ?? '', ...stampOf(req) });
+  if (refundPaise > 0) invoice.payments.push({ kind: 'refund', mode: refund.mode, amountPaise: refundPaise, reference: refund.reference ?? '', creditNote: number, ...stampOf(req) });
   await invoice.save();
 
-  // Her bill: the invoice line now shows what is still charged
+  // Her hospital bill (26 Nov 2026, the developer: the bill stays as it was made, the return is a bill of its own): the
+  // invoice's line is left as billed and the return comes off as its own line, "Pharmacy – return CN-… (invoice PH-…)"
   if (invoice.billId) {
-    const net = invoiceTotals(invoice).netPaise;
-    await Bill.updateOne(
-      { tenantId: req.tenantId, _id: invoice.billId },
-      { $set: { 'lines.$[l].ratePaise': net, 'lines.$[l].amountPaise': net, 'lines.$[l].name': `Pharmacy – invoice ${invoice.number} (less return ${number})` } },
-      { arrayFilters: [{ 'l.ref.id': invoice._id, 'l.removed': null }] },
-    );
+    await pushLines(req, invoice.billId, [{ name: `Pharmacy – return ${number} (invoice ${invoice.number})`, group: 'medicine', ratePaise: -credit.amountPaise, source: 'auto', ref: { kind: 'pharmacy-return', id: invoice._id } }]);
   }
   return { invoice, number, credit, refundPaise };
 }
@@ -514,6 +515,24 @@ export function invoiceTotals(inv) {
     settlementConcessionPaise,
     balancePaise: inv.billId ? null : Math.max(0, net - paid - settlementConcessionPaise),
   };
+}
+
+/**
+ * A bill as it was made (26 Nov 2026, the developer: a return or a later payment never changes the bill itself – the
+ * return is a bill of its own, the Sales Return Bill with its CN number):
+ *  - receivedPaise: the money taken for it at the counter, the refunds of its returns not taken off (they are on the
+ *    return's own bill); null when it went on the hospital bill
+ *  - madeAs: 'hospital' (on her hospital bill), 'credit' (something left due when it was saved – on credit, or paid in
+ *    part) or 'cash' (paid in full when it was saved). Payments saved with the bill carry its time; a later payment
+ *    (a settlement) never makes a credit bill cash.
+ */
+export function asMade(inv) {
+  if (inv.billId) return { receivedPaise: null, madeAs: 'hospital' };
+  const at = new Date(inv.created?.at ?? inv.createdAt ?? 0).getTime();
+  const taken = (inv.payments ?? []).filter((p) => p.kind !== 'refund');
+  // saved with the bill: its time (a minute's leeway), or no time of its own
+  const atSale = taken.filter((p) => !p.at || Math.abs(new Date(p.at).getTime() - at) < 60000).reduce((n, p) => n + p.amountPaise, 0);
+  return { receivedPaise: taken.reduce((n, p) => n + p.amountPaise, 0), madeAs: atSale >= sum(inv.lines).amountPaise ? 'cash' : 'credit' };
 }
 
 export function invoiceView(inv, { patient = null, today = new Date() } = {}) {
@@ -557,11 +576,12 @@ export function invoiceView(inv, { patient = null, today = new Date() } = {}) {
       sgstPaise: l.sgstPaise,
     })),
     returns: (inv.returns ?? []).map((r) => ({ number: r.number, at: r.at, byName: r.byName ?? '', reason: r.reason ?? '', amountPaise: sum(r.lines).amountPaise, lines: r.lines.map((x) => ({ lineId: String(x.lineId), qty: x.qty, amountPaise: x.amountPaise })) })),
-    payments: (inv.payments ?? []).map((p) => ({ kind: p.kind, mode: p.mode, amountPaise: p.amountPaise, reference: p.reference ?? '', bank: p.bank ?? '', on: p.on ? isoDay(p.on) : null, authorisedBy: p.authorisedBy ?? '', narration: p.narration ?? '', at: p.at, byName: p.byName ?? '' })),
+    payments: (inv.payments ?? []).map((p) => ({ kind: p.kind, mode: p.mode, amountPaise: p.amountPaise, reference: p.reference ?? '', bank: p.bank ?? '', on: p.on ? isoDay(p.on) : null, authorisedBy: p.authorisedBy ?? '', narration: p.narration ?? '', creditNote: p.creditNote ?? '', at: p.at, byName: p.byName ?? '' })),
     concessions: (inv.concessions ?? []).map((c) => ({ amountPaise: c.amountPaise, reason: c.reason ?? '', remarks: c.remarks ?? '', at: c.at, byName: c.byName ?? '' })),
     paymentRemarks: inv.paymentRemarks ?? '',
     creditAuthorisedBy: inv.creditAuthorisedBy ?? '',
     ...invoiceTotals(inv),
+    ...asMade(inv),
     byName: inv.created?.byName ?? '',
   };
 }

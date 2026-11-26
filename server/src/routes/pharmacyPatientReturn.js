@@ -7,7 +7,7 @@ import { Medicine, PharmacyInvoice } from '../models/Pharmacy.js';
 import { RETURN_TYPES, returnableLines, returnSplit, returnedMoney } from '../pharmacy/patientReturn.js';
 import { desk, qty, reason, settingsOf, today } from '../pharmacy/pharmacyHttp.js';
 import { COUNTER_MODES } from '../pharmacy/pharmacyRules.js';
-import { invoiceTotals, isExpired, returnItems } from '../pharmacy/pharmacyService.js';
+import { asMade, invoiceTotals, isExpired, returnItems } from '../pharmacy/pharmacyService.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
@@ -44,7 +44,7 @@ async function patientData(req, patient, type, doctor) {
   const bills = new Map((billIds.length ? await Bill.find({ tenantId: req.tenantId, _id: { $in: billIds } }, { status: 1, final: 1 }).lean() : []).map((b) => [String(b._id), b]));
   const medicineIds = [...new Set(open.flatMap((inv) => inv.lines.map((l) => String(l.medicineId))))];
   const barcodes = new Map((medicineIds.length ? await Medicine.find({ tenantId: req.tenantId, _id: { $in: medicineIds } }, { barcodes: 1 }).lean() : []).map((m) => [String(m._id), m.barcodes ?? []]));
-  const found = returnableLines(open, { today: today(req), bills, barcodes, totalsOf: invoiceTotals });
+  const found = returnableLines(open, { today: today(req), bills, barcodes, totalsOf: invoiceTotals, madeOf: (inv) => asMade(inv).madeAs });
   return { patient: { id: String(patient._id), fullName: patient.fullName, mrn: patient.mrn ?? '' }, type, today: isoDay(today(req)), ...found };
 }
 

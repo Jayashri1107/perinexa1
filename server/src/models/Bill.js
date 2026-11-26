@@ -11,18 +11,25 @@ const { ObjectId } = mongoose.Schema.Types;
 const stamp = { by: { type: ObjectId, ref: 'User' }, byName: String, at: Date };
 const stampSchema = new mongoose.Schema(stamp, { _id: false });
 
+// A line's rate and amount: 0 or more, except the line of medicines taken back by the pharmacy (ref.kind 'pharmacy-return')
+function notBelowZeroUnlessReturn(value) {
+  return value >= 0 || this.ref?.kind === 'pharmacy-return';
+}
+
 const lineSchema = new mongoose.Schema({
   priceItemId: { type: ObjectId, ref: 'PriceItem', default: null },
   key: { type: String, default: null }, // the price item's key (e.g. lab:cbc, bed)
   name: { type: String, required: true, maxlength: 150 },
   group: { type: String, enum: GROUPS, required: true },
   qty: { type: Number, required: true, min: 1 },
-  ratePaise: { type: Number, required: true, min: 0 },
-  amountPaise: { type: Number, required: true, min: 0 },
+  // Never below 0 – except a pharmacy return's line (26 Nov 2026, the developer: the medicines taken back are their own
+  // line, "Pharmacy – return CN-…", so the invoice's line stays as it was billed)
+  ratePaise: { type: Number, required: true, validate: { validator: notBelowZeroUnlessReturn, message: 'A bill line can’t be below ₹0.' } },
+  amountPaise: { type: Number, required: true, validate: { validator: notBelowZeroUnlessReturn, message: 'A bill line can’t be below ₹0.' } },
   source: { type: String, enum: ['auto', 'manual'], required: true },
   // What added it automatically: a visit, a lab order (and which test), a stay's bed days, a scan or procedure done,
   // or an appointment whose consultation fee was taken in advance
-  ref: { type: new mongoose.Schema({ kind: { type: String, enum: ['visit', 'lab', 'bed', 'pharmacy', 'work', 'appointment', 'registration', 'admission', 'nursing', 'round', 'scan'] }, id: ObjectId, test: String }, { _id: false }), default: null },
+  ref: { type: new mongoose.Schema({ kind: { type: String, enum: ['visit', 'lab', 'bed', 'pharmacy', 'pharmacy-return', 'work', 'appointment', 'registration', 'admission', 'nursing', 'round', 'scan'] }, id: ObjectId, test: String }, { _id: false }), default: null },
   doctorId: { type: ObjectId, ref: 'User', default: null }, // for the monthly report by doctor
   added: { type: stampSchema, required: true },
   removed: { type: new mongoose.Schema({ ...stamp, reason: String }, { _id: false }), default: null },

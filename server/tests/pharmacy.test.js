@@ -362,7 +362,7 @@ describe('narcotic and Schedule X medicines', () => {
 });
 
 describe('issuing to admitted patients', () => {
-  it('only to an admitted patient; a GST invoice on her stay bill; a return lowers the bill', async () => {
+  it('only to an admitted patient; a GST invoice on her stay bill; a return comes off the bill as a line of its own', async () => {
     const sup = await supplier();
     const m = await medicine({ name: 'Oxytocin 5 IU', form: 'injection', unit: 'ampoule', gstRate: 5, hsn: '3004' });
     await purchase(sup, [{ medicineId: m.id, batch: 'OX1', expiry: '2027-06', qty: 20, ratePaise: 1000, mrpPaise: 2100 }]);
@@ -376,9 +376,17 @@ describe('issuing to admitted patients', () => {
     expect(inv).toMatchObject({ kind: 'issue', netPaise: 8400, taxablePaise: 8000, cgstPaise: 200, sgstPaise: 200 });
     const [stayBill] = (await (await as('reception')).get(`/api/billing/patient/${p.id}`)).body.bills;
     expect(stayBill.kind).toBe('ipd');
-    await ph('post', `/invoices/${inv.id}/returns`, { items: [{ lineId: inv.lines[0].id, qty: 1 }], reason: 'Not used' });
+    const back = await ph('post', `/invoices/${inv.id}/returns`, { items: [{ lineId: inv.lines[0].id, qty: 1 }], reason: 'Not used' });
+    expect(back.status, JSON.stringify(back.body)).toBe(200);
+    // 26 Nov 2026 (the pharmacy's request): the invoice's line stays as billed; the return is its own line, a minus
     const bill = (await (await as('reception')).get(`/api/billing/bills/${stayBill.id}`)).body.bill;
-    expect(bill.lines.find((l) => l.group === 'medicine')).toMatchObject({ amountPaise: 6300 });
+    const medicines = bill.lines.filter((l) => l.group === 'medicine');
+    expect(medicines.map((l) => [l.name, l.amountPaise])).toEqual([
+      [`Pharmacy – invoice ${inv.number}`, 8400],
+      [`Pharmacy – return ${back.body.creditNote} (invoice ${inv.number})`, -2100],
+    ]);
+    expect(back.body.creditNote).toMatch(/^CN-/);
+    expect(medicines.reduce((n, l) => n + l.amountPaise, 0)).toBe(6300);
   });
 
   it('keeps the dose written on a line, and Search with nothing typed lists who is admitted now', async () => {

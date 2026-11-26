@@ -82,7 +82,9 @@ describe('Sale return patient-wise', () => {
     const res = await ph('post', '/patient-return', body);
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     expect(res.body.creditNotes.map((c) => [c.number, c.amountPaise, c.refundPaise, c.creditPaise])).toEqual([[paid.number, 200, 200, 0], [owed.number, 400, 0, 400]]);
-    expect(res.body.totals).toEqual({ amountPaise: 600, refundPaise: 200, creditPaise: 400 });
+    expect(res.body.totals).toMatchObject({ amountPaise: 600, refundPaise: 200, creditPaise: 400 });
+    // the Tax box (25 Nov 2026): the credit notes' GST, adding up to what was taken back
+    expect(res.body.totals.taxablePaise + res.body.totals.cgstPaise + res.body.totals.sgstPaise).toBe(600);
     // The bills: a credit note each; cash given back only on the paid one
     const a = (await ph('get', `/invoices/${paid.id}`)).body.invoice;
     const b = (await ph('get', `/invoices/${owed.id}`)).body.invoice;
@@ -90,6 +92,13 @@ describe('Sale return patient-wise', () => {
     expect(a.payments.filter((x) => x.kind === 'refund').map((x) => [x.mode, x.amountPaise])).toEqual([['cash', 200]]);
     expect(b.payments.filter((x) => x.kind === 'refund')).toEqual([]);
     expect(b.balancePaise).toBe(200);
+    // 26 Nov 2026 (the pharmacy's request): each bill as it was made – the money taken for it, the refund not taken off
+    // (it is on the return's own bill), and still a cash bill and a credit bill
+    expect(a).toMatchObject({ receivedPaise: 400, madeAs: 'cash', totalPaise: 400 });
+    expect(b).toMatchObject({ receivedPaise: 0, madeAs: 'credit', totalPaise: 600 });
+    expect(a.payments.find((x) => x.kind === 'refund').creditNote).toBe(a.returns[0].number);
+    const after = (await ph('get', `/patient-return?type=opd&patientId=${p.id}`)).body.bills;
+    expect(after.map((x) => [x.number, x.madeAs])).toEqual(expect.arrayContaining([[paid.number, 'cash'], [owed.number, 'credit']]));
     expect((await ph('get', `/patients/${p.id}/dues`)).body.duePaise).toBe(200);
     // The stock is back on the batch: 50 bought, 5 sold, 3 back
     expect((await ph('get', `/medicines/${m.id}/batches`)).body.batches[0].qtyLeft).toBe(48);

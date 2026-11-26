@@ -33,7 +33,7 @@ export function returnSplit(totals, amountPaise, { onHospitalBill = false } = {}
  * bills: Map billId → hospital bill ({ final, status }) – a line on a final or cancelled hospital bill is left out
  * (closedLines counts them). barcodes: Map medicineId → [codes]. totalsOf: invoiceTotals.
  */
-export function returnableLines(invoices, { today, bills = new Map(), barcodes = new Map(), totalsOf }) {
+export function returnableLines(invoices, { today, bills = new Map(), barcodes = new Map(), totalsOf, madeOf = () => null }) {
   const rows = [];
   let closedLines = 0;
   let expiredLines = 0;
@@ -88,6 +88,7 @@ export function returnableLines(invoices, { today, bills = new Map(), barcodes =
         paidPaise: hospital ? null : t.paidPaise,
         concessionPaise: t.settlementConcessionPaise ?? 0,
         balancePaise: hospital ? null : t.balancePaise,
+        madeAs: madeOf(inv), // 'cash' | 'credit' | 'hospital' – as the bill was made, whatever was returned or paid since
         doctor: inv.doctor?.name ?? '',
       });
     }

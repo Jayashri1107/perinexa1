@@ -399,6 +399,7 @@ const invoiceSchema = new mongoose.Schema(
           authorisedBy: { type: String, default: '' },
           narration: { type: String, default: '' },
           settlementId: { type: String, default: '' }, // selected-bill settlement; used to undo a failed write
+          creditNote: { type: String, default: '' }, // a refund: the return (CN-…) it gave money back for (26 Nov 2026)
           ...stamp,
         }),
       ],

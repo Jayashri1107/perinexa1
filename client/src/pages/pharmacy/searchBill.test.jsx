@@ -19,12 +19,15 @@ const {
   filterWords,
   ipBillSums,
   ipBills,
+  ipCreditPaise,
   ipReturnSums,
   ipReturns,
   isSearch,
   newSearch,
   noBillsWords,
+  owed,
   periodWords,
+  returnSlipOf,
   roundedPaise,
   searchProblem,
   searchQuery,
@@ -109,6 +112,34 @@ describe('the words and sums of the printed list', () => {
     expect(ipBills([ward, walkIn, opd], opd)).toEqual([]); // not an IPD bill
     expect(ipBills([ward, walkIn, opd], walkIn)).toEqual([]);
     expect(ipBills([ward], null)).toEqual([]);
+    // 26 Nov 2026: a return's own row is not one of her bills (the summary lists returns from her bills)
+    expect(ipBills([ward, { ...ward, id: 'i3:CN-000004', number: 'CN-000004', isReturn: true }], ward).map((r) => r.id)).toEqual(['i3']);
+  });
+
+  it('26 Nov 2026: no credit figure once nothing is owed; what an IP summary still owes; a return’s own bill', () => {
+    expect([0, 40000, -2000].map(owed)).toEqual(['–', '400.00', '-20.00']);
+    // On the hospital bill: the bill less its returns; at the counter: the balance now (none once settled)
+    const onBill = { ...ward, balPaise: 40000, returns: [{ number: 'CN-000004', amountPaise: 5000 }] };
+    const settled = { ...ward, id: 'i7', onHospitalBill: false, balPaise: 0, returns: [{ number: 'CN-000005', amountPaise: 1000 }] };
+    expect(ipCreditPaise([onBill, settled])).toBe(35000);
+    expect(ipCreditPaise([settled])).toBe(0);
+    // The Pharmacy Sales Return Bill read again from the bill it was made against
+    const invoice = {
+      id: 'i1', number: 'PH-000007', billId: null, patient: { fullName: 'Sample Asha Kale', mrn: 'SH-0042' },
+      lines: [{ id: 'l1', name: 'Sample Folic 5', batch: 'F1', expiry: '2028-06-30' }],
+      returns: [{ number: 'CN-000003', at: '2026-11-22T05:00:00Z', lines: [{ lineId: 'l1', qty: 1, amountPaise: 180 }] }],
+      payments: [{ kind: 'payment', mode: 'cash', amountPaise: 540, at: '2026-11-21T08:48:25Z' }, { kind: 'refund', mode: 'upi', amountPaise: 100, creditNote: 'CN-000003', at: '2026-11-22T05:00:00Z' }],
+    };
+    expect(returnSlipOf(invoice, 'CN-000003')).toEqual({
+      creditNotes: [{ creditNote: 'CN-000003', number: 'PH-000007', onHospitalBill: false, creditPaise: 80 }],
+      chosen: [{ line: { key: 'CN-000003:l1', name: 'Sample Folic 5', batch: 'F1', expiry: '2028-06-30' }, qty: 1, amountPaise: 180 }],
+      totals: { amountPaise: 180, refundPaise: 100, creditPaise: 80 },
+      patient: { fullName: 'Sample Asha Kale', mrn: 'SH-0042' },
+      mode: 'upi',
+      at: '2026-11-22T05:00:00Z',
+    });
+    expect(returnSlipOf(invoice, 'CN-000009')).toBeNull();
+    expect(returnSlipOf({ ...invoice, billId: 'b1' }, 'CN-000003').totals).toEqual({ amountPaise: 180, refundPaise: 0, creditPaise: 180 });
   });
 
   it('prints the store’s heading, what was searched, each bill and the sums', () => {
@@ -116,10 +147,13 @@ describe('the words and sums of the printed list', () => {
     expect(shown).toContain('Sample Medical Stores');
     expect(shown).toContain('Sales bills 21 Nov 2026 IPD bills');
     expect(shown).toMatch(/Sales date Sales no UHID Patient name Disc amt Net amt Received amt Bal amt/);
-    expect(shown).toContain('PH-000007 SH-0042 Sample Asha Kale 2.00 140.00 140.00 0.00');
+    expect(shown).toContain('PH-000007 SH-0042 Sample Asha Kale 2.00 140.00 140.00 –'); // nothing owed: no figure
     expect(shown).toContain('3 bills 21.00 580.00 180.00 400.00');
     expect(shown).toContain('Of the balance, 400.00 is on hospital bills, paid at the billing desk.');
-    expect(text(renderToStaticMarkup(<BillListDocument title="IP bill summary" rows={[opd]} settings={SETTINGS} />))).toContain('1 bill 2.00 140.00 140.00 0.00');
+    expect(text(renderToStaticMarkup(<BillListDocument title="IP bill summary" rows={[opd]} settings={SETTINGS} />))).toContain('1 bill 2.00 140.00 140.00 –');
+    // A return's row (26 Nov 2026): its CN number and its bill, the minus figures
+    const back = { ...opd, id: 'i1:CN-000003', number: 'CN-000003', returnOf: 'PH-000007', isReturn: true, discPaise: 0, netPaise: -2000, paidPaise: -2000, balPaise: 0 };
+    expect(text(renderToStaticMarkup(<BillListDocument title="Sales bills" rows={[back, opd]} settings={SETTINGS} />))).toContain('CN-000003 (return of PH-000007) SH-0042 Sample Asha Kale 0.00 -20.00 -20.00 – ');
   });
 
   it('IP bill summary: rounds Net amt to the rupee, and lists her returns under Sales Return (25 Nov 2026)', () => {
@@ -158,9 +192,15 @@ describe('the words and sums of the printed list', () => {
     expect(shown).toMatch(/Date Time Credit no Total amt Net amt Paid amt Credit Sales Return/);
     expect(shown).toContain('CN-00001 92.00 92.00 0.00 92.00');
     expect(shown).toContain('1 return 92.00');
-    expect(shown).toContain('Credit Amount 117.00');
+    // On her hospital bill: the bills less the credit sales return (26 Nov 2026: the bills' rows stay as they were made)
+    expect(shown).toContain('Credit Amount 25.00');
     expect(shown).toContain('Advance Amount 10.00');
-    expect(shown).toContain('Amount 107.00');
+    expect(shown).toContain('Amount 15.00');
+    // Paid at the counter and settled since: no balance figure, Credit Amount 0.00
+    const paidUp = { ...billB, onHospitalBill: false, paidPaise: 2500, balPaise: 0 };
+    const settledShown = text(renderToStaticMarkup(<IpSummaryDocument who={{ name: 'Sample Meera Patil', mrn: 'SH-0050' }} doctorName="" advancePaise={0} bills={[paidUp]} settings={SETTINGS} />));
+    expect(settledShown).toContain('PH-000010 25.00 25.00 25.00 –');
+    expect(settledShown).toContain('Credit Amount 0.00');
     // No returns: the Sales Return section is left out, and Advance Amount still loading shows a dash while it waits
     const noReturns = text(renderToStaticMarkup(<IpSummaryDocument who={{ name: 'Sample Meera Patil', mrn: 'SH-0050' }} doctorName="" advancePaise={null} bills={[billB]} settings={SETTINGS} />));
     expect(noReturns).not.toMatch(/Sales Return/);
@@ -193,8 +233,8 @@ describe('the Search bill screen', () => {
     answers['/pharmacy/bill-search'] = found();
     const shown = text(page());
     expect(shown).toMatch(/Sales date Sales no UHID Patient name Disc amt Net amt Bal amt/);
-    expect(shown).toContain('PH-000007 SH-0042 Sample Asha Kale 2.00 140.00 0.00');
-    expect(shown).toContain('PH-000008 – Sample Walk In 0.00 40.00 0.00'); // a walk-in has no UHID
+    expect(shown).toContain('PH-000007 SH-0042 Sample Asha Kale 2.00 140.00 –'); // nothing owed: no figure (26 Nov 2026)
+    expect(shown).toContain('PH-000008 – Sample Walk In 0.00 40.00 –'); // a walk-in has no UHID
     expect(shown).toContain('PH-000009 SH-0050 Sample Meera Patil 19.00 400.00 400.00 on hospital bill');
     expect(shown).toContain('Total sales amt 580.00 Received amt 180.00 Credit amount 400.00 Credit on hospital bills 400.00');
     expect(shown).toMatch(/Direct print Current admitted list IP bill summary Print list Close/);
@@ -216,8 +256,19 @@ describe('the Search bill screen', () => {
     answers['/pharmacy/bill-search'] = found({ bills: [], totals: { count: 0, salesPaise: 0, receivedPaise: 0, creditPaise: 0, hospitalPaise: 0 } });
     const none = text(page());
     expect(none).toMatch(/No bills match: all bills · \d{1,2} \w{3} \d{4}\. Change the search and press Show\./);
-    expect(none).toContain('Total sales amt 0.00 Received amt 0.00 Credit amount 0.00');
+    expect(none).toContain('Total sales amt 0.00 Received amt 0.00 Credit amount –');
     expect(none).not.toContain('on hospital bills');
+  });
+
+  it('a return is a row of its own (26 Nov 2026): its CN number and its bill; clicked, its bill’s buttons', () => {
+    const back = { ...opd, id: 'i1:CN-000003', invoiceId: 'i1', number: 'CN-000003', returnOf: 'PH-000007', isReturn: true, discPaise: 0, netPaise: -2000, paidPaise: -2000, balPaise: 0, lines: [{ ...line, id: 'CN-000003:l1', qty: 1, returnedQty: 0, amountPaise: 180 }] };
+    answers['/pharmacy/bill-search'] = found({ bills: [back, ward, walkIn, opd] });
+    const html = words(page({ billSearch: { form: newSearch('2026-11-21'), picked: back.id } }));
+    const shown = text(html);
+    expect(shown).toContain('CN-000003 return of PH-000007 SH-0042 Sample Asha Kale 0.00 -20.00 –');
+    expect(shown).toContain('Return CN-000003 (bill PH-000007) · Sample Asha Kale Re-print return bill Open bill PH-000007');
+    expect(html).toContain('href="/pharmacy/invoices/i1"');
+    expect(shown).toContain('1 Sample Folic 5 F1 Jun 2028 2.00 1 1.80');
   });
 
   it('back from a bill opened here, the search and the clicked bill are as they were', () => {
@@ -231,7 +282,7 @@ describe('the Search bill screen', () => {
     // The clicked bill: its medicines, Re-print and Open the bill; an IPD bill, so the IP bill summary is ready
     expect(shown).toContain('Bill PH-000009 · Sample Meera Patil Re-print bill Open the bill');
     expect(html).toContain('href="/pharmacy/invoices/i3"');
-    expect(shown).toContain('1 Sample Folic 5 F1 Jun 2028 2.00 3 (1 returned) 5.40');
+    expect(shown).toContain('1 Sample Folic 5 F1 Jun 2028 2.00 3 5.40'); // as it was sold (26 Nov 2026)
     expect(shown).not.toContain('IP bill summary: click an IPD patient’s bill first');
     // What was kept is used only when it is a whole search
     expect(isSearch(form)).toBe(true);
@@ -243,8 +294,9 @@ describe('the Search bill screen', () => {
   it('a bill’s medicines: Sr no, Item name, Batch no, Expiry date, Rate, Qty, Total amt', () => {
     const shown = text(renderToStaticMarkup(<BillItems bill={opd} />));
     expect(shown).toMatch(/Sr no Item name Batch no Expiry date Rate Qty Total amt/);
-    expect(shown).toContain('1 Sample Folic 5 F1 Jun 2028 2.00 3 (1 returned) 5.40');
-    expect(text(renderToStaticMarkup(<BillItems bill={{ ...opd, lines: [{ ...line, returnedQty: 0 }] }} />))).toContain('2.00 3 5.40');
+    // As it was sold (26 Nov 2026): a return is a bill of its own, never marked on this one
+    expect(shown).toContain('1 Sample Folic 5 F1 Jun 2028 2.00 3 5.40');
+    expect(shown).not.toContain('returned');
     // Before a bill is clicked the headings stay, with the line saying what to do
     expect(text(renderToStaticMarkup(<BillItems bill={null} />))).toMatch(/Sr no Item name Batch no Expiry date Rate Qty Total amt Click a bill to see its medicines\./);
   });

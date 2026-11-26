@@ -101,8 +101,46 @@ export function sumBills(rows) {
   return { count: rows.length, salesPaise: add((r) => r.netPaise), receivedPaise: add((r) => r.paidPaise), creditPaise: add((r) => r.balPaise), hospitalPaise: add((r) => (r.onHospitalBill ? r.netPaise : 0)) };
 }
 
-/** The listed IPD bills of the same patient as this bill (IP bill summary); none for a bill that is not a patient's IPD bill. */
-export const ipBills = (rows, bill) => (bill?.type === 'ipd' && bill.mrn ? rows.filter((r) => r.type === 'ipd' && r.mrn === bill.mrn) : []);
+/** The listed IPD bills of the same patient as this bill (IP bill summary); none for a bill that is not a patient's IPD
+ * bill. Her returns' own rows are left out: the summary lists them under Sales Return from her bills. */
+export const ipBills = (rows, bill) => (bill?.type === 'ipd' && bill.mrn ? rows.filter((r) => !r.isReturn && r.type === 'ipd' && r.mrn === bill.mrn) : []);
+
+/** An amount that is credit owed: nothing owed shows no figure (26 Nov 2026, the pharmacy's request). */
+export const owed = (paise) => (paise ? amount(paise) : '–');
+
+/**
+ * The IP bill summary's Credit Amount: what is still owed on her listed bills – at the counter, each bill's balance now
+ * (none once settled); on the hospital bill, the bill less its returns (26 Nov 2026: the bill rows stay as made).
+ */
+export function ipCreditPaise(bills) {
+  return Math.max(0, bills.reduce((n, b) => n + b.balPaise - (b.onHospitalBill ? (b.returns ?? []).reduce((m, r) => m + r.amountPaise, 0) : 0), 0));
+}
+
+/**
+ * A return's own bill – the Pharmacy Sales Return Bill (ReturnSlip in PatientReturnPage.jsx) – from the invoice it was
+ * made against (GET /pharmacy/invoices/:id): its medicines, the money given back (the refund naming it, or one saved
+ * with it before refunds named their return) and what came off what she owed. null when the invoice has no such return.
+ */
+export function returnSlipOf(invoice, number) {
+  const ret = (invoice.returns ?? []).find((r) => r.number === number);
+  if (!ret) return null;
+  const at = new Date(ret.at).getTime();
+  const refunds = (invoice.payments ?? []).filter((p) => p.kind === 'refund' && (p.creditNote ? p.creditNote === number : Math.abs(new Date(p.at).getTime() - at) < 2000));
+  const refundPaise = invoice.billId ? 0 : refunds.reduce((n, p) => n + p.amountPaise, 0);
+  const lineOf = new Map(invoice.lines.map((l) => [l.id, l]));
+  const amountPaise = ret.lines.reduce((n, x) => n + x.amountPaise, 0);
+  return {
+    creditNotes: [{ creditNote: number, number: invoice.number, onHospitalBill: Boolean(invoice.billId), creditPaise: amountPaise - refundPaise }],
+    chosen: ret.lines.map((x) => {
+      const l = lineOf.get(x.lineId) ?? {};
+      return { line: { key: `${number}:${x.lineId}`, name: l.name ?? '', batch: l.batch ?? '', expiry: l.expiry ?? null }, qty: x.qty, amountPaise: x.amountPaise };
+    }),
+    totals: { amountPaise, refundPaise, creditPaise: amountPaise - refundPaise },
+    patient: { fullName: invoice.patient?.fullName ?? invoice.buyer?.name ?? invoice.customer?.name ?? 'Walk-in customer', mrn: invoice.patient?.mrn ?? '' },
+    mode: refunds[0]?.mode ?? null,
+    at: ret.at,
+  };
+}
 
 // 25 Nov 2026 (the pharmacy's request): the IP bill summary laid out as the earlier software's – Credit Sales Bill and
 // Sales Return as two sections, each with its own total row, and underneath Credit Amount, Advance Amount and Amount.
