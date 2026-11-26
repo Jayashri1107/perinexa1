@@ -116,6 +116,21 @@ describe('The store’s own address and phone (31 Oct 2026)', () => {
     expect(cleared.body.settings).toMatchObject({ address: before.settings.address, phone: before.settings.phone });
     expect((await ph('put', '/settings', { address: 'x'.repeat(301) })).status).toBe(400);
   });
+
+  it('26 Nov 2026: the Sales bill’s Conc. reason choices and the Payment window’s banks – each once, kept per hospital', async () => {
+    const first = (await ph('get', '/settings')).body.settings;
+    expect(first).toMatchObject({ concessionReasons: ['Discount'], paymentBanks: [] }); // before the pharmacy sets them
+    const saved = await ph('put', '/settings', { concessionReasons: ['Dr. Sample Mam', ' Dr. Sample Sir ', 'Discount', 'discount'], paymentBanks: ['Sample Bank – current a/c', 'Other Sample Bank'] });
+    expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+    expect(saved.body.settings.concessionReasons).toEqual(['Dr. Sample Mam', 'Dr. Sample Sir', 'Discount']); // the first spelling kept
+    expect(saved.body.settings.paymentBanks).toEqual(['Sample Bank – current a/c', 'Other Sample Bank']);
+    expect((await ph('get', '/settings')).body.settings.paymentBanks[0]).toBe('Sample Bank – current a/c');
+    // emptied: Discount only, and the bank typed
+    expect((await ph('put', '/settings', { concessionReasons: [], paymentBanks: [] })).body.settings).toMatchObject({ concessionReasons: ['Discount'], paymentBanks: [] });
+    expect((await ph('put', '/settings', { concessionReasons: ['x'] })).status).toBe(400);
+    expect((await ph('put', '/settings', { paymentBanks: Array.from({ length: 11 }, (_, i) => `Sample Bank ${i}`) })).status).toBe(400);
+    expect((await ph('put', '/settings', { concessionReasons: ['Discount'] }, 'nurse')).status).toBe(403);
+  });
 });
 
 describe('GST rates since 22 September 2025', () => {
@@ -519,7 +534,7 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     expect((await ph('get', '/invoices/doctors', undefined, 'admin')).status).toBe(403);
   });
 
-  it('Search with nothing typed lists every patient of the type from the first registration (owner, 9 Nov 2026)', async () => {
+  it('Search with nothing typed: OPD today’s patients; IPD and All every patient of the type from the first registration', async () => {
     const med = await stocked();
     const seen = await register('Sample Opd Mother');
     await (await as('drA')).post(`/api/patients/${seen.id}/visits`).send({ clientRequestId: randomUUID() });
@@ -532,8 +547,14 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     await sell({ customer: { name: 'Sample Walkin', phone: '' }, lines: [{ medicineId: med.id, qty: 1 }], payment: { mode: 'cash' } });
     const names = async (query) => (await (await as('pharm')).get('/api/pharmacy/invoices/people').query(query)).body.people.map((x) => x.name);
 
-    expect(await names({ type: 'opd' })).toEqual(['Sample Opd Mother']);
+    // OPD with nothing typed (25-26 Nov 2026, the pharmacy's request): only today's patients – registered or arrived
+    // today, or billed today – never one admitted now, never a sensitive record; each with when she came
+    const opd = (await (await as('pharm')).get('/api/pharmacy/invoices/people').query({ type: 'opd' })).body.people;
+    expect(opd.map((x) => x.name).sort()).toEqual(['Sample Opd Mother', 'Sample Registered Only']);
+    expect(opd.every((x) => x.at && x.type === 'opd')).toBe(true);
     expect(await names({ type: 'ipd' })).toEqual(['Sample Ipd Mother']);
+    const ipd = (await (await as('pharm')).get('/api/pharmacy/invoices/people').query({ type: 'ipd' })).body.people;
+    expect(ipd[0].at).toBeTruthy(); // admitted: the date and time of her admission
     expect(await names({ type: 'external' })).toEqual(['Sample Walkin']);
     const all = await names({});
     expect(all).toEqual(expect.arrayContaining(['Sample Walkin', 'Sample Opd Mother', 'Sample Ipd Mother', 'Sample Registered Only']));
@@ -546,8 +567,10 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     expect(quiet.id).toBeTruthy();
     // Each list opened is in the audit log, with how many it showed – never the names
     const log = await AuditLog.findOne({ action: 'PHARMACY_PATIENT_LOOKED_UP', 'details.by': 'list', 'details.type': 'opd' }).lean();
-    expect(log.details).toMatchObject({ wholeList: 1, pages: 1 });
+    expect(log.details).toMatchObject({ people: 2 });
     expect(JSON.stringify(log.details)).not.toMatch(/Opd Mother/);
+    const whole = await AuditLog.findOne({ action: 'PHARMACY_PATIENT_LOOKED_UP', 'details.by': 'list', 'details.type': 'all' }).lean();
+    expect(whole.details).toMatchObject({ pages: 1 });
   });
 
   it('keeps hospitals apart and is for the pharmacist only', async () => {

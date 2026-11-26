@@ -5,7 +5,6 @@ import { api } from '../../api.js';
 import { Alert, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { expiryLabel } from './pharmacyFormat.js';
-import { DateText } from '../../components/DateText.jsx';
 
 // The counter's two windows from the store's earlier software (7 Nov 2026): the batches of the medicine chosen, to pick
 // one with the arrow keys, and the Payment window that opens when the bill is saved.
@@ -119,13 +118,18 @@ const toPaise = (text) => (/^\d+(\.\d{0,2})?$/.test(String(text).trim()) ? Math.
  * pays the whole bill now.
  * body: the invoice about to be made (without the payment); who: { uhid, name };
  * onSave({ payments, paymentRemarks } | { onHospitalBill: true }).
+ * 26 Nov 2026 (the pharmacy's request): small enough that Save is seen without scrolling – each way of paying one line
+ * (Amount, the number, the bank) under one row of headings, the bill's figures in a band above; the bank name already
+ * chosen (the first of the pharmacy's banks, Pharmacy → Settings); no Date box – the payment is today's.
  */
 export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClose, remarks: given = '' }) {
   const ref = useDialogFocus(onClose);
+  const pharmacySettings = useFetch('/pharmacy/settings');
+  const banks = pharmacySettings.data?.settings?.paymentBanks ?? [];
   const [quote, setQuote] = useState(null);
   const [quoteError, setQuoteError] = useState(null);
   const today = hospitalTodayIso();
-  const [ways, setWays] = useState(() => Object.fromEntries(WAYS.map((w) => [w.mode, { on: false, amount: '', reference: '', bank: '', date: today, authorisedBy: '', narration: '' }])));
+  const [ways, setWays] = useState(() => Object.fromEntries(WAYS.map((w) => [w.mode, { on: false, amount: '', reference: '', bank: '', authorisedBy: '', narration: '' }])));
   const [remarks, setRemarks] = useState(given); // the bill page's Remark, if one was typed (18 Nov 2026)
   const [authorisedBy, setAuthorisedBy] = useState(''); // an OPD bill on credit: who allowed it (18 Nov 2026)
   const [hospital, setHospital] = useState(false); // a registered patient: on her hospital bill
@@ -157,7 +161,9 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
   // Ticking a way fills in what is still to pay; unticking clears it. Paying here and the hospital bill exclude each other.
   const tick = (mode, on) => {
     if (on) setHospital(false);
-    set(mode, on ? { on, amount: !hospital && balance > 0 ? two(balance) : hospital ? two(net) : '' } : { on, amount: '' });
+    // the bank already chosen: the pharmacy's first bank (a wallet name for online is typed)
+    const bank = on && WAYS.find((w) => w.mode === mode)?.bank === 'Bank name' && !ways[mode].bank ? (banks[0] ?? '') : ways[mode].bank;
+    set(mode, on ? { on, bank, amount: !hospital && balance > 0 ? two(balance) : hospital ? two(net) : '' } : { on, amount: '' });
   };
   const toHospital = (on) => {
     setHospital(on);
@@ -178,7 +184,6 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
                 amountPaise: toPaise(x.amount),
                 ...(w.ref && x.reference.trim() ? { reference: x.reference.trim() } : {}),
                 ...(w.bank && x.bank.trim() ? { bank: x.bank.trim() } : {}),
-                ...(w.ref && x.date ? { on: x.date } : {}),
                 ...(w.mode === 'cheque' && x.authorisedBy.trim() ? { authorisedBy: x.authorisedBy.trim() } : {}),
                 ...(w.mode === 'cheque' && x.narration.trim() ? { narration: x.narration.trim() } : {}),
               };
@@ -195,7 +200,7 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
   );
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} tabIndex={-1} className="modal modal-wide ph-pay" role="dialog" aria-modal="true" aria-labelledby="ph-pay-title">
+      <div ref={ref} tabIndex={-1} className="modal modal-wide ph-pay ph-bill-pay" role="dialog" aria-modal="true" aria-labelledby="ph-pay-title">
         <h2 id="ph-pay-title" className="ph-pay-title">
           Payment
         </h2>
@@ -223,7 +228,13 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
                     <p className="hint">Goes on the patient’s hospital bill and is paid at the billing desk.</p>
                   </fieldset>
                 )}
-                <div className="ph-pay-grid">
+                <div className="ph-pay-grid" role="group" aria-label="How it is paid">
+                  <div className="ph-pay-head" aria-hidden="true">
+                    <span>Mode</span>
+                    <span>Amount</span>
+                    <span>Number</span>
+                    <span>Bank name</span>
+                  </div>
                   {WAYS.map((w) => {
                     const x = ways[w.mode];
                     const id = `ph-pay-${w.mode}`;
@@ -233,43 +244,34 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
                         <label className="ph-pay-tick">
                           <input type="checkbox" checked={x.on} onChange={(e) => tick(w.mode, e.target.checked)} /> {w.label}
                         </label>
-                        <label className="ph-pay-field">
-                          <span>Amount</span>
-                          <input id={`${id}-amount`} inputMode="decimal" className="tabular" disabled={!x.on} value={x.amount} maxLength={12} onChange={(e) => set(w.mode, { amount: e.target.value })} />
-                        </label>
-                        {w.ref && (
-                          <>
-                            <label className="ph-pay-field">
-                              <span>{w.ref}</span>
-                              <input
-                                disabled={!x.on}
-                                value={x.reference}
-                                maxLength={w.mode === 'card' ? 4 : 80}
-                                inputMode={w.mode === 'card' ? 'numeric' : undefined}
-                                autoComplete="off"
-                                onChange={(e) => set(w.mode, { reference: w.mode === 'card' ? e.target.value.replace(/\D/g, '') : e.target.value })}
-                              />
-                            </label>
-                            <label className="ph-pay-field">
-                              <span>{w.bank}</span>
-                              <input disabled={!x.on} value={x.bank} maxLength={80} onChange={(e) => set(w.mode, { bank: e.target.value })} />
-                            </label>
-                            <label className="ph-pay-field">
-                              <span>Date</span>
-                              <DateText disabled={!x.on} value={x.date} onChange={(v) => set(w.mode, { date: v })} />
-                            </label>
-                          </>
+                        <input id={`${id}-amount`} aria-label={`${w.label}: amount`} inputMode="decimal" className="tabular" disabled={!x.on} value={x.amount} maxLength={12} onChange={(e) => set(w.mode, { amount: e.target.value })} />
+                        {w.ref ? (
+                          <input
+                            aria-label={`${w.label}: ${w.ref}`}
+                            placeholder={w.ref}
+                            disabled={!x.on}
+                            value={x.reference}
+                            maxLength={w.mode === 'card' ? 4 : 80}
+                            inputMode={w.mode === 'card' ? 'numeric' : undefined}
+                            autoComplete="off"
+                            onChange={(e) => set(w.mode, { reference: w.mode === 'card' ? e.target.value.replace(/\D/g, '') : e.target.value })}
+                          />
+                        ) : (
+                          <span />
                         )}
-                        {w.mode === 'cheque' && (
+                        {w.bank ? (
+                          w.bank === 'Bank name' && banks.length > 0 ? (
+                            <BankChoice label={`${w.label}: ${w.bank}`} banks={banks} value={x.bank} disabled={!x.on} onChange={(bank) => set(w.mode, { bank })} />
+                          ) : (
+                            <input aria-label={`${w.label}: ${w.bank}`} placeholder={w.bank} disabled={!x.on} value={x.bank} maxLength={80} onChange={(e) => set(w.mode, { bank: e.target.value })} />
+                          )
+                        ) : (
+                          <span />
+                        )}
+                        {w.mode === 'cheque' && x.on && (
                           <div className="ph-pay-extra">
-                            <label className="ph-pay-field">
-                              <span>Authorised by</span>
-                              <input disabled={!x.on} value={x.authorisedBy} maxLength={100} onChange={(e) => set(w.mode, { authorisedBy: e.target.value })} />
-                            </label>
-                            <label className="ph-pay-field ph-pay-wide">
-                              <span>Narration</span>
-                              <input disabled={!x.on} value={x.narration} maxLength={200} onChange={(e) => set(w.mode, { narration: e.target.value })} />
-                            </label>
+                            <input aria-label="Cheque: authorised by" placeholder="Authorised by" value={x.authorisedBy} maxLength={100} onChange={(e) => set(w.mode, { authorisedBy: e.target.value })} />
+                            <input aria-label="Cheque: narration" placeholder="Narration" value={x.narration} maxLength={200} onChange={(e) => set(w.mode, { narration: e.target.value })} />
                           </div>
                         )}
                       </fieldset>
@@ -339,6 +341,35 @@ export function PaymentWindow({ body, who, walkIn, saving, error, onSave, onClos
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * The bank name of a payment (26 Nov 2026): the pharmacy's banks (Pharmacy → Settings), the first already chosen, and
+ * "Another bank…" to type one.
+ */
+export function BankChoice({ label, banks, value, disabled, onChange }) {
+  const [typing, setTyping] = useState(Boolean(value) && !banks.includes(value));
+  if (typing) {
+    return (
+      <span className="ph-pay-bank-own">
+        <input aria-label={label} placeholder="Bank name" value={value} maxLength={80} disabled={disabled} autoFocus onChange={(e) => onChange(e.target.value)} />
+        <button type="button" className="btn btn-link btn-sm" disabled={disabled} onClick={() => { setTyping(false); onChange(banks[0]); }}>
+          List
+        </button>
+      </span>
+    );
+  }
+  return (
+    <select aria-label={label} value={banks.includes(value) ? value : ''} disabled={disabled} onChange={(e) => (e.target.value === '__own' ? (setTyping(true), onChange('')) : onChange(e.target.value))}>
+      {!banks.includes(value) && <option value="">Bank name</option>}
+      {banks.map((b) => (
+        <option key={b} value={b}>
+          {b}
+        </option>
+      ))}
+      <option value="__own">Another bank…</option>
+    </select>
   );
 }
 

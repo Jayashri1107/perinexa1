@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { BedDouble, TriangleAlert, Wallet, CalendarClock, CalendarDays, CircleCheck, CircleX, ClipboardList, Minus, PackageX, Plus, Receipt, Stethoscope, Trash2, UserPlus } from 'lucide-react';
+import { BedDouble, TriangleAlert, Wallet, CalendarClock, CalendarDays, CircleCheck, CircleX, ClipboardList, Minus, PackageX, Plus, Receipt, Trash2 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Field } from '../../components/ui.jsx';
 import { api } from '../../api.js';
@@ -41,7 +41,8 @@ export const DOSE_CHOICES = Object.entries(FREQUENCY_WORDS)
 // PH2: a line bought by the pack is priced from the pack's MRP (pharmacyFormat.js priceOf)
 const grossOf = (lines) => lines.reduce((n, l) => n + (/^\d+$/.test(l.qty) ? (priceOf(l, Number(l.qty)) ?? 0) : 0), 0);
 // PH2: the batch's pack price, kept on a line (packMrpPaise, unitsPerPack) – none for a batch bought by the unit
-const packOf = (b) => ({ packMrpPaise: b?.packMrpPaise ?? null, unitsPerPack: b?.unitsPerPack ?? null });
+// 26 Nov 2026: and its unit landed cost (costPaise), for the line's Landing and Profit
+const packOf = (b) => ({ packMrpPaise: b?.packMrpPaise ?? null, unitsPerPack: b?.unitsPerPack ?? null, costPaise: b?.costPaise ?? null });
 const nowStamp = () => {
   const d = new Date();
   const date = d.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -54,17 +55,18 @@ const OWN = '__own';
  * A drop-down that opens on a click, with "Type another…" for anything not on the list (then a box, and "List" to go
  * back). value/onChange: the text; choices: the list; placeholder: the first, empty choice.
  */
-export function ChoiceBox({ value, onChange, choices, placeholder, label, ownLabel = 'Type another…', inputMode, maxLength = 60, onEnter, autoFocus = false, className = '' }) {
+export function ChoiceBox({ value, onChange, choices, placeholder, label, ownLabel = 'Type another…', inputMode, maxLength = 60, onEnter, autoFocus = false, className = '', disabled = false }) {
   const listed = value === '' || choices.map(String).includes(String(value));
   const [typing, setTyping] = useState(!listed);
   const [switched, setSwitched] = useState(false); // chosen "Type another…" just now: the box takes the cursor
   if (typing || !listed) {
     return (
       <span className={`ph-choice ph-choice-own ${className}`}>
-        <input aria-label={label} inputMode={inputMode} value={value} maxLength={maxLength} autoFocus={switched} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onEnter?.()} />
+        <input aria-label={label} inputMode={inputMode} value={value} maxLength={maxLength} autoFocus={switched} disabled={disabled} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onEnter?.()} />
         <button
           type="button"
           className="btn btn-link btn-sm"
+          disabled={disabled}
           onClick={() => {
             setTyping(false);
             onChange('');
@@ -81,6 +83,7 @@ export function ChoiceBox({ value, onChange, choices, placeholder, label, ownLab
       aria-label={label}
       value={String(value)}
       autoFocus={autoFocus}
+      disabled={disabled}
       onChange={(e) => {
         if (e.target.value === OWN) {
           setTyping(true);
@@ -205,8 +208,8 @@ function BatchPicker({ line, onChange, onPrice = null }) {
   const mrp = shown?.mrpPaise ?? null;
   const expiry = shown?.expiry ?? null;
   useEffect(() => {
-    if (onPrice && (mrp !== (line.mrpPaise ?? null) || expiry !== (line.expiry ?? null))) onPrice({ mrpPaise: mrp, expiry, ...packOf(shown) });
-  }, [mrp, expiry, line.mrpPaise, line.expiry, onPrice]);
+    if (onPrice && (mrp !== (line.mrpPaise ?? null) || expiry !== (line.expiry ?? null) || (shown?.costPaise ?? null) !== (line.costPaise ?? null))) onPrice({ mrpPaise: mrp, expiry, ...packOf(shown) });
+  }, [mrp, expiry, shown?.costPaise, line.mrpPaise, line.expiry, line.costPaise, onPrice]);
   return (
     <select className="ph-batch" aria-label={`Batch of ${line.medicine.name}`} value={line.batchId ?? ''} onChange={(e) => onChange(e.target.value || null)}>
       <option value="">Earliest expiry first</option>
@@ -537,6 +540,9 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const linePct = (l) => (l.disc != null && l.disc !== '' && Number.isFinite(Number(l.disc)) ? Number(l.disc) : null);
   const lineDiscOk = lines.every((l) => linePct(l) == null || (linePct(l) >= 0 && linePct(l) <= 100));
   const anyDiscount = pct > 0 || lines.some((l) => linePct(l) > 0);
+  // The Conc. reason choices (Pharmacy → Settings, 26 Nov 2026)
+  const pharmacySettings = useFetch('/pharmacy/settings');
+  const concessionReasons = pharmacySettings.data?.settings?.concessionReasons ?? ['Discount'];
   const qtyOk = lines.length > 0 && lines.every((l) => /^\d+$/.test(l.qty) && Number(l.qty) > 0 && !looseProblem(l.medicine, Number(l.qty)));
   // PH6: a prescription line given in full is sold again only with a reason
   const repeatsOk = lines.every((l) => !l.givenInFull || (l.repeatReason ?? '').trim().length >= 3);
@@ -583,6 +589,12 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const grossPaise = grossOf(lines);
   const billPct = Number.isFinite(pct) ? pct : 0;
   const rowNet = (l) => Math.round((rowPaise(l) ?? 0) * (1 - (linePct(l) ?? billPct) / 100)); // after its discount
+  // 26 Nov 2026 (the pharmacy's request, as the earlier software): each line's landing amount (what its stock cost),
+  // profit (after the discount) and discount amount – null while the quantity or the batch's cost is not known
+  const rowLanding = (l) => (rowPaise(l) != null && l.costPaise != null ? Math.round(Number(l.qty) * l.costPaise) : null);
+  const rowProfit = (l) => (rowLanding(l) != null ? rowNet(l) - rowLanding(l) : null);
+  const rowDisc = (l) => (rowPaise(l) != null ? rowPaise(l) - rowNet(l) : null);
+  const two = (paise) => (paise != null ? (paise / 100).toFixed(2) : '–');
   const totalPaise = lines.reduce((n, l) => n + rowNet(l), 0);
   // The GST inside the prices (MRP includes GST), after the discount
   const gstPaise = Math.round(lines.reduce((n, l) => n + (rowNet(l) * l.medicine.gstRate) / (100 + l.medicine.gstRate), 0));
@@ -662,27 +674,28 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
 
             <div className="ph-counter-body">
               {!embedded && (
-                <div className={`ph-type-tabs${patient || fromList ? ' is-fixed' : ''}`} role="radiogroup" aria-label="Type of patient">
-                  <button type="button" role="radio" aria-checked={who === 'patient'} disabled={Boolean(patient || fromList) && who !== 'patient'} onClick={() => (issue ? navigate('/pharmacy') : setWho('patient'))}>
-                    <Stethoscope aria-hidden="true" /> OPD
-                  </button>
-                  <button type="button" role="radio" aria-checked={who === 'inpatient'} disabled={Boolean(patient || fromList) && who !== 'inpatient'} onClick={() => !issue && navigate('/pharmacy/issue')}>
-                    <BedDouble aria-hidden="true" /> IPD
-                  </button>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={who === 'walkin'}
-                    disabled={Boolean(patient || fromList) && who !== 'walkin'}
-                    onClick={() => {
-                      if (issue) return navigate('/pharmacy', { state: { type: 'external' } });
-                      setWho('walkin');
-                      reset();
-                    }}
-                  >
-                    <UserPlus aria-hidden="true" /> External
-                  </button>
-                </div>
+                // 26 Nov 2026 (the pharmacy's request): OPD, IPD and External as tick boxes, as on the earlier software – one
+                // ticked; once the patient is chosen the others are off
+                <fieldset className={`ph-type-ticks ph-bill-ticks${patient || fromList ? ' is-fixed' : ''}`}>
+                  <legend className="sr-only">Type of patient</legend>
+                  {[
+                    ['patient', 'OPD', () => (issue ? navigate('/pharmacy') : setWho('patient'))],
+                    ['inpatient', 'IPD', () => !issue && navigate('/pharmacy/issue')],
+                    [
+                      'walkin',
+                      'External',
+                      () => {
+                        if (issue) return navigate('/pharmacy', { state: { type: 'external' } });
+                        setWho('walkin');
+                        reset();
+                      },
+                    ],
+                  ].map(([k, label, go]) => (
+                    <label key={k} className="ph-type-tick">
+                      <input type="checkbox" checked={who === k} disabled={Boolean(patient || fromList) && who !== k} onChange={() => who !== k && go()} /> {label}
+                    </label>
+                  ))}
+                </fieldset>
               )}
 
               <div className="ph-section-row">
@@ -879,27 +892,33 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                     </button>
                   </p>
                 )}
-                {entry && !entry.batch && <BatchGrid medicine={entry.medicine} onPick={(batch) => setEntry({ ...entry, batch })} onCancel={() => { setEntry(null); setFinderKey((k) => k + 1); }} />}
                 <details className="ph-counter-barcode">
                   <summary>Scan a barcode</summary>
                   <BarcodeBox onPick={scan} />
                 </details>
 
-                {/* 14 Nov 2026, as the earlier Sales Bill: the medicines in a box of fixed height that scrolls, always shown */}
+                {/* 14 Nov 2026, as the earlier Sales Bill: the medicines in a box of fixed height that scrolls, always shown.
+                    26 Nov 2026 (the pharmacy's request): the batch list opens over that box, its whole height – large
+                    enough to read, and no empty gap under it */}
+                <div className="ph-grid-area">
+                {entry && !entry.batch && <BatchGrid medicine={entry.medicine} onPick={(batch) => setEntry({ ...entry, batch })} onCancel={() => { setEntry(null); setFinderKey((k) => k + 1); }} />}
                 <div className="ph-grid-wrap ph-grid-box">
-                  <table className="ph-grid">
+                  <table className={`ph-grid${itemDisc ? ' has-disc' : ''}`}>
                     <thead>
                       <tr>
-                        <th scope="col">Item name</th>
-                        <th scope="col">Batch no</th>
-                        <th scope="col">Exp. date</th>
-                        <th scope="col" className="num">Qty</th>
-                        <th scope="col">Dose</th>
-                        <th scope="col" className="num">GST%</th>
-                        <th scope="col" className="num">MRP</th>
-                        {itemDisc && <th scope="col" className="num">Disc %</th>}
-                        <th scope="col" className="num">Total</th>
-                        <th scope="col">
+                        <th scope="col" className="ph-g-name">Item name</th>
+                        <th scope="col" className="ph-g-batch">Batch no</th>
+                        <th scope="col" className="ph-g-exp">Exp. date</th>
+                        <th scope="col" className="num ph-g-qty">Qty</th>
+                        <th scope="col" className="ph-g-dose">Dose</th>
+                        <th scope="col" className="num ph-g-gst">GST%</th>
+                        <th scope="col" className="num ph-g-mrp">MRP</th>
+                        {itemDisc && <th scope="col" className="num ph-g-pct">Disc %</th>}
+                        <th scope="col" className="num ph-g-land">Landing</th>
+                        <th scope="col" className="num ph-g-profit">Profit</th>
+                        <th scope="col" className="num ph-g-disc">Disc amt</th>
+                        <th scope="col" className="num ph-g-total">Total</th>
+                        <th scope="col" className="ph-g-x">
                           <span className="sr-only">Remove</span>
                         </th>
                       </tr>
@@ -907,7 +926,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                     <tbody>
                       {!lines.length && (
                         <tr>
-                          <td colSpan={10} className="muted ph-grid-empty">
+                          <td colSpan={13} className="muted ph-grid-empty">
                             No medicine on the bill yet – type the item name above.
                           </td>
                         </tr>
@@ -962,6 +981,15 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                               <input className="bill-price-input ph-line-disc" inputMode="decimal" aria-label={`Discount % on ${l.medicine.name}`} placeholder={pct > 0 ? String(pct) : ''} value={l.disc ?? ''} maxLength={6} aria-invalid={(linePct(l) ?? 0) > 100 || undefined} onChange={(e) => setLine(l.key, { disc: e.target.value.replace(/[^\d.]/g, '') })} />
                             </td>
                             )}
+                            <td data-label="Landing" className="num tabular">
+                              {two(rowLanding(l))}
+                            </td>
+                            <td data-label="Profit" className={`num tabular${rowProfit(l) < 0 ? ' ph-loss' : ''}`}>
+                              {two(rowProfit(l))}
+                            </td>
+                            <td data-label="Disc amt" className="num tabular">
+                              {two(rowDisc(l))}
+                            </td>
                             <td data-label="Total" className="num tabular">
                               {rowPaise(l) != null ? (rowNet(l) / 100).toFixed(2) : '–'}
                             </td>
@@ -980,7 +1008,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                           {/* PH7: her allergy, a look-alike – shown, never asked about (owner, 10 Nov 2026) */}
                           {(patient && allergyClash(l.medicine, allergies)) || l.medicine.lookAlike?.length ? (
                             <tr>
-                              <td colSpan={10} className="ph-warn-row">
+                              <td colSpan={13} className="ph-warn-row">
                                 {patient && allergyClash(l.medicine, allergies) && (
                                   <span className="ph-warn">
                                     <TriangleAlert aria-hidden="true" /> Allergy: her record says “{allergies}” – {l.medicine.name} may be a {allergyClash(l.medicine, allergies)}. Check with her and the doctor before giving.
@@ -997,7 +1025,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                           {/* PH6: already given in full – sold again only with a reason */}
                           {l.givenInFull && (
                             <tr>
-                              <td colSpan={10} className="ph-repeat-row">
+                              <td colSpan={13} className="ph-repeat-row">
                                 <label className="ph-repeat">
                                   <span className={(l.repeatReason ?? '').trim().length >= 3 ? 'hint' : 'field-error'}>
                                     {l.medicine.name} was already given in full ({l.sold.map((x) => `${x.qty} on ${x.date}, ${x.number}`).join('; ')}). Why is it sold again?
@@ -1009,7 +1037,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                           )}
                           {l.prescribed && l.medicine.inStock < Number(l.qty) && (
                             <tr>
-                              <td colSpan={10} className="field-error ph-prescribed-short">
+                              <td colSpan={13} className="field-error ph-prescribed-short">
                                 {l.medicine.name}: not enough in stock. It stays on the bill, so the invoice can be made once it is received.
                               </td>
                             </tr>
@@ -1018,6 +1046,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                       ))}
                     </tbody>
                   </table>
+                </div>
                 </div>
                 {isBusiness && <ShortHsnWarning medicines={lines.map((l) => l.medicine)} />}
                 {visitId && (
@@ -1038,10 +1067,12 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                     <span>Disc amount</span>
                     <input inputMode="decimal" className="tabular" value={discountAmount} maxLength={12} disabled={!lines.length} onChange={(e) => changeAmount(e.target.value.replace(/[^\d.]/g, ''))} />
                   </label>
-                  <label className="ph-total-field ph-total-reason">
+                  {/* 26 Nov 2026 (the pharmacy's request): a drop-down of the pharmacy's reasons (Pharmacy → Settings), so
+                      billing is quicker – "Type another reason…" for anything else */}
+                  <div className="ph-total-field ph-total-reason">
                     <span>Conc. reason</span>
-                    <input value={discountReason} maxLength={200} disabled={!anyDiscount} onChange={(e) => setDiscountReason(e.target.value)} />
-                  </label>
+                    <ChoiceBox label="Conc. reason" value={discountReason} choices={concessionReasons} placeholder="Choose the reason" ownLabel="Type another reason…" maxLength={200} disabled={!anyDiscount} onChange={setDiscountReason} />
+                  </div>
                   <label className="ph-total-field ph-total-reason">
                     <span>Remark</span>
                     <input value={remark} maxLength={200} onChange={(e) => setRemark(e.target.value)} />

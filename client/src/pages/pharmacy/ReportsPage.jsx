@@ -695,6 +695,13 @@ export function PharmacySettingsPage() {
     ['place', 'City or town', 50],
     ['pin', 'PIN code', 6],
   ];
+  // 26 Nov 2026: the Conc. reason choices on the Sales bill, one a line in the box
+  const reasonsText = v ? (typeof v.reasonsText === 'string' ? v.reasonsText : (v.concessionReasons ?? []).join('\n')) : '';
+  const listOf = (text) => [...new Map(text.split('\n').map((x) => x.trim()).filter((x) => x.length >= 2).map((x) => [x.toLowerCase(), x.slice(0, 80)])).values()];
+  const reasonList = listOf(reasonsText);
+  // and the banks of the bill's Payment window, the first already chosen
+  const banksText = v ? (typeof v.banksText === 'string' ? v.banksText : (v.paymentBanks ?? []).join('\n')) : '';
+  const bankList = listOf(banksText);
   const gstinNote = v?.gstin?.trim() ? gstinProblem(v.gstin) : null;
   const pinWrong = Boolean(v?.pin?.trim()) && !/^[1-9]\d{5}$/.test(v.pin.trim());
   return (
@@ -735,11 +742,19 @@ export function PharmacySettingsPage() {
                 </Field>
               ))}
             </div>
+            <h3>Concession reasons</h3>
+            <Field label="Conc. reason choices on the Sales bill – one a line" id="phs-reasons" error={s.fields.concessionReasons || (reasonList.length > 20 ? 'At most 20 reasons.' : undefined)} hint="Offered in the Conc. reason drop-down when a discount is given, for example the doctor who allowed it, or Discount. Anything else can still be typed on the bill." keepHint>
+              <textarea id="phs-reasons" rows={4} value={reasonsText} maxLength={2000} onChange={f('reasonsText')} disabled={!canEdit} />
+            </Field>
+            <h3>Banks for payments</h3>
+            <Field label="Bank names for card, NEFT / RTGS and cheque – one a line" id="phs-banks" error={s.fields.paymentBanks} hint="The first is already chosen in the bill’s Payment window; another can be chosen or typed there. Empty: the bank name is typed." keepHint>
+              <textarea id="phs-banks" rows={3} value={banksText} maxLength={1000} onChange={f('banksText')} disabled={!canEdit} />
+            </Field>
             {canEdit && (
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={!form || pinWrong || s.busy}
+                disabled={!form || pinWrong || reasonList.length > 20 || bankList.length > 10 || s.busy}
                 onClick={() =>
                   s.send(
                     '/pharmacy/settings',
@@ -747,6 +762,8 @@ export function PharmacySettingsPage() {
                       ...Object.fromEntries(fields.map(([k]) => [k, (v[k] ?? '').trim()])),
                       // PH17: reorder by use
                       ...Object.fromEntries(REORDER_FIELDS.map(([k, , lo, hi]) => [k, Math.min(hi, Math.max(lo, Number.parseInt(v[k], 10) || lo))])),
+                      concessionReasons: reasonList,
+                      paymentBanks: bankList,
                     },
                     'PUT',
                   )

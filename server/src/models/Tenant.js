@@ -43,6 +43,12 @@ const tenantSchema = new mongoose.Schema(
       reorderLookBackDays: { type: Number, min: 7, max: 180, default: 30 },
       reorderLeadDays: { type: Number, min: 0, max: 60, default: 3 },
       reorderCoverDays: { type: Number, min: 1, max: 120, default: 15 },
+      // The Conc. reason choices on the Sales bill (26 Nov 2026, the pharmacy's request) – e.g. the doctor who allowed
+      // the concession, or "Discount"; set under Pharmacy → Settings. Empty: "Discount" only.
+      concessionReasons: { type: [{ type: String, trim: true, maxlength: 80 }], default: undefined },
+      // The banks card, NEFT / RTGS and cheque payments go to (26 Nov 2026, the pharmacy's request): the first is already
+      // chosen in the bill's Payment window. Empty: the bank name is typed.
+      paymentBanks: { type: [{ type: String, trim: true, maxlength: 80 }], default: undefined },
     },
     // Billing settings (Billing → Settings, the hospital admin): the hospital's own UPI ID and the name it is
     // registered under, for the UPI payment link of a bill (4 Oct 2026). Empty = no UPI links. Not a secret, but it

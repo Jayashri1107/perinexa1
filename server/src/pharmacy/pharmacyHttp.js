@@ -53,8 +53,15 @@ export async function settingsOf(tenantId) {
     reorderLookBackDays: p.reorderLookBackDays ?? 30,
     reorderLeadDays: p.reorderLeadDays ?? 3,
     reorderCoverDays: p.reorderCoverDays ?? 15,
+    // 26 Nov 2026: the Conc. reason choices on the Sales bill
+    concessionReasons: p.concessionReasons?.length ? p.concessionReasons : DEFAULT_CONCESSION_REASONS,
+    // 26 Nov 2026: the banks of the Payment window, the first already chosen
+    paymentBanks: p.paymentBanks ?? [],
   };
 }
+
+/** The Conc. reason choices before the pharmacy sets its own (Pharmacy → Settings). */
+export const DEFAULT_CONCESSION_REASONS = ['Discount'];
 
 export const medicineView = (m, stock = null) => ({
   id: String(m._id),

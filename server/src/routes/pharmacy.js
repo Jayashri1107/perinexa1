@@ -112,6 +112,8 @@ pharmacyRouter.use('/patient-return', pharmacyPatientReturnRouter); // Sale retu
 
 // ---------- The pharmacy's details ----------
 
+// A list typed one a line: each once (the first spelling kept)
+const onceEach = (list) => list.filter((x, i) => list.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i);
 const settingsSchema = z
   .object({
     name: z.string().trim().max(150),
@@ -130,6 +132,16 @@ const settingsSchema = z
     reorderLookBackDays: z.number().int().min(7).max(180),
     reorderLeadDays: z.number().int().min(0).max(60),
     reorderCoverDays: z.number().int().min(1).max(120),
+    // 26 Nov 2026 (the pharmacy's request): the Conc. reason choices on the Sales bill – each once, at most 20
+    concessionReasons: z
+      .array(z.string().trim().min(2, 'A concession reason has at least 2 letters.').max(80))
+      .max(20, 'At most 20 concession reasons.')
+      .transform(onceEach),
+    // 26 Nov 2026: the banks of the bill's Payment window – the first is already chosen
+    paymentBanks: z
+      .array(z.string().trim().min(2, 'A bank name has at least 2 letters.').max(80))
+      .max(10, 'At most 10 banks.')
+      .transform(onceEach),
   })
   .partial()
   .strict();
@@ -1334,16 +1346,33 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
     });
   // Search with nothing typed (6 Nov 2026): first the people to bill now, as the pharmacist's register lists them –
   // those admitted (IPD) and those who arrived today (OPD) – then everyone billed, newest first. Never other records.
+  // 26 Nov 2026 (the pharmacy's request): also those registered today (a new patient not yet marked as arrived), and
+  // each one's date and time on the list – when she arrived today (OPD), was registered today, or was admitted (IPD)
   if (!search && !mrn && !byPerson && !doctor && !date && !ranged && !amount && !paidBy && type !== 'external') {
     const listed = new Set(people.map((x) => x.key));
-    const [stays, arrivals] = await Promise.all([
-      type === 'opd' ? [] : Admission.find({ tenantId: req.tenantId, status: 'admitted' }, { patientId: 1 }).sort({ admittedAt: -1 }).limit(PEOPLE_LIMIT).lean(),
-      type === 'ipd' ? [] : Arrival.find({ tenantId: req.tenantId, on: utcDay(today(req)) }, { patientId: 1 }).sort({ at: -1 }).limit(PEOPLE_LIMIT).lean(),
+    const day = today(req);
+    const [stays, arrivals, newcomers] = await Promise.all([
+      type === 'opd' ? [] : Admission.find({ tenantId: req.tenantId, status: 'admitted' }, { patientId: 1, admittedAt: 1 }).sort({ admittedAt: -1 }).limit(PEOPLE_LIMIT).lean(),
+      type === 'ipd' ? [] : Arrival.find({ tenantId: req.tenantId, on: utcDay(day) }, { patientId: 1, at: 1 }).sort({ at: -1 }).limit(PEOPLE_LIMIT).lean(),
+      type === 'ipd'
+        ? []
+        : Patient.find({ tenantId: req.tenantId, createdAt: { $gte: hospitalDayStart(day), $lt: hospitalDayStart(addDays(day, 1)) }, sensitive: { $ne: true }, 'duplicateOf.patient': null }, { _id: 1, createdAt: 1 }).sort({ createdAt: -1 }).limit(PEOPLE_LIMIT).lean(),
     ]);
-    const now = [...stays.map((x) => [String(x.patientId), 'ipd']), ...arrivals.map((x) => [String(x.patientId), 'opd'])].filter(([id], i, all) => !listed.has(id) && all.findIndex(([other]) => other === id) === i);
-    const found = new Map((now.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: now.map(([id]) => id) } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
+    // Registered today and admitted already: an IPD patient, not on the OPD list
+    const inNow = type === 'opd' && newcomers.length ? new Set((await Admission.distinct('patientId', { tenantId: req.tenantId, status: 'admitted', patientId: { $in: newcomers.map((x) => x._id) } })).map(String)) : new Set();
+    newcomers.splice(0, newcomers.length, ...newcomers.filter((x) => !inNow.has(String(x._id))));
+    const atOf = new Map();
+    for (const x of newcomers) atOf.set(String(x._id), x.createdAt);
+    for (const x of arrivals) atOf.set(String(x.patientId), x.at);
+    for (const x of stays) atOf.set(String(x.patientId), x.admittedAt);
+    const now = [...stays.map((x) => [String(x.patientId), 'ipd']), ...arrivals.map((x) => [String(x.patientId), 'opd']), ...newcomers.map((x) => [String(x._id), 'opd'])].filter(([id], i, all) => !listed.has(id) && all.findIndex(([other]) => other === id) === i);
+    // never a sensitive record or a duplicate on a list nobody searched for (26 Nov 2026)
+    const found = new Map((now.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: now.map(([id]) => id) }, sensitive: { $ne: true }, 'duplicateOf.patient': null }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
     const first = now.filter(([id]) => found.has(id)).map(([id, kind]) => ({ key: id, type: kind, name: found.get(id).fullName, mrn: found.get(id).mrn, phone: '', lastAt: null, billCount: 0, bills: [] }));
     people.unshift(...first);
+    for (const x of people) if (atOf.has(x.key)) x.at = atOf.get(x.key);
+    // OPD with nothing typed – today's patients only: newest first, by when she came (or her bill today)
+    if (opdToday) people.sort((a, b) => new Date(b.at ?? b.lastAt ?? 0) - new Date(a.at ?? a.lastAt ?? 0));
     people.splice(PEOPLE_LIMIT);
   }
   // After those with bills: registered patients without one, as far as the list has room
@@ -1399,7 +1428,10 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
     }
     for (const x of people) if (!x.doctor && found.get(x.key)) x.doctor = found.get(x.key);
   }
-  for (const x of people) x.doctor ??= '';
+  for (const x of people) {
+    x.doctor ??= '';
+    x.at ??= null; // 26 Nov 2026: the list's Date and Time – null: her latest bill's (lastAt)
+  }
   res.json({ people, more: browsing ? fullMore : groups.length > PEOPLE_LIMIT || unbilled.length > room, ...(browsing ? { pages } : {}) });
 });
 

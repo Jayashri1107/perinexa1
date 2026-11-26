@@ -33,6 +33,13 @@ const slipDate = (value) => {
   const d = new Date(value);
   return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 };
+// A time of day on the people list: 14:05
+const slipTime = (value) => {
+  const d = new Date(value);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+};
+// When a person on the list came: today's arrival (OPD) or her admission (IPD) – else her latest bill (26 Nov 2026)
+const whenOf = (x) => x.at ?? x.lastAt ?? null;
 const lineName = (l) => `${l.name}${l.schedule ? ` (${l.schedule === 'narcotic' ? 'NDPS' : `Sch. ${l.schedule}`})` : ''}`;
 const buyerAddress = (b) => [b.address, [b.place, b.pin].filter(Boolean).join(' '), b.state && `${b.state} (${b.stateCode})`].filter(Boolean).join(', ');
 
@@ -289,21 +296,16 @@ export function InvoicesPage({ pick = null }) {
         {desk ? (
           <div className="ph-sold-split">
             <section className="card ph-filters" aria-label="Find bills">
-              <div className="ph-filter">
-                <span>Patient type</span>
-                <div className="segmented" role="group" aria-label="Type of patient">
-                  {TYPE_CHOICES.map(([k, label, Icon]) => (
-                    <button
-                      key={k}
-                      type="button"
-                      aria-pressed={type === k}
-                      onClick={() => chooseType(k)}
-                    >
-                      <Icon aria-hidden="true" /> {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/* 26 Nov 2026 (the pharmacy's request): OPD, IPD and External as tick boxes, as on the earlier software –
+                  one at a time; none ticked is every type */}
+              <fieldset className="ph-filter ph-type-ticks">
+                <legend>Patient type</legend>
+                {TYPE_CHOICES.filter(([k]) => k !== 'all').map(([k, label]) => (
+                  <label key={k} className="ph-type-tick">
+                    <input type="checkbox" checked={type === k} onChange={(e) => chooseType(e.target.checked ? k : 'all')} /> {label}
+                  </label>
+                ))}
+              </fieldset>
               <button
                 type="button"
                 className="btn btn-primary ph-search-btn"
@@ -417,6 +419,7 @@ export function InvoicesPage({ pick = null }) {
                 <PeopleFound
                   found={found}
                   people={people}
+                  type={type}
                   onPick={pick ? pick.onPick : openBill}
                   opening={opening}
                   onBills={setPerson}
@@ -442,7 +445,7 @@ export function InvoicesPage({ pick = null }) {
 }
 
 /** The people a search found: nothing is listed until a search. Clicking someone opens a new bill for them. */
-export function PeopleFound({ found, people, onPick, onBills = null, onMore = null, opening = null }) {
+export function PeopleFound({ found, people, onPick, onBills = null, onMore = null, opening = null, type = 'all' }) {
   return (
     // 19 Nov 2026 (the developer): the list is one card – the table's own – with the tip above it, not a card in a card
     <section className={people.length ? 'ph-found ph-found-list' : 'card ph-found'} aria-label="People found">
@@ -457,13 +460,16 @@ export function PeopleFound({ found, people, onPick, onBills = null, onMore = nu
           rowKey="key"
           onRowClick={(x) => !opening && onPick(x)}
           rowClassName={(x) => (opening === x.key ? 'is-opening' : undefined)}
+          // 26 Nov 2026 (the pharmacy's request): UHID, Patient name, Date, Time and Dr. name first, as on the earlier
+          // software – the date and time she came today (OPD), was admitted (IPD), or of her latest bill
           columns={[
-            { key: 'name', header: 'Patient / customer', render: (x) => <strong className="ph-found-name" title={x.name}>{x.name}</strong> },
-            { key: 'mrn', header: 'UHID', width: '88px', render: (x) => (x.mrn ? <span className="tabular">{x.mrn}</span> : <span className="muted">–</span>) },
-            { key: 'type', header: 'Type', width: '104px', render: (x) => (x.type ? <TypePill type={x.type} /> : <span className="muted">–</span>) },
-            { key: 'doctor', header: 'Doctor', width: '22%', render: (x) => (x.doctor ? <span className="ph-found-doctor" title={x.doctor}>{x.doctor}</span> : <span className="muted">–</span>) },
+            { key: 'mrn', header: 'UHID', width: '96px', render: (x) => (x.mrn ? <span className="tabular">{x.mrn}</span> : <span className="muted">–</span>) },
+            { key: 'name', header: 'Patient name', render: (x) => <strong className="ph-found-name" title={x.name}>{x.name}</strong> },
+            { key: 'date', header: 'Date', width: '96px', render: (x) => (whenOf(x) ? <span className="tabular">{slipDate(whenOf(x))}</span> : <span className="muted">–</span>) },
+            { key: 'time', header: 'Time', width: '64px', render: (x) => (whenOf(x) ? <span className="tabular">{slipTime(whenOf(x))}</span> : <span className="muted">–</span>) },
+            { key: 'doctor', header: 'Dr. name', width: '20%', render: (x) => (x.doctor ? <span className="ph-found-doctor" title={x.doctor}>{x.doctor}</span> : <span className="muted">–</span>) },
+            ...(type === 'opd' || type === 'ipd' ? [] : [{ key: 'type', header: 'Type', width: '104px', render: (x) => (x.type ? <TypePill type={x.type} /> : <span className="muted">–</span>) }]),
             { key: 'bills', header: 'Bills', width: '80px', render: (x) => (x.billCount > 0 ? `${x.billCount} bill${x.billCount === 1 ? '' : 's'}` : <span className="muted">None yet</span>) },
-            { key: 'last', header: 'Last bill', width: '92px', render: (x) => (x.lastAt ? <span className="tabular">{slipDate(x.lastAt)}</span> : <span className="muted">–</span>) },
             {
               key: 'open',
               header: <span className="sr-only">Their bills</span>,

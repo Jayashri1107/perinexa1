@@ -1,5 +1,34 @@
 # Progress
 
+## Pharmacy: the pharmacy's written list of 26 Nov 2026 (items 1–8; item 9, the print format, waits for a sample)
+Built with Claude in the Claude app – **`npm test` and `npm run build` still to run**.
+1. **OPD, IPD and External are tick boxes** on the Sales bill's first page (beside the patient search) and on the bill
+   itself, as on the earlier software – one ticked at a time; none ticked on the first page is every type.
+2. **OPD with nothing typed lists today's patients only** (since 25 Nov): those who arrived today, those billed today,
+   and now also **those registered today** – never one admitted now, never a sensitive record or a duplicate.
+3. **The patient list starts UHID, Patient name, Date, Time, Dr. name** – the date and time she arrived today (OPD), was
+   registered today, or was admitted (IPD); else her latest bill's. Type is shown only with every type listed.
+4. **The batch list opens over the bill's box**, its full height: compact rows (the global table padding no longer wins),
+   about ten batches without scrolling, every column seen, no empty gap under it; the bill's lines stay below it.
+5. **Each bill line shows Landing, Profit and Disc amt** (the batch's unit landed cost × quantity; the line's amount
+   after discount less that; MRP less the amount), as on the earlier software. The bill's totals line is unchanged.
+6. **Conc. reason is a drop-down**: the pharmacy's reasons from **Pharmacy → Settings → Concession reasons** (one a line,
+   for example the doctors who allow concessions, and Discount), and "Type another reason…". Before any are set:
+   Discount only. The pharmacy types its doctors' names there – they are the hospital's own data, not in the code.
+7. **The Payment window is small**: the bill's figures a band of three across the top, each way of paying one line
+   under one row of headings (Mode, Amount, Number, Bank name), Cheque's Authorised by and Narration only when ticked,
+   the foot with Save pinned – no scrolling to Save on a 1366 × 768 screen or larger.
+8. **The bank name is already chosen** (card, NEFT / RTGS, cheque): the first of **Pharmacy → Settings → Banks for
+   payments**, another from the list or typed ("Another bank…"); with none set it is typed as before. **No Date box**:
+   the payment is today's (the payment's own date is no longer sent).
+- **Server:** `GET /api/pharmacy/invoices/people` (today's registrations; `at` on each person), pharmacy settings
+  `concessionReasons` and `paymentBanks` (`models/Tenant.js`, `pharmacy/pharmacyHttp.js`, `routes/pharmacy.js`).
+- **Tests:** `pharmacy.test.js` (today's OPD list, the two settings lists), `soldSide.test.jsx` (tick boxes, the list's
+  columns, the grid's columns, the Conc. reason drop-down, the bank choice), `pharmacyExtrasScreens.test.jsx` (Settings).
+  Checked here with the stand-in runner and in a browser with sample data.
+- **Next:** item 9 – the bill print format (the Sales bill slip and the GST tax invoice) – once the pharmacy sends a
+  sample of the format it wants.
+
 ## A return is a bill of its own; owing patients in Settlement; no credit once settled (26 Nov 2026)
 The pharmacy's request. Built with Claude in the Claude app – **`npm test` and `npm run build` still to run**.
 - **The bill stays as it was made.** A return (Sale return patient-wise, or Take medicines back) is its own bill – the

@@ -379,12 +379,14 @@
 /* The batch list of the medicine chosen */
 .ph-batchgrid { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-left: 4px solid var(--indigo-700); border-radius: var(--radius-md); background: var(--mist-50); }
 .ph-batchgrid-title { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-.ph-batchgrid-scroll { max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+/* 26 Nov 2026 (the pharmacy's request): the batch list easy to read – compact rows like the earlier software, and tall
+   enough for about ten batches, so it rarely scrolls */
+.ph-batchgrid-scroll { max-height: min(440px, 60vh); overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
 .ph-batchgrid-scroll:focus-visible { outline: 2px solid var(--indigo-700); outline-offset: 2px; }
 .ph-batchgrid-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
-.ph-batchgrid-table th { position: sticky; top: 0; padding: var(--space-1) var(--space-2); background: var(--mist-50); border-bottom: 1px solid var(--border); font-size: var(--fs-label); color: var(--slate-600); text-align: left; white-space: nowrap; }
-.ph-batchgrid-table td { padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
-.ph-batchgrid-table .num { text-align: right; }
+.ph-batchgrid .ph-batchgrid-table th { position: sticky; top: 0; z-index: 1; padding: 6px var(--space-2); background: var(--indigo-700); border-bottom: 1px solid var(--border); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--surface); text-align: left; white-space: nowrap; }
+.ph-batchgrid .ph-batchgrid-table td { padding: 5px var(--space-2); border-bottom: 1px solid var(--border); font-size: var(--fs-body); line-height: 1.35; vertical-align: middle; white-space: nowrap; }
+.ph-batchgrid .ph-batchgrid-table .num { text-align: right; }
 .ph-batchgrid-table tr[aria-selected='true'] td { background: var(--selected-bg); }
 .ph-batchgrid-table tr[aria-selected='true'] td:first-child { box-shadow: var(--selected-edge); font-weight: 600; }
 .ph-batchgrid-table tbody tr { cursor: pointer; }
@@ -510,15 +512,6 @@
 .ph-grid .num { text-align: right; }
 .ph-grid { min-width: 620px; table-layout: fixed; }
 /* Each column's share of the grid: name, batch, expiry, qty, dose, GST, MRP, total, remove */
-.ph-grid th:nth-child(1) { width: 19%; }
-.ph-grid th:nth-child(2) { width: 14%; }
-.ph-grid th:nth-child(3) { width: 10%; }
-.ph-grid th:nth-child(4) { width: 9%; }
-.ph-grid th:nth-child(5) { width: 16%; }
-.ph-grid th:nth-child(6) { width: 7%; }
-.ph-grid th:nth-child(7) { width: 8%; }
-.ph-grid th:nth-child(8) { width: 10%; }
-.ph-grid th:nth-child(9) { width: 7%; }
 .ph-grid td { overflow: hidden; }
 .ph-grid-name { overflow-wrap: anywhere; }
 .ph-grid :is(.ph-batch, .ph-dose-input, .ph-choice, .bill-price-input) { width: 100%; min-width: 0; max-width: none; }
@@ -560,7 +553,7 @@
   /* Stacked: the header band beside the patient, and the patient's details two a row */
   .ph-counter-left { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); }
   .ph-counter-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); align-content: start; }
-  .ph-counter-body > :is(.ph-type-tabs, .ph-section-label, .ph-section-row, input.bill-search-plain, .ph-person, .ph-counter-rx, .ph-find-slim, .ph-elsewhere, .appt-pick-list, .ph-today-title, .alert, p, .ph-rx-seen) { grid-column: 1 / -1; }
+  .ph-counter-body > :is(.ph-type-tabs, .ph-bill-ticks, .ph-section-label, .ph-section-row, input.bill-search-plain, .ph-person, .ph-counter-rx, .ph-find-slim, .ph-elsewhere, .appt-pick-list, .ph-today-title, .alert, p, .ph-rx-seen) { grid-column: 1 / -1; }
   .ph-walkin { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
   .ph-walkin > .ph-buyer { grid-column: 1 / -1; }
   .ph-counter-left .ph-rx-seen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
@@ -787,6 +780,37 @@
 .ph-pay-hospital-way .hint { margin: 0; }
 .ph-pay-choose { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--status-watch-bg); color: var(--status-watch-fg); font-size: 0.875rem; }
 .ph-pay-choose svg { width: 16px; height: 16px; flex: none; }
+/* The bill's Payment window, small (26 Nov 2026, the pharmacy's request): Save always in sight without scrolling – the
+   bill's figures a band of three across, each way of paying one line under one row of headings, the foot pinned */
+.modal.ph-bill-pay { display: flex; flex-direction: column; max-height: calc(100vh - 2 * var(--space-4)); padding: var(--space-4) var(--space-6) 0; overflow: auto; }
+.ph-bill-pay .ph-pay-title { margin-bottom: var(--space-2); }
+.ph-bill-pay .ph-pay-body { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+.ph-bill-pay .ph-pay-left { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-1) var(--space-3); padding: var(--space-2) var(--space-3); background: var(--mist-50); }
+.ph-bill-pay .ph-pay-fact { grid-template-columns: 104px minmax(0, 1fr); gap: var(--space-2); }
+.ph-bill-pay .ph-pay-fact input { height: 30px; min-height: 0; padding: 2px 8px; font-size: 0.875rem; background: var(--surface); }
+.ph-bill-pay .ph-pay-right { gap: var(--space-1); padding: var(--space-2) var(--space-3); }
+.ph-bill-pay .ph-pay-way.ph-pay-hospital-way { display: grid; grid-template-columns: 150px minmax(0, 1fr); margin: 0; padding: 2px var(--space-2); }
+.ph-bill-pay .ph-pay-grid { gap: 2px; }
+.ph-bill-pay .ph-pay-head, .ph-bill-pay .ph-pay-grid .ph-pay-way { display: grid; grid-template-columns: 170px 130px minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-2); align-items: center; }
+.ph-bill-pay .ph-pay-head { padding: 0 var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+.ph-bill-pay .ph-pay-grid .ph-pay-way { margin: 0; padding: 2px var(--space-2); }
+.ph-bill-pay .ph-pay-tick { padding: 0; }
+.ph-bill-pay .ph-pay-way :is(input:not([type='checkbox']), select) { width: 100%; min-width: 0; height: 32px; min-height: 0; margin: 0; padding: 2px 8px; font-size: 0.875rem; }
+.ph-bill-pay .ph-pay-way input:disabled, .ph-bill-pay .ph-pay-way select:disabled { background: var(--mist-50); }
+.ph-bill-pay .ph-pay-extra { grid-column: 2 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--space-2); }
+.ph-bill-pay .ph-pay-bank-own { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.ph-bill-pay .ph-pay-field.ph-pay-wide { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: var(--space-2); }
+.ph-bill-pay .ph-pay-field.ph-pay-wide input { height: 32px; min-height: 0; padding: 2px 8px; }
+.ph-bill-pay .ph-pay-choose { margin-top: var(--space-1); padding: 6px var(--space-3); }
+.ph-bill-pay .ph-pay-foot { position: sticky; bottom: 0; z-index: 2; margin: var(--space-2) calc(-1 * var(--space-6)) 0; padding: var(--space-2) var(--space-6) var(--space-3); border-top: 1px solid var(--border); background: var(--surface); }
+.ph-bill-pay > .hint { margin: 0 0 var(--space-2); }
+@media (max-width: 900px) {
+  .ph-bill-pay .ph-pay-left { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-bill-pay .ph-pay-head { display: none; }
+  .ph-bill-pay .ph-pay-grid .ph-pay-way { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-bill-pay .ph-pay-grid .ph-pay-tick { grid-column: 1 / -1; }
+  .ph-bill-pay .ph-pay-extra { grid-column: 1 / -1; }
+}
 
 /* Reports (13 Nov 2026): the tabs first, a report then fills the page; the period in a slim bar where a report needs it */
 .ph-rep-tabs { overflow-x: auto; flex-wrap: nowrap; max-width: 100%; }
@@ -933,6 +957,15 @@
 .ph-find-form .ph-find-tick { grid-column: 1 / -1; }
 @media (max-width: 760px) { .ph-fp { grid-template-columns: minmax(0, 1fr); } }
 .ph-filters .ph-filter > .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; border-radius: var(--radius-md); }
+/* Sales bill (26 Nov 2026): OPD, IPD and External as tick boxes on one line */
+.ph-filters .ph-type-ticks { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); width: 100%; padding: 0; border: 0; }
+.ph-filters .ph-type-ticks > legend { width: 100%; margin-bottom: var(--space-1); padding: 0; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+.ph-type-tick { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; font-weight: 600; color: var(--ink); cursor: pointer; }
+.ph-filters .ph-type-tick input { flex: none; width: 18px; height: 18px; min-height: 0; margin: 0; accent-color: var(--indigo-700); }
+/* The bill screen's OPD, IPD and External tick boxes, where the type tabs were */
+.ph-bill-ticks { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); min-width: 0; margin: 0; padding: var(--space-2) var(--space-3); border: 0; border-radius: var(--radius-md); background: var(--mist-100); }
+.ph-bill-ticks .ph-type-tick input { flex: none; width: 18px; height: 18px; min-height: 0; margin: 0; accent-color: var(--indigo-700); }
+.ph-bill-ticks .ph-type-tick:has(input:disabled) { color: var(--slate-600); cursor: default; }
 .ph-filters .ph-filter > .segmented button { justify-content: center; border-radius: var(--radius-sm); }
 .ph-find-form .ph-filter { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: var(--space-2); }
 .ph-find-form .ph-filter > span { font-size: 0.8125rem; color: var(--slate-600); }
@@ -1012,15 +1045,6 @@
 .ph-grid { font-size: 0.8125rem; }
 .ph-grid th { padding: 6px; font-size: 0.75rem; }
 .ph-grid td { padding: 3px 6px; }
-.ph-grid th:nth-child(1) { width: 26%; }
-.ph-grid th:nth-child(2) { width: 14%; }
-.ph-grid th:nth-child(3) { width: 9%; }
-.ph-grid th:nth-child(4) { width: 7%; }
-.ph-grid th:nth-child(5) { width: 14%; }
-.ph-grid th:nth-child(6) { width: 6%; }
-.ph-grid th:nth-child(7) { width: 8%; }
-.ph-grid th:nth-child(8) { width: 9%; }
-.ph-grid th:nth-child(9) { width: 7%; }
 .ph-grid td[data-label='Exp. date'] { white-space: nowrap; }
 .ph-grid .ph-grid-name strong { font-weight: 600; }
 .ph-grid :is(.bill-price-input, .ph-dose-input, select) { height: 28px; min-height: 0; padding: 2px 6px; font-size: 0.8125rem; }
@@ -1028,16 +1052,23 @@
 .ph-grid .icon-btn svg { width: 15px; height: 15px; }
 .ph-totals :is(input) { height: 32px; min-height: 0; padding-block: 3px; font-size: 0.8125rem; }
 .ph-totals .ph-total-field > span { font-size: 0.75rem; }
-/* the grid's columns rebalanced so expiry, quantity and GST stay readable on a 1366 screen */
-.ph-grid th:nth-child(1) { width: 22%; }
-.ph-grid th:nth-child(2) { width: 13%; }
-.ph-grid th:nth-child(3) { width: 10%; }
-.ph-grid th:nth-child(4) { width: 8%; }
-.ph-grid th:nth-child(5) { width: 14%; }
-.ph-grid th:nth-child(6) { width: 7%; }
-.ph-grid th:nth-child(7) { width: 8%; }
-.ph-grid th:nth-child(8) { width: 10%; }
-.ph-grid th:nth-child(9) { width: 6%; }
+/* the grid's columns (26 Nov 2026: with Landing, Profit and Disc amt, as the earlier software) – each by its class, so
+   the optional Disc % column never shifts the others; narrower than this the grid scrolls sideways */
+.ph-grid { min-width: 980px; }
+.ph-grid th.ph-g-name { width: 17%; }
+.ph-grid th.ph-g-batch { width: 10%; }
+.ph-grid th.ph-g-exp { width: 8%; }
+.ph-grid th.ph-g-qty { width: 6%; }
+.ph-grid th.ph-g-dose { width: 12%; }
+.ph-grid th.ph-g-gst { width: 5%; }
+.ph-grid th.ph-g-mrp { width: 7%; }
+.ph-grid th.ph-g-pct { width: 6%; }
+.ph-grid th.ph-g-land { width: 8%; }
+.ph-grid th.ph-g-profit { width: 8%; }
+.ph-grid th.ph-g-disc { width: 7%; }
+.ph-grid th.ph-g-total { width: 8%; }
+.ph-grid th.ph-g-x { width: 4%; }
+.ph-grid td.ph-loss { color: var(--status-high-fg); }
 .ph-grid :is(th, td) { padding-inline: 5px; }
 .ph-grid .bill-price-input { padding-inline: 4px; text-align: center; }
 .ph-grid td[data-label='Exp. date'] { font-size: 0.75rem; }
@@ -1053,6 +1084,11 @@
 .ph-pi-chosen input { height: 30px; min-height: 0; padding: 3px 8px; font-size: 0.875rem; }
 .ph-grid-wrap.ph-grid-box { height: 300px; overflow: auto; }
 .ph-grid-box .ph-grid th { z-index: 1; }
+/* 26 Nov 2026: the batch list over the bill's box, its whole height (the box keeps its place, so nothing jumps) */
+.ph-grid-area { position: relative; min-width: 0; }
+.ph-grid-area > .ph-batchgrid { position: absolute; top: 0; left: 0; right: 0; z-index: 5; max-height: 100%; margin: 0; overflow: hidden; box-shadow: var(--shadow-card); }
+.ph-grid-area > .ph-batchgrid .ph-batchgrid-scroll { flex: 0 1 auto; min-height: 0; max-height: none; }
+.ph-grid-area > .ph-batchgrid > .hint { margin: 0; }
 .ph-grid-box .ph-grid-empty { padding: var(--space-4) var(--space-3); }
 .ph-items-added { margin-right: auto; align-self: center; font-size: 0.875rem; font-weight: 600; color: var(--indigo-700); }
 

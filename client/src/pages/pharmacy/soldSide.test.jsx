@@ -13,6 +13,7 @@ vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembershi
 
 const { BillPaper, InvoicesPage, PeopleFound, billFits } = await import('./InvoicesPage.jsx');
 const { ChoiceBox, DOSE_CHOICES, SellPage } = await import('./SellPage.jsx');
+const { BankChoice } = await import('./CounterParts.jsx');
 
 const settings = { name: 'Sample Medical Stores', address: '4 Sample Road, Sample Town', phone: '99999 00000', gstin: '27ABCDE1234F1Z5', licence20: 'S-20-1', licence21: 'S-21-1', pharmacistName: 'Sample Pharmacist', place: 'Sample Town' };
 const line = { id: 'l1', name: 'Sampleol 650', schedule: '', batch: 'B100', expiry: '2029-08-01', qty: 2, mrpPaise: 35000, amountPaise: 66500 };
@@ -128,6 +129,21 @@ describe('Sold’s filters', () => {
     expect(html).not.toContain('Bills of Sample Mira Unbilled');
   });
 
+  it('26 Nov 2026: OPD, IPD and External are tick boxes; the list starts UHID, Patient name, Date, Time, Dr. name', () => {
+    const html = page();
+    expect(html).toMatch(/<legend>Patient type<\/legend>/);
+    for (const k of ['OPD', 'IPD', 'External']) expect(html).toMatch(new RegExp(`<input type="checkbox"[^>]*/> ${k}</label>`));
+    expect(html).not.toContain('aria-label="Type of patient"');
+    const people = [{ key: 'p1', type: 'opd', name: 'Sample Asha Kale', mrn: 'SH-0042', phone: '', doctor: 'Dr Sample Rao', at: '2026-11-26T04:35:00Z', lastAt: null, billCount: 0, bills: [] }];
+    const strip = (h) => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    const list = (type) => strip(renderToStaticMarkup(<MemoryRouter><PeopleFound found={{ data: { people } }} people={people} type={type} onPick={() => {}} /></MemoryRouter>));
+    const opd = list('opd');
+    expect(opd).toMatch(/UHID Patient name Date Time Dr\. name Bills/);
+    expect(opd).toMatch(/SH-0042 Sample Asha Kale 26\/11\/2026 \d\d:\d\d Dr Sample Rao None yet/);
+    expect(opd).not.toContain('Type');
+    expect(list('all')).toMatch(/Dr\. name Type Bills/); // every type: which one she is
+  });
+
   it('the bill inside Sold: no page header or type buttons; dose, MRP and amount columns', () => {
     const bill = renderToStaticMarkup(<MemoryRouter><SellPage kind="issue" start={{ patient: { id: 'p9', fullName: 'Sample Rekha Shinde', mrn: 'SH-0050' } }} embedded onMade={() => {}} onCancel={() => {}} /></MemoryRouter>);
     expect(bill).toContain('Sample Rekha Shinde');
@@ -135,6 +151,31 @@ describe('Sold’s filters', () => {
     expect(bill).not.toContain('aria-label="Type of patient"');
     const walkIn = renderToStaticMarkup(<MemoryRouter><SellPage start={{ type: 'external', customer: { name: 'Sample Walk Customer', phone: '' } }} embedded onMade={() => {}} /></MemoryRouter>);
     expect(walkIn).toContain('value="Sample Walk Customer"');
+    // 26 Nov 2026 (the pharmacy's request): each line's landing amount, profit and discount, as the earlier software
+    expect(bill.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).toMatch(/MRP Landing Profit Disc amt Total/);
+  });
+
+  it('26 Nov 2026: the bill screen has OPD, IPD and External tick boxes; Conc. reason is the pharmacy’s drop-down', () => {
+    answers['/pharmacy/settings'] = { settings: { ...settings, concessionReasons: ['Dr. Sample Mam', 'Discount'], paymentBanks: [] } };
+    const page = renderToStaticMarkup(<MemoryRouter><SellPage start={{ patient: { id: 'p9', fullName: 'Sample Rekha Shinde', mrn: 'SH-0050' } }} /></MemoryRouter>);
+    expect(page).toContain('<legend class="sr-only">Type of patient</legend>');
+    for (const k of ['OPD', 'IPD', 'External']) expect(page).toMatch(new RegExp(`<input type="checkbox"[^>]*/> ${k}</label>`));
+    expect(page).toMatch(/<input type="checkbox" checked=""[^>]*\/> OPD/);
+    expect(page).toMatch(/<select class="ph-choice " aria-label="Conc\. reason"[^>]*disabled=""/); // no discount yet
+    for (const part of ['Choose the reason', 'Dr. Sample Mam', 'Discount', 'Type another reason…']) expect(page).toContain(part);
+    delete answers['/pharmacy/settings'];
+  });
+
+  it('26 Nov 2026: the Payment window’s bank name – the pharmacy’s banks, the first already chosen, another typed', () => {
+    const banks = ['Sample Bank – current a/c', 'Other Sample Bank'];
+    const chosen = renderToStaticMarkup(<BankChoice label="Card: Bank name" banks={banks} value={banks[0]} disabled={false} onChange={() => {}} />);
+    expect(chosen).toContain('aria-label="Card: Bank name"');
+    expect(chosen).toMatch(/<option value="Sample Bank – current a\/c" selected="">/);
+    expect(chosen).toContain('Another bank…');
+    expect(chosen).not.toContain('>Bank name</option>'); // one is chosen: no empty choice
+    const own = renderToStaticMarkup(<BankChoice label="Card: Bank name" banks={banks} value="Sample Co-op Bank" disabled={false} onChange={() => {}} />);
+    expect(own).toContain('value="Sample Co-op Bank"');
+    expect(own).toContain('>List</button>');
   });
 
   it('the dose box offers the prescription frequencies to choose from', () => {

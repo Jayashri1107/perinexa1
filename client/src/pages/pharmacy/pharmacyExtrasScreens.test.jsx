@@ -541,6 +541,9 @@ describe('a sale to a business, and its e-invoice file', () => {
     expect(shown).toContain('PIN code');
     expect(shown).toContain('Please check: This GSTIN has a typing mistake');
     expect(shown).toContain('needed only for the e-invoice file of a sale to a business');
+    // 26 Nov 2026: the Sales bill's Conc. reason choices and the Payment window's banks, one a line
+    expect(shown).toContain('Conc. reason choices on the Sales bill – one a line');
+    expect(shown).toContain('Bank names for card, NEFT / RTGS and cheque – one a line');
     brand(html);
   });
 });
