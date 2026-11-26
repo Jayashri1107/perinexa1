@@ -8,8 +8,8 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('../../hooks/useFetch.js', () => ({ useFetch: () => ({ data: null, loading: false, error: null, status: null, reload: () => {} }) }));
 vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembership: { roles: ['pharmacist'] }, user: { name: 'Sample Pharmacist' }, activeTenantId: 't1' }) }));
 
-const { PatientReturnPage, ReturnSlip } = await import('./PatientReturnPage.jsx');
-const { findProblem, findQuery, lineForCode, lineReturn, linesShown, payWord, pickChoices, returnBody, returnFigures, returnSplit, typedQty } = await import('./patientReturn.js');
+const { HerHistory, PatientReturnPage, ReturnSlip } = await import('./PatientReturnPage.jsx');
+const { HISTORY_STATES, findProblem, findQuery, lineForCode, lineReturn, linesShown, payWord, pickChoices, returnBody, returnFigures, returnSplit, typedQty } = await import('./patientReturn.js');
 
 const words = (html) => html.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 const text = (html) => words(html).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
@@ -121,6 +121,34 @@ describe('the Sale return patient-wise screen', () => {
     expect((html.match(/class="btn btn-primary[^"]*"/g) ?? []).length).toBe(1); // Save
     expect(words(html)).toMatch(/<button type="button" class="btn btn-primary" disabled="">/);
     expect(shown).not.toMatch(/!/);
+  });
+
+  it('lists her medicines so far: what she took, what came back, and whether it can still come back (26 Nov 2026)', () => {
+    const H = (key, number, name, qty, returnedQty, state, extra = {}) => ({ key, invoiceId: key, number, date: '2026-11-20T06:00:00Z', kind: 'sale', madeAs: 'cash', name, batch: 'B1', expiry: '2028-06-30', mrpPaise: 500, qty, returnedQty, creditNotes: returnedQty ? ['CN-000001'] : [], amountPaise: qty * 500, state, ...extra });
+    const data = {
+      ...DATA,
+      history: [
+        H('a', 'PH-000100', 'Sample Iron 100', 10, 0, 'open'),
+        H('r', 'PH-000102', 'Sample Folic 5', 2, 2, 'returned', { madeAs: 'credit' }),
+        H('x', 'PH-000103', 'Sample Old 1', 1, 0, 'expired'),
+        H('w', 'PH-000111', 'Sample Folic 5', 5, 0, 'closed', { kind: 'issue', madeAs: 'hospital' }),
+        H('o', 'PH-000120', 'Sample Iron 100', 1, 0, 'open', { kind: 'issue', madeAs: 'hospital' }),
+      ],
+      historyMore: false,
+    };
+    const html = renderToStaticMarkup(<HerHistory data={data} picked={['a']} />);
+    const shown = text(html);
+    expect(shown).toMatch(/Her medicines so far \(5\)/);
+    expect(shown).toMatch(/Date Sales no Bill type Item name Batch no Exp date Qty Returned Amount Return/);
+    expect(shown).toMatch(/PH-000100 Cash Sample Iron 100 B1 .* 10 – 50\.00 Can take back/);
+    expect(shown).toMatch(/PH-000102 Credit Sample Folic 5 B1 .* 2 2 10\.00 Returned/);
+    expect(shown).toMatch(/PH-000103 .* Expired/);
+    expect(shown).toMatch(/PH-000111 IPD issue .* Bill final/);
+    expect(shown).toMatch(/PH-000120 IPD issue .* Other type/); // open, but not of the type chosen
+    expect(html).toMatch(/class="[^"]*is-picked/);
+    expect((html.match(/is-past/g) ?? []).length).toBe(4);
+    expect(Object.values(HISTORY_STATES).every((s) => s.word && s.tone)).toBe(true);
+    expect(text(renderToStaticMarkup(<HerHistory data={{ ...data, history: [], historyMore: false }} />))).toContain('Nothing sold or issued to her yet.');
   });
 
   it('prints a return slip: every medicine with its bill and credit note, and the money', () => {

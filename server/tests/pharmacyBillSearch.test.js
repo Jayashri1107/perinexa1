@@ -159,6 +159,31 @@ describe('Search bill', () => {
     expect((await search({ patientId: 'x' })).status).toBe(400); // only the parts the page sends
   });
 
+  it('Search sale return: the returns only, a cash return or a credit return, with their sums (26 Nov 2026)', async () => {
+    const { walkIn, credit } = await threeBills();
+    later('2026-09-29T06:00:00Z');
+    // One of the walk-in's tablets back for cash; one of Asha's (on credit, nothing paid) off what she owes
+    const cash = ok(await ph('post', `/invoices/${walkIn.id}/returns`, { items: [{ lineId: walkIn.lines[0].id, qty: 1 }], reason: 'Not needed', refund: { mode: 'cash' } }));
+    const owed = ok(await ph('post', `/invoices/${credit.id}/returns`, { items: [{ lineId: credit.lines[0].id, qty: 1 }], reason: 'Not needed' }));
+    const returns = (query = {}) => search({ show: 'returns', from: '2026-09-28', to: '2026-09-29', ...query });
+    const all = ok(await returns());
+    expect(all.bills).toHaveLength(2); // the bills themselves are not listed
+    const row = (n) => all.bills.find((r) => r.number === n);
+    expect(row(cash.creditNote)).toMatchObject({ isReturn: true, returnOf: walkIn.number, netPaise: -180, refundPaise: 180, creditPaise: 0 });
+    expect(row(owed.creditNote)).toMatchObject({ isReturn: true, returnOf: credit.number, netPaise: -500, refundPaise: 0, creditPaise: 500 });
+    expect(all.returnTotals).toEqual({ count: 2, returnPaise: 680, cashPaise: 180, creditPaise: 500 });
+    expect(ok(await returns({ pay: 'cash' })).bills.map((r) => r.number)).toEqual([cash.creditNote]);
+    expect(ok(await returns({ pay: 'credit' })).bills.map((r) => r.number)).toEqual([owed.creditNote]);
+    expect(ok(await returns({ number: credit.number })).bills.map((r) => r.number)).toEqual([owed.creditNote]); // the bill's number finds its returns
+    expect(ok(await returns({ from: '2026-09-28', to: '2026-09-28' })).bills).toEqual([]); // on the days of the returns
+    // Sales bill as before: the bills and the returns, without the returns' sums
+    const bills = ok(await search({ from: '2026-09-28', to: '2026-09-29' }));
+    expect(bills.bills).toHaveLength(5);
+    expect(bills.returnTotals).toBeUndefined();
+    expect((await search({ show: 'everything' })).status).toBe(400);
+    expect(await AuditLog.findOne({ action: 'PHARMACY_MIS_VIEWED', 'details.report': 'return-search' }).lean()).toBeTruthy();
+  });
+
   it('is for the pharmacist only, never shows another hospital’s bills, and is audited without the words typed', async () => {
     const { credit } = await threeBills();
     expect((await search({}, 'admin')).status).toBe(403);

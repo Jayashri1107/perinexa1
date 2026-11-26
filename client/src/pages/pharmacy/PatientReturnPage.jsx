@@ -5,12 +5,12 @@ import { api } from '../../api.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { DateText } from '../../components/DateText.jsx';
-import { Alert, formatDate, formatDayMonth } from '../../components/ui.jsx';
+import { Alert, StatusPill, formatDate, formatDayMonth } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { MODE_LABELS, expiryLabel } from './pharmacyFormat.js';
 import { PatientPickList, PharmacyHeader, bringIntoView } from './pharmacyUi.jsx';
 import { amount } from './searchBill.js';
-import { RETURN_KINDS, findProblem, findQuery, lineForCode, payWord, pickChoices, returnBody, returnFigures, typedQty } from './patientReturn.js';
+import { HISTORY_STATES, RETURN_KINDS, findProblem, findQuery, lineForCode, payWord, pickChoices, returnBody, returnFigures, typedQty } from './patientReturn.js';
 
 // Pharmacy → Sale return patient-wise (24 Nov 2026, the developer, after the "Sales Return" window of the pharmacy's
 // earlier software), the menu item after Settlement. On the left OPD or IPD, Registration no (UHID), First name, Doctor
@@ -42,6 +42,55 @@ function Fact({ label, value, id, strong = false }) {
 // The return bill's date and time as the store's earlier papers print them: 24/11/2026 and 16:43:05 (India time)
 const slipDay = (iso) => new Date(iso).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' });
 const slipTime = (iso) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' });
+
+/**
+ * Her whole history (26 Nov 2026, the pharmacy's request): everything she has taken so far, on all her bills, as soon
+ * as she is chosen – data.history (server/src/pharmacy/patientReturn.js purchaseHistory); a medicine that can still be
+ * taken back (it is in data.lines) comes into the return on a click.
+ */
+export function HerHistory({ data, picked = [], onPick }) {
+  const canTake = (h) => data.lines.find((l) => l.key === h.key) ?? null;
+  return (
+    <section className="ph-st-grid ph-pr-history" aria-labelledby="pr-history">
+      <h2 id="pr-history" className="ph-st-title">
+        Her medicines so far <span className="muted">({data.history.length}{data.historyMore ? '+' : ''})</span>
+      </h2>
+      <div className="ph-sb-bills ph-pr-history-box">
+        <DataTable
+          caption="Her medicines so far"
+          rows={data.history}
+          rowKey="key"
+          pageSize={0}
+          emptyText="Nothing sold or issued to her yet."
+          onRowClick={(h) => {
+            const line = canTake(h);
+            if (line) onPick?.(line);
+          }}
+          rowClassName={(h) => (canTake(h) ? (picked.includes(h.key) ? 'is-picked' : 'is-pickable') : 'is-past')}
+          columns={[
+            { key: 'date', header: 'Date', render: (h) => <span title={formatDate(h.date)}>{formatDayMonth(h.date)}</span> },
+            { key: 'number', header: 'Sales no', render: (h) => <span className="tabular">{h.number}</span> },
+            { key: 'type', header: 'Bill type', render: (h) => (h.kind === 'issue' ? 'IPD issue' : payWord({ madeAs: h.madeAs })) },
+            { key: 'name', header: 'Item name', render: (h) => <span className="ph-pr-name">{h.name}</span> },
+            { key: 'batch', header: 'Batch no', render: (h) => h.batch },
+            { key: 'expiry', header: 'Exp date', render: (h) => (h.expiry ? expiryLabel(h.expiry) : '–') },
+            { key: 'qty', header: 'Qty', align: 'right', render: (h) => h.qty },
+            { key: 'ret', header: 'Returned', align: 'right', render: (h) => (h.returnedQty ? <span title={h.creditNotes.join(', ')}>{h.returnedQty}</span> : '–') },
+            { key: 'amt', header: 'Amount', align: 'right', render: (h) => amount(h.amountPaise) },
+            {
+              key: 'state',
+              header: 'Return',
+              render: (h) => {
+                const s = HISTORY_STATES[canTake(h) ? 'open' : h.state === 'open' ? 'other' : h.state];
+                return <StatusPill tone={s.tone}>{s.word}</StatusPill>;
+              },
+            },
+          ]}
+        />
+      </div>
+    </section>
+  );
+}
 
 /**
  * The paper given with the return, as the earlier software's "Pharmacy Sales Return Bill" (24 Nov 2026, the developer's
@@ -469,6 +518,9 @@ export function PatientReturnPage({ start = null } = {}) {
                 <button type="button" className="btn btn-link btn-sm" onClick={() => setPrinting(true)}>
                   <Printer aria-hidden="true" /> Print the return bill again
                 </button>
+                <button type="button" className="btn btn-link btn-sm" onClick={() => navigate('/pharmacy/search-bill?returns=1')}>
+                  <Search aria-hidden="true" /> Search sale return
+                </button>
               </Alert>
             )}
             <Alert type="error" onClose={() => setError(null)}>
@@ -483,6 +535,9 @@ export function PatientReturnPage({ start = null } = {}) {
                 </span>
               </p>
             )}
+            {/* 26 Nov 2026 (the pharmacy's request): her whole history – everything she has taken so far, on all her
+                bills – as soon as she is chosen; a medicine that can still be taken back comes into the return on a click */}
+            {data?.history && <HerHistory data={data} picked={picked} onPick={(line) => !picked.includes(line.key) && pick(line)} />}
             <form className="ph-pr-item" onSubmit={scan}>
               <div className="ph-pr-item-box">
                 <label htmlFor="pr-item">{barcode ? 'Barcode' : 'Item name'}</label>

@@ -96,6 +96,44 @@ export function returnableLines(invoices, { today, bills = new Map(), barcodes =
   return { lines: rows.slice(0, RETURN_LINE_LIMIT), more: rows.length > RETURN_LINE_LIMIT, bills: billsOut, closedLines, expiredLines };
 }
 
+/**
+ * Her full history (26 Nov 2026, the pharmacy's request: "on choosing the patient, everything she has taken so far"):
+ * every medicine on all her bills – counter sales and ward issues – newest bill first, at most RETURN_LINE_LIMIT, each
+ * with what was taken, what came back (and on which credit notes) and whether it can still be taken back:
+ * state 'open' | 'returned' (all of it came back) | 'expired' | 'closed' (on a final or cancelled hospital bill).
+ * bills: Map billId → hospital bill ({ final, status }); madeOf: how each bill was made ('cash' | 'credit' | 'hospital').
+ */
+export function purchaseHistory(invoices, { today, bills = new Map(), madeOf = () => null }) {
+  const sorted = [...invoices].sort((a, b) => new Date(b.created?.at ?? b.createdAt) - new Date(a.created?.at ?? a.createdAt) || String(b.number).localeCompare(String(a.number)));
+  const rows = [];
+  for (const inv of sorted) {
+    const bill = inv.billId ? bills.get(String(inv.billId)) : null;
+    const closed = Boolean(inv.billId) && (!bill || bill.status !== 'open' || Boolean(bill.final));
+    for (const l of inv.lines) {
+      const returnedQty = l.returnedQty ?? 0;
+      const notes = (inv.returns ?? []).filter((r) => r.lines.some((x) => String(x.lineId) === String(l._id))).map((r) => r.number);
+      rows.push({
+        key: `${inv._id}:${l._id}`,
+        invoiceId: String(inv._id),
+        number: inv.number,
+        date: inv.created?.at ?? inv.createdAt,
+        kind: inv.kind, // 'sale' (OPD counter) | 'issue' (IPD ward)
+        madeAs: madeOf(inv),
+        name: l.name,
+        batch: l.batch,
+        expiry: l.expiry ? isoDay(l.expiry) : null,
+        mrpPaise: l.mrpPaise,
+        qty: l.qty,
+        returnedQty,
+        creditNotes: notes,
+        amountPaise: l.amountPaise,
+        state: returnedQty >= l.qty ? 'returned' : closed ? 'closed' : l.expiry && expired(l, today) ? 'expired' : 'open',
+      });
+    }
+  }
+  return { history: rows.slice(0, RETURN_LINE_LIMIT), historyMore: rows.length > RETURN_LINE_LIMIT };
+}
+
 /** What a returned quantity of one line is worth: at MRP, the discount on it, and the credit (after the discount). */
 export function returnedMoney(line, qty) {
   const gross = Math.round(unitGross(line) * qty);

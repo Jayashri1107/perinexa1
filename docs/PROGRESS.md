@@ -1,5 +1,25 @@
 # Progress
 
+## Pharmacy: her history on Sale return patient-wise, and Search sale return (26 Nov 2026)
+Built with Claude in the Claude app – **`npm test` and `npm run build` still to run**.
+- **Sale return patient-wise – her medicines so far:** once the patient is chosen, every medicine on all her bills
+  (counter sales and ward issues, every doctor's, newest first, at most 500): Date, Sales no, Bill type, Item name,
+  Batch no, Exp date, Qty, Returned (the credit notes on hover), Amount and Return – *Can take back*, *Returned*,
+  *Expired*, *Bill final* (on a final hospital bill) or *Other type* (OPD bill while IPD is chosen, or the other way).
+  A click on one that can be taken back puts it in the return below (`purchaseHistory` in
+  `server/src/pharmacy/patientReturn.js`, sent as `history` with the patient; `HerHistory` in `PatientReturnPage.jsx`).
+- **Search sale return:** Search bill now has *Search: Sales bill / Sale return* (Pharmacy → All topics → Search sale
+  return opens it on Sale return, `/pharmacy/search-bill?returns=1`; the return's saved message links to it). Sale
+  return lists only the returns (`show=returns`), each with Return date, Return no, Against bill, UHID, Patient name,
+  Return amt, Cash return and Credit return, and the sums; *Cash return* / *Credit return* choose those with money given
+  back / those taken off what she owed or her hospital bill (one return can be both). Double-click prints the return
+  bill again; Print list prints the returns. Audited as `PHARMACY_MIS_VIEWED` report `return-search`.
+- The bills themselves stay as they were made (done earlier today); the return's figures are the ones the return was
+  saved with – the same formula as before.
+- **Tests:** `pharmacyPatientReturn.test.js` (her history before and after a return), `pharmacyBillSearch.test.js`
+  (Search sale return), `patientReturn.test.jsx`, `searchBill.test.jsx`. Checked here with the stand-in runner and in a
+  browser with sample data.
+
 ## Pharmacy: the Sales bill's foot, and Settlement as the pharmacy's second note (26 Nov 2026)
 Built with Claude in the Claude app – **`npm test` and `npm run build` still to run**.
 - **Sales bill:** Expiry list, Bill List and Save always at the foot of its first page (OPD / IPD / External and the

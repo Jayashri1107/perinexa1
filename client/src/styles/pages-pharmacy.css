@@ -1092,6 +1092,12 @@
 .ph-grid-box .ph-grid-empty { padding: var(--space-4) var(--space-3); }
 .ph-items-added { margin-right: auto; align-self: center; font-size: 0.875rem; font-weight: 600; color: var(--indigo-700); }
 /* The Sales bill's first page (26 Nov 2026): Bill List, Expiry list and Save always at its foot, as on the bill */
+/* Sale return patient-wise (26 Nov 2026): her medicines so far, a box that scrolls; what can't come back is quieter */
+.ph-pr-history-box { max-height: 232px; overflow: auto; }
+.ph-pr-history .ph-st-title .muted { font-weight: 400; }
+.ph-pr-history tr.is-past td { color: var(--slate-600); }
+.ph-pr-history tr.is-pickable { cursor: pointer; }
+.ph-pr-history tr.is-picked td { background: var(--selected-bg); }
 .ph-pick-foot { position: sticky; bottom: 0; z-index: 4; margin-top: var(--space-3); padding: var(--space-2) var(--space-4); border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-card); }
 
 /* The medicine list as a dense table, as the earlier Sales Bill (14 Nov 2026): small text, thin cell lines, one short line

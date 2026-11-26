@@ -149,6 +149,18 @@ export const payFits = (row, pay) => !pay || (pay === 'credit') === isCredit(row
  * add up: sales = received + credit. hospitalPaise: how much of the credit is on hospital bills. The returns' own rows
  * (minus amounts) are in the sums, so the bills' rows can stay as they were made.
  */
+/**
+ * Search sale return (26 Nov 2026, the pharmacy's request): a return row fits Cash return when money was given back
+ * for it, Credit return when (some of) it came off what she owed or her hospital bill – a return can be both.
+ */
+export const returnFits = (row, pay) => !pay || (pay === 'cash' ? row.refundPaise > 0 : row.creditPaise > 0);
+
+/** The sums under the Search sale return list: the returns' worth, the money given back, and what came off credit. */
+export function returnTotals(rows) {
+  const add = (pick) => rows.reduce((n, r) => n + pick(r), 0);
+  return { count: rows.length, returnPaise: add((r) => -r.netPaise), cashPaise: add((r) => r.refundPaise), creditPaise: add((r) => r.creditPaise) };
+}
+
 export function billTotals(rows) {
   const add = (pick) => rows.reduce((n, r) => n + pick(r), 0);
   return {

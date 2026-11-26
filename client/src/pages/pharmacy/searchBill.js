@@ -14,6 +14,17 @@ export const PAY_CHOICES = [
   ['credit', 'Credit'],
   ['all', 'All'],
 ];
+// Search sale return (26 Nov 2026, the pharmacy's request): the bills, or the returns – cash return (money given back)
+// or credit return (off what she owed, or off her hospital bill)
+export const SHOW_CHOICES = [
+  ['bills', 'Sales bill'],
+  ['returns', 'Sale return'],
+];
+export const RETURN_PAY_CHOICES = [
+  ['cash', 'Cash return'],
+  ['credit', 'Credit return'],
+  ['all', 'All'],
+];
 const labelOf = (choices, key) => choices.find(([k]) => k === key)?.[1] ?? '';
 
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -33,7 +44,7 @@ export const yearBefore = (iso) => {
 };
 
 /** The search as the page opens: every type, today's bills (Date ticked), cash and credit. */
-export const newSearch = (today) => ({ type: 'all', byName: false, first: '', last: '', byMrn: false, mrn: '', byNumber: false, number: '', byDate: true, from: today, to: today, item: '', pay: 'all' });
+export const newSearch = (today, show = 'bills') => ({ show, type: 'all', byName: false, first: '', last: '', byMrn: false, mrn: '', byNumber: false, number: '', byDate: true, from: today, to: today, item: '', pay: 'all' });
 
 /** Is this a whole search (every box, of the right kind)? What the page kept in its history entry is checked before it is used. */
 export const isSearch = (f) => Boolean(f) && typeof f === 'object' && Object.entries(newSearch('')).every(([k, v]) => typeof f[k] === typeof v);
@@ -41,6 +52,7 @@ export const isSearch = (f) => Boolean(f) && typeof f === 'object' && Object.ent
 /** What Show asks the server for: only the parts that are ticked and filled in. */
 export function searchQuery(f) {
   const q = {};
+  if (f.show === 'returns') q.show = 'returns';
   if (f.type !== 'all') q.type = f.type;
   if (f.byName && f.first.trim()) q.first = f.first.trim();
   if (f.byName && f.last.trim()) q.last = f.last.trim();
@@ -78,8 +90,8 @@ export function periodWords(q) {
 /** The other parts of a search in words, for the printed list ('' when only the dates were chosen). */
 export function filterWords(q) {
   return [
-    q.type && `${labelOf(TYPE_CHOICES, q.type)} bills`,
-    q.pay && labelOf(PAY_CHOICES, q.pay),
+    q.type && `${labelOf(TYPE_CHOICES, q.type)} ${q.show === 'returns' ? 'returns' : 'bills'}`,
+    q.pay && labelOf(q.show === 'returns' ? RETURN_PAY_CHOICES : PAY_CHOICES, q.pay),
     (q.first || q.last) && `Name: ${[q.first, q.last].filter(Boolean).join(' ')}`,
     q.mrn && `UHID: ${q.mrn}`,
     q.number && `Sales no: ${q.number}`,
@@ -90,7 +102,10 @@ export function filterWords(q) {
 }
 
 /** What the list says when no bill fits: what was searched, so a wrong type or date is seen at once. */
-export const noBillsWords = (q) => `No bills match: ${[filterWords(q) || 'all bills', periodWords(q)].join(' · ')}. Change the search and press Show.`;
+export const noBillsWords = (q) =>
+  q.show === 'returns'
+    ? `No sale returns match: ${[filterWords(q) || 'all returns', periodWords(q)].join(' · ')}. Change the search and press Show.`
+    : `No bills match: ${[filterWords(q) || 'all bills', periodWords(q)].join(' · ')}. Change the search and press Show.`;
 
 /** An amount as on the pharmacy's bill: 1,308.61 – no rupee sign, always two decimals. */
 export const amount = (paise) => ((paise ?? 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

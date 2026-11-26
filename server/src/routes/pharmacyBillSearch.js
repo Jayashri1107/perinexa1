@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { addDays, daysBetween, hospitalDayStart, isoDay } from '../careplans/dates.js';
 import { Patient } from '../models/Patient.js';
 import { PharmacyInvoice } from '../models/Pharmacy.js';
-import { BILL_SEARCH_LIMIT, BILL_TYPES, PAY_CHOICES, billFilter, billRow, billTotals, payFits, returnRows } from '../pharmacy/billSearch.js';
+import { BILL_SEARCH_LIMIT, BILL_TYPES, PAY_CHOICES, billFilter, billRow, billTotals, payFits, returnFits, returnRows, returnTotals } from '../pharmacy/billSearch.js';
 import { desk, settingsOf } from '../pharmacy/pharmacyHttp.js';
 import { asMade, invoiceTotals } from '../pharmacy/pharmacyService.js';
 import { audit } from '../utils/audit.js';
@@ -39,6 +39,9 @@ const searchSchema = z
     to: requiredDateOnly('To date').optional(),
     item: z.string().trim().min(1).max(100).optional(),
     pay: z.enum(PAY_CHOICES).optional(),
+    // 26 Nov 2026 (the pharmacy's request): Search sale return – the returns only, pay: cash (money given back) or
+    // credit (off what she owed, or off her hospital bill)
+    show: z.enum(['bills', 'returns']).default('bills'),
   })
   .strict();
 
@@ -63,7 +66,9 @@ pharmacyBillSearchRouter.get('/', async (req, res) => {
   const before = q.to ? hospitalDayStart(addDays(q.to, 1)) : null;
   const number = q.number ? rx(q.number) : null;
   const item = q.item ? rx(q.item) : null;
+  const returnsOnly = q.show === 'returns';
   const filter = billFilter({ tenantId: req.tenantId, type: q.type, since, before, number, item, person });
+  if (returnsOnly) filter.$and = [...(filter.$and ?? []), { 'returns.0': { $exists: true } }];
   const found = await PharmacyInvoice.find(filter).sort({ 'created.at': -1, _id: -1 }).limit(BILL_SEARCH_LIMIT + 1).lean();
   const list = found.slice(0, BILL_SEARCH_LIMIT);
   const ids = [...new Set(list.map((i) => i.patientId && String(i.patientId)).filter(Boolean))];
@@ -76,12 +81,12 @@ pharmacyBillSearchRouter.get('/', async (req, res) => {
   for (const i of list) {
     const patient = i.patientId ? (patients.get(String(i.patientId)) ?? null) : null;
     const made = asMade(i);
-    if (inRange(i.created?.at ?? i.createdAt) && (!number || number.test(i.number))) rows.push(billRow(i, invoiceTotals(i), patient, made));
+    if (!returnsOnly && inRange(i.created?.at ?? i.createdAt) && (!number || number.test(i.number))) rows.push(billRow(i, invoiceTotals(i), patient, made));
     rows.push(...returnRows(i, patient, { since, before, number, item, made }));
   }
   rows.sort((a, b) => new Date(b.date) - new Date(a.date) || (a.isReturn === b.isReturn ? 0 : a.isReturn ? -1 : 1));
-  const bills = rows.filter((r) => payFits(r, q.pay));
+  const bills = rows.filter((r) => (returnsOnly ? returnFits(r, q.pay) : payFits(r, q.pay)));
 
-  await audit(req, 'PHARMACY_MIS_VIEWED', { details: { report: 'bill-search', ...(q.from ? { from: isoDay(q.from) } : {}), ...(q.to ? { to: isoDay(q.to) } : {}), rows: bills.length } });
-  res.json({ bills, totals: billTotals(bills), more: found.length > BILL_SEARCH_LIMIT, limit: BILL_SEARCH_LIMIT, settings: await settingsOf(req.tenantId) });
+  await audit(req, 'PHARMACY_MIS_VIEWED', { details: { report: returnsOnly ? 'return-search' : 'bill-search', ...(q.from ? { from: isoDay(q.from) } : {}), ...(q.to ? { to: isoDay(q.to) } : {}), rows: bills.length } });
+  res.json({ bills, totals: billTotals(bills), ...(returnsOnly ? { returnTotals: returnTotals(bills) } : {}), more: found.length > BILL_SEARCH_LIMIT, limit: BILL_SEARCH_LIMIT, settings: await settingsOf(req.tenantId) });
 });

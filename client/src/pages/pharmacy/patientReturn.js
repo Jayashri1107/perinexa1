@@ -2,6 +2,19 @@
 // figures under the list – the same rules as the server (server/src/pharmacy/patientReturn.js), kept apart from the
 // screen so they can be tested.
 
+/**
+ * Her history's Return column (26 Nov 2026): what can happen to each medicine – a word and a status tone (colour and
+ * icon) for each state of purchaseHistory (server/src/pharmacy/patientReturn.js); 'other': open, but on a bill of the
+ * other type (OPD counter sale while IPD is chosen, or the other way round).
+ */
+export const HISTORY_STATES = {
+  open: { word: 'Can take back', tone: 'stable' },
+  other: { word: 'Other type', tone: 'inactive' },
+  returned: { word: 'Returned', tone: 'inactive' },
+  expired: { word: 'Expired', tone: 'watch' },
+  closed: { word: 'Bill final', tone: 'inactive' },
+};
+
 export const RETURN_KINDS = [
   ['opd', 'OPD'],
   ['ipd', 'IPD'],

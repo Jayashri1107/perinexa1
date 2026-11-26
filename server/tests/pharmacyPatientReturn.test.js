@@ -65,6 +65,12 @@ describe('Sale return patient-wise', () => {
     const mine = (await ph('get', `/patient-return?type=opd&patientId=${p.id}`)).body;
     expect(mine.lines.map((l) => [l.number, l.canReturnQty])).toEqual([[owed.number, 3], [paid.number, 2]]);
     expect(mine.bills.find((b) => b.number === owed.number)).toMatchObject({ balancePaise: 600, paidPaise: 0 });
+    // Her history (26 Nov 2026, the pharmacy's request): every medicine she has taken so far, newest bill first
+    expect(mine.history.map((h) => [h.number, h.name, h.qty, h.returnedQty, h.state, h.madeAs])).toEqual([
+      [owed.number, 'Folvite 5', 3, 0, 'open', 'credit'],
+      [paid.number, 'Folvite 5', 2, 0, 'open', 'cash'],
+    ]);
+    expect(mine.historyMore).toBe(false);
     // the counter's, not the reception's or the admin's
     expect((await ph('get', `/patient-return?type=opd&patientId=${p.id}`, undefined, 'reception')).status).toBe(403);
     expect((await ph('get', `/patient-return?type=opd&patientId=${p.id}`, undefined, 'admin')).status).toBe(403);
@@ -107,5 +113,11 @@ describe('Sale return patient-wise', () => {
     expect(col.daily.sections.find((s) => s.key === 'cash-sales-return').rows.map((r) => [r.netPaise, r.cashPaise])).toEqual([[200, 200]]);
     // What is left to take back
     expect(res.body.lines.map((l) => [l.number, l.canReturnQty])).toEqual([[owed.number, 1], [paid.number, 1]]);
+    // Her history (26 Nov 2026): what came back, and on which credit note
+    const past = (await ph('get', `/patient-return?type=opd&patientId=${p.id}`)).body.history;
+    expect(past.map((h) => [h.number, h.qty, h.returnedQty, h.creditNotes, h.state])).toEqual([
+      [owed.number, 3, 2, [b.returns[0].number], 'open'],
+      [paid.number, 2, 1, [a.returns[0].number], 'open'],
+    ]);
   });
 });

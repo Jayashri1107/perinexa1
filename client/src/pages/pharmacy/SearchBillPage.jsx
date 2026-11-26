@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BedDouble, Printer, Search } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { DateText } from '../../components/DateText.jsx';
@@ -13,6 +13,8 @@ import { expiryLabel } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, PharmacyLetterhead } from './pharmacyUi.jsx';
 import {
   PAY_CHOICES,
+  RETURN_PAY_CHOICES,
+  SHOW_CHOICES,
   TYPE_CHOICES,
   admittedSearch,
   amount,
@@ -61,7 +63,7 @@ function keepInHistory(shown) {
 
 /** The medicines of the bill clicked: Sr no, Item name, Batch no, Expiry date, Rate, Qty, Total amt (the headings
  * stay in view before a bill is clicked, as on the earlier window). */
-export function BillItems({ bill }) {
+export function BillItems({ bill, returns = false }) {
   return (
     <div className="table-scroll">
       <table className="bill-report ph-sb-lines">
@@ -80,7 +82,7 @@ export function BillItems({ bill }) {
           {!bill && (
             <tr>
               <td colSpan={7} className="ph-sb-none">
-                Click a bill to see its medicines. Double-click it to print the bill again.
+                {returns ? 'Click a return to see its medicines. Double-click it to print the return bill again.' : 'Click a bill to see its medicines. Double-click it to print the bill again.'}
               </td>
             </tr>
           )}
@@ -155,6 +157,60 @@ export function BillListDocument({ title, facts = [], rows, settings }) {
         </tbody>
       </table>
       {t.hospitalPaise > 0 && <p className="pdoc-small">Of the balance, {amount(t.hospitalPaise)} is on hospital bills, paid at the billing desk.</p>}
+      <p className="bill-sign">Prepared by: ____________________ &nbsp; Checked by: ____________________</p>
+    </PrintDocument>
+  );
+}
+
+/** Search sale return's printed list (26 Nov 2026): the returns as on the screen – Return date, Return no, Against bill,
+ * UHID, Patient name, Return amt, Cash return, Credit return – and their totals. */
+export function ReturnListDocument({ facts = [], rows, settings }) {
+  const add = (pick) => rows.reduce((n, r) => n + pick(r), 0);
+  return (
+    <PrintDocument className="bill-doc ph-doc ph-mis-doc">
+      <PharmacyLetterhead settings={settings} />
+      <h1 className="pdoc-title">Sale returns</h1>
+      {facts.filter(Boolean).map((line, i) => (
+        <p key={i} className="pdoc-small">
+          {line}
+        </p>
+      ))}
+      <table className="bill-report ph-mis-table">
+        <thead>
+          <tr>
+            <th scope="col">Return date</th>
+            <th scope="col">Return no</th>
+            <th scope="col">Against bill</th>
+            <th scope="col">UHID</th>
+            <th scope="col">Patient name</th>
+            <th scope="col" className="num">Return amt</th>
+            <th scope="col" className="num">Cash return</th>
+            <th scope="col" className="num">Credit return</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td>{formatDateTime(r.date)}</td>
+              <td>{r.number}</td>
+              <td>{r.returnOf}</td>
+              <td>{r.mrn}</td>
+              <td>{r.name}</td>
+              <td className="num">{amount(-r.netPaise)}</td>
+              <td className="num">{r.refundPaise ? amount(r.refundPaise) : '–'}</td>
+              <td className="num">{r.creditPaise ? `${amount(r.creditPaise)}${r.onHospitalBill ? ' (hospital bill)' : ''}` : '–'}</td>
+            </tr>
+          ))}
+          <tr className="bill-report-total">
+            <td colSpan={5}>
+              {rows.length} {rows.length === 1 ? 'return' : 'returns'}
+            </td>
+            <td className="num">{amount(add((r) => -r.netPaise))}</td>
+            <td className="num">{amount(add((r) => r.refundPaise ?? 0))}</td>
+            <td className="num">{amount(add((r) => r.creditPaise ?? 0))}</td>
+          </tr>
+        </tbody>
+      </table>
       <p className="bill-sign">Prepared by: ____________________ &nbsp; Checked by: ____________________</p>
     </PrintDocument>
   );
@@ -368,9 +424,13 @@ export function SearchBillPage() {
   const routed = useLocation().state?.billSearch;
   const kept = isSearch(routed?.form) ? routed : null;
   const [today] = useState(() => isoOf(new Date()));
+  // Search sale return (26 Nov 2026): /pharmacy/search-bill?returns=1 opens on the returns
+  const [params] = useSearchParams();
+  const startShow = params.get('returns') ? 'returns' : 'bills';
   // What is in the boxes, and what was last searched for (Show): the list changes only when Show is pressed
-  const [form, setForm] = useState(() => kept?.form ?? newSearch(today));
-  const [shown, setShown] = useState(() => kept?.form ?? newSearch(today)); // as last searched
+  const [form, setForm] = useState(() => kept?.form ?? newSearch(today, startShow));
+  const [shown, setShown] = useState(() => kept?.form ?? newSearch(today, startShow)); // as last searched
+  const returnsShown = shown.show === 'returns';
   const query = searchQuery(shown);
   const res = useFetch('/pharmacy/bill-search', query);
   const rows = res.data?.bills ?? null;
@@ -450,6 +510,28 @@ export function SearchBillPage() {
     setAdmitted(false);
   };
 
+  // Search sale return (26 Nov 2026, the pharmacy's request): each return, a cash return (money given back) or a credit
+  // return (off what she owed, or off her hospital bill) – a return can be both; double-click prints its return bill
+  const returnColumns = [
+    { key: 'date', header: 'Return date', render: (r) => formatDateTime(r.date) },
+    { key: 'number', header: 'Return no', render: (r) => <span className="tabular">{r.number}</span> },
+    { key: 'of', header: 'Against bill', render: (r) => <span className="tabular">{r.returnOf}</span> },
+    { key: 'mrn', header: 'UHID', render: (r) => (r.mrn ? <span className="tabular">{r.mrn}</span> : <span className="muted">–</span>) },
+    { key: 'name', header: 'Patient name', render: (r) => <span className="ph-sb-name" title={r.name}>{r.name || '–'}</span> },
+    { key: 'amt', header: 'Return amt', align: 'right', render: (r) => amount(-r.netPaise) },
+    { key: 'cash', header: 'Cash return', align: 'right', render: (r) => (r.refundPaise ? amount(r.refundPaise) : '–') },
+    {
+      key: 'credit',
+      header: 'Credit return',
+      align: 'right',
+      render: (r) => (
+        <>
+          {r.creditPaise ? amount(r.creditPaise) : '–'}
+          {r.creditPaise > 0 && r.onHospitalBill && <span className="ph-sb-where"> off hospital bill</span>}
+        </>
+      ),
+    },
+  ];
   const columns = [
     {
       key: 'tick',
@@ -495,10 +577,20 @@ export function SearchBillPage() {
 
   return (
     <>
-      <PharmacyHeader className="ph-counter-head" title="Search bill" />
+      <PharmacyHeader className="ph-counter-head" title={returnsShown ? 'Search sale return' : 'Search bill'} />
       <div className="pf-content bill-page ph-sb">
         <div className="ph-sb-split">
           <form className="card ph-sb-panel" aria-label="What to search for" onSubmit={show}>
+            <fieldset className="ph-sb-set">
+              <legend>Search</legend>
+              <div className="ph-sb-choices">
+                {SHOW_CHOICES.map(([k, label]) => (
+                  <label key={k} className="check">
+                    <input type="radio" name="sb-show" value={k} checked={form.show === k} onChange={() => set({ show: k, pay: 'all' })} /> {label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <fieldset className="ph-sb-set">
               <legend>Patient type</legend>
               <div className="ph-sb-choices">
@@ -562,9 +654,9 @@ export function SearchBillPage() {
             </datalist>
 
             <fieldset className="ph-sb-set">
-              <legend>Cash or credit</legend>
+              <legend>{form.show === 'returns' ? 'Cash or credit return' : 'Cash or credit'}</legend>
               <div className="ph-sb-choices">
-                {PAY_CHOICES.map(([k, label]) => (
+                {(form.show === 'returns' ? RETURN_PAY_CHOICES : PAY_CHOICES).map(([k, label]) => (
                   <label key={k} className="check">
                     <input type="radio" name="sb-pay" value={k} checked={form.pay === k} onChange={() => set({ pay: k })} /> {label}
                   </label>
@@ -579,7 +671,7 @@ export function SearchBillPage() {
             <p className="ph-sb-count">
               <span>Total count</span> <strong className="tabular">{totals ? totals.count : '…'}</strong>
             </p>
-            <p className="hint ph-sb-tip">Double-click a bill to print it again.</p>
+            <p className="hint ph-sb-tip">{returnsShown ? 'Double-click a return to print its return bill again.' : 'Double-click a bill to print it again.'}</p>
           </form>
 
           <div className="ph-sb-results">
@@ -589,10 +681,10 @@ export function SearchBillPage() {
             {res.error && <Alert type="error">{res.error}</Alert>}
             <div className="ph-sb-bills">
               <DataTable
-                caption="Sales bills"
+                caption={returnsShown ? 'Sale returns' : 'Sales bills'}
                 rows={rows ?? undefined}
                 loading={res.loading}
-                columns={columns}
+                columns={returnsShown ? returnColumns : columns}
                 pageSize={0}
                 emptyText={noBillsWords(query)}
                 onRowClick={(r) => setPicked(r.id)}
@@ -601,7 +693,23 @@ export function SearchBillPage() {
               />
             </div>
             {res.data?.more && <p className="hint">The newest {res.data.limit.toLocaleString('en-IN')} bills are listed and added up. Choose fewer days, or add another part to the search, to see the rest.</p>}
-            {totals && (
+            {returnsShown && res.data?.returnTotals && (
+              <dl className="ph-sb-sums">
+                <div>
+                  <dt>Total return amt</dt>
+                  <dd>{amount(res.data.returnTotals.returnPaise)}</dd>
+                </div>
+                <div>
+                  <dt>Cash returned</dt>
+                  <dd>{amount(res.data.returnTotals.cashPaise)}</dd>
+                </div>
+                <div>
+                  <dt>Credit returned</dt>
+                  <dd>{amount(res.data.returnTotals.creditPaise)}</dd>
+                </div>
+              </dl>
+            )}
+            {totals && !returnsShown && (
               <dl className="ph-sb-sums">
                 <div>
                   <dt>Total sales amt</dt>
@@ -641,7 +749,7 @@ export function SearchBillPage() {
                   </div>
                 )}
               </div>
-              <BillItems bill={bill} />
+              <BillItems bill={bill} returns={returnsShown} />
             </section>
 
             <div className="ph-sb-actions">
@@ -694,8 +802,12 @@ export function SearchBillPage() {
         </PrintPreview>
       )}
       {printing?.what === 'list' && res.data && (
-        <PrintPreview title="Sales bills – print preview" hint="Print on A4 paper, landscape." page={{ size: 'A4 landscape', margin: '10mm' }} onClose={() => setPrinting(null)}>
-          <BillListDocument title="Sales bills" facts={[periodWords(query), filterWords(query)]} rows={chosen} settings={res.data.settings} />
+        <PrintPreview title={`${returnsShown ? 'Sale returns' : 'Sales bills'} – print preview`} hint="Print on A4 paper, landscape." page={{ size: 'A4 landscape', margin: '10mm' }} onClose={() => setPrinting(null)}>
+          {returnsShown ? (
+            <ReturnListDocument facts={[periodWords(query), filterWords(query)]} rows={chosen} settings={res.data.settings} />
+          ) : (
+            <BillListDocument title="Sales bills" facts={[periodWords(query), filterWords(query)]} rows={chosen} settings={res.data.settings} />
+          )}
         </PrintPreview>
       )}
       {printing?.what === 'ip' && res.data && (

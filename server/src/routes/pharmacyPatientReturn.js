@@ -4,7 +4,7 @@ import { Admission } from '../models/Admission.js';
 import { Bill } from '../models/Bill.js';
 import { Patient } from '../models/Patient.js';
 import { Medicine, PharmacyInvoice } from '../models/Pharmacy.js';
-import { RETURN_TYPES, returnableLines, returnSplit, returnedMoney } from '../pharmacy/patientReturn.js';
+import { RETURN_TYPES, purchaseHistory, returnableLines, returnSplit, returnedMoney } from '../pharmacy/patientReturn.js';
 import { desk, qty, reason, settingsOf, today } from '../pharmacy/pharmacyHttp.js';
 import { COUNTER_MODES } from '../pharmacy/pharmacyRules.js';
 import { asMade, invoiceTotals, isExpired, returnItems } from '../pharmacy/pharmacyService.js';
@@ -45,7 +45,13 @@ async function patientData(req, patient, type, doctor) {
   const medicineIds = [...new Set(open.flatMap((inv) => inv.lines.map((l) => String(l.medicineId))))];
   const barcodes = new Map((medicineIds.length ? await Medicine.find({ tenantId: req.tenantId, _id: { $in: medicineIds } }, { barcodes: 1 }).lean() : []).map((m) => [String(m._id), m.barcodes ?? []]));
   const found = returnableLines(open, { today: today(req), bills, barcodes, totalsOf: invoiceTotals, madeOf: (inv) => asMade(inv).madeAs });
-  return { patient: { id: String(patient._id), fullName: patient.fullName, mrn: patient.mrn ?? '' }, type, today: isoDay(today(req)), ...found };
+  // 26 Nov 2026 (the pharmacy's request): everything she has taken so far – counter sales and ward issues, every
+  // doctor's, newest first
+  const all = await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: patient._id }).sort({ 'created.at': -1 }).limit(400).lean();
+  const allBillIds = [...new Set(all.map((inv) => inv.billId && String(inv.billId)).filter((id) => id && !bills.has(id)))];
+  for (const b of allBillIds.length ? await Bill.find({ tenantId: req.tenantId, _id: { $in: allBillIds } }, { status: 1, final: 1 }).lean() : []) bills.set(String(b._id), b);
+  const past = purchaseHistory(all, { today: today(req), bills, madeOf: (inv) => asMade(inv).madeAs });
+  return { patient: { id: String(patient._id), fullName: patient.fullName, mrn: patient.mrn ?? '' }, type, today: isoDay(today(req)), ...found, ...past };
 }
 
 const findSchema = z

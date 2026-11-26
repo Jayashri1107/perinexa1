@@ -11,7 +11,7 @@ vi.mock('../../hooks/useFetch.js', () => ({
 }));
 vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembership: { roles: ['pharmacist'] }, user: { name: 'Sample Pharmacist' } }) }));
 
-const { BillItems, BillListDocument, IpSummaryDocument, SearchBillPage } = await import('./SearchBillPage.jsx');
+const { BillItems, BillListDocument, IpSummaryDocument, ReturnListDocument, SearchBillPage } = await import('./SearchBillPage.jsx');
 const {
   admittedSearch,
   amount,
@@ -54,6 +54,16 @@ beforeEach(() => {
 describe('what Show asks the server for', () => {
   it('opens on today’s bills: every type, Date ticked, cash and credit', () => {
     expect(searchQuery(newSearch('2026-11-21'))).toEqual({ from: '2026-11-21', to: '2026-11-21' });
+  });
+
+  it('Search sale return (26 Nov 2026): the returns only, with what was searched in its words', () => {
+    expect(searchQuery(newSearch('2026-11-21', 'returns'))).toEqual({ show: 'returns', from: '2026-11-21', to: '2026-11-21' });
+    expect(searchQuery({ ...newSearch('2026-11-21', 'returns'), pay: 'cash', type: 'ipd' })).toEqual({ show: 'returns', type: 'ipd', from: '2026-11-21', to: '2026-11-21', pay: 'cash' });
+    expect(filterWords({ show: 'returns', type: 'ipd', pay: 'credit' })).toBe('IPD returns · Credit return');
+    expect(noBillsWords({ show: 'returns', from: '2026-11-21', to: '2026-11-21' })).toMatch(/^No sale returns match: all returns · \d{1,2} \w{3} \d{4}\. Change the search and press Show\.$/);
+    const { show, ...older } = newSearch('2026-11-21');
+    expect(show).toBe('bills');
+    expect(isSearch(older)).toBe(false); // a search kept before 26 Nov 2026 starts afresh
   });
 
   it('sends only the parts that are ticked and filled in, without the spaces around them', () => {
@@ -269,6 +279,30 @@ describe('the Search bill screen', () => {
     expect(shown).toContain('Return CN-000003 (bill PH-000007) · Sample Asha Kale Re-print return bill Open bill PH-000007');
     expect(html).toContain('href="/pharmacy/invoices/i1"');
     expect(shown).toContain('1 Sample Folic 5 F1 Jun 2028 2.00 1 1.80');
+  });
+
+  it('Search sale return (26 Nov 2026): each return with its cash return and credit return, and their sums', () => {
+    const cashBack = { ...opd, id: 'i1:CN-000003', invoiceId: 'i1', number: 'CN-000003', returnOf: 'PH-000007', isReturn: true, discPaise: 0, netPaise: -2000, paidPaise: -2000, balPaise: 0, refundPaise: 2000, creditPaise: 0, lines: [] };
+    const offWard = { ...ward, id: 'i3:CN-000004', invoiceId: 'i3', number: 'CN-000004', returnOf: 'PH-000009', isReturn: true, discPaise: 0, netPaise: -5000, paidPaise: 0, balPaise: -5000, refundPaise: 0, creditPaise: 5000, lines: [] };
+    answers['/pharmacy/bill-search'] = found({ bills: [offWard, cashBack], totals: { count: 2, salesPaise: -7000, receivedPaise: -2000, creditPaise: -5000, hospitalPaise: -5000 }, returnTotals: { count: 2, returnPaise: 7000, cashPaise: 2000, creditPaise: 5000 } });
+    const html = words(renderToStaticMarkup(<MemoryRouter initialEntries={['/pharmacy/search-bill?returns=1']}><SearchBillPage /></MemoryRouter>));
+    const shown = text(html);
+    expect(shown).toContain('Search sale return');
+    expect(shown).toMatch(/Search Sales bill Sale return Patient type OPD IPD External All .* Cash or credit return Cash return Credit return All Show Total count 2/);
+    expect(html.match(/<input[^>]*name="sb-show"[^>]*>/g).filter((tag) => /\schecked=""/.test(tag))[0]).toContain('value="returns"');
+    expect(shown).toMatch(/Return date Return no Against bill UHID Patient name Return amt Cash return Credit return/);
+    expect(shown).toContain('CN-000004 PH-000009 SH-0050 Sample Meera Patil 50.00 – 50.00 off hospital bill');
+    expect(shown).toContain('CN-000003 PH-000007 SH-0042 Sample Asha Kale 20.00 20.00 –');
+    expect(shown).toContain('Total return amt 70.00 Cash returned 20.00 Credit returned 50.00');
+    expect(shown).not.toContain('Total sales amt');
+    expect(shown).toContain('Double-click a return to print its return bill again.');
+    expect(shown).toContain('Click a return to see its medicines. Double-click it to print the return bill again.');
+    const printed = text(renderToStaticMarkup(<ReturnListDocument facts={['21 Nov 2026']} rows={[offWard, cashBack]} settings={SETTINGS} />));
+    expect(printed).toMatch(/Sale returns 21 Nov 2026 Return date Return no Against bill UHID Patient name Return amt Cash return Credit return/);
+    expect(printed).toContain('CN-000004 PH-000009 SH-0050 Sample Meera Patil 50.00 – 50.00 (hospital bill)');
+    expect(printed).toContain('2 returns 70.00 20.00 50.00');
+    expect((html.match(/class="btn btn-primary[^"]*"/g) ?? []).length).toBe(1);
+    expect(shown).not.toMatch(/!/);
   });
 
   it('back from a bill opened here, the search and the clicked bill are as they were', () => {
