@@ -204,7 +204,9 @@ async function withOwed(req, rows, seen, { side, who, doctor, admitted = null })
 /** The patient's Paid and Credit bills, plus the advance available now. */
 export async function settlementData(req, patient, invoices) {
   const rows = invoices.map((inv) => settlementRow(inv, patient)).sort((a, b) => new Date(b.date) - new Date(a.date));
-  const creditBills = rows.filter((r) => r.balancePaise > 0);
+  // Credit bills one below the other, date-wise – the oldest first, the order a settlement pays them in (26 Nov 2026,
+  // the pharmacy's request); paid bills stay newest first
+  const creditBills = rows.filter((r) => r.balancePaise > 0).reverse();
   return {
     patient: { id: String(patient._id), fullName: patient.fullName, mrn: patient.mrn ?? '', phone: patient.phone ?? '' },
     paidBills: rows.filter((r) => r.balancePaise <= 0),

@@ -5,10 +5,12 @@
 // this file only sorts them.
 //
 // Every sale is judged on its own hospital day, so a period's report is the sum of its days:
-//  - Cash Sales: a counter sale's payments taken on the day it was sold (and advance used that day).
-//  - Credit Sale: what was left unpaid at the end of that day – a hospital-bill sale is credit in full. Concessions
-//    given that day lower it; a concession is not money received, so it is never in a payment column.
-//  - Due Collection: a payment on a later day for an earlier sale, with the date it was paid.
+//  - Cash Sales: a counter sale's payments taken with the bill when it was saved (and advance used then).
+//  - Credit Sale: what was left unpaid when the bill was saved – a hospital-bill sale is credit in full; returns of
+//    that day lower it. A concession is not money received, so it is never in a payment column.
+//  - Due Collection: a payment for a credit bill after it was saved – a Settlement, or Receive payment – with the date
+//    it was paid, the same day or later (26 Nov 2026, the pharmacy's request: "the settlement amount should show in Due
+//    Collection", as the earlier software; before, a payment on the day of the sale was counted as a cash sale).
 //  - Cash Sales Return: money given back at the counter for returned medicines (shown as a positive amount and taken
 //    away from the sales).
 // Advance used moves no money (it was counted when it was deposited): it has its own column, never a payment column.
@@ -29,6 +31,8 @@ const COLUMNS = ['netPaise', 'cashPaise', 'chequePaise', 'cardPaise', 'neftPaise
 const day = (at) => isoDay(toHospitalDate(at));
 const inRange = (at, from, to) => Boolean(at) && new Date(at) >= from && new Date(at) < to;
 const madeAt = (inv) => inv.created?.at ?? inv.createdAt;
+// A payment saved with the bill: never a settlement's, and the bill's own time (a minute's leeway) or no time of its own
+const atSale = (inv, p) => !p.settlementId && (!p.at || Math.abs(new Date(p.at).getTime() - new Date(madeAt(inv)).getTime()) < 60_000);
 
 function personOf(inv, patients) {
   const patient = inv.patientId ? patients.get(String(inv.patientId)) : null;
@@ -88,7 +92,6 @@ export function dailyCollection({ invoices = [], patients = new Map(), advances 
     if (inv.kind !== 'sale') continue; // a ward issue goes on the hospital bill: never a counter collection
     const soldOn = day(madeAt(inv));
     const dayEnd = hospitalDayStart(addDays(soldOn, 1));
-    const sameDay = (x) => inRange(x.at, from, to) && day(x.at) === soldOn;
 
     if (inRange(madeAt(inv), from, to)) {
       // The bill as it stood at the end of the day it was sold: returns of that day lower it, later ones are later news
@@ -99,15 +102,14 @@ export function dailyCollection({ invoices = [], patients = new Map(), advances 
       if (inv.billId) {
         if (net > 0) at['credit-sale'].push(rowOf(inv, patients, soldOn, inv.number, net));
       } else {
-        const paid = (inv.payments ?? []).filter((p) => p.kind === 'payment' && sameDay(p));
+        const paid = (inv.payments ?? []).filter((p) => p.kind === 'payment' && atSale(inv, p));
         const paidPaise = paid.reduce((n, p) => n + p.amountPaise, 0);
         if (paid.length) {
           const row = rowOf(inv, patients, soldOn, inv.number, paidPaise);
           for (const p of paid) put(row, p.mode, p.amountPaise);
           at['cash-sales'].push(row);
         }
-        const conceded = (inv.concessions ?? []).filter(sameDay).reduce((n, c) => n + c.amountPaise, 0);
-        const credit = Math.max(0, net - paidPaise - conceded);
+        const credit = Math.max(0, net - paidPaise);
         if (credit > 0) at['credit-sale'].push(rowOf(inv, patients, soldOn, inv.number, credit));
       }
     }
@@ -119,7 +121,7 @@ export function dailyCollection({ invoices = [], patients = new Map(), advances 
         const row = rowOf(inv, patients, day(p.at), returnOf(inv, p) || inv.number, p.amountPaise);
         put(row, p.mode, p.amountPaise);
         at['cash-sales-return'].push(row);
-      } else if (p.kind === 'payment' && day(p.at) !== soldOn) {
+      } else if (p.kind === 'payment' && !atSale(inv, p)) {
         const row = rowOf(inv, patients, day(p.at), inv.number, p.amountPaise);
         put(row, p.mode, p.amountPaise);
         at['due-collection'].push(row);

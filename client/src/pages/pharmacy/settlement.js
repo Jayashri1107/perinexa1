@@ -9,6 +9,12 @@ export const SETTLE_TYPES = [
   ['external', 'External'],
 ];
 
+/**
+ * A credit bill's Balance amount in the Credit bills table (26 Nov 2026, the earlier software's formula): Net pay −
+ * Paid amount − Amount, Amount being what this settlement pays on it – its whole balance once ticked, else nothing.
+ */
+export const settleLeft = (row, ticked) => Math.max(0, row.netPayablePaise - row.paidPaise - (ticked ? row.balancePaise : 0));
+
 // The ways money is received, as on the Payment window of a bill
 export const SETTLE_WAYS = [
   { mode: 'cash', label: 'Cash' },

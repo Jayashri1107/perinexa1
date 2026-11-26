@@ -152,7 +152,8 @@ describe('Settlement', () => {
   it('settles the credit bills chosen with advance, a discount and two ways of paying – oldest bill first', async () => {
     const { p, a, b, c } = await patientWithCredit();
     const before = (await ph('get', `/settlement?patientId=${p.id}`)).body;
-    expect(before.creditBills.map((x) => [x.number, x.balancePaise])).toEqual([[b.number, 400], [a.number, 600]]);
+    // 26 Nov 2026 (the pharmacy's request): her credit bills date-wise, the oldest first
+    expect(before.creditBills.map((x) => [x.number, x.balancePaise])).toEqual([[a.number, 600], [b.number, 400]]);
     expect(before.paidBills.map((x) => x.number)).toEqual([c.number]);
     expect(before).toMatchObject({ totalCreditPaise: 1000, advance: { balancePaise: 300 }, patient: { id: p.id, mrn: p.mrn } });
 

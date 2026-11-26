@@ -95,10 +95,20 @@ describe('the figures under the list', () => {
 });
 
 describe('the Sale return patient-wise screen', () => {
-  it('has the boxes, list, figures and buttons of the earlier window', () => {
+  it('opens blank – only Patient type (OPD, IPD) and Search – until Search is pressed (26 Nov 2026)', () => {
     const html = renderToStaticMarkup(
       <MemoryRouter initialEntries={['/pharmacy/patient-return']}>
         <PatientReturnPage />
+      </MemoryRouter>,
+    );
+    expect(text(html).trim()).toBe('Sale return patient-wise Patient type OPD IPD Search');
+    for (const gone of ['Direct print', 'Registration no', 'Item name', 'Total cash return', 'Save']) expect(text(html)).not.toContain(gone);
+  });
+
+  it('has the boxes, list, figures and buttons of the earlier window once Search is pressed', () => {
+    const html = renderToStaticMarkup(
+      <MemoryRouter initialEntries={['/pharmacy/patient-return']}>
+        <PatientReturnPage start={{ type: 'opd' }} />
       </MemoryRouter>,
     );
     const shown = text(html);
@@ -107,7 +117,7 @@ describe('the Sale return patient-wise screen', () => {
     expect(shown).toContain('Total cash return Total cash disc Total cash N disc Net cash return Total credit return Total credit disc Total credit N disc Net credit return Total return amt Total discount amt Total N discount amt Net return amt');
     expect((html.match(/<input id="pr-[a-z-]+"[^>]*value="0.00"/g) ?? []).length).toBe(12);
     expect(shown).toMatch(/Reason for the return Money given back by .*Save Close/);
-    expect(shown).toContain('Choose OPD or IPD and press Search for today’s patients – or type a registration no or first name.');
+    expect(shown).toContain('No patient with pharmacy bills found.');
     expect((html.match(/class="btn btn-primary[^"]*"/g) ?? []).length).toBe(1); // Save
     expect(words(html)).toMatch(/<button type="button" class="btn btn-primary" disabled="">/);
     expect(shown).not.toMatch(/!/);

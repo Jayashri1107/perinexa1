@@ -1,5 +1,25 @@
 # Progress
 
+## Pharmacy: the Sales bill's foot, and Settlement as the pharmacy's second note (26 Nov 2026)
+Built with Claude in the Claude app – **`npm test` and `npm run build` still to run**.
+- **Sales bill:** Expiry list, Bill List and Save always at the foot of its first page (OPD / IPD / External and the
+  patient list), as on the bill itself – Save waits (greyed) until a patient or walk-in customer is chosen.
+- **Settlement and Sale return patient-wise open blank:** only Patient type (OPD, IPD) and Search; the boxes, tables,
+  figures and buttons come once Search is pressed (Settlement: once the patient is found). Choosing OPD or IPD starts
+  again from blank. Settlement no longer offers External (a walk-in pays the whole bill – nothing to settle; walk-in
+  bills are on Search bill).
+- **Settlement – her credit bills date-wise:** one below the other, the oldest first (the order a settlement pays them).
+  Still only counter bills (the pharmacy's choice): ward issues stay on the hospital bill.
+- **Settlement – the earlier software's credit columns and formula:** tick, Sale date, Pt. bill no, UHID, Bill amount,
+  Net pay, Amount, Paid amount, Balance amount – Amount is what this settlement pays on the bill (its whole balance once
+  ticked) and Balance amount = Net pay − Paid amount − Amount (`settleLeft` in `settlement.js`).
+- **Daily Collection (Reports → Sales collection):** a settlement's payment – and any payment taken after the bill was
+  saved – is in **Due Collection**, the same day or later; Cash Sales holds only what was paid with the bill, and Credit
+  Sale the credit as the bill was saved. The totals by mode and the net collection are unchanged.
+- **Tests:** `pharmacyDailyCollection.test.js`, `pharmacySettlement.test.js` (credit bills oldest first),
+  `settlement.test.jsx`, `patientReturn.test.jsx`, `soldSide.test.jsx`. Checked here with the stand-in runner and in a
+  browser with sample data.
+
 ## Pharmacy: the pharmacy's written list of 26 Nov 2026 (items 1–8; item 9, the print format, waits for a sample)
 Built with Claude in the Claude app – **`npm test` and `npm run build` still to run**.
 1. **OPD, IPD and External are tick boxes** on the Sales bill's first page (beside the patient search) and on the bill

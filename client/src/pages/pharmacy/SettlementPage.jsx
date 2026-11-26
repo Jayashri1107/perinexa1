@@ -9,7 +9,7 @@ import { Alert, formatDate, formatDateTime, useDialogFocus } from '../../compone
 import { useFetch } from '../../hooks/useFetch.js';
 import { PharmacyHeader, PharmacyLetterhead, bringIntoView } from './pharmacyUi.jsx';
 import { amount } from './searchBill.js';
-import { SETTLE_TYPES, SETTLE_WAYS, findProblem, findQuery, findWindowProblem, findWindowQuery, newFindFilters, newSettle, selectedOf, settleBody, settleSums, settledWords } from './settlement.js';
+import { SETTLE_TYPES, SETTLE_WAYS, findProblem, findQuery, findWindowProblem, findWindowQuery, newFindFilters, newSettle, selectedOf, settleBody, settleLeft, settleSums, settledWords } from './settlement.js';
 
 // Pharmacy → Settlement (24 Nov 2026, the developer, after the "Pharmacy Settlement" window of the pharmacy's earlier
 // software), the menu item after Search bill. On the left OPD, IPD or External, the UHID and the patient's name, her
@@ -420,12 +420,13 @@ function FindPatientWindow({ type, initial, autoOne, onSelect, onClose }) {
   );
 }
 
-export function PharmacySettlementPage() {
+/** patientId: a patient to open the screen with (her bills at once), as when Search has found her. */
+export function PharmacySettlementPage({ patientId: startId = null } = {}) {
   const navigate = useNavigate();
   const [form, setForm] = useState(EMPTY);
   const [query, setQuery] = useState(null); // External: the walk-in bills asked for
   const [finding, setFinding] = useState(null); // the Find patient window: { type, initial, autoOne }
-  const [patientId, setPatientId] = useState(null);
+  const [patientId, setPatientId] = useState(startId);
   const [chosen, setChosen] = useState(() => new Set());
   const [opened, setOpened] = useState(null); // 'advance' | 'discount' | 'settle'
   const [done, setDone] = useState(null); // the last settlement: { result, words, patient, at }
@@ -468,6 +469,9 @@ export function PharmacySettlementPage() {
     setDone(null);
   };
 
+  // 26 Nov 2026 (the pharmacy's request): the screen stays blank – only Patient type and Search – until Search has
+  // found the patient (or her bills are loading)
+  const shown = Boolean(patientId || query);
   const credit = data?.creditBills ?? [];
   const paid = external ?? data?.paidBills ?? [];
   const selected = selectedOf(credit, chosen);
@@ -507,13 +511,16 @@ export function PharmacySettlementPage() {
       header: <span className="sr-only">Chosen</span>,
       render: (r) => <input type="checkbox" aria-label={`Settle bill ${r.number}`} checked={chosen.has(r.id)} onChange={(e) => tick(r.id, e.target.checked)} onClick={(e) => e.stopPropagation()} />,
     },
-    { key: 'date', header: 'Sales date', render: (r) => formatDateTime(r.date) },
-    { key: 'number', header: 'Print bill no', render: (r) => <span className="tabular">{r.number}</span> },
+    // 26 Nov 2026 (the pharmacy's request, the earlier software's columns and formula): Amount is what this settlement
+    // pays on the bill – its whole balance once ticked – and Balance amount = Net pay − Paid amount − Amount
+    { key: 'date', header: 'Sale date', render: (r) => formatDateTime(r.date) },
+    { key: 'number', header: 'Pt. bill no', render: (r) => <span className="tabular">{r.number}</span> },
     { key: 'mrn', header: 'UHID', render: (r) => <span className="tabular">{r.mrn || '–'}</span> },
-    { ...money('billAmount'), header: 'Bill amt' },
-    { ...money('concession'), header: 'Con. amt' },
-    { ...money('netPayable'), header: 'Net pay amt' },
-    { ...money('balance'), header: 'Balance' },
+    { ...money('billAmount'), header: 'Bill amount' },
+    { ...money('netPayable'), header: 'Net pay' },
+    { key: 'now', align: 'right', header: 'Amount', render: (r) => (chosen.has(r.id) ? amount(r.balancePaise) : '') },
+    { ...money('paid'), header: 'Paid amount' },
+    { key: 'left', align: 'right', header: 'Balance amount', render: (r) => amount(settleLeft(r, chosen.has(r.id))) },
   ];
   const nothingWords = external
     ? 'No walk-in bills found.'
@@ -521,7 +528,7 @@ export function PharmacySettlementPage() {
       ? 'No paid bills.'
       : patientId || walkIns.loading
         ? 'Loading…'
-        : 'Choose OPD, IPD or External and press Search – the list of patients opens – or type the UHID or name first.';
+        : 'Choose OPD or IPD and press Search – the list of patients opens.';
 
   return (
     <>
@@ -532,9 +539,21 @@ export function PharmacySettlementPage() {
             <fieldset className="ph-sb-set">
               <legend>Patient type</legend>
               <div className="ph-sb-choices">
-                {SETTLE_TYPES.map(([k, label]) => (
+                {/* 26 Nov 2026 (the pharmacy's request): OPD and IPD only – a walk-in pays the whole bill, nothing to settle;
+                    choosing one starts again from a blank screen */}
+                {SETTLE_TYPES.filter(([k]) => k !== 'external').map(([k, label]) => (
                   <label key={k} className="check">
-                    <input type="radio" name="st-type" value={k} checked={form.type === k} onChange={() => set({ type: k })} /> {label}
+                    <input
+                      type="radio"
+                      name="st-type"
+                      value={k}
+                      checked={form.type === k}
+                      onChange={() => {
+                        clear();
+                        set({ type: k });
+                      }}
+                    />{' '}
+                    {label}
                   </label>
                 ))}
               </div>
@@ -546,12 +565,14 @@ export function PharmacySettlementPage() {
               <button type="submit" className="btn btn-secondary ph-tick-search-btn" disabled={Boolean(problem)}>
                 <Search aria-hidden="true" /> Search
               </button>
-              {(query || patientId || form.mrn || form.name) && (
+              {shown && (
                 <button type="button" className="btn btn-link btn-sm" onClick={clear}>
                   Clear
                 </button>
               )}
             </div>
+            {/* 26 Nov 2026 (the pharmacy's request): until Search finds the patient, only Patient type and Search */}
+            {shown && (
             <div className="ph-tick-rows">
               <div className="ph-tick-row">
                 <label className="check ph-tick-label">
@@ -566,6 +587,7 @@ export function PharmacySettlementPage() {
                 <input type="search" value={form.name} maxLength={80} autoComplete="off" aria-label={form.type === 'external' ? 'Customer name' : 'Patient name'} disabled={!form.byName} onChange={(e) => set({ name: e.target.value })} />
               </div>
             </div>
+            )}
             {data && (
               <p className="ph-st-advance">
                 Advance balance: <strong className="tabular">₹{amount(advancePaise)}</strong>
@@ -576,6 +598,7 @@ export function PharmacySettlementPage() {
             {walkIns.error && <Alert type="error">{walkIns.error}</Alert>}
           </form>
 
+          {shown ? (
           <div className="ph-sb-results">
             {done && (
               <Alert type="success" onClose={() => setDone(null)}>
@@ -647,6 +670,9 @@ export function PharmacySettlementPage() {
             {data && credit.length > 0 && !selected.rows.length && <p className="hint ph-sb-tip">Tick the credit bills to settle (or Select all), then Advance, Discount or Settlement.</p>}
             {form.type === 'ipd' && data && <p className="hint ph-sb-tip">Only counter bills are settled here: ward issues, and bills put on the hospital bill, are paid at the billing desk.</p>}
           </div>
+          ) : (
+            <div className="ph-sb-results ph-blank-results" aria-hidden="true" />
+          )}
         </div>
       </div>
 

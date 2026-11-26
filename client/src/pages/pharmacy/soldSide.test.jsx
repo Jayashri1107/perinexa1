@@ -129,6 +129,17 @@ describe('Sold’s filters', () => {
     expect(html).not.toContain('Bills of Sample Mira Unbilled');
   });
 
+  it('26 Nov 2026: the Sales bill always has Bill List, Expiry list and Save at its foot, as on the bill', () => {
+    const pick = { onPick: () => {}, onWalkIn: () => {}, onScan: () => {}, scanned: [], clearScanned: () => {} };
+    const html = renderToStaticMarkup(<MemoryRouter initialEntries={['/pharmacy']}><InvoicesPage pick={pick} /></MemoryRouter>);
+    const strip = (h) => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    expect(strip(html)).toMatch(/Total items added: 0 Expiry list Bill List Save\s*$/);
+    expect(html).toMatch(/<button type="button" class="btn btn-secondary" disabled="" title="Choose the patient or a walk-in customer first, then add the medicines">.*?Save<\/button>/);
+    expect((html.match(/class="btn btn-primary[^"]*"/g) ?? []).length).toBe(1); // Show
+    // the Bill list page itself has no such foot
+    expect(page()).not.toContain('ph-pick-foot');
+  });
+
   it('26 Nov 2026: OPD, IPD and External are tick boxes; the list starts UHID, Patient name, Date, Time, Dr. name', () => {
     const html = page();
     expect(html).toMatch(/<legend>Patient type<\/legend>/);

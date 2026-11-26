@@ -13,7 +13,7 @@ vi.mock('../../hooks/useFetch.js', () => ({
 vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembership: { roles: ['pharmacist'] }, user: { name: 'Sample Pharmacist' }, activeTenantId: 't1' }) }));
 
 const { PharmacySettlementPage, SettlementReceipt } = await import('./SettlementPage.jsx');
-const { findProblem, findQuery, findWindowProblem, findWindowQuery, newFindFilters, newSettle, selectedOf, settleBody, settleSums, settledWords, toPaise } = await import('./settlement.js');
+const { findProblem, findQuery, findWindowProblem, findWindowQuery, newFindFilters, newSettle, selectedOf, settleBody, settleLeft, settleSums, settledWords, toPaise } = await import('./settlement.js');
 const { InvoicesPage } = await import('./InvoicesPage.jsx');
 const { describeAudit } = await import('../../components/auditFormat.js');
 const { PatientPickList } = await import('./pharmacyUi.jsx');
@@ -129,27 +129,57 @@ describe('the list of patients found (Settlement, Sale return patient-wise)', ()
 });
 
 describe('the Settlement screen', () => {
-  it('has the boxes, tables, figures and buttons of the earlier window', () => {
+  it('opens blank – only Patient type (OPD, IPD) and Search – until Search finds the patient (26 Nov 2026)', () => {
     const html = renderToStaticMarkup(
       <MemoryRouter initialEntries={['/pharmacy/settlement']}>
         <PharmacySettlementPage />
       </MemoryRouter>,
     );
-    const shown = text(html);
-    expect(shown).toMatch(/Patient type OPD IPD External Search UHID Patient name/);
-    expect(shown).toMatch(/Paid bills .*Sales date Print bill no UHID Bill amt Con\. amt Net pay amt Paid amt Balance/);
-    expect(shown).toMatch(/Credit bills Select all .*Sales date Print bill no UHID Bill amt Con\. amt Net pay amt Balance/);
-    expect(shown).toMatch(/Advance available .*Total credit .*Selected total .*Advance Discount Settlement Close/);
-    expect(shown).toContain('Choose OPD, IPD or External and press Search – the list of patients opens – or type the UHID or name first.');
-    // OPD chosen to begin with; nothing to settle until bills are ticked
+    expect(text(html).trim()).toBe('Settlement Patient type OPD IPD Search');
+    for (const gone of ['External', 'Paid bills', 'Credit bills', 'Advance available', 'UHID']) expect(text(html)).not.toContain(gone);
+    // OPD chosen to begin with
     const radios = words(html).match(/<input type="radio" name="st-type"[^>]*>/g);
+    expect(radios).toHaveLength(2);
     const checked = radios.filter((tag) => tag.includes('checked=""'));
     expect(checked).toHaveLength(1);
     expect(checked[0]).toContain('value="opd"');
+    expect(text(html)).not.toMatch(/!/);
+  });
+
+  it('has the boxes, tables, figures and buttons of the earlier window once the patient is found', () => {
+    const row = (id, number, date, bill, net, paid) => ({ id, number, date, patientId: 'p1', mrn: 'SH-0001', name: 'Sample Asha Kale', type: 'opd', billAmountPaise: bill, concessionPaise: bill - net, netPayablePaise: net, paidPaise: paid, balancePaise: net - paid, eligible: net > paid });
+    answers['/pharmacy/settlement'] = {
+      patientId: 'p1',
+      patient: { id: 'p1', fullName: 'Sample Asha Kale', mrn: 'SH-0001', phone: '' },
+      paidBills: [row('c', 'PH-000012', '2026-11-22T06:00:00Z', 42000, 39900, 39900)],
+      // date-wise, the oldest first (as the server sends them)
+      creditBills: [row('a', 'PH-000010', '2026-11-20T06:00:00Z', 64000, 60800, 20000), row('b', 'PH-000011', '2026-11-21T06:00:00Z', 9600, 9600, 0)],
+      totalCreditPaise: 50400,
+      advance: { balancePaise: 0 },
+    };
+    const html = renderToStaticMarkup(
+      <MemoryRouter initialEntries={['/pharmacy/settlement']}>
+        <PharmacySettlementPage patientId="p1" />
+      </MemoryRouter>,
+    );
+    const shown = text(html);
+    expect(shown).toMatch(/Patient type OPD IPD Search Clear UHID Patient name/);
+    expect(shown).toMatch(/Paid bills .*Sales date Print bill no UHID Bill amt Con\. amt Net pay amt Paid amt Balance/);
+    // 26 Nov 2026 (the pharmacy's request): the earlier software's columns – Amount is what this settlement pays (filled
+    // when ticked), Balance amount = Net pay − Paid amount − Amount
+    expect(shown).toMatch(/Credit bills Select all .*Sale date Pt\. bill no UHID Bill amount Net pay Amount Paid amount Balance amount/);
+    expect(shown).toMatch(/PH-000010 SH-0001 640\.00 608\.00 200\.00 408\.00 .*PH-000011 SH-0001 96\.00 96\.00 0\.00 96\.00/);
+    expect(shown).toMatch(/Advance available .*Total credit .*Selected total .*Advance Discount Settlement Close/);
     for (const b of ['Advance', 'Discount', 'Settlement']) expect(words(html)).toMatch(new RegExp(`<button type="button" class="btn btn-[a-z]+" disabled="">.*?${b}</button>`));
     // Brand: one primary button (Settlement), no exclamation marks
     expect((html.match(/class="btn btn-primary[^"]*"/g) ?? []).length).toBe(1);
     expect(shown).not.toMatch(/!/);
+  });
+
+  it('a credit bill’s Balance amount: Net pay − Paid amount − Amount (26 Nov 2026)', () => {
+    const r = { netPayablePaise: 60800, paidPaise: 20000, balancePaise: 40800 };
+    expect(settleLeft(r, false)).toBe(40800);
+    expect(settleLeft(r, true)).toBe(0); // ticked: this settlement pays the whole balance
   });
 
   it('prints a receipt of what was settled', () => {

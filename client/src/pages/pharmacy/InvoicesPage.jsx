@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, BedDouble, Building2, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, FileJson, History, Plus, Printer, RotateCcw, Search, Stethoscope, UserPlus, Users, Wallet } from 'lucide-react';
+import { ArrowLeft, BedDouble, Building2, CalendarClock, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, FileJson, History, Plus, Printer, Receipt, RotateCcw, Search, Stethoscope, UserPlus, Users, Wallet } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -439,6 +439,22 @@ export function InvoicesPage({ pick = null }) {
         ) : (
           dayList
         )}
+      {/* 26 Nov 2026 (the pharmacy's request): Bill List, Expiry list and Save always at the foot of the Sales bill, as on
+          the bill itself – Save waits until a patient (or a walk-in customer) is chosen and the medicines are added */}
+      {pick && (
+        <div className="ph-counter-actions ph-pick-foot">
+          <span className="ph-items-added">Total items added: 0</span>
+          <Link className="btn btn-secondary" to="/pharmacy/reports">
+            <CalendarClock aria-hidden="true" /> Expiry list
+          </Link>
+          <Link className="btn btn-secondary" to="/pharmacy/invoices">
+            Bill List
+          </Link>
+          <button type="button" className="btn btn-secondary" disabled title="Choose the patient or a walk-in customer first, then add the medicines">
+            <Receipt aria-hidden="true" /> Save
+          </button>
+        </div>
+      )}
       </div>
     </>
   );

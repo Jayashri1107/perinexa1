@@ -167,10 +167,11 @@ export function ReturnSlip({ done, settings, showTax = false }) {
   );
 }
 
-export function PatientReturnPage() {
+/** start: { type } – the screen as after Search with nothing typed (that type's patients asked for). */
+export function PatientReturnPage({ start = null } = {}) {
   const navigate = useNavigate();
-  const [form, setForm] = useState(EMPTY);
-  const [query, setQuery] = useState(null);
+  const [form, setForm] = useState(() => (start?.type ? { ...EMPTY, type: start.type } : EMPTY));
+  const [query, setQuery] = useState(() => (start ? findQuery({ ...EMPTY, type: start.type ?? EMPTY.type }) : null));
   const [patientId, setPatientId] = useState(null);
   const [typed, setTyped] = useState({}); // return qty typed, by line
   const [picked, setPicked] = useState([]); // the lines in the return, in the order chosen (24 Nov 2026, as the earlier window)
@@ -249,6 +250,19 @@ export function PatientReturnPage() {
     } else if (e.key === 'Escape') setOpen(false);
   };
   const set = (change) => setForm((f) => ({ ...f, ...change }));
+  // 26 Nov 2026 (the pharmacy's request): the screen stays blank – only Patient type and Search – until Search is
+  // pressed; OPD or IPD chosen starts again from there
+  const shown = Boolean(query);
+  const restart = (type) => {
+    setQuery(null);
+    setPatientId(null);
+    setTyped({});
+    setPicked([]);
+    setItem('');
+    setDone(null);
+    setError(null);
+    set({ type });
+  };
   const search = (e) => {
     e?.preventDefault();
     if (problem) return;
@@ -369,9 +383,10 @@ export function PatientReturnPage() {
             <fieldset className="ph-sb-set">
               <legend>Patient type</legend>
               <div className="ph-sb-choices">
+                {/* 26 Nov 2026 (the pharmacy's request): choosing OPD or IPD starts again from a blank screen */}
                 {RETURN_KINDS.map(([k, label]) => (
                   <label key={k} className="check">
-                    <input type="radio" name="pr-type" value={k} checked={form.type === k} onChange={() => set({ type: k })} /> {label}
+                    <input type="radio" name="pr-type" value={k} checked={form.type === k} onChange={() => restart(k)} /> {label}
                   </label>
                 ))}
               </div>
@@ -386,10 +401,14 @@ export function PatientReturnPage() {
               <button type="submit" className="btn btn-secondary ph-tick-search-btn" disabled={Boolean(problem)}>
                 <Search aria-hidden="true" /> Search
               </button>
-              <label className="check ph-tick-extra">
-                <input type="checkbox" checked={direct} onChange={(e) => setDirect(e.target.checked)} /> Direct print
-              </label>
+              {shown && (
+                <label className="check ph-tick-extra">
+                  <input type="checkbox" checked={direct} onChange={(e) => setDirect(e.target.checked)} /> Direct print
+                </label>
+              )}
             </div>
+            {/* 26 Nov 2026 (the pharmacy's request): until Search is pressed, only Patient type and Search */}
+            {shown && (
             <div className="ph-tick-rows">
               <div className="ph-tick-row">
                 <label className="check ph-tick-label">
@@ -428,6 +447,7 @@ export function PatientReturnPage() {
                 </select>
               </div>
             </div>
+            )}
             {problem && (form.mrn || form.first) && <p className="field-error">{problem}</p>}
             {found.error && <Alert type="error">{found.error}</Alert>}
             {people && (people.length > 1 || (found.data?.list && people.length > 0)) && (
@@ -440,6 +460,7 @@ export function PatientReturnPage() {
             )}
           </form>
 
+          {shown ? (
           <div className="ph-sb-results">
             {done && (
               <Alert type="success" onClose={() => setDone(null)}>
@@ -600,6 +621,9 @@ export function PatientReturnPage() {
             </div>
             {data && figures.chosen.length > 0 && reason.trim().length < 3 && <p className="hint ph-sb-tip">Write the reason for the return, then Save.</p>}
           </div>
+          ) : (
+            <div className="ph-sb-results ph-blank-results" aria-hidden="true" />
+          )}
         </div>
       </div>
 
