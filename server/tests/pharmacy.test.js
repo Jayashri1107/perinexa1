@@ -480,8 +480,8 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     expect(typeof doctor).toBe('string');
     expect((await q({ mrn: plain.mrn })).people.map((x) => x.name)).toEqual(['Sample Mira Unbilled']);
     // With nothing typed (owner's approval, 9 Nov 2026) the whole list – still never a sensitive record or a duplicate;
-    // one letter finds only the billed; a bill's filter asks about bills
-    expect((await q({})).people.map((x) => x.name)).toEqual(['Sample Mira Billed', 'Sample Mira Unbilled']);
+    // one letter finds only the billed; a bill's filter asks about bills. Registered today (26 Nov 2026): first.
+    expect((await q({})).people.map((x) => x.name)).toEqual(['Sample Mira Unbilled', 'Sample Mira Billed']);
     expect((await q({ search: 'm' })).people.map((x) => x.name)).toEqual(['Sample Mira Billed']);
     expect((await q({ search: 'mira', type: 'opd' })).people.map((x) => x.name)).toEqual(['Sample Mira Billed']);
     // In the audit log, by record and never by what was typed
