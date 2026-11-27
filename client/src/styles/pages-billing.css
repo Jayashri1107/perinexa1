@@ -125,6 +125,11 @@
 .bill-unpriced .pill { margin: 0; }
 .bill-item-cat, .bill-item-qty { display: none; font-size: var(--fs-label); }
 .bill-lines .bill-col-doctor { min-width: 110px; }
+/* 27 Nov 2026 (reception): change the doctor of an item after it was added */
+.bill-lines .bill-doctor-change { display: flex; align-items: center; gap: var(--space-1); width: fit-content; padding: 0; margin-top: var(--space-1); min-height: 0; font-size: var(--fs-label); }
+.bill-lines .bill-doctor-change svg { width: 14px; height: 14px; }
+/* A receipt's items with their doctors */
+.bill-doc-lines.bill-doc-receipt-lines { margin-top: 2mm; }
 .bill-totals .bill-sums th, .bill-totals .bill-sums td { background: none; border: 0; border-bottom: 1px solid var(--border); padding: var(--space-2) 0; }
 .bill-totals .bill-sums th { color: var(--slate-600); }
 .bill-totals .bill-sums .bill-total th, .bill-totals .bill-sums .bill-total td { color: var(--ink); }

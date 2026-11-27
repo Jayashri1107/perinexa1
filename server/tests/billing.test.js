@@ -2,7 +2,7 @@
 // days), payments, deposits, refunds, discounts, cancelling, the reports, the export, and who may do what.
 import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { bedDays, rupees, toPaise, totals } from '../src/billing/money.js';
+import { bedDays, rupees, toPaise, totals, totalsAsOf } from '../src/billing/money.js';
 import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
 import { Admission } from '../src/models/Admission.js';
@@ -661,6 +661,79 @@ describe('a consultation charged at the desk', () => {
     await startVisit(q);
     const [c] = await billsOf(q);
     expect((await (await as('reception')).get(`/api/billing/bills/${c.id}`)).body.bill.lines.filter((l) => l.key?.startsWith('consult_'))).toHaveLength(1);
+  });
+});
+
+// Reception (27 Nov 2026): the doctor of each item can be put right after the bill was made, and each receipt keeps
+// its own figures – receipt R-000081 for ₹300 printed the bill's later total of ₹3,300.
+describe("an item's doctor and each receipt's figures", () => {
+  const step = (minutes) => vi.setSystemTime(new Date(NOW.getTime() + minutes * 60_000));
+
+  it('changes the doctor of an item – kept on the item, in the audit log – and keeps each receipt as it was taken', async () => {
+    const list = await prices({ consult_follow: 30000 });
+    const drB = await createUser({ name: 'Sample drB' });
+    await addMember(drB, hospital, 'doctor');
+    const desk = await as('reception');
+    const p = await register('Two Doctors Mother');
+    const { bill: made } = (await desk.post('/api/billing/bills').send({ patientId: p.id })).body;
+    const follow = list.find((i) => i.key === 'consult_follow');
+    const other = list.find((i) => i.name === 'Other charge');
+    expect((await desk.post(`/api/billing/bills/${made.id}/lines`).send({ priceItemId: follow.id, doctorId: people.drA._id.toString() })).status).toBe(201);
+    step(5);
+    expect((await pay(made.id, { mode: 'cash', amountPaise: 30000 })).status).toBe(201);
+    step(10);
+    // the scan added with her registration doctor; another doctor did it
+    const scan = (await desk.post(`/api/billing/bills/${made.id}/lines`).send({ priceItemId: other.id, ratePaise: 300000, name: 'Sample scan', doctorId: people.drA._id.toString() })).body.bill.lines.at(-1);
+    step(15);
+    expect((await pay(made.id, { mode: 'upi', amountPaise: 300000, reference: 'SAMPLE1' })).status).toBe(201);
+
+    step(20);
+    const changed = await desk.patch(`/api/billing/bills/${made.id}/lines/${scan.id}`).send({ doctorId: drB._id.toString() });
+    expect(changed.status, JSON.stringify(changed.body)).toBe(200);
+    const line = changed.body.bill.lines.find((l) => l.id === scan.id);
+    expect(line).toMatchObject({ doctorName: 'Sample drB', doctorId: drB._id.toString(), doctorChanged: { byName: 'Sample reception' } });
+    expect(changed.body.bill.lines.find((l) => l.key === 'consult_follow')).toMatchObject({ doctorName: 'Sample drA', doctorChanged: null });
+    const log = await AuditLog.findOne({ action: 'BILL_ITEM_DOCTOR_CHANGED' }).lean();
+    expect(log.details).toMatchObject({ lineId: scan.id, fromDoctorId: people.drA._id.toString(), toDoctorId: drB._id.toString() });
+
+    // each receipt as it stood when it was taken – the first one ₹300 of ₹300, not ₹3,300
+    const [first, second] = changed.body.bill.payments;
+    expect(first.asOf).toEqual({ subtotal: 30000, discount: 0, total: 30000, paid: 30000, balance: 0 });
+    expect(second.asOf).toEqual({ subtotal: 330000, discount: 0, total: 330000, paid: 330000, balance: 0 });
+    expect(changed.body.bill).toMatchObject({ total: 330000, paid: 330000 });
+
+    // no doctor is allowed; a nurse is not a doctor; an item taken off, another hospital and the lab are refused
+    expect((await desk.patch(`/api/billing/bills/${made.id}/lines/${scan.id}`).send({ doctorId: null })).body.bill.lines.find((l) => l.id === scan.id).doctorName).toBe('');
+    expect((await desk.patch(`/api/billing/bills/${made.id}/lines/${scan.id}`).send({ doctorId: people.nurse._id.toString() })).status).toBe(400);
+    expect((await desk.patch(`/api/billing/bills/${made.id}/lines/${scan.id}`).send({ doctorId: drB._id.toString(), name: 'x' })).status).toBe(400);
+    expect((await (await as('lab')).patch(`/api/billing/bills/${made.id}/lines/${scan.id}`).send({ doctorId: null })).status).toBe(403);
+    const elsewhere = await createTenant('Other Hospital');
+    const them = await createUser({ name: 'Sample other desk' });
+    await addMember(them, elsewhere, 'receptionist');
+    expect((await (await loginAs(them, { app })).patch(`/api/billing/bills/${made.id}/lines/${scan.id}`).send({ doctorId: null })).status).toBe(404);
+    expect((await desk.post(`/api/billing/bills/${made.id}/lines/${line.id}/remove`).send({})).status).toBeLessThan(300);
+    expect((await desk.patch(`/api/billing/bills/${made.id}/lines/${scan.id}`).send({ doctorId: drB._id.toString() })).status).toBe(409);
+    expect(await AuditLog.countDocuments({ action: 'BILL_ITEM_DOCTOR_CHANGED' })).toBe(2);
+  });
+
+  it("works out a receipt's figures from what the bill kept: items, discount and money up to that receipt", () => {
+    const at = (m) => new Date(NOW.getTime() + m * 60_000);
+    const bill = {
+      lines: [
+        { amountPaise: 50000, added: { at: at(0) }, removed: null },
+        { amountPaise: 20000, added: { at: at(0) }, removed: { at: at(30) } },
+        { amountPaise: 100000, added: { at: at(20) }, removed: null },
+      ],
+      discount: { paise: 10000, at: at(25) },
+      payments: [
+        { kind: 'payment', amountPaise: 40000, at: at(10) },
+        { kind: 'payment', amountPaise: 30000, at: at(10) },
+        { kind: 'payment', amountPaise: 100000, at: at(40) },
+      ],
+    };
+    expect(totalsAsOf(bill, bill.payments[0])).toMatchObject({ subtotal: 70000, discount: 0, total: 70000, paid: 40000, balance: 30000 });
+    expect(totalsAsOf(bill, bill.payments[1])).toMatchObject({ subtotal: 70000, paid: 70000, balance: 0 });
+    expect(totalsAsOf(bill, bill.payments[2])).toMatchObject({ subtotal: 150000, discount: 10000, total: 140000, paid: 170000, balance: -30000 });
   });
 });
 

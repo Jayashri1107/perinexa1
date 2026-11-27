@@ -261,6 +261,31 @@ billingRouter.post('/bills/:id/lines/:lineId/remove', async (req, res) => {
   res.json({ bill: await viewOf(req, after) });
 });
 
+// The doctor of an item (27 Nov 2026, reception: an item added with her registration doctor – or another, or none – is
+// put right after the bill was made; the bill and every receipt print it, also those printed again). Everyone who
+// bills; not on a cancelled bill nor on a final one (reopened first, as for any change of its items). Who changed it
+// and when are kept on the item; the audit log has the ids of the doctor before and after.
+billingRouter.patch('/bills/:id/lines/:lineId', async (req, res) => {
+  const bill = await openBill(req);
+  refuseFinal(bill);
+  const { lineId } = parse(z.object({ id: objectId, lineId: objectId }), req.params);
+  const body = parse(z.object({ doctorId: objectId.nullable() }).strict(), req.body ?? {});
+  const line = bill.lines.find((l) => String(l._id) === lineId);
+  if (!line) throw new HttpError(404, 'Item not found on this bill.', 'NOT_FOUND');
+  if (line.removed) throw conflict('This item was taken off the bill.');
+  if (body.doctorId && !(await Membership.exists({ tenantId: req.tenantId, userId: body.doctorId, roles: 'doctor', isActive: true }))) throw Object.assign(new HttpError(400, 'Choose a doctor of this hospital.', 'VALIDATION'), { fields: { doctorId: 'Choose a doctor of this hospital.' } });
+  const before = line.doctorId ? String(line.doctorId) : null;
+  if (before === body.doctorId) return res.json({ bill: await viewOf(req, bill) }); // nothing to change
+  const after = await Bill.findOneAndUpdate(
+    { tenantId: req.tenantId, _id: bill._id, status: 'open', final: null },
+    { $set: { 'lines.$[l].doctorId': body.doctorId, 'lines.$[l].doctorChanged': stampOf(req) } },
+    { arrayFilters: [{ 'l._id': line._id, 'l.removed': null }], returnDocument: 'after' },
+  ).lean();
+  if (!after) throw (await Bill.exists({ tenantId: req.tenantId, _id: bill._id, final: { $ne: null } })) ? conflict(FINAL_MESSAGE, 'FINAL') : conflict('This bill was cancelled.', 'CANCELLED');
+  await audit(req, 'BILL_ITEM_DOCTOR_CHANGED', { details: ids(bill, { lineId, fromDoctorId: before, toDoctorId: body.doctorId }) });
+  res.json({ bill: await viewOf(req, after) });
+});
+
 // A discount: an amount (paise) or a percentage, with a reason. Value 0 takes the discount off.
 const discountSchema = z
   .object({

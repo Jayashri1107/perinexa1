@@ -27,7 +27,7 @@ import { mentionsFetalSex } from '../utils/pcpndt.js';
 import { BILL_PCPNDT_MESSAGE, CONFIDENTIAL_NAME, CONFIDENTIAL_TESTS, INSURANCE_FIELDS, INSURANCE_KEPT, UPI_HISTORY_KEPT } from './billingRules.js';
 import { BUILT_IN_PRICES } from './builtInPrices.js';
 import { claimSums, groupSummary, insuranceView } from './claim.js';
-import { bedDays, liveLines, totals } from './money.js';
+import { bedDays, liveLines, totals, totalsAsOf } from './money.js';
 import { payeeNameProblem, upiIdProblem } from './upi.js';
 
 export const stampOf = (req) => ({ by: req.user?._id ?? null, byName: req.user?.name ?? 'Perinexa', at: req.now ?? new Date() });
@@ -548,6 +548,9 @@ const lineView = (l, doctors = new Map()) => ({
   id: String(l._id),
   name: l.name,
   doctorName: l.doctorId ? (doctors.get(String(l.doctorId)) ?? '') : '',
+  // 27 Nov 2026 (reception): the doctor can be changed after the item is added – who changed it last, and when
+  doctorId: l.doctorId ? String(l.doctorId) : null,
+  doctorChanged: l.doctorChanged ? { byName: l.doctorChanged.byName ?? '', at: l.doctorChanged.at ?? null } : null,
   group: l.group,
   qty: l.qty,
   ratePaise: l.ratePaise,
@@ -574,6 +577,9 @@ const paymentView = (p) => ({
   byName: p.byName ?? '',
   corrections: (p.corrections ?? []).map((c) => ({ before: { mode: c.before.mode, amountPaise: c.before.amountPaise, reference: c.before.reference ?? '', scheme: c.before.scheme ?? '', at: c.before.at }, reason: c.reason, byName: c.byName, at: c.at })),
 });
+
+/** A receipt's figures as they stood when it was taken (money.js totalsAsOf – 27 Nov 2026): what its print shows. */
+const asOfView = (t) => ({ subtotal: t.subtotal, discount: t.discount, total: t.total, paid: t.paid, balance: t.balance });
 
 /** The bill's latest payment, deposit or refund (by time), or null. */
 function lastPayment(b) {
@@ -608,7 +614,7 @@ export function billView(b, { patients, stays, doctors = new Map(), departments 
     claim: b.claim?.approvedPaise ? { approvedPaise: b.claim.approvedPaise, byName: b.claim.byName ?? '', at: b.claim.at ?? null } : null,
     lastPayment: lastPayment(b), // the latest money in or out, for lists: when, how and what kind (null: none yet)
     refunded: (b.payments ?? []).filter((p) => p.kind === 'refund').reduce((sum, p) => sum + p.amountPaise, 0), // given back so far
-    ...(full ? { lines: (b.lines ?? []).map((l) => lineView(l, doctors)), payments: (b.payments ?? []).map(paymentView), insurance: insuranceView(b.insurance) } : {}),
+    ...(full ? { lines: (b.lines ?? []).map((l) => lineView(l, doctors)), payments: (b.payments ?? []).map((p) => ({ ...paymentView(p), asOf: asOfView(totalsAsOf(b, p)) })), insurance: insuranceView(b.insurance) } : {}),
   };
 }
 

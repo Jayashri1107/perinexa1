@@ -102,6 +102,31 @@ export const NO_SEX_WORDS_HINT = 'Leave out words such as son, daughter, boy, gi
 export const takeMoneyLabel = (bill) => (bill?.stay?.inHospital ? 'Take a deposit' : 'Take payment');
 
 /**
+ * What the printed bill, or one receipt, shows of its items, doctors and sums (27 Nov 2026, reception: receipts printed
+ * her registration doctor and the bill's later total instead of what was billed then).
+ * - lines: the bill's items now; for a receipt, those on the bill when it was taken (added by then, not yet taken off)
+ * - consultant: on an outpatient bill the doctors of those items, one or several ("consultants"), her registration
+ *   doctor only when no item has a doctor (and her doctor's department only then, or when the one item doctor is hers);
+ *   a stay keeps the doctor in charge of it, as before
+ * - sums: { subtotal, discount, total, paid, balance } – for a receipt as they stood when it was taken (payment.asOf from
+ *   the server), for the bill as they are now
+ */
+export function receiptFacts(bill, payment = null) {
+  const at = payment?.at ? new Date(payment.at).getTime() : null;
+  const by = (iso) => iso == null || new Date(iso).getTime() <= at;
+  const lines = (bill.lines ?? []).filter((l) => (at == null ? !l.removed : by(l.addedAt) && !(l.removed && by(l.removed.at))));
+  const doctors = bill.kind === 'ipd' ? [] : [...new Set(lines.map((l) => l.doctorName).filter(Boolean))];
+  const own = !doctors.length || (doctors.length === 1 && doctors[0] === bill.doctorName);
+  return {
+    lines,
+    consultant: doctors.length ? doctors.join(', ') : (bill.doctorName ?? ''),
+    consultants: doctors.length > 1,
+    department: own ? (bill.doctorDepartment ?? '') : '',
+    sums: payment?.asOf ?? { subtotal: bill.subtotal ?? bill.total, discount: bill.discount ?? 0, total: bill.total, paid: bill.paid, balance: bill.balance },
+  };
+}
+
+/**
  * What happens to the claim number typed with a payment by insurance (the server decides –
  * server/src/billing/billingService.js noteInsurer): it becomes the bill's claim number when the bill has none and the payer is the bill's insurer.
  */

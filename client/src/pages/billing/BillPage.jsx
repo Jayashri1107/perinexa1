@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BadgePercent, Ban, CircleAlert, FileText, History, Link2, PencilLine, Printer, RotateCcw, ShieldCheck, Tag, Trash2, Wallet, X } from 'lucide-react';
+import { BadgePercent, Ban, CircleAlert, FileText, History, Link2, PencilLine, Printer, RotateCcw, Save, ShieldCheck, Tag, Trash2, Wallet, X } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -14,7 +14,7 @@ import { blobToBase64 } from '../visits/whatsapp.js';
 import { ClaimFormPrint, InsuranceDialog, InsuranceSection, UpiLinkDialog } from './BillingExtras.jsx';
 import { BillStatus } from './BillsPage.jsx';
 import { TallyMarks } from './TallyPage.jsx';
-import { CLAIM_LAYOUTS, GROUP_LABELS, KIND_LABELS, MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, claimNumberHint, rupees, takeMoneyLabel, toInput, toPaise } from './billingFormat.js';
+import { CLAIM_LAYOUTS, GROUP_LABELS, KIND_LABELS, MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, claimNumberHint, receiptFacts, rupees, takeMoneyLabel, toInput, toPaise } from './billingFormat.js';
 import { Modal, useSend } from './billingUi.jsx';
 import { amountInWords } from './amountWords.js';
 import { HeadedBillLines, RemoveTickedDialog, ServiceEntryRow } from './ServiceEntry.jsx';
@@ -346,6 +346,62 @@ function SetPriceDialog({ bill, line, onClose, onDone }) {
   );
 }
 
+/**
+ * The doctor of an item, changed after it was added (27 Nov 2026, reception: a service added with her registration
+ * doctor that another doctor did). The bill and its receipts print it – also a receipt printed again; who changed it
+ * and when are kept on the item and in the audit log.
+ */
+function ItemDoctorDialog({ bill, line, onClose, onDone }) {
+  const doctors = useFetch('/tenant/doctors');
+  const list = doctors.data?.doctors ?? [];
+  const [doctorId, setDoctorId] = useState(line.doctorId ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const out = await api(`/billing/bills/${bill.id}/lines/${line.id}`, { method: 'PATCH', body: { doctorId: doctorId || null } });
+      const name = list.find((d) => d.id === doctorId)?.name;
+      onDone(out, `${line.name}: ${name ? `doctor ${name}` : 'no doctor'}. Print the receipt again for the patient if she needs it.`);
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal id="bill-item-doctor" title={`Doctor of ${line.name}`} onClose={onClose}>
+      <p>The bill and its receipts print this doctor, also a receipt printed again.</p>
+      <Alert type="error">{error || doctors.error}</Alert>
+      <Field label="Doctor name" id="bill-item-doctor-name">
+        <select id="bill-item-doctor-name" value={doctorId} onChange={(e) => setDoctorId(e.target.value)} autoFocus>
+          <option value="">No doctor</option>
+          {/* the item's doctor even when no longer on the list of this hospital's doctors */}
+          {line.doctorId && !list.some((d) => d.id === line.doctorId) && <option value={line.doctorId}>{line.doctorName || 'Doctor no longer in this hospital'}</option>}
+          {list.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      {line.doctorChanged && (
+        <p className="hint">
+          Changed before by {line.doctorChanged.byName} on {formatDateTime(line.doctorChanged.at)}.
+        </p>
+      )}
+      <div className="row">
+        <button type="button" className="btn btn-primary" disabled={busy || doctorId === (line.doctorId ?? '')} onClick={save}>
+          <Save aria-hidden="true" /> {busy ? 'Saving…' : 'Save the doctor'}
+        </button>
+        <button type="button" className="btn btn-link" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 /** The bill's live items by service group, in the price list's order (the printed bill's sections). */
 export function linesByGroup(lines) {
   const known = Object.keys(GROUP_LABELS);
@@ -358,12 +414,18 @@ export function linesByGroup(lines) {
  * The printed bill (A5), or one receipt – laid out as the hospital's own OPD receipt (owner, 27 Oct 2026): the patient,
  * her consultant and department on the left, the bill's numbers on the right; the services by group with doctor, rate,
  * unit and amount; the sums, how it was paid and the amount in words; the hospital's notes and the signature.
+ * 27 Nov 2026 (reception): the consultant is the doctor – or doctors – of the items billed, not her registration doctor;
+ * a receipt lists the items with their doctors and shows the sums as they stood when it was taken (receiptFacts).
  */
 function BillPrint({ bill, receipt = null, notes = '', onClose }) {
   const lh = useFetch('/tenant/settings/letterhead');
   const { user } = useAuth();
   const payment = receipt ? bill.payments.find((p) => p.receipt === receipt) : null;
   const lines = bill.lines.filter((l) => !l.removed);
+  const facts = receiptFacts(bill, payment);
+  const sums = facts.sums;
+  // A receipt: the money in (less refunds) before it – its own amount is printed on its own line
+  const paidEarlier = payment ? sums.paid - (payment.kind === 'refund' ? -payment.amountPaise : payment.amountPaise) : 0;
   const record = () => api(`/billing/bills/${bill.id}/printed`, { method: 'POST', body: receipt ? { receipt } : {} });
   // In one click from the hospital's WhatsApp number, when she agreed to WhatsApp messages (docs/WHATSAPP_DESK_PLAN.md)
   const offer = useFetch(`/billing/bills/${bill.id}/whatsapp`);
@@ -415,14 +477,14 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
                 <td>{payment ? formatDateTime(payment.at) : dayLabel(bill.date)}</td>
               </tr>
               <tr>
-                <th scope="row">Consultant</th>
-                <td>{bill.doctorName}</td>
+                <th scope="row">{facts.consultants ? 'Consultants' : 'Consultant'}</th>
+                <td>{facts.consultant}</td>
                 <th scope="row">Reg. no.</th>
                 <td>{bill.patient?.mrn}</td>
               </tr>
               <tr>
-                <th scope="row">Department</th>
-                <td>{bill.doctorDepartment}</td>
+                <th scope="row">{facts.department ? 'Department' : ''}</th>
+                <td>{facts.department}</td>
                 <th scope="row">Mob. no.</th>
                 <td>{bill.patient?.phone}</td>
               </tr>
@@ -456,6 +518,29 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
             // As the hospital's old IP final bill (11 Nov 2026): the items under headings with their totals
             <HeadedBillLines lines={lines} classLabel={bill.stay?.ward ?? ''} />
           )}
+          {/* A receipt: the bill's items when it was taken, each with its doctor (27 Nov 2026) */}
+          {payment && bill.kind !== 'ipd' && facts.lines.length > 0 && (
+            <table className="bill-doc-lines bill-doc-receipt-lines">
+              <thead>
+                <tr>
+                  <th scope="col">Service name</th>
+                  <th scope="col">Doctor</th>
+                  <th scope="col" className="num">
+                    Total amount
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {facts.lines.map((l) => (
+                  <tr key={l.id}>
+                    <td>{l.name}</td>
+                    <td>{l.doctorName}</td>
+                    <td className="num">{rupees(l.amountPaise)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           {payment?.corrections?.length ? (
             <p className="pdoc-small bill-doc-corrected">
               {payment.corrections.map((c, i) => (
@@ -469,17 +554,17 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
             <tbody>
               <tr>
                 <th scope="row">Total amount</th>
-                <td>{rupees(bill.subtotal ?? bill.total)}</td>
+                <td>{rupees(sums.subtotal)}</td>
               </tr>
-              {bill.discount > 0 && (
+              {sums.discount > 0 && (
                 <tr>
                   <th scope="row">Discount amount</th>
-                  <td>{rupees(bill.discount)}</td>
+                  <td>{rupees(sums.discount)}</td>
                 </tr>
               )}
               <tr>
                 <th scope="row">Net pay amount</th>
-                <td>{rupees(bill.total)}</td>
+                <td>{rupees(sums.total)}</td>
               </tr>
               {/* Cashless (11 Nov 2026): the insurer's part, what she paid, what she still pays, what the insurer owes */}
               {!payment &&
@@ -489,10 +574,17 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
                     <td>{rupees(value)}</td>
                   </tr>
                 ))}
+              {/* A receipt (27 Nov 2026): what was paid before it, then its own amount */}
+              {payment && paidEarlier !== 0 && (
+                <tr>
+                  <th scope="row">Paid earlier</th>
+                  <td>{rupees(paidEarlier)}</td>
+                </tr>
+              )}
               {(payment || !hasClaim(bill)) && (
               <tr>
-                <th scope="row">Paid amount</th>
-                <td>{rupees(bill.paid)}</td>
+                <th scope="row">{payment?.kind === 'refund' ? 'Refunded amount' : 'Paid amount'}</th>
+                <td>{rupees(payment ? payment.amountPaise : sums.paid)}</td>
               </tr>
               )}
               {(payment || modes) && (
@@ -501,10 +593,10 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
                   <td>{payment ? MODE_LABELS[payment.mode] : modes}</td>
                 </tr>
               )}
-              {bill.balance !== 0 && (payment || !hasClaim(bill)) && (
+              {sums.balance !== 0 && (payment || !hasClaim(bill)) && (
                 <tr className="bill-doc-balance">
-                  <th scope="row">{bill.balance < 0 ? 'Due back' : 'Balance amount'}</th>
-                  <td>{rupees(Math.abs(bill.balance))}</td>
+                  <th scope="row">{sums.balance < 0 ? 'Due back' : 'Balance amount'}</th>
+                  <td>{rupees(Math.abs(sums.balance))}</td>
                 </tr>
               )}
             </tbody>
@@ -784,7 +876,15 @@ export function BillPage() {
                       <td data-label="Category" className="bill-col-cat">
                         {GROUP_LABELS[l.group]}
                       </td>
-                      <td data-label="Doctor" className="bill-col-doctor">{l.doctorName || <span className="muted">–</span>}</td>
+                      <td data-label="Doctor" className="bill-col-doctor">
+                        {l.doctorName || <span className="muted">–</span>}
+                        {/* 27 Nov 2026 (reception): the doctor put right after the item was added */}
+                        {editable && (
+                          <button type="button" className="btn btn-link btn-sm bill-doctor-change" onClick={() => setDialog({ doctor: l })}>
+                            <PencilLine aria-hidden="true" /> Change<span className="sr-only"> the doctor of {l.name}</span>
+                          </button>
+                        )}
+                      </td>
                       <td data-label="Qty" className="num">
                         {l.qty}
                       </td>
@@ -940,6 +1040,7 @@ export function BillPage() {
       {dialog === 'upi' && <UpiLinkDialog bill={b} upiReady={Boolean(res.data?.upiReady)} onClose={() => setDialog(null)} />}
       {dialog?.correct && <CorrectPaymentDialog bill={b} payment={dialog.correct} onClose={() => setDialog(null)} onDone={done} />}
       {dialog?.price && <SetPriceDialog bill={b} line={dialog.price} onClose={() => setDialog(null)} onDone={done} />}
+      {dialog?.doctor && <ItemDoctorDialog bill={b} line={dialog.doctor} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'cancel' && (
         <ReasonDialog
           id="bill-cancel"

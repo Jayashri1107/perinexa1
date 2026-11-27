@@ -1,5 +1,28 @@
 # Progress
 
+## Reception billing: receipts print the doctor of each item and their own amounts (27 Nov 2026)
+Reception's report: a bill with a follow-up (₹300, one doctor) and an ultrasound (₹3,000, another doctor) printed both
+receipts with her registration doctor as "Consultant", and receipt R-000081 for ₹300 printed "Paid amount ₹3,300" and
+"Total ₹3,300" – the bill's later figures.
+- The printed receipt and OPD bill name the doctor of the items billed: "Consultant" with one doctor, "Consultants"
+  with several; her registration doctor only when no item has a doctor (and her department only when the consultant is
+  her own doctor). A receipt lists the items on the bill when it was taken, each with its doctor. A stay's bill keeps
+  the doctor in charge of the stay, as before.
+- Each receipt prints the bill as it stood when it was taken: total, discount and net pay of the items on the bill then,
+  "Paid earlier" (money before it), its own amount as "Paid amount" ("Refunded amount" for a refund) and the balance
+  then. Worked out from what the bill already keeps (when each item was added or taken off, when the discount was
+  given, the payments in order) – so it holds for receipts already taken too, nothing to convert. Not seen: a rate or a
+  discount changed after a receipt (the bill keeps only the latest).
+- The doctor of an item can be changed after it was added: Change under the doctor on the bill's items (open bills,
+  not a cancelled or final one) – a doctor of this hospital or none. Who changed it and when are kept on the item and
+  shown in the pop-up; the audit log has "Doctor of a bill item changed" with the ids of the doctor before and after.
+  Receipts printed again show the new doctor (the change is in the audit log).
+- Code: `PATCH /api/billing/bills/:id/lines/:lineId` `{ doctorId | null }` (routes/billing.js), `lines[].doctorChanged`
+  (models/Bill.js), `totalsAsOf(bill, payment)` (billing/money.js) → `payments[].asOf` and `lines[].doctorId`
+  (billingService.js), `receiptFacts` (client billingFormat.js), `ItemDoctorDialog` and the print (BillPage.jsx),
+  action BILL_ITEM_DOCTOR_CHANGED (AuditLog.js, auditFormat.js). Tests: server billing.test.js, client
+  serviceEntry.test.jsx and auditFormat.test.js.
+
 ## Pharmacy: Sale return patient-wise – patients in a pop-up, 10 rows of her medicines (27 Nov 2026)
 The pharmacy's request (on app.perinexa.com/pharmacy/patient-return): the patient list opens in a pop-up, and "Her
 medicines so far" shows at least 10 rows.

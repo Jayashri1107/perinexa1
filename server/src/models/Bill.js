@@ -31,6 +31,8 @@ const lineSchema = new mongoose.Schema({
   // or an appointment whose consultation fee was taken in advance
   ref: { type: new mongoose.Schema({ kind: { type: String, enum: ['visit', 'lab', 'bed', 'pharmacy', 'pharmacy-return', 'work', 'appointment', 'registration', 'admission', 'nursing', 'round', 'scan'] }, id: ObjectId, test: String }, { _id: false }), default: null },
   doctorId: { type: ObjectId, ref: 'User', default: null }, // for the monthly report by doctor
+  // Who last changed the doctor after the item was added, and when (27 Nov 2026, reception) – null: never changed
+  doctorChanged: { type: stampSchema, default: null },
   added: { type: stampSchema, required: true },
   removed: { type: new mongoose.Schema({ ...stamp, reason: String }, { _id: false }), default: null },
 });

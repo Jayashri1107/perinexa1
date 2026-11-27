@@ -323,12 +323,17 @@ describe('billing in the audit log (5 Oct 2026)', () => {
     const bill = { billId: 'b', number: 'B-000007', patientId: 'p' };
     expect(AUDIT_LABELS.PAYMENT_RECEIVED).toBe('Payment received');
     expect(AUDIT_LABELS.BILL_ITEM_REMOVED).toBe('Item taken off a bill');
+    expect(AUDIT_LABELS.BILL_ITEM_DOCTOR_CHANGED).toBe('Doctor of a bill item changed');
     expect(describeAudit({ action: 'BILL_VIEWED', details: bill })).toBe('Bill B-000007');
     expect(describeAudit({ action: 'BILL_VIEWED', details: { ...bill, claimForm: true } })).toBe('Bill B-000007 · claim form opened');
     expect(describeAudit({ action: 'BILL_VIEWED', details: { patientId: 'p', list: true, bills: 3 } })).toBe("A patient's bills listed (3 bills)");
     expect(describeAudit({ action: 'BILL_VIEWED', details: { patientId: 'p', list: true, bills: 1 } })).toBe("A patient's bills listed (1 bill)");
     expect(describeAudit({ action: 'BILL_ITEM_ADDED', details: { ...bill, priceItemId: 'i', amountPaise: 50000 } })).toBe('Bill B-000007 · ₹500');
     expect(describeAudit({ action: 'BILL_ITEM_REMOVED', details: { ...bill, amountPaise: 120050, reason: 'Added by mistake' } })).toBe('Bill B-000007 · ₹1,200.50');
+    // 27 Nov 2026: the doctor of an item changed after it was added
+    expect(describeAudit({ action: 'BILL_ITEM_DOCTOR_CHANGED', details: { ...bill, lineId: 'l', fromDoctorId: 'd1', toDoctorId: 'd2' } })).toBe('Bill B-000007 · another doctor chosen');
+    expect(describeAudit({ action: 'BILL_ITEM_DOCTOR_CHANGED', details: { ...bill, lineId: 'l', fromDoctorId: null, toDoctorId: 'd2' } })).toBe('Bill B-000007 · a doctor chosen');
+    expect(describeAudit({ action: 'BILL_ITEM_DOCTOR_CHANGED', details: { ...bill, lineId: 'l', fromDoctorId: 'd1', toDoctorId: null } })).toBe('Bill B-000007 · doctor taken off');
     expect(describeAudit({ action: 'DISCOUNT_GIVEN', details: { ...bill, mode: 'percent', value: 10, discountPaise: 5000, reason: 'Staff family' } })).toBe('Bill B-000007 · 10% (₹50)');
     expect(describeAudit({ action: 'DISCOUNT_GIVEN', details: { ...bill, mode: 'amount', value: 20000, discountPaise: 20000, reason: 'Staff family' } })).toBe('Bill B-000007 · ₹200');
     expect(describeAudit({ action: 'DISCOUNT_GIVEN', details: { ...bill, mode: 'amount', value: 0, discountPaise: 0, reason: '' } })).toBe('Bill B-000007 · discount taken off');
@@ -442,7 +447,7 @@ const FILTER_ACTIONS = [
   'MEMBER_PAGES_CHANGED', 'MEMBER_ACTIVATED', 'MEMBER_DEACTIVATED', 'PATIENT_CREATED', 'PATIENT_REGISTERED_ANYWAY',
   'PATIENT_MARKED_DUPLICATE', 'PATIENT_DUPLICATE_UNDONE', 'PATIENT_RECORD_CLOSED', 'PATIENT_RECORD_REOPENED', 'PATIENT_VIEWED', 'PATIENT_RECORD_COPIED', 'PATIENT_RECORD_COPY_PRINTED', 'PATIENT_RECORD_COPY_PDF_SAVED',
   'PATIENT_ARRIVED', 'PATIENT_ARRIVAL_UNDONE', 'ARRIVAL_EMERGENCY_CHANGED', 'PATIENT_LEFT_MARKED', 'FOLLOW_UP_ADDED', 'FOLLOW_UP_CANCELLED', 'APPOINTMENT_BOOKED', 'APPOINTMENT_MOVED', 'APPOINTMENT_CANCELLED', 'APPOINTMENT_LINKED', 'APPOINTMENT_DONE', 'TOKEN_GIVEN', 'OPD_TIMINGS_CHANGED', 'BEDS_ADDED', 'BED_UPDATED',
-  'PATIENT_CARD_PRINTED', 'BILL_VIEWED', 'BILL_ITEM_ADDED', 'BILL_ITEM_REMOVED', 'DISCOUNT_GIVEN', 'PAYMENT_RECEIVED', 'REFUND_GIVEN', 'PAYMENT_CORRECTED', 'BILL_CANCELLED',
+  'PATIENT_CARD_PRINTED', 'BILL_VIEWED', 'BILL_ITEM_ADDED', 'BILL_ITEM_REMOVED', 'BILL_ITEM_DOCTOR_CHANGED', 'DISCOUNT_GIVEN', 'PAYMENT_RECEIVED', 'REFUND_GIVEN', 'PAYMENT_CORRECTED', 'BILL_CANCELLED',
   'BILL_PRINTED', 'PRICE_LIST_CHANGED', 'BILLING_EXPORTED', 'BILL_INSURANCE_CHANGED', 'INSURANCE_CLAIM_SET', 'CLAIM_FORM_PRINTED', 'UPI_LINK_MADE', 'BILLING_SETTINGS_CHANGED', 'PHARMACY_SETTINGS_CHANGED',
   'PHARMACY_MEDICINE_CHANGED', 'PHARMACY_SUPPLIER_CHANGED', 'PHARMACY_PURCHASE_ENTERED', 'PHARMACY_PURCHASE_CANCELLED', 'PHARMACY_STOCK_WRITTEN_OFF', 'PHARMACY_STOCK_COUNTED', 'PHARMACY_OPENING_STOCK_IMPORTED', 'PHARMACY_PRESCRIPTIONS_VIEWED', 'PHARMACY_SOLD',
   'PHARMACY_ISSUED', 'PHARMACY_INVOICE_VIEWED', 'PHARMACY_RETURNED', 'PHARMACY_PRINTED', 'PHARMACY_REGISTER_VIEWED', 'PHARMACY_MIS_VIEWED', 'PHARMACY_PAYMENT_RECEIVED', 'PHARMACY_DUES_SETTLED', 'PHARMACY_ADVANCE_TAKEN', 'PHARMACY_ADVANCE_REFUNDED', 'PHARMACY_ADVANCE_USED', 'PHARMACY_MRP_CHANGED', 'PHARMACY_EXPORTED', 'PHARMACY_PATIENT_LOOKED_UP', 'PHARMACY_ORDER_CREATED', 'PHARMACY_ORDER_CHANGED',

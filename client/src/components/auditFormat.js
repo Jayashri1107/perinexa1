@@ -204,6 +204,7 @@ export const AUDIT_LABELS = {
   BILL_VIEWED: 'Bill opened',
   BILL_ITEM_ADDED: 'Item added to a bill',
   BILL_ITEM_REMOVED: 'Item taken off a bill',
+  BILL_ITEM_DOCTOR_CHANGED: 'Doctor of a bill item changed',
   DISCOUNT_GIVEN: 'Discount given or taken off',
   PAYMENT_RECEIVED: 'Payment received',
   REFUND_GIVEN: 'Refund given',
@@ -1882,6 +1883,9 @@ export function describeAudit(entry) {
     case 'BILL_ITEM_ADDED':
     case 'BILL_ITEM_REMOVED':
       return joined(billOf(d), d.amountPaise != null ? rupeesOf(d.amountPaise) : '');
+    // 27 Nov 2026: who the doctors were is in the ids (the log keeps no names here)
+    case 'BILL_ITEM_DOCTOR_CHANGED':
+      return joined(billOf(d), d.toDoctorId ? (d.fromDoctorId ? 'another doctor chosen' : 'a doctor chosen') : 'doctor taken off');
     case 'INSURANCE_CLAIM_SET':
       // The amount the insurer approved (cashless), with what it was before
       return joined(billOf(d), d.approvedPaise ? `${d.fromPaise ? `${rupeesOf(d.fromPaise)} → ` : ''}${rupeesOf(d.approvedPaise)} approved` : 'approved amount taken off');

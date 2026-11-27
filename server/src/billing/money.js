@@ -50,6 +50,28 @@ export function totals(bill) {
   return { subtotal, discount, total, paid, balance, status, claimApproved, insuranceShare, insurancePaid, insuranceDue, patientPaid, patientBalance };
 }
 
+/**
+ * A receipt's figures as they stood when it was taken (27 Nov 2026, reception: receipt R-000081 for ₹300 printed the
+ * bill's later total and paid amount, ₹3,300): the items on the bill at that moment (added by then and not yet taken
+ * off), the discount and the insurer's approved amount given by then, and the money in and out up to this receipt
+ * (one taken at the same moment counts only when it comes before it on the bill). Worked out from what the bill keeps,
+ * so it holds for the receipts already taken too; a rate changed later is not seen (the bill keeps no older rates).
+ */
+export function totalsAsOf(bill, payment) {
+  const at = new Date(payment?.at ?? NaN).getTime();
+  if (Number.isNaN(at)) return totals(bill);
+  // a stamp without a time (none is made so) counts as before the receipt
+  const by = (stamp) => stamp?.at == null || new Date(stamp.at).getTime() <= at;
+  const all = bill.payments ?? [];
+  const index = all.indexOf(payment);
+  const lines = (bill.lines ?? []).filter((l) => by(l.added) && !(l.removed && by(l.removed))).map((l) => ({ ...l, removed: null }));
+  const payments = all.filter((p, i) => {
+    const t = new Date(p.at).getTime();
+    return t < at || (t === at && i <= index);
+  });
+  return totals({ ...bill, status: 'open', lines, payments, discount: bill.discount && by(bill.discount) ? bill.discount : null, claim: bill.claim && by(bill.claim) ? bill.claim : null });
+}
+
 /** A discount in paise: an amount, or a percentage of the subtotal (rounded to the paisa). */
 export const discountPaise = ({ mode, value }, subtotal) => (mode === 'percent' ? Math.round((subtotal * value) / 100) : value);
 

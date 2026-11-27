@@ -132,6 +132,7 @@ export const AUDIT_ACTIONS = [
   'BILL_VIEWED',
   'BILL_ITEM_ADDED',
   'BILL_ITEM_REMOVED',
+  'BILL_ITEM_DOCTOR_CHANGED', // 27 Nov 2026: the doctor of an item put right after the bill was made
   'DISCOUNT_GIVEN',
   'PAYMENT_RECEIVED',
   'REFUND_GIVEN', 'PAYMENT_CORRECTED',
@@ -795,6 +796,8 @@ export const AUDIT_CATEGORIES = {
 AUDIT_CATEGORIES.patients.push('NICU_ADMISSION_UPDATED', 'NICU_ADMISSION_SIGNED', 'NICU_REGISTER_EXPORTED', 'NICU_BOARD_VIEWED', 'NICU_DESK_VIEWED');
 // IPD discharge and the IPD bill window (9 Nov 2026)
 AUDIT_CATEGORIES.patients.push('DISCHARGE_DETAILS_RECORDED', 'IPD_STAYS_VIEWED', 'BILL_FINALISED', 'BILL_REOPENED', 'BILL_ADMIN_CHARGE_SET');
+// The doctor of a bill's item changed after it was added (27 Nov 2026, reception)
+AUDIT_CATEGORIES.patients.push('BILL_ITEM_DOCTOR_CHANGED');
 // The lab's critical results and big-change checks (10 Nov 2026 - docs/LAB_BUILD_NOTE.md)
 AUDIT_CATEGORIES.patients.push('LAB_CRITICAL_CALL_NOTED', 'LAB_CRITICAL_NOT_REACHED', 'LAB_CRITICAL_ACKNOWLEDGED', 'LAB_DELTA_CONFIRMED');
 

@@ -14,6 +14,7 @@ vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembershi
 const { BillPage } = await import('./BillPage.jsx');
 const { HeadedBillLines, ServiceEntryRow, canChangeRate } = await import('./ServiceEntry.jsx');
 const { billHeadOf, linesByHead } = await import('./billHeads.js');
+const { receiptFacts } = await import('./billingFormat.js');
 
 const words = (html) => html.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 const text = (html) => words(html).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
@@ -97,6 +98,16 @@ describe('the OPD bill page', () => {
     expect(text(html)).not.toMatch(/!/);
   });
 
+  it('has Change on the doctor of each item while the bill is open (27 Nov 2026)', () => {
+    answers[`/billing/bills/${BID}`] = { bill: opdBill() };
+    const html = page();
+    expect(text(html)).toContain('Change the doctor of Dressing');
+    expect(text(html)).toContain('Change the doctor of Consultation – new patient');
+    expect((html.match(/class="btn btn-primary"/g) ?? []).length).toBe(1);
+    answers[`/billing/bills/${BID}`] = { bill: opdBill({ status: 'cancelled', cancelled: { byName: 'Sample Reception', at: '2026-11-11T06:00:00.000Z', reason: 'Wrong patient' } }) };
+    expect(text(page())).not.toContain('Change the doctor');
+  });
+
   it('a cancelled bill, or a stay’s final bill, has neither the entry row nor tick boxes', () => {
     answers[`/billing/bills/${BID}`] = { bill: opdBill({ status: 'cancelled', cancelled: { byName: 'Sample Reception', at: '2026-11-11T06:00:00.000Z', reason: 'Wrong patient' } }) };
     expect(page()).not.toContain('Tick all items');
@@ -104,5 +115,42 @@ describe('the OPD bill page', () => {
     const html = page();
     expect(html).not.toContain('Tick all items');
     expect(text(html)).not.toContain('Service name');
+  });
+});
+// Reception (27 Nov 2026): receipt R-000081 for ₹300 printed her registration doctor and the bill's later ₹3,300
+describe('what a receipt prints', () => {
+  const at = (h) => `2026-11-27T0${h}:00:00.000Z`;
+  const bill = {
+    kind: 'opd', doctorName: 'Dr Sample Registration', doctorDepartment: 'Obstetrics', subtotal: 330000, discount: 0, total: 330000, paid: 330000, balance: 0,
+    lines: [
+      line('l1', 'Consultation – follow-up', 'consultation', 30000, 1, { doctorName: 'Dr Sample One', addedAt: at(1) }),
+      line('l2', 'Sample scan', 'scan', 300000, 1, { doctorName: 'Dr Sample Two', addedAt: at(3) }),
+      line('l3', 'Dressing', 'procedure', 10000, 1, { doctorName: '', addedAt: at(1), removed: { byName: 'Sample Reception', at: at(2) } }),
+    ],
+    payments: [
+      { receipt: 'R-000081', kind: 'payment', mode: 'cash', amountPaise: 30000, at: at(2), asOf: { subtotal: 30000, discount: 0, total: 30000, paid: 30000, balance: 0 } },
+      { receipt: 'R-000082', kind: 'payment', mode: 'upi', amountPaise: 300000, at: at(4), asOf: { subtotal: 330000, discount: 0, total: 330000, paid: 330000, balance: 0 } },
+    ],
+  };
+
+  it('the items on the bill when it was taken, their doctor, and the sums as they stood then', () => {
+    const first = receiptFacts(bill, bill.payments[0]);
+    expect(first.lines.map((l) => l.id)).toEqual(['l1']); // the dressing was taken off at the same moment, the scan came later
+    expect(first).toMatchObject({ consultant: 'Dr Sample One', consultants: false, department: '', sums: { total: 30000, paid: 30000, balance: 0 } });
+    const second = receiptFacts(bill, bill.payments[1]);
+    expect(second.lines.map((l) => l.id)).toEqual(['l1', 'l2']);
+    expect(second).toMatchObject({ consultant: 'Dr Sample One, Dr Sample Two', consultants: true, sums: { total: 330000, paid: 330000 } });
+  });
+
+  it('the bill itself: its items now; her registration doctor only when no item has one; a stay keeps its doctor', () => {
+    expect(receiptFacts(bill).lines.map((l) => l.id)).toEqual(['l1', 'l2']);
+    expect(receiptFacts(bill).sums).toEqual({ subtotal: 330000, discount: 0, total: 330000, paid: 330000, balance: 0 });
+    const none = { ...bill, lines: bill.lines.map((l) => ({ ...l, doctorName: '' })) };
+    expect(receiptFacts(none)).toMatchObject({ consultant: 'Dr Sample Registration', consultants: false, department: 'Obstetrics' });
+    const own = { ...bill, lines: [{ ...bill.lines[0], doctorName: 'Dr Sample Registration' }] };
+    expect(receiptFacts(own)).toMatchObject({ consultant: 'Dr Sample Registration', department: 'Obstetrics' });
+    expect(receiptFacts({ ...bill, kind: 'ipd' })).toMatchObject({ consultant: 'Dr Sample Registration', consultants: false, department: 'Obstetrics' });
+    // a receipt from before the figures were kept with it: the bill's own sums
+    expect(receiptFacts(bill, { ...bill.payments[0], asOf: undefined }).sums.total).toBe(330000);
   });
 });
