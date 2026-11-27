@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { StoreHead } from '../../components/print/StoreHead.jsx';
-import { PackageX, ScanBarcode, Search } from 'lucide-react';
+import { PackageX, Plus, ScanBarcode, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -87,7 +87,11 @@ export function ScheduleMark({ schedule }) {
  * opens a drop-down of the medicines that match, in columns – name, quantity in stock, MRP, GST and unit. The arrow keys
  * move up and down the list, Enter takes the medicine marked, Esc closes it; a click works too.
  */
-export function MedicineFinder({ onPick, label = 'Add a medicine', autoFocus = false }) {
+/**
+ * onCreate(name): when given (a purchase bill, 27 Nov 2026), a name not on the stock list offers "Create drug" – a
+ * click, or Enter – with the name as typed.
+ */
+export function MedicineFinder({ onPick, onCreate, label = 'Add a medicine', autoFocus = false }) {
   const [text, setText] = useState('');
   const [result, setResult] = useState(null);
   const [at, setAt] = useState(0); // the row marked
@@ -127,6 +131,11 @@ export function MedicineFinder({ onPick, label = 'Add a medicine', autoFocus = f
     setText('');
     setResult(null);
   };
+  const create = () => {
+    onCreate(term);
+    setText('');
+    setResult(null);
+  };
   const keys = (e) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
@@ -135,6 +144,7 @@ export function MedicineFinder({ onPick, label = 'Add a medicine', autoFocus = f
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (shown && meds[at]) pick(meds[at]);
+      else if (shown && result.medicines && !meds.length && onCreate) create();
     } else if (e.key === 'Escape') {
       setOpen(false);
     }
@@ -167,7 +177,16 @@ export function MedicineFinder({ onPick, label = 'Add a medicine', autoFocus = f
       {shown && result.medicines && (
         <div className="ph-medlist" ref={list}>
           {!meds.length ? (
-            <p className="muted ph-medlist-none">Not on the stock list. Add it under Medicines first.</p>
+            onCreate ? (
+              <p className="muted ph-medlist-none">
+                Not on the stock list.{' '}
+                <button type="button" className="btn btn-link btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={create}>
+                  <Plus aria-hidden="true" /> Create drug “{term}”
+                </button>
+              </p>
+            ) : (
+              <p className="muted ph-medlist-none">Not on the stock list. Add it under Medicines first.</p>
+            )
           ) : (
             <>
               <div className="ph-medlist-head" aria-hidden="true">
@@ -284,10 +303,10 @@ export function BarcodeBox({ onPick, autoFocus = false }) {
 }
 
 /** Finding a medicine for a list: by name on the left, by barcode on the right (under each other on a narrow screen). */
-export function FindMedicine({ onPick, onScan, label = 'Add a medicine' }) {
+export function FindMedicine({ onPick, onScan, onCreate, label = 'Add a medicine' }) {
   return (
     <div className="ph-find">
-      <MedicineFinder label={label} onPick={onPick} />
+      <MedicineFinder label={label} onPick={onPick} onCreate={onCreate} />
       <BarcodeBox onPick={onScan} />
     </div>
   );

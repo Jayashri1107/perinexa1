@@ -103,11 +103,28 @@ export function typedExpiry(text) {
   return `${year}-${String(month).padStart(2, '0')}`;
 }
 
+/**
+ * A discount typed in rupees (27 Nov 2026, the pharmacy's request: "the discount amount can be typed", on a medicine
+ * and on the bill): the percent it is of what it comes off, kept exact, so that grnLine and grnTotals – and the
+ * server's copy – work the very same amount out again. null when there is nothing yet for it to come off.
+ */
+export const percentOf = (amountPaise, basePaise) => (amountPaise === 0 ? 0 : basePaise > 0 ? (amountPaise * 100) / basePaise : null);
+
+/** A percent as shown: at most 2 decimals, no trailing zeros (3.3333… → "3.33", 5 → "5"; '' when not known). */
+export const percentShown = (p) => (p == null || Number.isNaN(p) ? '' : String(Math.round(p * 100) / 100));
+
 /** 'YYYY-MM' as it is typed back: "08/2027" ('' for anything else). */
 export const expiryTyped = (ym) => (/^\d{4}-\d{2}$/.test(ym ?? '') ? `${ym.slice(5)}/${ym.slice(0, 4)}` : '');
 
-/** While typing: "08" becomes "08/" so the month and year need no slash key. Deleting is left alone. */
+/**
+ * While typing: "08" becomes "08/" so the month and year need no slash key. Deleting is left alone. A slash (or dot,
+ * dash, space) typed anyway right after the one put in is not doubled (27 Nov 2026: "08/28" typed in full read as
+ * "08//28", which is not an expiry).
+ */
 export function expiryAsTyped(next, before = '') {
-  const v = String(next ?? '').replace(/[^\d/.\-\s]/g, '').slice(0, 10);
+  const v = String(next ?? '')
+    .replace(/[^\d/.\-\s]/g, '')
+    .replace(/^(\d{2})\/[/.\-\s]/, '$1/')
+    .slice(0, 10);
   return v.length > before.length && /^\d{2}$/.test(v) ? `${v}/` : v;
 }

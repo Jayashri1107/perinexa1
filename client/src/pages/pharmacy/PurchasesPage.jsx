@@ -1,13 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CircleAlert, CircleCheck, CircleSlash, FileUp, PackagePlus, Plus, Save, Trash2, X } from 'lucide-react';
 import { Link, NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import { SearchInput, usePagedRows } from '../../components/DataTable.jsx';
+import { DataTable, SearchInput, usePagedRows } from '../../components/DataTable.jsx';
 import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
-import { toPaise } from '../billing/billingFormat.js';
-import { expiryAsTyped, expiryTyped, grnLineFigures, grnTotals, typedExpiry } from './grnFormat.js';
+import { toInput, toPaise } from '../billing/billingFormat.js';
+import { expiryAsTyped, expiryTyped, grnLineFigures, grnTotals, percentOf, percentShown, typedExpiry } from './grnFormat.js';
 import { gstinProblem, gstinState } from './gstin.js';
 import { FORM_LABELS, SCHEDULE_LABELS, cleanBarcode, expiryLabel, isBarcode, medicineLabel, medicinesToCheck, orderLook, receiveLines, receivedFlash, scannedForPurchase, packWords } from './pharmacyFormat.js';
 import { FindMedicine, Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
@@ -41,6 +41,106 @@ function CancelPurchase({ purchase, onClose, onDone }) {
   );
 }
 
+/** One supplier bill: its facts, its medicines and sums, who entered it (and the order it was received against). */
+function PurchaseCard({ p, desk, onCancel }) {
+  return (
+    <section className={`card bill-section ${p.status === 'cancelled' ? 'bill-row-cancelled' : ''}`}>
+      <div className="row-between">
+        <h2>
+          {p.number} · {p.supplier} · invoice {p.invoiceNo} · {dayLabel(p.invoiceDate)}
+        </h2>
+        <span className="row">
+          {/* The net to pay (GRN bills); older purchases have only their value */}
+          <strong>{money(p.grn ? p.grn.netPaise : p.totalPaise)}</strong>
+          {p.status === 'cancelled' ? (
+            <StatusPill tone="inactive">Cancelled – {p.cancelled?.reason}</StatusPill>
+          ) : (
+            desk && (
+              <button type="button" className="btn btn-link btn-sm" onClick={() => onCancel(p)}>
+                Cancel
+              </button>
+            )
+          )}
+        </span>
+      </div>
+      {p.grn && (
+        <dl className="ph-facts ph-grn-facts">
+          {[
+            ['Payment', p.grn.payment === 'cash' ? 'Cash' : 'Credit'],
+            ['Tax', p.grn.taxType === 'igst' ? 'IGST' : 'CGST + SGST'],
+            ['Gate entry', p.grn.gateEntryNo],
+            ['Received by', p.grn.receivedBy],
+            ['Remark', p.grn.remark],
+          ]
+            .filter(([, v]) => v)
+            .map(([k, v]) => (
+              <div key={k}>
+                <dt>{k}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
+        </dl>
+      )}
+      <div className="ph-grn-scroll">
+        <table className="bill-report">
+          <thead>
+            <tr>
+              <th scope="col">Medicine</th>
+              <th scope="col">Batch</th>
+              <th scope="col">Expiry</th>
+              <th scope="col" className="num">Qty (+ free)</th>
+              <th scope="col" className="num">Rate</th>
+              <th scope="col" className="num">MRP</th>
+              {p.grn && (
+                <>
+                  <th scope="col" className="num">Disc %</th>
+                  <th scope="col" className="num">GST %</th>
+                  <th scope="col" className="num">Total</th>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {p.lines.map((l, i) => (
+              <tr key={i}>
+                <td>{l.name}</td>
+                <td>{l.batch}</td>
+                <td>{expiryLabel(l.expiry)}</td>
+                {/* As on the bill (packs) when it was entered so; the stock's units under it */}
+                <td className="num">
+                  {l.pack && l.pack.conv > 1 ? `${l.pack.qty}${l.pack.freeQty ? ` + ${l.pack.freeQty}` : ''} packs × ${l.pack.conv} = ` : ''}
+                  {l.qty}
+                  {l.freeQty ? ` + ${l.freeQty}` : ''}
+                </td>
+                <td className="num">{money(l.pack ? l.pack.ratePaise : l.ratePaise)}</td>
+                <td className="num">{money(l.pack ? l.pack.mrpPaise : l.mrpPaise)}</td>
+                {p.grn && (
+                  <>
+                    <td className="num">{percentShown(l.pack?.discPercent ?? 0)}</td>
+                    <td className="num">{l.gstRate ?? '—'}</td>
+                    <td className="num">{money(l.pack?.totalPaise ?? l.ratePaise * l.qty)}</td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {p.grn && <GrnSummary sums={p.grn} taxType={p.grn.taxType} />}
+      <p className="hint">
+        Entered by {p.byName}
+        {p.at ? ` on ${formatDateTime(p.at)}` : ''}
+        {p.order && (
+          <>
+            {' '}
+            · received against order <Link to={`/pharmacy/orders/${p.order.id}`}>{p.order.number}</Link>
+          </>
+        )}
+      </p>
+    </section>
+  );
+}
+
 /** Supplier bills (purchases), each with its medicines; the pharmacist can cancel one. */
 function PurchaseCards({ res, desk, empty = 'No purchases yet.' }) {
   const [cancelling, setCancelling] = useState(null);
@@ -50,102 +150,84 @@ function PurchaseCards({ res, desk, empty = 'No purchases yet.' }) {
       {res.error && <Alert type="error">{res.error}</Alert>}
       {res.data && !res.data.purchases.length && <p className="muted">{empty}</p>}
       {(shown ?? []).map((p) => (
-          <section key={p.id} className={`card bill-section ${p.status === 'cancelled' ? 'bill-row-cancelled' : ''}`}>
-            <div className="row-between">
-              <h2>
-                {p.number} · {p.supplier} · invoice {p.invoiceNo} · {dayLabel(p.invoiceDate)}
-              </h2>
-              <span className="row">
-                {/* The net to pay (GRN bills); older purchases have only their value */}
-                <strong>{money(p.grn ? p.grn.netPaise : p.totalPaise)}</strong>
-                {p.status === 'cancelled' ? (
-                  <StatusPill tone="inactive">Cancelled – {p.cancelled?.reason}</StatusPill>
-                ) : (
-                  desk && (
-                    <button type="button" className="btn btn-link btn-sm" onClick={() => setCancelling(p)}>
-                      Cancel
-                    </button>
-                  )
-                )}
-              </span>
-            </div>
-            {p.grn && (
-              <dl className="ph-facts ph-grn-facts">
-                {[
-                  ['Payment', p.grn.payment === 'cash' ? 'Cash' : 'Credit'],
-                  ['Tax', p.grn.taxType === 'igst' ? 'IGST' : 'CGST + SGST'],
-                  ['Gate entry', p.grn.gateEntryNo],
-                  ['Received by', p.grn.receivedBy],
-                  ['Remark', p.grn.remark],
-                ]
-                  .filter(([, v]) => v)
-                  .map(([k, v]) => (
-                    <div key={k}>
-                      <dt>{k}</dt>
-                      <dd>{v}</dd>
-                    </div>
-                  ))}
-              </dl>
-            )}
-            <div className="ph-grn-scroll">
-              <table className="bill-report">
-                <thead>
-                  <tr>
-                    <th scope="col">Medicine</th>
-                    <th scope="col">Batch</th>
-                    <th scope="col">Expiry</th>
-                    <th scope="col" className="num">Qty (+ free)</th>
-                    <th scope="col" className="num">Rate</th>
-                    <th scope="col" className="num">MRP</th>
-                    {p.grn && (
-                      <>
-                        <th scope="col" className="num">Disc %</th>
-                        <th scope="col" className="num">GST %</th>
-                        <th scope="col" className="num">Total</th>
-                      </>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {p.lines.map((l, i) => (
-                    <tr key={i}>
-                      <td>{l.name}</td>
-                      <td>{l.batch}</td>
-                      <td>{expiryLabel(l.expiry)}</td>
-                      {/* As on the bill (packs) when it was entered so; the stock's units under it */}
-                      <td className="num">
-                        {l.pack && l.pack.conv > 1 ? `${l.pack.qty}${l.pack.freeQty ? ` + ${l.pack.freeQty}` : ''} packs × ${l.pack.conv} = ` : ''}
-                        {l.qty}
-                        {l.freeQty ? ` + ${l.freeQty}` : ''}
-                      </td>
-                      <td className="num">{money(l.pack ? l.pack.ratePaise : l.ratePaise)}</td>
-                      <td className="num">{money(l.pack ? l.pack.mrpPaise : l.mrpPaise)}</td>
-                      {p.grn && (
-                        <>
-                          <td className="num">{l.pack?.discPercent ?? 0}</td>
-                          <td className="num">{l.gstRate ?? '—'}</td>
-                          <td className="num">{money(l.pack?.totalPaise ?? l.ratePaise * l.qty)}</td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {p.grn && <GrnSummary sums={p.grn} taxType={p.grn.taxType} />}
-            <p className="hint">
-              Entered by {p.byName}
-              {p.at ? ` on ${formatDateTime(p.at)}` : ''}
-              {p.order && (
-                <>
-                  {' '}
-                  · received against order <Link to={`/pharmacy/orders/${p.order.id}`}>{p.order.number}</Link>
-                </>
-              )}
-            </p>
-          </section>
-        ))}
+        <PurchaseCard key={p.id} p={p} desk={desk} onCancel={setCancelling} />
+      ))}
       {pager && <div className="card ph-pager">{pager}</div>}
+      {cancelling && (
+        <CancelPurchase
+          purchase={cancelling}
+          onClose={() => setCancelling(null)}
+          onDone={() => {
+            setCancelling(null);
+            res.reload();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * GRN List (27 Nov 2026, the pharmacy's request: "as the earlier software"): one row a bill, newest first – GRN no and
+ * date, supplier, invoice no and date, cash or credit, the net amount – found by GRN no, supplier or invoice no. The
+ * bill clicked opens below the list with its medicines and sums (the newest when the list opens).
+ */
+function GrnList({ res, desk }) {
+  const [search, setSearch] = useState('');
+  const [openId, setOpenId] = useState(null);
+  const [cancelling, setCancelling] = useState(null);
+  const all = res.data?.purchases;
+  const q = search.trim().toLowerCase();
+  const rows = useMemo(() => (all && q ? all.filter((p) => [p.number, p.supplier, p.invoiceNo].some((t) => String(t ?? '').toLowerCase().includes(q))) : all), [all, q]);
+  const open = (rows ?? []).find((p) => p.id === openId) ?? rows?.[0] ?? null;
+  return (
+    <>
+      {res.error && <Alert type="error">{res.error}</Alert>}
+      <section className="card bill-section ph-grn-list" aria-label="GRN List">
+        <div className="ph-list-search">
+          <SearchInput value={search} onChange={setSearch} placeholder="Find a bill by GRN no, supplier or invoice no" label="Find a purchase bill" />
+        </div>
+        <DataTable
+          caption="GRN List"
+          rows={rows ?? undefined}
+          loading={res.loading}
+          pageSize={25}
+          pageLabel="bills"
+          emptyText={q ? 'No bill matches.' : 'No purchases yet.'}
+          onRowClick={(p) => {
+            setOpenId(p.id);
+            // the bill opens below the list: brought into sight
+            requestAnimationFrame(() => document.getElementById('ph-grn-open')?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }));
+          }}
+          rowClassName={(p) => [p.id === open?.id ? 'is-picked' : '', p.status === 'cancelled' ? 'is-cancelled' : ''].filter(Boolean).join(' ') || undefined}
+          columns={[
+            { key: 'number', header: 'GRN No', render: (p) => <span className="tabular">{p.number}</span> },
+            { key: 'at', header: 'GRN Date', render: (p) => (p.at ? formatDate(p.at) : '–') },
+            { key: 'supplier', header: 'Supplier Name', render: (p) => p.supplier },
+            { key: 'invoiceNo', header: 'Invoice No', render: (p) => <span className="tabular">{p.invoiceNo}</span> },
+            { key: 'invoiceDate', header: 'Invoice Date', render: (p) => formatDate(p.invoiceDate) },
+            { key: 'payment', header: 'Cash / Credit', render: (p) => (p.grn ? (p.grn.payment === 'cash' ? 'Cash' : 'Credit') : '–') },
+            { key: 'net', header: 'Net Amount', align: 'right', render: (p) => <span className="tabular">{money(p.grn ? p.grn.netPaise : p.totalPaise)}</span> },
+            {
+              key: 'status',
+              header: 'Status',
+              render: (p) =>
+                p.status === 'cancelled' ? (
+                  <StatusPill tone="inactive" icon={CircleSlash}>
+                    Cancelled
+                  </StatusPill>
+                ) : (
+                  ''
+                ),
+            },
+          ]}
+        />
+      </section>
+      {open && (
+        <div id="ph-grn-open">
+          <PurchaseCard p={open} desk={desk} onCancel={setCancelling} />
+        </div>
+      )}
       {cancelling && (
         <CancelPurchase
           purchase={cancelling}
@@ -181,7 +263,7 @@ export function PurchasesPage() {
       />
       <div className="pf-content bill-page">
         <GrnTabs desk={desk} />
-        <PurchaseCards res={res} desk={desk} />
+        <GrnList res={res} desk={desk} />
       </div>
     </>
   );
@@ -288,26 +370,40 @@ export function SupplierPage() {
 let lineSeq = 0;
 // A line as typed: quantities, rate and MRP per pack of `conv` units of sale (GRN, owner 26 Oct 2026)
 // PH2: the pack (ConvF) starts as the medicine's own pack size
-const blankLine = (m, key) => ({ key, medicine: m, batch: '', expiry: '', conv: String(m.packSize > 1 ? m.packSize : 1), qty: '', freeQty: '', rate: '', mrp: '', disc: '', gst: String(m.gstRate ?? 5) });
+// 27 Nov 2026: the discount as a percent (disc) or in rupees (discAmt) – discBy says which was typed
+const blankLine = (m, key) => ({ key, medicine: m, batch: '', expiry: '', conv: String(m.packSize > 1 ? m.packSize : 1), qty: '', freeQty: '', rate: '', mrp: '', disc: '', discAmt: '', discBy: 'pct', gst: String(m.gstRate ?? 5) });
 const emptyLine = (m) => blankLine(m, `${m.id}-${(lineSeq += 1)}`);
 const BILL_GST_RATES = [0, 5, 12, 18];
 const TAX_LABELS = { cgst_sgst: 'CGST + SGST', igst: 'IGST' };
 const num = (text) => (String(text ?? '').trim() === '' ? 0 : Number(text));
 const rupeesIn = (text) => (String(text ?? '').trim() === '' ? 0 : toPaise(text));
-const parseLine = (l) => ({ l, conv: num(l.conv), qty: num(l.qty), free: num(l.freeQty), rate: rupeesIn(l.rate), mrp: toPaise(l.mrp), disc: num(l.disc), gst: Number(l.gst) });
+function parseLine(l) {
+  const qty = num(l.qty);
+  const rate = rupeesIn(l.rate);
+  const byAmt = l.discBy === 'amt';
+  // A discount typed in rupees comes off the line's total (rate × qty): kept as the exact percent of it
+  const discAmt = byAmt ? rupeesIn(l.discAmt) : null;
+  const total = Number.isInteger(qty) && qty >= 0 && rate != null ? Math.round(rate * qty) : 0;
+  const disc = byAmt ? (discAmt == null ? NaN : (percentOf(discAmt, total) ?? NaN)) : num(l.disc);
+  return { l, conv: num(l.conv), qty, free: num(l.freeQty), rate, mrp: toPaise(l.mrp), disc, byAmt, discAmt, gst: Number(l.gst) };
+}
 /** What is missing or wrong on a line, by field ({} when it can be saved). */
 function lineErrors(x) {
   const e = {};
   if (!x.l.batch.trim()) e.batch = 'Write the batch number.';
   if (!/^\d{4}-\d{2}$/.test(x.l.expiry)) e.expiry = 'Type the expiry as month/year, for example 08/27.';
   if (!Number.isInteger(x.conv) || x.conv < 1) e.conv = 'Write how many units of sale are in a pack (1 or more).';
-  if (!Number.isInteger(x.qty) || x.qty < 0) e.qty = 'Write the number of packs.';
-  if (!Number.isInteger(x.free) || x.free < 0) e.freeQty = 'Write the free packs as a whole number, or leave it empty.';
-  else if (!e.qty && x.qty + x.free === 0) e.qty = 'Write the number of packs received.';
+  if (!Number.isInteger(x.qty) || x.qty < 0) e.qty = 'Write the quantity as on the bill.';
+  if (!Number.isInteger(x.free) || x.free < 0) e.freeQty = 'Write the free quantity as a whole number, or leave it empty.';
+  else if (!e.qty && x.qty + x.free === 0) e.qty = 'Write the quantity received.';
   if (!(x.mrp > 0)) e.mrp = 'Write the MRP per pack, for example 32.25.';
   if (x.rate == null) e.rate = 'Write the rate per pack, for example 24.59.';
   else if (x.mrp > 0 && x.rate > x.mrp) e.rate = 'The rate cannot be above the MRP.';
-  if (!(x.disc >= 0 && x.disc <= 100)) e.disc = 'Write the discount as 0 to 100 %.';
+  if (x.byAmt) {
+    if (x.discAmt == null) e.discAmt = 'Write the discount in rupees, for example 12.50.';
+    else if (Number.isNaN(x.disc)) e.discAmt = 'Write the quantity and rate first.';
+    else if (x.disc > 100) e.discAmt = 'The discount is more than the total of this line.';
+  } else if (!(x.disc >= 0 && x.disc <= 100)) e.disc = 'Write the discount as 0 to 100 %.';
   return e;
 }
 const expiryShown = (ym) => (/^\d{4}-\d{2}$/.test(ym) ? `${ym.slice(5)}/${ym.slice(0, 4)}` : '—');
@@ -328,12 +424,15 @@ function Choice({ label, value, options, onChange, disabled = false }) {
   );
 }
 
-/** GRN List and New GRN, the two tabs of the pharmacy's earlier software (New GRN is the pharmacist's). */
-function GrnTabs({ desk }) {
+/**
+ * GRN List and New GRN, the two tabs of the pharmacy's earlier software (New GRN is the pharmacist's). inHead: beside
+ * the title, on New GRN (27 Nov 2026: the room below goes to the bill, which fits the window).
+ */
+function GrnTabs({ desk, inHead = false }) {
   if (!desk) return null;
   const cls = ({ isActive }) => (isActive ? 'active' : '');
   return (
-    <nav className="segmented ph-grn-tabs" aria-label="Purchase bills (GRN)">
+    <nav className={`segmented ph-grn-tabs${inHead ? ' is-head' : ''}`} aria-label="Purchase bills (GRN)">
       <NavLink to="/pharmacy/purchases" end className={cls}>
         GRN List
       </NavLink>
@@ -382,6 +481,22 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
     if (Object.keys(errors).length) return setTried(true);
     return onDone(l);
   };
+  // 27 Nov 2026 (the pharmacy's request): Enter goes on to the next box, as on the earlier software – after the last
+  // (GST %) it adds the medicine to the bill. A discount typed as a percent needs no amount, so Enter skips that box.
+  const enterNext = (e) => {
+    if (e.key !== 'Enter' || !['INPUT', 'SELECT'].includes(e.target.tagName)) return;
+    const at = ENTER_ORDER.indexOf(e.target.id);
+    if (at < 0) return;
+    e.preventDefault();
+    const next = e.target.id === 'gl-disc' && !x.byAmt && String(l.disc).trim() ? 'gl-rate' : ENTER_ORDER[at + 1];
+    if (!next) {
+      e.currentTarget.requestSubmit?.();
+      return;
+    }
+    const box = document.getElementById(next);
+    box?.focus();
+    box?.select?.();
+  };
   const higher = lastPrice && x.rate && lastPrice.conv === x.conv && x.rate > lastPrice.ratePaise;
   const ro = (id, value) => <input id={id} value={value} readOnly tabIndex={-1} className="ph-ro" />;
   // 14 Nov 2026, as the earlier software's GRN: the panel opens over the items grid (not in the middle of the page),
@@ -405,7 +520,7 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
           <X aria-hidden="true" />
         </button>
       </div>
-      <form onSubmit={submit} noValidate>
+      <form onSubmit={submit} onKeyDown={enterNext} noValidate>
         <div className="ph-gl-grid">
           <Field label="Batch No" id="gl-batch" error={err('batch')}>
             <input id="gl-batch" value={l.batch} maxLength={40} onChange={f('batch')} autoFocus />
@@ -413,7 +528,7 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
           <Field label="Exp. Date (MM/YY)" id="gl-exp" error={err('expiry')}>
             <input id="gl-exp" inputMode="numeric" placeholder="08/27" autoComplete="off" value={expText} onChange={typeExpiry} />
           </Field>
-          <Field label="Qty (packs)" id="gl-qty" error={err('qty')}>
+          <Field label="Qty" id="gl-qty" error={err('qty')}>
             <input id="gl-qty" inputMode="numeric" value={l.qty} onChange={f('qty')} />
           </Field>
           <Field label="Free Qty" id="gl-free" error={err('freeQty')}>
@@ -422,11 +537,12 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
           <span aria-hidden="true" />
           <span aria-hidden="true" />
 
+          {/* 27 Nov 2026: the discount typed as a percent or in rupees – the other is worked out */}
           <Field label="Disc Per" id="gl-disc" error={err('disc')}>
-            <input id="gl-disc" inputMode="decimal" value={l.disc} onChange={f('disc')} />
+            <input id="gl-disc" inputMode="decimal" value={x.byAmt ? percentShown(x.disc) : l.disc} onChange={(e) => setL({ ...l, disc: e.target.value, discBy: 'pct' })} />
           </Field>
-          <Field label="Disc Amt" id="gl-discamt">
-            {ro('gl-discamt', money(fig.discPaise))}
+          <Field label="Disc Amt ₹" id="gl-discamt" error={err('discAmt')}>
+            <input id="gl-discamt" inputMode="decimal" value={x.byAmt ? l.discAmt : toInput(fig.discPaise)} onChange={(e) => setL({ ...l, discAmt: e.target.value, discBy: 'amt' })} />
           </Field>
           <Field label="Rate ₹ / pack" id="gl-rate" error={err('rate')}>
             <input id="gl-rate" inputMode="decimal" value={l.rate} onChange={f('rate')} />
@@ -486,6 +602,9 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
   );
 }
 
+/** The pop-up's boxes in the order Enter goes through them (27 Nov 2026). */
+const ENTER_ORDER = ['gl-batch', 'gl-exp', 'gl-qty', 'gl-free', 'gl-disc', 'gl-discamt', 'gl-rate', 'gl-mrp', 'gl-conv', 'gl-gst'];
+
 /** One amount of the bill, label beside a small field; without onChange it is a worked-out figure (read only). */
 function Amt({ label, id, value, onChange, text = false, strong = false, maxLength }) {
   const own = id ?? `pu-amt-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`;
@@ -504,7 +623,8 @@ function Amt({ label, id, value, onChange, text = false, strong = false, maxLeng
 /**
  * Pharmacy → Purchase bills → New GRN, laid out like the pharmacy's earlier software (owner, 26 Oct 2026; the pop-up
  * per medicine, 28 Oct 2026): the supplier's invoice on the left (store, supplier, invoice and gate entry numbers,
- * dates, CGST + SGST or IGST, direct or against a purchase order, credit or cash); on the right the item name, and the
+ * dates, CGST + SGST or IGST, cash or credit – 27 Nov 2026, the pharmacy's request: no Direct purchase / Purchase order
+ * choice; an order is received from its own page, Receive); on the right the item name, and the
  * medicines received as a list – each opens a pop-up for its batch, expiry, quantities and prices; below, the bill's
  * discounts and charges down to the net amount to pay, with CRN adjust, Save and Close. The stock gets units of sale.
  */
@@ -540,10 +660,8 @@ export function NewPurchasePage() {
   // The store it is received into: the pharmacy's name, which can be corrected on this bill (kept on the GRN)
   const [storeName, setStoreName] = useState(null);
   const store = storeName ?? settings.data?.settings.name ?? '';
-  const [againstOrder, setAgainstOrder] = useState(false);
-  const orders = useFetch(againstOrder && !order ? '/pharmacy/orders' : null);
-  const openOrders = (orders.data?.orders ?? []).filter((o) => o.supplier?.id === supplierId && (o.status === 'sent' || o.status === 'part_received'));
-  const [extra, setExtra] = useState({ scheme: '', discPercent: '', crnAdj: '', other: '', surcharge: '', freight: '', receivedBy: '', remark: '', printed: '' });
+  // The bill's discount as a percent or in rupees (discBy: which was typed – 27 Nov 2026)
+  const [extra, setExtra] = useState({ scheme: '', discPercent: '', discAmt: '', discBy: 'pct', crnAdj: '', other: '', surcharge: '', freight: '', receivedBy: '', remark: '', printed: '' });
   // PH3: the server's "the bill says ₹… but the lines add up to ₹…" – answered with Save as it is
   const [differs, setDiffers] = useState(null);
   const setX = (field) => (e) => setExtra({ ...extra, [field]: e.target.value });
@@ -551,6 +669,22 @@ export function NewPurchasePage() {
   const [editing, setEditing] = useState(null); // the pop-up: { line, isNew }
   const [billFile, setBillFile] = useState(false); // PH16: the supplier's bill from a file
   const [fromFile, setFromFile] = useState(null); // what the file filled in
+  // 27 Nov 2026 (the pharmacy's request): a medicine not yet on the stock list is created here – "Create drug" – and
+  // its pop-up opens; the items already entered stay on the bill
+  const [creating, setCreating] = useState(null); // { name } as typed
+  const canCreate = Boolean(settings.data?.canEdit);
+  // 27 Nov 2026 (the pharmacy's request: "this billing window must not scroll"): on a wide screen the supplier box, the
+  // items and the amounts with Save fit the window (pages-pharmacy.css, .ph-grn-fit); only the items list scrolls. Where
+  // that part starts is measured after every change (a message above it moves it down).
+  const fitRef = useRef(null);
+  useLayoutEffect(() => {
+    const el = fitRef.current;
+    if (!el) return undefined;
+    const place = () => el.style.setProperty('--grn-top', `${Math.round(el.getBoundingClientRect().top + window.scrollY)}px`);
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  });
 
   // The lines start as what the order still expects (none without an order) until the pharmacist changes them
   const orderLines = useMemo(() => (order ? receiveLines(order).map((x, i) => ({ ...blankLine(x.medicine, `${x.medicine.id}-order-${i}`), qty: String(x.qty) })) : []), [order]);
@@ -577,10 +711,15 @@ export function NewPurchasePage() {
   };
 
   const parsed = lines.map(parseLine);
+  const asLines = parsed.map((x) => ({ qty: x.qty || 0, ratePaise: x.rate ?? 0, discPercent: x.disc || 0, gstRate: x.gst || 0 }));
+  // The bill's discount typed in rupees comes off the total less the items' discounts: kept as the exact percent of it
+  const before = grnTotals(asLines, { taxType });
+  const billDiscAmt = extra.discBy === 'amt' ? rupeesIn(extra.discAmt) : null;
+  const billDiscPercent = extra.discBy === 'amt' ? (billDiscAmt == null ? NaN : (percentOf(billDiscAmt, before.totalPaise - before.itemDiscPaise) ?? NaN)) : num(extra.discPercent);
   const bill = {
     taxType,
     schemeDiscPaise: rupeesIn(extra.scheme),
-    discPercent: num(extra.discPercent),
+    discPercent: billDiscPercent,
     crnAdjPaise: rupeesIn(extra.crnAdj),
     otherChargesPaise: rupeesIn(extra.other),
     surchargePaise: rupeesIn(extra.surcharge),
@@ -588,10 +727,7 @@ export function NewPurchasePage() {
   };
   const amountsOk = Object.values(bill).every((v) => v !== null && !Number.isNaN(v)) && bill.discPercent >= 0 && bill.discPercent <= 100;
   const lineOk = (x) => !Object.keys(lineErrors(x)).length;
-  const sums = grnTotals(
-    parsed.map((x) => ({ qty: x.qty || 0, ratePaise: x.rate ?? 0, discPercent: x.disc || 0, gstRate: x.gst || 0 })),
-    amountsOk ? bill : { taxType },
-  );
+  const sums = grnTotals(asLines, amountsOk ? bill : { taxType });
   const toFill = parsed.filter((x) => !lineOk(x)).length;
   // PH3: the bill's total as printed, against the sums (more than ₹1 apart is shown before saving)
   const printedPaise = extra.printed.trim() ? toPaise(extra.printed) : null;
@@ -622,9 +758,8 @@ export function NewPurchasePage() {
     });
   return (
     <>
-      <PharmacyHeader title={order ? `Receive order ${order.number}` : 'Add a purchase bill'} crumb={order ? `Receive ${order.number}` : 'New GRN'} buying />
+      <PharmacyHeader title={order ? `Receive order ${order.number}` : 'Add a purchase bill'} crumb={order ? `Receive ${order.number}` : 'New GRN'} buying actions={<GrnTabs desk inHead />} />
       <div className="pf-content bill-page ph-grn-dense">
-        <GrnTabs desk />
         <Alert type="error" onClose={() => s.setError(null)}>
           {s.error}
         </Alert>
@@ -640,323 +775,322 @@ export function NewPurchasePage() {
             arrived, take off what did not come, and add a line for a second batch of the same medicine.
           </Alert>
         )}
-        <div className="ph-grn-layout">
-          <section className="card bill-section ph-grn-invoice" aria-labelledby="pu-head">
-            <h2 id="pu-head">Supplier invoice</h2>
-            {suppliers.data && !suppliers.data.suppliers.length && <Alert type="warning">Add a supplier first (Suppliers in the menu).</Alert>}
-            {/* 14 Nov 2026, as the earlier software's New GRN: label beside each field, the supplier's details in boxes */}
-            <div className="ph-gi">
-              <label className="ph-gi-row" htmlFor="pu-store">
-                <span>Store Name</span>
-                <input id="pu-store" value={store} maxLength={150} placeholder="Pharmacy store" onChange={(e) => setStoreName(e.target.value)} />
-              </label>
-              <label className="ph-gi-row" htmlFor="pu-sup">
-                <span>Supplier Name</span>
-                <select id="pu-sup" value={supplierId} disabled={Boolean(order)} onChange={(e) => setSupplierId(e.target.value)}>
-                  <option value="">Choose…</option>
-                  {(suppliers.data?.suppliers ?? [])
-                    .filter((x) => x.active || x.id === supplierId)
-                    .map((x) => (
-                      <option key={x.id} value={x.id}>
-                        {x.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <input className="ph-gi-full ph-ro" aria-label="Supplier address" value={supplier?.address ?? ''} placeholder="Address" readOnly tabIndex={-1} />
-              <div className="ph-gi-pair">
-                <input className="ph-ro" aria-label="Supplier phone" value={supplier?.phone ?? ''} placeholder="Phone" readOnly tabIndex={-1} />
-                <input className="ph-ro" aria-label="Supplier GSTIN" value={supplier?.gstin ?? ''} placeholder="GSTIN" readOnly tabIndex={-1} />
-              </div>
-              <div className="ph-gi-pair ph-gi-labelled">
-                <label htmlFor="pu-no">
-                  <span>Invoice No</span>
-                  <input id="pu-no" value={invoiceNo} maxLength={60} onChange={(e) => setInvoiceNo(e.target.value)} />
+        <div className="ph-grn-fit" ref={fitRef}>
+          <div className="ph-grn-layout">
+            <section className="card bill-section ph-grn-invoice" aria-labelledby="pu-head">
+              <h2 id="pu-head">Supplier invoice</h2>
+              {suppliers.data && !suppliers.data.suppliers.length && <Alert type="warning">Add a supplier first (Suppliers in the menu).</Alert>}
+              {/* 14 Nov 2026, as the earlier software's New GRN: label beside each field, the supplier's details in boxes */}
+              <div className="ph-gi">
+                <label className="ph-gi-row" htmlFor="pu-store">
+                  <span>Store Name</span>
+                  <input id="pu-store" value={store} maxLength={150} placeholder="Pharmacy store" onChange={(e) => setStoreName(e.target.value)} />
                 </label>
-                <label htmlFor="pu-gate">
-                  <span>Gate Entry No</span>
-                  <input id="pu-gate" value={gateEntryNo} maxLength={40} onChange={(e) => setGateEntryNo(e.target.value)} />
+                <label className="ph-gi-row" htmlFor="pu-sup">
+                  <span>Supplier Name</span>
+                  <select id="pu-sup" value={supplierId} disabled={Boolean(order)} onChange={(e) => setSupplierId(e.target.value)}>
+                    <option value="">Choose…</option>
+                    {(suppliers.data?.suppliers ?? [])
+                      .filter((x) => x.active || x.id === supplierId)
+                      .map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.name}
+                        </option>
+                      ))}
+                  </select>
                 </label>
-              </div>
-              <div className="ph-gi-pair ph-gi-labelled">
-                <div>
-                  <span>Invoice Date</span>
-                  <DateText id="pu-date" aria-label="Invoice date" value={invoiceDate} onChange={(v) => setInvoiceDate(v)} />
+                <input className="ph-gi-full ph-ro" aria-label="Supplier address" value={supplier?.address ?? ''} placeholder="Address" readOnly tabIndex={-1} />
+                <div className="ph-gi-pair">
+                  <input className="ph-ro" aria-label="Supplier phone" value={supplier?.phone ?? ''} placeholder="Phone" readOnly tabIndex={-1} />
+                  <input className="ph-ro" aria-label="Supplier GSTIN" value={supplier?.gstin ?? ''} placeholder="GSTIN" readOnly tabIndex={-1} />
                 </div>
-                <label htmlFor="pu-tax">
-                  <span>Tax Name</span>
-                  <select id="pu-tax" value={taxType} onChange={(e) => choose('taxType')(e.target.value)}>
-                    {Object.entries(TAX_LABELS).map(([k, label]) => (
-                      <option key={k} value={k}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="ph-gi-pair ph-gi-labelled">
+                  <label htmlFor="pu-no">
+                    <span>Invoice No</span>
+                    <input id="pu-no" value={invoiceNo} maxLength={60} onChange={(e) => setInvoiceNo(e.target.value)} />
+                  </label>
+                  <label htmlFor="pu-gate">
+                    <span>Gate Entry No</span>
+                    <input id="pu-gate" value={gateEntryNo} maxLength={40} onChange={(e) => setGateEntryNo(e.target.value)} />
+                  </label>
+                </div>
+                <div className="ph-gi-pair ph-gi-labelled">
+                  <div>
+                    <span>Invoice Date</span>
+                    <DateText id="pu-date" aria-label="Invoice date" value={invoiceDate} onChange={(v) => setInvoiceDate(v)} />
+                  </div>
+                  <label htmlFor="pu-tax">
+                    <span>Tax Name</span>
+                    <select id="pu-tax" value={taxType} onChange={(e) => choose('taxType')(e.target.value)}>
+                      {Object.entries(TAX_LABELS).map(([k, label]) => (
+                        <option key={k} value={k}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="ph-gi-pair ph-gi-labelled">
+                  <label htmlFor="pu-at">
+                    <span>Date</span>
+                    <input id="pu-at" value={formatDate(enteredAt.toISOString())} readOnly className="ph-ro" />
+                  </label>
+                  <label htmlFor="pu-time">
+                    <span>Time</span>
+                    <input id="pu-time" value={enteredAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} readOnly className="ph-ro" />
+                  </label>
+                </div>
+                {/* 27 Nov 2026 (the pharmacy's request): only Cash or Credit here */}
+                <div className="ph-gi-radios" role="radiogroup" aria-label="Payment">
+                  <label>
+                    <input type="radio" name="pu-pay" checked={payment === 'cash'} onChange={() => choose('payment')('cash')} /> Cash
+                  </label>
+                  <label>
+                    <input type="radio" name="pu-pay" checked={payment === 'credit'} onChange={() => choose('payment')('credit')} /> Credit
+                  </label>
+                </div>
+                {supplier && (supplier.taxType || supplier.payment === 'cash') && <p className="hint ph-gi-note">Filled in from the supplier; change them here for this bill only.</p>}
               </div>
-              <div className="ph-gi-pair ph-gi-labelled">
-                <label htmlFor="pu-at">
-                  <span>Date</span>
-                  <input id="pu-at" value={formatDate(enteredAt.toISOString())} readOnly className="ph-ro" />
-                </label>
-                <label htmlFor="pu-time">
-                  <span>Time</span>
-                  <input id="pu-time" value={enteredAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} readOnly className="ph-ro" />
-                </label>
-              </div>
-              <div className="ph-gi-radios" role="radiogroup" aria-label="Purchase">
-                <label>
-                  <input
-                    type="radio"
-                    name="pu-kind"
-                    checked={!order && !againstOrder}
-                    onChange={() => {
-                      setAgainstOrder(false);
-                      if (order) navigate(`/pharmacy/purchases/new${supplierId ? `?supplier=${supplierId}` : ''}`);
-                    }}
-                  />{' '}
-                  Direct Purchase
-                </label>
-                <label>
-                  <input type="radio" name="pu-kind" checked={Boolean(order) || againstOrder} onChange={() => setAgainstOrder(true)} /> Purchase Orders
-                </label>
-              </div>
-              {againstOrder && !order && (
-                <label className="ph-gi-row" htmlFor="pu-order">
-                  <span>Order</span>
-                  <select id="pu-order" value="" disabled={!supplierId} onChange={(e) => e.target.value && navigate(`/pharmacy/purchases/new?order=${e.target.value}`)}>
-                    <option value="">{!supplierId ? 'Choose the supplier first' : orders.data && !openOrders.length ? 'No order waiting' : 'Choose…'}</option>
-                    {openOrders.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.number}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+            </section>
+            <section className="card bill-section ph-grn-items" aria-labelledby="pu-lines">
+              {editing && (
+                <GrnLineDialog
+                  key={editing.line.key}
+                  line={editing.line}
+                  isNew={editing.isNew}
+                  onClose={() => setEditing(null)}
+                  onDone={(l) => {
+                    put(l);
+                    setEditing(null);
+                  }}
+                />
               )}
-              <div className="ph-gi-radios" role="radiogroup" aria-label="Payment">
-                <label>
-                  <input type="radio" name="pu-pay" checked={payment === 'credit'} onChange={() => choose('payment')('credit')} /> Credit
+              <h2 id="pu-lines">Items</h2>
+              <div className="ph-gi-item">
+                <FindMedicine label="Item name" onPick={(m) => setEditing({ line: emptyLine(m), isNew: true })} onScan={scan} onCreate={canCreate ? (name) => setCreating({ name }) : undefined} />
+                <label className="ph-gi-small">
+                  <span>UOM</span>
+                  <input value={editing?.line.medicine.unit ?? ''} readOnly tabIndex={-1} className="ph-ro" />
                 </label>
-                <label>
-                  <input type="radio" name="pu-pay" checked={payment === 'cash'} onChange={() => choose('payment')('cash')} /> Cash
+                <label className="ph-gi-small">
+                  <span>HSN Code</span>
+                  <input value={editing?.line.medicine.hsn ?? ''} readOnly tabIndex={-1} className="ph-ro" />
                 </label>
+                <div className="ph-gi-btns">
+                  {canCreate && (
+                    <button type="button" className="btn btn-secondary" onClick={() => setCreating({ name: '' })}>
+                      <Plus aria-hidden="true" /> Create drug
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={!supplier}
+                    title={supplier ? 'The supplier’s CSV or Excel bill fills the items; open each line to check it.' : 'Choose the supplier first to fill the items from its bill file.'}
+                    onClick={() => setBillFile(true)}
+                  >
+                    <FileUp aria-hidden="true" /> Bill from a file
+                  </button>
+                </div>
               </div>
-              {supplier && (supplier.taxType || supplier.payment === 'cash') && <p className="hint ph-gi-note">Filled in from the supplier; change them here for this bill only.</p>}
-            </div>
-          </section>
-          <section className="card bill-section ph-grn-items" aria-labelledby="pu-lines">
-            {editing && (
-              <GrnLineDialog
-                key={editing.line.key}
-                line={editing.line}
-                isNew={editing.isNew}
-                onClose={() => setEditing(null)}
-                onDone={(l) => {
-                  put(l);
-                  setEditing(null);
-                }}
-              />
-            )}
-            <h2 id="pu-lines">Items</h2>
-            <div className="ph-gi-item">
-              <FindMedicine label="Item name" onPick={(m) => setEditing({ line: emptyLine(m), isNew: true })} onScan={scan} />
-              <label className="ph-gi-small">
-                <span>UOM</span>
-                <input value={editing?.line.medicine.unit ?? ''} readOnly tabIndex={-1} className="ph-ro" />
-              </label>
-              <label className="ph-gi-small">
-                <span>HSN Code</span>
-                <input value={editing?.line.medicine.hsn ?? ''} readOnly tabIndex={-1} className="ph-ro" />
-              </label>
-            </div>
-            <p className="row">
-              <button type="button" className="btn btn-secondary" disabled={!supplier} onClick={() => setBillFile(true)}>
-                <FileUp aria-hidden="true" /> Bill from a file
-              </button>
-              <span className="hint">{supplier ? 'The supplier’s CSV or Excel bill fills the items; open each line to check it.' : 'Choose the supplier first to fill the items from its bill file.'}</span>
-            </p>
-            {fromFile && (
-              <Alert type="info" onClose={() => setFromFile(null)}>
-                {fromFile}
-              </Alert>
-            )}
-            {lines.length > 0 ? (
-              <div className="ph-grn-scroll">
-                <table className="bill-lines ph-grn-lines">
-                  <thead>
-                    <tr>
-                      <th scope="col">Item name</th>
-                      <th scope="col">UOM</th>
-                      <th scope="col">Batch no.</th>
-                      <th scope="col">Batch exp. date</th>
-                      <th scope="col" className="num">
-                        Qty
-                      </th>
-                      <th scope="col" className="num">
-                        F/Qty
-                      </th>
-                      <th scope="col" className="num">
-                        MRP
-                      </th>
-                      <th scope="col" className="num">
-                        Rate
-                      </th>
-                      <th scope="col" className="num">
-                        Total amt
-                      </th>
-                      <th scope="col" className="num">
-                        ConvF
-                      </th>
-                      <th scope="col" className="num">
-                        GST %
-                      </th>
-                      <th scope="col" className="num">
-                        GST amt
-                      </th>
-                      <th scope="col">
-                        <span className="sr-only">Change or remove</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {parsed.map((x, i) => {
-                      const l = x.l;
-                      const line = sums.lines[i];
-                      return (
-                        <tr key={l.key} className={editing?.line.key === l.key ? 'ph-grn-row-on' : undefined}>
-                          <td data-label="Item name">{medicineLabel(l.medicine)}</td>
-                          <td data-label="UOM">{l.medicine.unit || '—'}</td>
-                          <td data-label="Batch no.">{l.batch.trim() || '—'}</td>
-                          <td data-label="Batch exp. date">{expiryShown(l.expiry)}</td>
-                          <td data-label="Qty" className="num tabular">
-                            {l.qty || '—'}
-                          </td>
-                          <td data-label="F/Qty" className="num tabular">
-                            {l.freeQty || '—'}
-                          </td>
-                          <td data-label="MRP" className="num tabular">
-                            {money(x.mrp) || '—'}
-                          </td>
-                          <td data-label="Rate" className="num tabular">
-                            {l.rate.trim() ? money(x.rate) : '—'}
-                          </td>
-                          <td data-label="Total amt" className="num tabular">
-                            {money(line.totalPaise)}
-                          </td>
-                          <td data-label="ConvF" className="num tabular">
-                            {l.conv}
-                          </td>
-                          <td data-label="GST %" className="num tabular">
-                            {l.gst}
-                          </td>
-                          <td data-label="GST amt" className="num tabular">
-                            {money(line.gstPaise)}
-                          </td>
-                          <td className="ph-grn-row-actions">
-                            <button type="button" className="btn btn-link btn-sm" onClick={() => setEditing({ line: l, isNew: false })}>
-                              {lineOk(x) ? (
-                                'Change'
-                              ) : (
-                                <StatusPill tone="watch" icon={CircleAlert}>
-                                  Fill in
-                                </StatusPill>
-                              )}
-                            </button>
-                            <button type="button" className="icon-btn" aria-label={`Remove ${l.medicine.name}`} onClick={() => setLines((ls) => ls.filter((y) => y.key !== l.key))}>
-                              <Trash2 aria-hidden="true" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="muted">Type the item name or scan its barcode: a window opens for its batch, expiry, quantity and prices as on the supplier's bill.</p>
-            )}
-            {toFill > 0 && (
-              <p className="hint">
-                {toFill} line{toFill === 1 ? '' : 's'} still to fill in: open {toFill === 1 ? 'it' : 'each'} with Fill in.
-              </p>
-            )}
-          </section>
-        </div>
-        {/* The bill's amounts as on the earlier software (13 Nov 2026): four columns of small fields, label beside field –
-            discounts, charges, the GST split, and the totals down to the net to pay */}
-        <section className="card bill-section ph-grn-amounts" aria-labelledby="pu-amounts">
-          <h2 id="pu-amounts" className="sr-only">
-            Bill amounts
-          </h2>
-          <div className="ph-amt-cols">
-            <div className="ph-amt-col">
-              <Amt label="Item disc" value={money(sums.itemDiscPaise)} />
-              <Amt label="Scheme disc ₹" id="pu-scheme" value={extra.scheme} onChange={setX('scheme')} />
-              <Amt label="Disc amount" value={money(sums.discPaise)} />
-              <Amt label="Disc %" id="pu-discp" value={extra.discPercent} onChange={setX('discPercent')} />
-              <Amt label="CRN adj. ₹" id="pu-crn" value={extra.crnAdj} onChange={setX('crnAdj')} />
-            </div>
-            <div className="ph-amt-col">
-              <Amt label="Other charges ₹" id="pu-other" value={extra.other} onChange={setX('other')} />
-              <Amt label="Surcharge ₹" id="pu-surcharge" value={extra.surcharge} onChange={setX('surcharge')} />
-              <Amt label="Freight ₹" id="pu-freight" value={extra.freight} onChange={setX('freight')} />
-              <Amt label="Received by" id="pu-recv" text value={extra.receivedBy} maxLength={100} onChange={setX('receivedBy')} />
-              <Amt label="Remark" id="pu-remark" text value={extra.remark} maxLength={300} onChange={setX('remark')} />
-            </div>
-            <div className="ph-amt-col">
-              <Amt label="IGST amt" value={money(sums.igstPaise)} />
-              <Amt label="CGST amt" value={money(sums.cgstPaise)} />
-              <Amt label="SGST amt" value={money(sums.sgstPaise)} />
-              <Amt label="Bill total as printed ₹" id="pu-printed" value={extra.printed} onChange={setX('printed')} />
-              {printedGap != null && (
-                <p className={Math.abs(printedGap) > 100 ? 'field-error ph-amt-note' : 'hint ph-amt-note'}>
-                  {Math.abs(printedGap) <= 100
-                    ? 'Matches the sums (within ₹1).'
-                    : `The lines add up to ${money(sums.netPaise)} – ${money(Math.abs(printedGap))} ${printedGap > 0 ? 'less' : 'more'} than the bill. Check the rates, discounts and GST.`}
+              {fromFile && (
+                <Alert type="info" onClose={() => setFromFile(null)}>
+                  {fromFile}
+                </Alert>
+              )}
+              {lines.length > 0 ? (
+                <div className="ph-grn-scroll">
+                  <table className="bill-lines ph-grn-lines">
+                    <thead>
+                      <tr>
+                        <th scope="col">Item name</th>
+                        <th scope="col">UOM</th>
+                        <th scope="col">Batch no.</th>
+                        <th scope="col">Batch exp. date</th>
+                        <th scope="col" className="num">
+                          Qty
+                        </th>
+                        <th scope="col" className="num">
+                          F/Qty
+                        </th>
+                        <th scope="col" className="num">
+                          MRP
+                        </th>
+                        <th scope="col" className="num">
+                          Rate
+                        </th>
+                        <th scope="col" className="num">
+                          Total amt
+                        </th>
+                        <th scope="col" className="num">
+                          ConvF
+                        </th>
+                        <th scope="col" className="num">
+                          GST %
+                        </th>
+                        <th scope="col" className="num">
+                          GST amt
+                        </th>
+                        <th scope="col">
+                          <span className="sr-only">Change or remove</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsed.map((x, i) => {
+                        const l = x.l;
+                        const line = sums.lines[i];
+                        return (
+                          <tr key={l.key} className={editing?.line.key === l.key ? 'ph-grn-row-on' : undefined}>
+                            <td data-label="Item name">{medicineLabel(l.medicine)}</td>
+                            <td data-label="UOM">{l.medicine.unit || '—'}</td>
+                            <td data-label="Batch no.">{l.batch.trim() || '—'}</td>
+                            <td data-label="Batch exp. date">{expiryShown(l.expiry)}</td>
+                            <td data-label="Qty" className="num tabular">
+                              {l.qty || '—'}
+                            </td>
+                            <td data-label="F/Qty" className="num tabular">
+                              {l.freeQty || '—'}
+                            </td>
+                            <td data-label="MRP" className="num tabular">
+                              {money(x.mrp) || '—'}
+                            </td>
+                            <td data-label="Rate" className="num tabular">
+                              {l.rate.trim() ? money(x.rate) : '—'}
+                            </td>
+                            <td data-label="Total amt" className="num tabular">
+                              {money(line.totalPaise)}
+                            </td>
+                            <td data-label="ConvF" className="num tabular">
+                              {l.conv}
+                            </td>
+                            <td data-label="GST %" className="num tabular">
+                              {l.gst}
+                            </td>
+                            <td data-label="GST amt" className="num tabular">
+                              {money(line.gstPaise)}
+                            </td>
+                            <td className="ph-grn-row-actions">
+                              <button type="button" className="btn btn-link btn-sm" onClick={() => setEditing({ line: l, isNew: false })}>
+                                {lineOk(x) ? (
+                                  'Change'
+                                ) : (
+                                  <StatusPill tone="watch" icon={CircleAlert}>
+                                    Fill in
+                                  </StatusPill>
+                                )}
+                              </button>
+                              <button type="button" className="icon-btn" aria-label={`Remove ${l.medicine.name}`} onClick={() => setLines((ls) => ls.filter((y) => y.key !== l.key))}>
+                                <Trash2 aria-hidden="true" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="muted">Type the item name or scan its barcode: a window opens for its batch, expiry, quantity and prices as on the supplier's bill.</p>
+              )}
+              {toFill > 0 && (
+                <p className="hint">
+                  {toFill} line{toFill === 1 ? '' : 's'} still to fill in: open {toFill === 1 ? 'it' : 'each'} with Fill in.
                 </p>
               )}
-            </div>
-            <div className="ph-amt-col ph-amt-totals">
-              <Amt label="Total amount" value={money(sums.totalPaise)} />
-              <Amt label="Less amount" value={money(sums.lessPaise)} />
-              <Amt label="Add amount" value={money(sums.addPaise)} />
-              <Amt label="GST amount" value={money(sums.gstPaise)} />
-              <Amt label="Net pay amt" value={money(sums.netPaise)} strong />
-              <Amt label="Rounding amt" value={money(sums.roundingPaise)} />
-            </div>
+            </section>
           </div>
-          {!amountsOk && <p className="field-error">Write the amounts in rupees (for example 125.50) and the discount as 0 to 100 %.</p>}
-          {amountsOk && sums.netPaise < 0 && <p className="field-error">The discounts are more than the bill.</p>}
-          {differs && (
-            <Alert type="warning" onClose={() => setDiffers(null)}>
-              The bill says {money(differs.printedTotalPaise)} but the lines add up to {money(differs.netPaise)}. Check the lines first; save the bill as it is only if the supplier’s total is wrong.{' '}
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={s.busy}
-                onClick={() => {
-                  setDiffers(null);
-                  save(true);
-                }}
-              >
-                Save as it is
+          {/* The bill's amounts as on the earlier software (13 Nov 2026): four columns of small fields, label beside field –
+              discounts, charges, the GST split, and the totals down to the net to pay */}
+          <section className="card bill-section ph-grn-amounts" aria-labelledby="pu-amounts">
+            <h2 id="pu-amounts" className="sr-only">
+              Bill amounts
+            </h2>
+            <div className="ph-amt-cols">
+              <div className="ph-amt-col">
+                <Amt label="Item disc" value={money(sums.itemDiscPaise)} />
+                <Amt label="Scheme disc ₹" id="pu-scheme" value={extra.scheme} onChange={setX('scheme')} />
+                {/* 27 Nov 2026: the bill's discount typed in rupees or as a percent – the other is worked out */}
+                <Amt label="Disc amount ₹" id="pu-discamt" value={extra.discBy === 'amt' ? extra.discAmt : toInput(sums.discPaise)} onChange={(e) => setExtra({ ...extra, discAmt: e.target.value, discBy: 'amt' })} />
+                <Amt label="Disc %" id="pu-discp" value={extra.discBy === 'amt' ? percentShown(billDiscPercent) : extra.discPercent} onChange={(e) => setExtra({ ...extra, discPercent: e.target.value, discBy: 'pct' })} />
+                <Amt label="CRN adj. ₹" id="pu-crn" value={extra.crnAdj} onChange={setX('crnAdj')} />
+              </div>
+              <div className="ph-amt-col">
+                <Amt label="Other charges ₹" id="pu-other" value={extra.other} onChange={setX('other')} />
+                <Amt label="Surcharge ₹" id="pu-surcharge" value={extra.surcharge} onChange={setX('surcharge')} />
+                <Amt label="Freight ₹" id="pu-freight" value={extra.freight} onChange={setX('freight')} />
+                <Amt label="Received by" id="pu-recv" text value={extra.receivedBy} maxLength={100} onChange={setX('receivedBy')} />
+                <Amt label="Remark" id="pu-remark" text value={extra.remark} maxLength={300} onChange={setX('remark')} />
+              </div>
+              <div className="ph-amt-col">
+                <Amt label="IGST amt" value={money(sums.igstPaise)} />
+                <Amt label="CGST amt" value={money(sums.cgstPaise)} />
+                <Amt label="SGST amt" value={money(sums.sgstPaise)} />
+                <Amt label="Bill total as printed ₹" id="pu-printed" value={extra.printed} onChange={setX('printed')} />
+                {printedGap != null && (
+                  <p className={Math.abs(printedGap) > 100 ? 'field-error ph-amt-note' : 'hint ph-amt-note'}>
+                    {Math.abs(printedGap) <= 100
+                      ? 'Matches the sums (within ₹1).'
+                      : `The lines add up to ${money(sums.netPaise)} – ${money(Math.abs(printedGap))} ${printedGap > 0 ? 'less' : 'more'} than the bill. Check the rates, discounts and GST.`}
+                  </p>
+                )}
+              </div>
+              <div className="ph-amt-col ph-amt-totals">
+                <Amt label="Total amount" value={money(sums.totalPaise)} />
+                <Amt label="Less amount" value={money(sums.lessPaise)} />
+                <Amt label="Add amount" value={money(sums.addPaise)} />
+                <Amt label="GST amount" value={money(sums.gstPaise)} />
+                <Amt label="Net pay amt" value={money(sums.netPaise)} strong />
+                <Amt label="Rounding amt" value={money(sums.roundingPaise)} />
+              </div>
+            </div>
+            {!amountsOk && (
+              <p className="field-error">
+                {extra.discBy === 'amt' && billDiscPercent > 100 ? 'The disc amount is more than the bill.' : 'Write the amounts in rupees (for example 125.50) and the discount as 0 to 100 %.'}
+              </p>
+            )}
+            {amountsOk && sums.netPaise < 0 && <p className="field-error">The discounts are more than the bill.</p>}
+            {differs && (
+              <Alert type="warning" onClose={() => setDiffers(null)}>
+                The bill says {money(differs.printedTotalPaise)} but the lines add up to {money(differs.netPaise)}. Check the lines first; save the bill as it is only if the supplier’s total is wrong.{' '}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={s.busy}
+                  onClick={() => {
+                    setDiffers(null);
+                    save(true);
+                  }}
+                >
+                  Save as it is
+                </button>
+              </Alert>
+            )}
+            <div className="ph-grn-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => document.getElementById('pu-crn')?.focus()}>
+                CRN adjust
               </button>
-            </Alert>
-          )}
-          <div className="ph-grn-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => document.getElementById('pu-crn')?.focus()}>
-              CRN adjust
-            </button>
-            <button type="button" className="btn btn-primary" disabled={!ok || s.busy} onClick={() => save(false)}>
-              <Save aria-hidden="true" /> {s.busy ? 'Saving…' : 'Save and add to stock'}
-            </button>
-            <Link className="btn btn-secondary" to={closeTo}>
-              <X aria-hidden="true" /> Close
-            </Link>
-          </div>
-        </section>
+              <button type="button" className="btn btn-primary" disabled={!ok || s.busy} onClick={() => save(false)}>
+                <Save aria-hidden="true" /> {s.busy ? 'Saving…' : 'Save and add to stock'}
+              </button>
+              <Link className="btn btn-secondary" to={closeTo}>
+                <X aria-hidden="true" /> Close
+              </Link>
+            </div>
+          </section>
+        </div>
       </div>
+      {creating && (
+        <MedicineDialog
+          start={creating}
+          lists={settings.data?.lists}
+          onClose={() => setCreating(null)}
+          onDone={(res) => {
+            setCreating(null);
+            if (res?.medicine) setEditing({ line: emptyLine(res.medicine), isNew: true });
+          }}
+        />
+      )}
       {billFile && supplier && (
         <BillFileDialog
           supplier={supplier}
@@ -1066,8 +1200,9 @@ export function BarcodesField({ barcodes, onChange, typed, setTyped, error }) {
   );
 }
 
-function MedicineDialog({ medicine, lists, onClose, onDone }) {
-  const [m, setM] = useState(medicine ? { ...medicine, barcodes: medicine.barcodes ?? [] } : { ...emptyMedicine });
+/** Add or change a medicine; start: { name } – Create drug on a purchase bill (27 Nov 2026), the name as typed there. */
+function MedicineDialog({ medicine, start = null, lists, onClose, onDone }) {
+  const [m, setM] = useState(medicine ? { ...medicine, barcodes: medicine.barcodes ?? [] } : { ...emptyMedicine, name: start?.name ?? '' });
   const supplierList = useFetch('/pharmacy/suppliers').data?.suppliers ?? []; // PH17: the preferred supplier
   const [typedBarcode, setTypedBarcode] = useState('');
   const s = useSend(onDone);
@@ -1097,8 +1232,9 @@ function MedicineDialog({ medicine, lists, onClose, onDone }) {
     barcodes,
   };
   return (
-    <Modal id="ph-med" title={medicine ? `Change ${medicine.name}` : 'Add a medicine'} onClose={onClose} wide>
+    <Modal id="ph-med" title={medicine ? `Change ${medicine.name}` : start ? 'Create drug' : 'Add a medicine'} onClose={onClose} wide>
       <Alert type="error">{s.error}</Alert>
+      {start && <p className="hint">It is added to Medicines and its pop-up opens on this bill. The items already on the bill stay.</p>}
       {/* 19 Nov 2026 (the developer: "in a single view, no scroll bar"): four fields a row in a wider window */}
       <div className="form-grid ph-med-grid">
         <Field label="Brand name (as on the pack)" id="med-name" error={s.fields.name}>

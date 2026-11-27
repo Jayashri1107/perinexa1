@@ -194,6 +194,45 @@ describe('purchase orders', () => {
     expect(text(renderToStaticMarkup(<OrderDocument order={order({ status: 'cancelled' })} settings={SETTINGS} />))).toContain('Purchase order – cancelled');
   });
 
+  it('New GRN (27 Nov 2026): Cash or Credit only, Create drug beside the item name, the discount amount typed, fitted to the window', () => {
+    answers['/pharmacy/suppliers'] = { suppliers: [SUPPLIER] };
+    answers['/pharmacy/settings'] = { settings: SETTINGS, canEdit: true, lists: { gstRates: [0, 5, 12, 18] } };
+    const html = at('/pharmacy/purchases/new', '/pharmacy/purchases/new', <NewPurchasePage />);
+    const shown = text(html);
+    expect(shown).not.toContain('Direct Purchase');
+    expect(shown).not.toContain('Purchase Orders');
+    expect(shown).toMatch(/ Cash Credit /);
+    expect(shown).toMatch(/HSN Code Create drug Bill from a file/);
+    expect(html).toMatch(/<input id="pu-discamt"[^>]*>/);
+    expect(html).not.toMatch(/<input id="pu-discamt"[^>]*readonly/i);
+    expect(html).toMatch(/<input id="pu-discp"[^>]*>/);
+    expect(html).toContain('class="ph-grn-fit"');
+    expect(html).toContain('ph-grn-tabs is-head'); // GRN List and New GRN beside the title
+    brand(html);
+    // Without the right to change medicines there is no Create drug
+    answers['/pharmacy/settings'] = { settings: SETTINGS, canEdit: false };
+    expect(text(at('/pharmacy/purchases/new', '/pharmacy/purchases/new', <NewPurchasePage />))).not.toContain('Create drug');
+  });
+
+  it('GRN List (27 Nov 2026): a row a bill – GRN no and date, supplier, invoice no and date, cash or credit, net amount – the newest open below', () => {
+    const grn = (payment, netPaise) => ({ payment, taxType: 'cgst_sgst', netPaise, totalPaise: netPaise, itemDiscPaise: 0, discPaise: 0, lessPaise: 0, addPaise: 0, gstPaise: 0, cgstPaise: 0, sgstPaise: 0, igstPaise: 0, roundingPaise: 0 });
+    const tab = { name: 'Order Tab A', batch: 'B1', expiry: '2028-06-30', qty: 100, freeQty: 0, ratePaise: 50, mrpPaise: 80, gstRate: 5, pack: { conv: 10, qty: 10, freeQty: 0, ratePaise: 500, mrpPaise: 800, discPercent: 100 / 30, totalPaise: 5000 } };
+    answers['/pharmacy/purchases'] = {
+      purchases: [
+        { id: 'p2', number: 'PU-000004', supplier: 'Sample Distributors', invoiceNo: 'S-2', invoiceDate: '2026-10-05', at: '2026-10-05T06:00:00.000Z', totalPaise: 0, status: 'active', cancelled: null, byName: 'Sample Pharmacist', grn: grn('cash', 52500), lines: [tab] },
+        { id: 'p1', number: 'PU-000003', supplier: 'Sample Distributors', invoiceNo: 'S-1', invoiceDate: '2026-10-03', at: '2026-10-03T06:00:00.000Z', totalPaise: 0, status: 'cancelled', cancelled: { reason: 'Entered twice' }, byName: 'Sample Pharmacist', grn: grn('credit', 50000), lines: [] },
+      ],
+    };
+    const html = at('/pharmacy/purchases', '/pharmacy/purchases', <PurchasesPage />);
+    const shown = text(html);
+    expect(shown).toMatch(/GRN No GRN Date Supplier Name Invoice No Invoice Date Cash \/ Credit Net Amount Status/);
+    expect(shown).toMatch(/PU-000004 5 Oct 2026 Sample Distributors S-2 5 Oct 2026 Cash ₹525 /);
+    expect(shown).toMatch(/PU-000003 3 Oct 2026 Sample Distributors S-1 3 Oct 2026 Credit ₹500 Cancelled/);
+    expect(shown).toContain('PU-000004 · Sample Distributors · invoice S-2'); // the newest, open below the list
+    expect(shown).toMatch(/₹5 ₹8 3\.33 5 ₹50/); // a discount typed in rupees shows as its percent, to 2 places
+    brand(html);
+  });
+
   it('the purchases list names the order a purchase was received against', () => {
     answers['/pharmacy/purchases'] = { purchases: [{ id: 'p1', number: 'PU-000003', supplier: 'Sample Distributors', order: { id: OID, number: 'PO-000001' }, invoiceNo: 'S-1', invoiceDate: '2026-10-03', totalPaise: 50000, status: 'active', cancelled: null, byName: 'Sample Pharmacist', lines: [] }] };
     const html = at('/pharmacy/purchases', '/pharmacy/purchases', <PurchasesPage />);

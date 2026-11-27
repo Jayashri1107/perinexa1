@@ -1015,6 +1015,40 @@
    "A.", "B." … Name above barcode here gives the found list its full width to show the whole name. */
 .ph-gi-item .ph-find { grid-template-columns: minmax(0, 1fr); }
 
+/* 27 Nov 2026 (the pharmacy's request): Create drug and Bill from a file beside UOM and HSN; small row buttons */
+.ph-grn-dense .ph-gi-item { grid-template-columns: minmax(0, 1fr) 90px 100px auto; }
+.ph-gi-btns { display: grid; gap: 6px; align-self: start; }
+.ph-grn-dense .ph-grn-row-actions .icon-btn { width: 24px; height: 24px; min-height: 0; }
+.ph-grn-dense .ph-grn-row-actions > * { vertical-align: middle; }
+.ph-grn-dense .ph-grn-row-actions .btn-link { padding: 0 6px; }
+/* … and "this billing window must not scroll": on a wide, tall enough screen New GRN fits the window – the supplier box,
+   the items and the amounts with Save – and only the items list scrolls in its own box, its header staying in view.
+   --grn-top: where the fitted part starts on the page (measured in NewPurchasePage). */
+@media (min-width: 1100px) and (min-height: 640px) {
+  .ph-grn-fit { display: flex; flex-direction: column; height: calc(100dvh - var(--grn-top, 200px) - var(--space-8)); min-height: 480px; }
+  .ph-grn-fit > .ph-grn-layout { flex: 1 1 auto; min-height: 0; margin-bottom: var(--space-3); }
+  .ph-grn-fit .ph-grn-invoice { overflow: auto; }
+  .ph-grn-fit .ph-grn-items { display: flex; flex-direction: column; min-height: 0; }
+  .ph-grn-fit .ph-grn-items > .ph-grn-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+  .ph-grn-fit .bill-lines.ph-grn-lines thead th { position: sticky; top: 0; z-index: 1; background: var(--mist-50); }
+  .ph-grn-fit > .ph-grn-amounts { flex: none; margin-bottom: 0; }
+  .ph-grn-fit .ph-amt-col { gap: 3px; }
+  .ph-grn-fit .ph-amt input { height: 24px; }
+  .ph-grn-fit .ph-grn-actions { margin-top: var(--space-2); padding-top: var(--space-2); }
+  .ph-grn-fit .ph-gi { gap: 4px; }
+  .ph-grn-fit .ph-gi :is(input, select) { height: 28px; }
+  .ph-grn-fit .ph-gi-labelled > * { gap: 0; }
+}
+.ph-grn-tabs.is-head { margin: 0; }
+/* GRN List (27 Nov 2026): a row a bill; the one open below the list is marked */
+.ph-grn-list .dt tbody tr { cursor: pointer; }
+.ph-grn-list .dt tbody tr.is-picked td { background: var(--selected-bg); }
+.ph-grn-list .dt tbody tr.is-cancelled td { color: var(--slate-600); }
+#ph-grn-open { scroll-margin-top: var(--space-4); }
+.ph-grn-tabs.is-head a { padding: 4px 14px; font-size: 0.8125rem; }
+.ph-grn-dense .ph-grn-row-actions .btn-link.btn-sm { min-height: 0; padding-block: 0; }
+.ph-grn-dense .bill-lines.ph-grn-lines td { vertical-align: middle; }
+
 /* The bill's header, light and small like the rest of the page (14 Nov 2026): "Sales bill" and the time on one row, then
    Net amount with the amount in a small box beside it, then how many medicines */
 .ph-counter-left .ph-bill-head {

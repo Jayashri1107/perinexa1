@@ -1,5 +1,29 @@
 # Progress
 
+## Pharmacy: purchase bill (New GRN) and GRN List (27 Nov 2026)
+Built with Claude in the Claude app – **`npm test` and `npm run build` still to run**. Website only; the server is
+unchanged.
+- **Cash or Credit only:** the Direct Purchase / Purchase Orders choice is gone from New GRN. An order is still received
+  from its own page (Orders → Receive), which opens New GRN filled in from it.
+- **Create drug:** a medicine not on the stock list is created on the bill – "Create drug" beside UOM and HSN, or in
+  the list under Item name when nothing is found (a click or Enter, the name as typed). The medicine form opens over
+  the bill; once saved, its pop-up opens and the items already entered stay. For those who may change medicines
+  (pharmacist, admin – `canEdit`).
+- **The medicine's pop-up:** Enter goes to the next box (Batch → Exp. date → Qty → Free → Disc Per → Disc Amt → Rate
+  → MRP → Conv. → GST %), and on the last adds the line; a percent typed skips Disc Amt. "Qty (packs)" is now "Qty".
+  Typing "08/28" in full no longer reads as "08//28".
+- **Discount typed in rupees:** each medicine's Disc Amt ₹ and the bill's Disc amount ₹ can be typed; the percent is
+  worked out (shown to 2 places) and saved as the exact percent of what it comes off, so the server works the same
+  amount out again (`percentOf` in `grnFormat.js`). The percent can still be typed instead.
+- **No scrolling:** on a wide screen (1100 px and more, 640 px high and more) New GRN fits the window – supplier box,
+  items and amounts with Save; only the items list scrolls in its own box, its header in view. GRN List / New GRN
+  moved beside the title for the room.
+- **GRN List as a table:** one row a bill – GRN No, GRN Date, Supplier Name, Invoice No, Invoice Date, Cash / Credit,
+  Net Amount, Status (Cancelled) – found by GRN no, supplier or invoice no; the bill clicked opens below the list with
+  its medicines and sums (the newest when the list opens). A supplier's own page still shows its bills as cards.
+- **Tests:** `grnFormat.test.js` (rupee discounts, the expiry), `pharmacyExtrasScreens.test.jsx` (New GRN, GRN List).
+  Checked here with the stand-in runner and in a browser with sample data.
+
 ## Pharmacy: her history on Sale return patient-wise, and Search sale return (26 Nov 2026)
 Built with Claude in the Claude app – **`npm test` and `npm run build` still to run**.
 - **Sale return patient-wise – her medicines so far:** once the patient is chosen, every medicine on all her bills
