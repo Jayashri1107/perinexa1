@@ -592,6 +592,10 @@ export function billView(b, { patients, stays, doctors = new Map(), departments 
   const p = patients.get(String(b.patientId));
   const s = b.admissionId ? stays.get(String(b.admissionId)) : null;
   const t = totals(b);
+  // 27 Nov 2026 (reception: a stay's ₹20,000 deposit showed "−₹20,000 · Money to give back"): while she is in hospital
+  // and the final bill is not made, more paid than charged is her advance, held against the final bill – status
+  // 'advance'. Money to give back ('refund_due') is what is left over once she has left or the final bill is made.
+  if (t.status === 'refund_due' && b.kind === 'ipd' && s?.status === 'admitted' && !b.final) t.status = 'advance';
   return {
     id: String(b._id),
     number: b.number,

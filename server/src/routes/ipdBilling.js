@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { MAX_PAISE, MIN_REASON } from '../billing/billingRules.js';
-import { billViews, concessionAuthorities, findBill, freshBill, openStayBill, pushLines, refuseFetalSex, stampOf, userNames } from '../billing/billingService.js';
+import { billViews, billingSettings, concessionAuthorities, findBill, freshBill, openStayBill, pushLines, refuseFetalSex, stampOf, userNames } from '../billing/billingService.js';
 import { bedDays, totals } from '../billing/money.js';
 import { addDays, hospitalDayStart, hospitalToday } from '../careplans/dates.js';
 import { DESK_DISCHARGE_TYPES, DISCHARGE_TYPE_LABELS, MEDICAL_ROLES, dischargeTypeFor } from '../inpatient/dischargeTypes.js';
@@ -183,6 +183,8 @@ ipdBillingRouter.get('/stays/:id', async (req, res) => {
     doctors,
     authorities: await concessionAuthorities(req.tenantId),
     canReopen: hasRole(req.membership, 'billing', 'admin'),
+    // printed at the foot of a receipt, as on the OPD bill's (27 Nov 2026: the stay's advance receipts print here too)
+    billNotes: (await billingSettings(req.tenantId)).billNotes,
   });
 });
 

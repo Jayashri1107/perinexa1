@@ -70,7 +70,7 @@ export function UnpaidPage() {
     opd: owing.filter((b) => b.kind === 'opd'),
     ipd: owing.filter((b) => b.kind === 'ipd'),
     old: owing.filter((b) => b.days >= 30),
-    back: bills.filter((b) => b.balance < 0),
+    back: bills.filter((b) => b.balance < 0 && b.status !== 'advance'), // a stay's advance held is not due back (27 Nov 2026)
     insurer: bills.filter((b) => b.insuranceDue > 0), // cashless: approved, not yet paid by the insurer (11 Nov 2026)
   };
   const sum = (list, key = 'balance') => list.reduce((s, b) => s + Math.abs(b[key]), 0);

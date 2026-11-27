@@ -1,5 +1,39 @@
 # Progress
 
+## Reception billing: a stay's deposit is "Advance held", and its receipt prints from the IPD bill (27 Nov 2026)
+Reception's report: an IPD bill with only a ₹20,000 UPI deposit showed "−₹20,000 · Money to give back" with a Give back
+button in the Bills list; and the advance's receipt could not be found to print (the IPD bill's Print menu had only
+Details, Date-wise draft and Summary).
+- While she is in hospital and the final bill is not made, more paid than charged is her advance, held against the final
+  bill: status `advance` ("Advance held", billingService.js billView). The Bills list shows the amount held (no minus,
+  no Give back, a status filter "Advance held"), the bill page "Advance held" with Take a deposit as its button (Give
+  money back second), the IPD window and interim bill "Advance held". It is not counted in "Money to give back" (Bills
+  tiles, Unpaid, Billing Today; /reports/unpaid `dueBack`, with `advanceHeld` beside it) nor as "To give back" in the
+  MIS bill list. Once she has left or the final bill is made, money left over is "Money to give back", as before.
+- The advance's receipt: a Receipt button on each row of the IPD bill's Advance list, each receipt in its Print menu
+  (latest first), and "Print receipt R-…" in the message right after a deposit is taken. The print is the OPD
+  receipt's (BillPage.jsx BillPrint, now exported), titled "Advance receipt" for a deposit: the deposit, what was paid
+  before it and the advance so far – no total, as her charges keep running during the stay. The hospital's notes print
+  at its foot (GET /api/billing/ipd/stays/:id now has `billNotes`).
+- Tests: server billing.test.js (the stay's deposit: status, its receipt's figures, unpaid report, the IPD answer),
+  client serviceEntry.test.jsx.
+
+## Pharmacy Settlement: IPD bills owed at the counter now show and can be settled (27 Nov 2026)
+The pharmacy's report (app.perinexa.com/pharmacy/settlement): "for IPD the balance amount is there, still not shown –
+OPD works". At the counter an admitted patient's bill is a ward issue (Sales bill → IPD opens Issue to ward), and the
+Payment window lets it be paid in part or put on credit; Settlement counted only counter sales (OPD), so such a balance
+was owed at the counter but never listed.
+- Settlement now takes the counter's bills of both kinds – OPD sales, and IPD ward issues paid in part or put on credit
+  at the counter (`COUNTER_KINDS` in server/src/pharmacy/settlement.js): the IP list of everyone admitted, her bills, the
+  Find patient window's balance, a name or UHID typed, and settling them. A bill on the hospital bill is still paid at the
+  billing desk and is never listed or settled here.
+- Daily Collection: such a ward issue is counted as a counter sale is (paid with the bill: Cash Sales; left unpaid:
+  Credit Sale; its settlement: Due Collection). A ward issue on the hospital bill is still left out. Before, the plain
+  Sales collection list had these payments but the Daily Collection did not.
+- The IPD hint on the Settlement screen says so. Tests: server pharmacySettlement.test.js (an IPD issue on credit and one
+  paid in part listed, settled, in the Daily Collection; one on the hospital bill refused) and
+  pharmacyDailyCollection.test.js.
+
 ## Reception billing: receipts print the doctor of each item and their own amounts (27 Nov 2026)
 Reception's report: a bill with a follow-up (₹300, one doctor) and an ultrasound (₹3,000, another doctor) printed both
 receipts with her registration doctor as "Consultant", and receipt R-000081 for ₹300 printed "Paid amount ₹3,300" and

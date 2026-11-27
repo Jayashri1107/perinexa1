@@ -53,11 +53,13 @@ export function PaymentDialog({ bill, refund = false, onClose, onDone }) {
     <Modal id="bill-pay" title={refund ? 'Give money back' : deposit ? 'Take a deposit' : 'Take payment'} onClose={onClose}>
       <p>
         {refund
-          ? `Due back to the patient: ${rupees(due)}.`
+          ? bill.status === 'advance'
+            ? `Advance held: ${rupees(due)}. Give back only what she asks for – the rest stays against the final bill.`
+            : `Due back to the patient: ${rupees(due)}.`
           : cashless
             ? `Patient to pay: ${rupees(Math.max(0, bill.patientBalance))} · due from insurance: ${rupees(bill.insuranceDue)}.`
             : deposit
-              ? `She is in hospital: this is a deposit, set against the final bill. Balance so far: ${rupees(bill.balance)}.`
+              ? `She is in hospital: this is a deposit, set against the final bill. ${bill.balance < 0 ? `Advance held so far: ${rupees(-bill.balance)}` : `Balance so far: ${rupees(bill.balance)}`}.`
               : `Balance to pay: ${rupees(due)}.`}
       </p>
       <Alert type="error">{s.error}</Alert>
@@ -417,7 +419,7 @@ export function linesByGroup(lines) {
  * 27 Nov 2026 (reception): the consultant is the doctor – or doctors – of the items billed, not her registration doctor;
  * a receipt lists the items with their doctors and shows the sums as they stood when it was taken (receiptFacts).
  */
-function BillPrint({ bill, receipt = null, notes = '', onClose }) {
+export function BillPrint({ bill, receipt = null, notes = '', onClose }) {
   const lh = useFetch('/tenant/settings/letterhead');
   const { user } = useAuth();
   const payment = receipt ? bill.payments.find((p) => p.receipt === receipt) : null;
@@ -426,6 +428,9 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
   const sums = facts.sums;
   // A receipt: the money in (less refunds) before it – its own amount is printed on its own line
   const paidEarlier = payment ? sums.paid - (payment.kind === 'refund' ? -payment.amountPaise : payment.amountPaise) : 0;
+  // A deposit during a stay (27 Nov 2026): her charges keep running (bed days grow on their line), so its receipt shows
+  // the money only – the deposit, what was paid before it and the advance so far – never a total that would change
+  const depositReceipt = payment?.kind === 'deposit';
   const record = () => api(`/billing/bills/${bill.id}/printed`, { method: 'POST', body: receipt ? { receipt } : {} });
   // In one click from the hospital's WhatsApp number, when she agreed to WhatsApp messages (docs/WHATSAPP_DESK_PLAN.md)
   const offer = useFetch(`/billing/bills/${bill.id}/whatsapp`);
@@ -444,7 +449,7 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
     .split('\n')
     .map((t) => t.trim())
     .filter(Boolean);
-  const title = receipt ? (payment?.corrections?.length ? 'Receipt (corrected)' : 'Receipt') : bill.kind === 'ipd' ? 'IPD Bill' : 'OPD Receipt';
+  const title = receipt ? (payment?.corrections?.length ? 'Receipt (corrected)' : depositReceipt ? 'Advance receipt' : 'Receipt') : bill.kind === 'ipd' ? 'IPD Bill' : 'OPD Receipt';
   return (
     <PrintPreview
       title={receipt ? 'Receipt – print preview' : 'Bill – print preview'}
@@ -552,20 +557,24 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
           ) : null}
           <table className="bill-doc-sums">
             <tbody>
-              <tr>
-                <th scope="row">Total amount</th>
-                <td>{rupees(sums.subtotal)}</td>
-              </tr>
-              {sums.discount > 0 && (
-                <tr>
-                  <th scope="row">Discount amount</th>
-                  <td>{rupees(sums.discount)}</td>
-                </tr>
+              {!depositReceipt && (
+                <>
+                  <tr>
+                    <th scope="row">Total amount</th>
+                    <td>{rupees(sums.subtotal)}</td>
+                  </tr>
+                  {sums.discount > 0 && (
+                    <tr>
+                      <th scope="row">Discount amount</th>
+                      <td>{rupees(sums.discount)}</td>
+                    </tr>
+                  )}
+                  <tr>
+                    <th scope="row">Net pay amount</th>
+                    <td>{rupees(sums.total)}</td>
+                  </tr>
+                </>
               )}
-              <tr>
-                <th scope="row">Net pay amount</th>
-                <td>{rupees(sums.total)}</td>
-              </tr>
               {/* Cashless (11 Nov 2026): the insurer's part, what she paid, what she still pays, what the insurer owes */}
               {!payment &&
                 claimRows(bill).map(([key, label, value, strong]) => (
@@ -583,7 +592,7 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
               )}
               {(payment || !hasClaim(bill)) && (
               <tr>
-                <th scope="row">{payment?.kind === 'refund' ? 'Refunded amount' : 'Paid amount'}</th>
+                <th scope="row">{payment?.kind === 'refund' ? 'Refunded amount' : depositReceipt ? 'Deposit amount' : 'Paid amount'}</th>
                 <td>{rupees(payment ? payment.amountPaise : sums.paid)}</td>
               </tr>
               )}
@@ -593,9 +602,15 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
                   <td>{payment ? MODE_LABELS[payment.mode] : modes}</td>
                 </tr>
               )}
-              {sums.balance !== 0 && (payment || !hasClaim(bill)) && (
+              {depositReceipt && (
                 <tr className="bill-doc-balance">
-                  <th scope="row">{sums.balance < 0 ? 'Due back' : 'Balance amount'}</th>
+                  <th scope="row">Advance so far</th>
+                  <td>{rupees(sums.paid)}</td>
+                </tr>
+              )}
+              {!depositReceipt && sums.balance !== 0 && (payment || !hasClaim(bill)) && (
+                <tr className="bill-doc-balance">
+                  <th scope="row">{sums.balance < 0 ? (!payment && bill.status === 'advance' ? 'Advance held' : 'Due back') : 'Balance amount'}</th>
                   <td>{rupees(Math.abs(sums.balance))}</td>
                 </tr>
               )}
@@ -718,7 +733,18 @@ export function BillPage() {
                 <Wallet aria-hidden="true" /> Take a deposit
               </button>
             )}
-            {open && b.balance < 0 && (
+            {/* A stay's advance held (27 Nov 2026): more can be taken; giving some back is the second choice */}
+            {open && b.status === 'advance' && (
+              <>
+                <button type="button" className="btn btn-secondary" onClick={() => setDialog('refund')}>
+                  <RotateCcw aria-hidden="true" /> Give money back
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => setDialog('pay')}>
+                  <Wallet aria-hidden="true" /> Take a deposit
+                </button>
+              </>
+            )}
+            {open && b.balance < 0 && b.status !== 'advance' && (
               <button type="button" className="btn btn-primary" onClick={() => setDialog('refund')}>
                 <RotateCcw aria-hidden="true" /> Give money back
               </button>
@@ -948,7 +974,7 @@ export function BillPage() {
                       <td>{rupees(b.paid)}</td>
                     </tr>
                     <tr className="bill-balance">
-                      <th scope="row">{b.balance < 0 ? 'To give back' : 'Balance to pay'}</th>
+                      <th scope="row">{b.status === 'advance' ? 'Advance held' : b.balance < 0 ? 'To give back' : 'Balance to pay'}</th>
                       <td>{rupees(Math.abs(b.balance))}</td>
                     </tr>
                   </>

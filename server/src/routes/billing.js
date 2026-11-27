@@ -1026,7 +1026,9 @@ billingRouter.get('/reports/unpaid', async (req, res) => {
   res.json({
     bills: views.map((v) => ({ ...v, days: daysBetween(new Date(`${v.date}T00:00:00Z`), today) })),
     owed: views.filter((v) => v.balance > 0).reduce((s, v) => s + v.balance, 0),
-    dueBack: views.filter((v) => v.balance < 0).reduce((s, v) => s - v.balance, 0),
+    // a stay's advance held while she is in hospital is not money to give back (27 Nov 2026)
+    dueBack: views.filter((v) => v.balance < 0 && v.status !== 'advance').reduce((s, v) => s - v.balance, 0),
+    advanceHeld: views.filter((v) => v.status === 'advance').reduce((s, v) => s - v.balance, 0),
   });
 });
 

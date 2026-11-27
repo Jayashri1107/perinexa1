@@ -44,7 +44,7 @@ import {
 import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, invoiceTotals, invoiceViews, isExpired, patientDues, returnItems, stockOf, writeOff, usableMatch, HOLD_REASONS, padded } from '../pharmacy/pharmacyService.js';
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { advanceOf, depositAdvance, refundAdvance, useAdvance } from '../pharmacy/advance.js';
-import { admittedNowList, advanceByPatient, settleSelected, settlementData, settlementPatients, settlementRow } from '../pharmacy/settlement.js';
+import { COUNTER_KINDS, admittedNowList, advanceByPatient, settleSelected, settlementData, settlementPatients, settlementRow } from '../pharmacy/settlement.js';
 import { isClosed } from '../patients/deathRules.js';
 import { NOT_CANCELLED, returnTotals } from '../pharmacy/supplierReturnsService.js';
 import { checkOpening, nameKey, openingSchema, saveOpening } from '../pharmacy/openingStock.js';
@@ -1584,6 +1584,9 @@ pharmacyRouter.post('/patients/:id/settle', async (req, res) => {
 // Paid and Credit tables, with the patients beside them (what each owes and her advance) – External: today's walk-in
 // bills, as before. IP (the same day's request: "IP should show the IP patients"): everyone admitted now, as the
 // pharmacy's Inpatients list, with the counter bills of her stay – an older one while something is still owed on it.
+// 27 Nov 2026 (the pharmacy: "for IPD the balance amount is there, still not shown"): an admitted patient's bill at the
+// counter is a ward issue; one paid there in part or put on credit is owed at the counter and settled here
+// (settlement.js COUNTER_KINDS) – one on her hospital bill still is not.
 const settlementQuery = z.object({
   from: requiredDateOnly('From').optional(),
   to: requiredDateOnly('To').optional(),
@@ -1601,7 +1604,7 @@ pharmacyRouter.get('/settlement', async (req, res) => {
   if (q.patientId) {
     const patient = await Patient.findOne({ tenantId: req.tenantId, _id: q.patientId }, { _id: 1, fullName: 1, mrn: 1, phone: 1 }).lean();
     if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
-    const invoices = await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: patient._id, billId: null, kind: 'sale', ...when }).sort({ 'created.at': -1, _id: -1 }).limit(500).lean();
+    const invoices = await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: patient._id, billId: null, kind: { $in: COUNTER_KINDS }, ...when }).sort({ 'created.at': -1, _id: -1 }).limit(500).lean();
     await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: 'settlement', patientIds: [String(patient._id)], rows: invoices.length } });
     return res.json({ ...dates, patientId: String(patient._id), ...(await settlementData(req, patient, invoices)) });
   }
@@ -1623,7 +1626,7 @@ pharmacyRouter.get('/settlement', async (req, res) => {
     const day = dated ? q.from ?? q.to : today(req);
     const [dayStart, dayEnd] = dated ? [start, end] : [hospitalDayStart(day), hospitalDayStart(addDays(day, 1))];
     const admitted = new Set((await Admission.distinct('patientId', { tenantId: req.tenantId, status: 'admitted' })).map(String));
-    const invoices = (await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: { $ne: null }, billId: null, kind: 'sale', 'created.at': { $gte: dayStart, $lt: dayEnd } }).sort({ 'created.at': -1, _id: -1 }).limit(500).lean())
+    const invoices = (await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: { $ne: null }, billId: null, kind: { $in: COUNTER_KINDS }, 'created.at': { $gte: dayStart, $lt: dayEnd } }).sort({ 'created.at': -1, _id: -1 }).limit(500).lean())
       .filter((inv) => q.type === 'all' || (q.type === 'ipd') === admitted.has(String(inv.patientId)));
     const pids = [...new Set(invoices.map((inv) => String(inv.patientId)))];
     const people = new Map((pids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
@@ -1646,7 +1649,7 @@ pharmacyRouter.get('/settlement', async (req, res) => {
   const people = await Patient.find({ tenantId: req.tenantId, $or: [{ fullName: rx }, { mrn: rx }] }, { _id: 1, fullName: 1, mrn: 1, phone: 1 }).limit(200).lean();
   const wanted = (p) => exact.test(p.mrn ?? '') || q.type === 'all' || (q.type === 'ipd') === admittedNow.has(String(p._id));
   const ids = people.filter(wanted).map((p) => p._id);
-  const invoices = ids.length ? await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: { $in: ids }, billId: null, kind: 'sale', ...when }, { number: 1, patientId: 1, kind: 1, billId: 1, lines: 1, returns: 1, payments: 1, concessions: 1, created: 1 }).lean() : [];
+  const invoices = ids.length ? await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: { $in: ids }, billId: null, kind: { $in: COUNTER_KINDS }, ...when }, { number: 1, patientId: 1, kind: 1, billId: 1, lines: 1, returns: 1, payments: 1, concessions: 1, created: 1 }).lean() : [];
   const by = new Map();
   for (const inv of invoices) {
     const row = settlementRow(inv);

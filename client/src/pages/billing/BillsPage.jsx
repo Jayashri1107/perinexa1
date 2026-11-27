@@ -32,7 +32,8 @@ export const billColumns = ({ showPatient = true } = {}) => [
   { key: 'kind', header: 'Type', render: (b) => `${KIND_LABELS[b.kind]}${b.stay?.inHospital ? ' (in hospital)' : ''}` },
   { key: 'total', header: 'Total', align: 'right', render: (b) => <span className="tabular">{rupees(b.total)}</span> },
   { key: 'paid', header: 'Paid', align: 'right', render: (b) => <span className="tabular">{rupees(b.paid)}</span> },
-  { key: 'balance', header: 'Balance', align: 'right', render: (b) => <strong className="tabular">{rupees(b.balance)}</strong> },
+  // A stay's advance held (27 Nov 2026): the amount held, not a minus balance
+  { key: 'balance', header: 'Balance', align: 'right', render: (b) => <strong className="tabular">{b.status === 'advance' ? `Advance ${rupees(-b.balance)}` : rupees(b.balance)}</strong> },
   { key: 'status', header: 'Status', render: (b) => <BillStatus status={b.status} /> },
   // The latest money in or out: when, and how (owner, 13 Oct 2026)
   {
@@ -72,6 +73,7 @@ const STATUS_FILTERS = [
   ['part_paid', 'Part paid'],
   ['paid', 'Paid'],
   ['refund_due', 'Money to give back'],
+  ['advance', 'Advance held'],
   ['cancelled', 'Cancelled'],
 ];
 
@@ -112,7 +114,7 @@ const VIEWS = {
   opd: { title: 'OPD bills', match: (b) => b.kind === 'opd' },
   ipd: { title: 'IPD bills', match: (b) => b.kind === 'ipd' },
   due: { title: 'Still to collect', match: (b) => b.status !== 'cancelled' && b.balance > 0 },
-  back: { title: 'Money to give back', match: (b) => b.status !== 'cancelled' && b.balance < 0 },
+  back: { title: 'Money to give back', match: (b) => b.status !== 'cancelled' && b.status !== 'advance' && b.balance < 0 },
 };
 
 /** "11 Nov 2026" from "2026-11-11". */
@@ -295,7 +297,15 @@ export function BillsPage() {
                       <td className="num tabular bills-total">{rupees(b.total)}</td>
                       <td className="num tabular bills-paid">{rupees(b.paid)}</td>
                       <td className="num tabular bills-balance">
-                        <strong>{b.balance < 0 ? `−${rupees(-b.balance)}` : rupees(b.balance)}</strong>
+                        {/* A stay's deposit while she is in hospital (27 Nov 2026): the advance held, never a minus */}
+                        {b.status === 'advance' ? (
+                          <>
+                            <strong>{rupees(-b.balance)}</strong>
+                            <span className="ipd-sub">advance held</span>
+                          </>
+                        ) : (
+                          <strong>{b.balance < 0 ? `−${rupees(-b.balance)}` : rupees(b.balance)}</strong>
+                        )}
                         {b.insuranceDue > 0 && <span className="ipd-sub">insurance {rupees(b.insuranceDue)}</span>}
                       </td>
                       <td className="bills-state">
@@ -312,7 +322,7 @@ export function BillsPage() {
                             <Wallet aria-hidden="true" /> {takeMoneyLabel(b)}
                             <span className="sr-only"> for bill {b.number}</span>
                           </Link>
-                        ) : b.status !== 'cancelled' && b.balance < 0 ? (
+                        ) : b.status !== 'cancelled' && b.status !== 'advance' && b.balance < 0 ? (
                           <Link to={`/billing/bills/${b.id}`} className="btn btn-secondary btn-sm">
                             <RotateCcw aria-hidden="true" /> Give back
                             <span className="sr-only"> for bill {b.number}</span>

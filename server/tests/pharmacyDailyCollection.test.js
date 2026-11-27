@@ -77,6 +77,21 @@ describe('Pharmacy Daily Collection', () => {
     expect(r.summary.netCollectionPaise).toBe(one.summary.netCollectionPaise + two.summary.netCollectionPaise);
   });
 
+  // 27 Nov 2026: an admitted patient's bill at the counter is a ward issue – one paid there or put on credit there is
+  // counted as a counter sale is; one on her hospital bill is not counted at all, as before
+  it('a ward issue paid at the counter or on credit there is counted; one on the hospital bill is not', () => {
+    const issues = [
+      inv('w1', 'PH-000201', 'p1', 30000, ist(D, '09:30'), { kind: 'issue', admissionId: 's1', payments: [pay('cash', 10000, ist(D, '09:30')), { ...pay('upi', 20000, ist(D, '18:00')), settlementId: 's9' }] }),
+      inv('w2', 'PH-000202', 'p1', 9000, ist(D, '13:30'), { kind: 'issue', admissionId: 's1', billId: 'bill1' }),
+    ];
+    const r = dailyCollection({ invoices: issues, patients, advances: [] }, day(D));
+    const rows = Object.fromEntries(r.sections.map((s) => [s.key, s.rows.map((x) => [x.saleNumber, x.netPaise, x.cashPaise, x.upiPaise])]));
+    expect(rows['cash-sales']).toEqual([['PH-000201', 10000, 10000, 0]]);
+    expect(rows['credit-sale']).toEqual([['PH-000201', 20000, 0, 0]]);
+    expect(rows['due-collection']).toEqual([['PH-000201', 20000, 0, 20000]]);
+    expect(r.summary).toMatchObject({ saleCount: 1, netCollectionPaise: 30000 });
+  });
+
   it('Sales collection carries it, its payment list unchanged', () => {
     const rep = misReport('collection', { invoices, patients, advances }, day(D));
     expect(rep.daily.summary.netCollectionPaise).toBe(290000);

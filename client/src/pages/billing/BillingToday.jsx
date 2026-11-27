@@ -21,7 +21,7 @@ export function BillingToday() {
   const staying = todays.filter((b) => b.kind === 'ipd' && b.stay?.inHospital && b.status !== 'cancelled' && b.paid > 0);
   const owing = unpaid.data?.bills ?? [];
   const toSettle = owing.filter((b) => b.kind === 'ipd' && b.stay && !b.stay.inHospital && b.balance > 0);
-  const giveBack = owing.filter((b) => b.balance < 0);
+  const giveBack = owing.filter((b) => b.balance < 0 && b.status !== 'advance'); // a stay's advance held is not due back (27 Nov 2026)
   const sum = (list, pick) => list.reduce((s, b) => s + pick(b), 0);
   const modes = (daily.data?.byMode ?? []).filter((m) => m.net !== 0).map((m) => `${m.label} ${rupees(m.net)}`);
   const recent = todays.slice(0, 8);

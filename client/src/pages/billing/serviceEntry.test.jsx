@@ -108,6 +108,19 @@ describe('the OPD bill page', () => {
     expect(text(page())).not.toContain('Change the doctor');
   });
 
+  // 27 Nov 2026 (reception: a stay's ₹20,000 deposit showed "−₹20,000 · Money to give back")
+  it('a stay’s deposit while she is in hospital is her advance held: Take a deposit first, giving back second', () => {
+    const stay = { id: 's'.repeat(24), ward: 'General', bed: '3', admittedAt: '2026-11-27T05:00:00.000Z', dischargedAt: null, inHospital: true };
+    answers[`/billing/bills/${BID}`] = { bill: opdBill({ kind: 'ipd', stay, lines: [], subtotal: 0, total: 0, paid: 2000000, balance: -2000000, status: 'advance', payments: [{ id: 'p1', receipt: 'R-000087', kind: 'deposit', mode: 'upi', amountPaise: 2000000, reference: '1236', at: '2026-11-27T10:39:00.000Z', byName: 'Sample Reception', corrections: [] }] }) };
+    const html = page();
+    expect(text(html)).toContain('Advance held');
+    expect(text(html)).not.toContain('To give back');
+    expect(text(html)).not.toContain('Money to give back');
+    expect((html.match(/class="btn btn-primary"/g) ?? []).length).toBe(1);
+    expect(html).toMatch(/class="btn btn-primary"[^>]*>.*?Take a deposit/);
+    expect(text(html)).toContain('Give money back');
+  });
+
   it('a cancelled bill, or a stay’s final bill, has neither the entry row nor tick boxes', () => {
     answers[`/billing/bills/${BID}`] = { bill: opdBill({ status: 'cancelled', cancelled: { byName: 'Sample Reception', at: '2026-11-11T06:00:00.000Z', reason: 'Wrong patient' } }) };
     expect(page()).not.toContain('Tick all items');

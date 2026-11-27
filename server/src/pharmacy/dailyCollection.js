@@ -89,7 +89,9 @@ export function dailyCollection({ invoices = [], patients = new Map(), advances 
   let salesNetPaise = 0;
 
   for (const inv of invoices) {
-    if (inv.kind !== 'sale') continue; // a ward issue goes on the hospital bill: never a counter collection
+    // A ward issue on the hospital bill is paid at the billing desk: never a counter collection. One paid at the counter
+    // in part or put on credit there (27 Nov 2026) is counted as a counter sale is – its settlement is a due collection.
+    if (inv.kind !== 'sale' && inv.billId) continue;
     const soldOn = day(madeAt(inv));
     const dayEnd = hospitalDayStart(addDays(soldOn, 1));
 

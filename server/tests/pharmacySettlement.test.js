@@ -106,6 +106,48 @@ describe('Settlement', () => {
     expect((await ph('get', '/settlement?type=ipd', undefined, 'reception')).status).toBe(403);
   });
 
+  // 27 Nov 2026 (the pharmacy: "for IPD the balance amount is there, still not shown"): an admitted patient's bill at
+  // the counter is a ward issue; one on credit or paid in part there is owed at the counter, and settled here
+  it('IPD: a ward issue on credit or paid in part at the counter is listed and settled; one on her hospital bill is not', async () => {
+    const m = await inStock();
+    const ward = await newPatient('Sample Ward Mother');
+    const admitted = await (await as('drA')).post(`/api/patients/${ward.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', ward: 'Labour room', reason: 'In labour' });
+    expect(admitted.status, JSON.stringify(admitted.body)).toBe(201);
+    const made = async (body) => {
+      const res = await ph('post', '/invoices', { kind: 'issue', patientId: ward.id, ...body });
+      expect(res.status, JSON.stringify(res.body)).toBe(201);
+      return res.body.invoice;
+    };
+    const credit = await made({ onCredit: true, lines: [{ medicineId: m.id, qty: 2 }] }); // ₹4 owed
+    const part = await made({ payments: [{ mode: 'cash', amountPaise: 100 }], lines: [{ medicineId: m.id, qty: 1 }] }); // ₹1 owed
+    const onBill = await made({ lines: [{ medicineId: m.id, qty: 1 }] }); // on her hospital bill
+    expect(onBill.billId).toBeTruthy();
+
+    const ip = (await ph('get', '/settlement?type=ipd')).body;
+    expect(ip.creditBills.map((x) => [x.number, x.type, x.balancePaise]).sort()).toEqual([[credit.number, 'ipd', 400], [part.number, 'ipd', 100]].sort());
+    expect(ip).toMatchObject({ totalCreditPaise: 500 });
+    expect(ip.patients).toEqual([expect.objectContaining({ id: ward.id, type: 'ipd', creditPaise: 500, billCount: 2 })]);
+    expect((await ph('get', '/settlement?type=ipd&search=Ward')).body.patients).toEqual([expect.objectContaining({ id: ward.id, creditPaise: 500 })]);
+    expect((await ph('get', '/settlement/patients?type=ipd')).body.patients).toEqual([expect.objectContaining({ id: ward.id, balancePaise: 500 })]);
+    const hers = (await ph('get', `/settlement?patientId=${ward.id}`)).body;
+    expect(hers.creditBills.map((x) => x.number).sort()).toEqual([credit.number, part.number].sort());
+    expect([...hers.creditBills, ...hers.paidBills].map((x) => x.number)).not.toContain(onBill.number);
+
+    expect((await ph('post', '/settlement', { patientId: ward.id, invoiceIds: [onBill.id], payments: [{ mode: 'cash', amountPaise: 100 }] })).status).toBe(400);
+    const res = await ph('post', '/settlement', { patientId: ward.id, invoiceIds: [credit.id, part.id], payments: [{ mode: 'cash', amountPaise: 500 }] });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body).toMatchObject({ duePaise: 500, receivedPaise: 500, creditBills: [], totalCreditPaise: 0 });
+    expect((await ph('get', `/patients/${ward.id}/dues`)).body.duePaise).toBe(0);
+    // The Daily Collection: the ₹1 paid with the issue a cash sale, ₹4 + ₹1 on credit, the settlement's ₹5 a due
+    // collection; the issue on her hospital bill is not there
+    const col = (await ph('get', `/reports/mis?report=collection&from=${DAY}&to=${DAY}`)).body;
+    const rows = (key) => col.daily.sections.find((s) => s.key === key).rows.map((x) => [x.saleNumber, x.netPaise]);
+    expect(rows('cash-sales')).toEqual([[part.number, 100]]);
+    expect(rows('credit-sale').sort()).toEqual([[credit.number, 400], [part.number, 100]].sort());
+    expect(rows('due-collection').sort()).toEqual([[credit.number, 400], [part.number, 100]].sort());
+    expect(JSON.stringify(col.daily.sections)).not.toContain(onBill.number);
+  });
+
   it('the Find patient window: IPD everyone admitted now, OPD the patients of the days; a name typed finds her', async () => {
     const { p } = await patientWithCredit(); // her bills are today's
     const ward = await newPatient('Sample Ward Mother');

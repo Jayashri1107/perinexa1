@@ -177,6 +177,12 @@ describe('charges added by the work done', () => {
     const deposit = await pay(b.id, { mode: 'cash', amountPaise: 500000 }); // more than due: a deposit may be
     expect(deposit.status, JSON.stringify(deposit.body)).toBe(201);
     expect(deposit.body.payment).toMatchObject({ kind: 'deposit', receipt: 'R-000001' });
+    // 27 Nov 2026 (reception): more paid than charged while she is in hospital is her advance held – not money to give
+    // back – and its receipt shows the bill as it stood then
+    expect(await bill(b.id)).toMatchObject({ balance: -200000, status: 'advance' });
+    expect((await bill(b.id)).payments[0].asOf).toEqual({ subtotal: 300000, discount: 0, total: 300000, paid: 500000, balance: -200000 });
+    expect((await (await as('reception')).get('/api/billing/reports/unpaid')).body).toMatchObject({ dueBack: 0, advanceHeld: 200000 });
+    expect((await (await as('reception')).get(`/api/billing/ipd/stays/${admitted.body.admission.id}`)).body).toMatchObject({ billNotes: '', bill: { status: 'advance' } });
 
     later('2026-09-30T06:00:00Z');
     full = await bill(b.id);

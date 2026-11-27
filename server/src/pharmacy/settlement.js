@@ -11,13 +11,19 @@ import { HttpError } from '../utils/httpError.js';
 import { advanceOf } from './advance.js';
 import { invoiceTotals } from './pharmacyService.js';
 
+// The bills settled here (27 Nov 2026, the pharmacy: "for IPD the balance amount is there, still not shown"): counter
+// sales (OPD), and an admitted patient's ward issues paid at the counter in part or put on credit there (IPD) – each
+// with billId null. A bill on the hospital bill (billId set) is paid at the billing desk and is never here.
+export const COUNTER_KINDS = ['sale', 'issue'];
+const counterKind = { $in: COUNTER_KINDS };
+
 const bad = (message, fields) => Object.assign(new HttpError(400, message, 'VALIDATION'), fields ? { fields } : {});
 const conflict = (message) => new HttpError(409, message, 'CONFLICT');
 // An array still as long as when it was read. A bill saved before 24 Nov 2026 has no concessions array at all in the
 // database (Mongoose shows it as empty), and $size never matches a missing field.
 const sized = (field, n) => (n ? { [field]: { $size: n } } : { $or: [{ [field]: { $exists: false } }, { [field]: { $size: 0 } }] });
 
-/** One counter bill as the Settlement tables show it. Hospital bills and ward issues never enter this list. */
+/** One counter bill as the Settlement tables show it. Bills on the hospital bill never enter this list. */
 export function settlementRow(inv, patient = null) {
   const t = invoiceTotals(inv);
   const discount = Math.max(0, t.grossPaise - t.totalPaise);
@@ -35,7 +41,7 @@ export function settlementRow(inv, patient = null) {
     netPayablePaise: t.netPaise - conceded, // so that Net pay − Paid = Balance on the screen
     paidPaise: t.paidPaise ?? 0,
     balancePaise: t.balancePaise ?? 0,
-    eligible: !inv.billId && inv.kind === 'sale' && Boolean(inv.patientId) && (t.balancePaise ?? 0) > 0,
+    eligible: !inv.billId && COUNTER_KINDS.includes(inv.kind) && Boolean(inv.patientId) && (t.balancePaise ?? 0) > 0,
   };
 }
 
@@ -51,8 +57,8 @@ export async function advanceByPatient(req, pids) {
  * Settlement, IP with nothing typed (24 Nov 2026, the pharmacy's request: "IP should show the IP patients"): everyone
  * admitted now, as the pharmacy's Inpatients list – the one who owes most first, then the latest admitted – with the
  * counter bills of her stay, and an older counter bill while something is still owed on it. Medicines on her hospital
- * bill (ward issues, bills put on it) are paid at the billing desk and are not listed. when/dated: From and To, when
- * given (then the bills of those days).
+ * bill are paid at the billing desk and are not listed; a ward issue on credit at the counter is (27 Nov 2026).
+ * when/dated: From and To, when given (then the bills of those days).
  */
 export async function admittedNowList(req, { when = {}, dated = false } = {}) {
   const stays = await Admission.find({ tenantId: req.tenantId, status: 'admitted' }, { patientId: 1, ward: 1, bed: 1, admittedAt: 1 }).sort({ admittedAt: -1, _id: -1 }).limit(500).lean();
@@ -61,7 +67,7 @@ export async function admittedNowList(req, { when = {}, dated = false } = {}) {
   const pids = [...stayOf.keys()];
   const people = new Map((pids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
   const ids = [...people.keys()];
-  const invoices = ids.length ? await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: { $in: ids }, billId: null, kind: 'sale', ...when }).sort({ 'created.at': -1, _id: -1 }).limit(1000).lean() : [];
+  const invoices = ids.length ? await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: { $in: ids }, billId: null, kind: counterKind, ...when }).sort({ 'created.at': -1, _id: -1 }).limit(1000).lean() : [];
   const rows = invoices
     .map((inv) => settlementRow(inv, people.get(String(inv.patientId))))
     .filter((r) => dated || r.balancePaise > 0 || new Date(r.date) >= new Date(stayOf.get(r.patientId).admittedAt));
@@ -91,7 +97,7 @@ export async function admittedNowList(req, { when = {}, dated = false } = {}) {
 export async function owedByPatient(req, { doctor = null } = {}) {
   const sumOf = (input, value) => ({ $sum: { $map: { input: { $ifNull: [input, []] }, as: 'x', in: value } } });
   const bills = await PharmacyInvoice.aggregate([
-    { $match: { tenantId: req.tenantId, patientId: { $ne: null }, billId: null, kind: 'sale', ...(doctor ? { 'doctor.name': doctor } : {}) } },
+    { $match: { tenantId: req.tenantId, patientId: { $ne: null }, billId: null, kind: counterKind, ...(doctor ? { 'doctor.name': doctor } : {}) } },
     {
       $project: {
         patientId: 1,
@@ -228,7 +234,7 @@ export async function settleSelected(req, body) {
   if (invoices.length !== body.invoiceIds.length) throw bad('Choose only this patient’s pharmacy bills.', { invoiceIds: 'A bill was not found for this patient.' });
   for (const inv of invoices) {
     if (inv.billId) throw bad('A hospital bill is paid at the billing desk, not at the pharmacy counter.', { invoiceIds: 'Hospital bills cannot be settled here.' });
-    if (inv.kind !== 'sale') throw bad('Ward issues cannot be settled at the pharmacy counter.', { invoiceIds: 'Choose a counter sale.' });
+    if (!COUNTER_KINDS.includes(inv.kind)) throw bad('Only pharmacy counter bills can be settled here.', { invoiceIds: 'Choose a counter bill.' });
     if ((invoiceTotals(inv).balancePaise ?? 0) <= 0) throw bad('A selected bill has nothing left to settle.', { invoiceIds: 'Choose only bills with a balance.' });
   }
 
@@ -299,7 +305,7 @@ export async function settleSelected(req, body) {
       if (payments.length) push.payments = { $each: payments };
       const changed = await PharmacyInvoice.findOneAndUpdate(
         {
-          tenantId: req.tenantId, _id: row.inv._id, patientId: patient._id, billId: null, kind: 'sale',
+          tenantId: req.tenantId, _id: row.inv._id, patientId: patient._id, billId: null, kind: counterKind,
           $and: [sized('payments', row.inv.payments.length), sized('concessions', (row.inv.concessions ?? []).length), sized('returns', (row.inv.returns ?? []).length)],
         },
         { $push: push },
@@ -331,6 +337,6 @@ export async function settleSelected(req, body) {
       receivedPaise: row.payments.reduce((n, p) => n + p.amountPaise, 0),
     })),
   };
-  const current = await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: patient._id, billId: null, kind: 'sale' }).sort({ 'created.at': -1, _id: -1 }).limit(500).lean();
+  const current = await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: patient._id, billId: null, kind: counterKind }).sort({ 'created.at': -1, _id: -1 }).limit(500).lean();
   return { patient, result, data: await settlementData(req, patient, current) };
 }

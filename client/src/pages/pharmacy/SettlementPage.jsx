@@ -21,8 +21,9 @@ import { SETTLE_TYPES, SETTLE_WAYS, findProblem, findQuery, findWindowProblem, f
 // Settlement window for the credit bills ticked – Advance with the advance filled in, Discount ready for a discount
 // and its reason, Settlement with the whole amount in cash – where the bills are settled in full, by the advance, a
 // discount (a concession: not money received) and money received in one or more ways. A receipt can be printed after.
-// Only a registered patient's counter bills are settled here: hospital bills and ward issues are paid at the billing
-// desk, and a walk-in (External) customer pays the whole bill at the counter, so External lists bills to look at only.
+// Only a registered patient's counter bills are settled here – OPD sales, and IPD ward issues paid at the counter in part
+// or put on credit there (27 Nov 2026): bills on the hospital bill are paid at the billing desk, and a walk-in
+// (External) customer pays the whole bill at the counter, so External lists bills to look at only.
 // Made on the server: server/src/pharmacy/settlement.js (GET and POST /api/pharmacy/settlement, and GET
 // /api/pharmacy/settlement/patients for the Find patient window).
 // 25 Nov 2026 (the pharmacy's request): tried with the boxes and the patients found moved into the left column
@@ -668,7 +669,7 @@ export function PharmacySettlementPage({ patientId: startId = null } = {}) {
               </div>
             </div>
             {data && credit.length > 0 && !selected.rows.length && <p className="hint ph-sb-tip">Tick the credit bills to settle (or Select all), then Advance, Discount or Settlement.</p>}
-            {form.type === 'ipd' && data && <p className="hint ph-sb-tip">Only counter bills are settled here: ward issues, and bills put on the hospital bill, are paid at the billing desk.</p>}
+            {form.type === 'ipd' && data && <p className="hint ph-sb-tip">Ward issues paid here in part or put on credit are settled here. Bills put on the hospital bill are paid at the billing desk.</p>}
           </div>
           ) : (
             <div className="ph-sb-results ph-blank-results" aria-hidden="true" />

@@ -1,4 +1,4 @@
-import { BadgeCheck, CircleDollarSign, CircleSlash, FileX2, RotateCcw, Wallet } from 'lucide-react';
+import { BadgeCheck, CircleDollarSign, CircleSlash, FileX2, PiggyBank, RotateCcw, Wallet } from 'lucide-react';
 
 // Billing (docs/BILLING_PLAN.md): words, amounts and status looks shared by the billing pages. Amounts come from the
 // server in paise (₹1 = 100 paise). Same role lists as server/src/billing/billingRules.js.
@@ -32,6 +32,8 @@ export const STATUS_LOOK = {
   part_paid: { tone: 'due', icon: CircleDollarSign, label: 'Part paid' },
   paid: { tone: 'stable', icon: BadgeCheck, label: 'Paid' },
   refund_due: { tone: 'high', icon: RotateCcw, label: 'Money to give back' },
+  // 27 Nov 2026: a stay's deposit while she is in hospital – held against the final bill, not money to give back
+  advance: { tone: 'stable', icon: PiggyBank, label: 'Advance held' },
   no_charges: { tone: 'neutral', icon: CircleSlash, label: 'No charges' },
   cancelled: { tone: 'inactive', icon: FileX2, label: 'Cancelled' },
 };

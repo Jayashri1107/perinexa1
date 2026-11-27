@@ -106,7 +106,7 @@ async function billRows(req, bills) {
     discount: v.discount,
     paid: v.paid,
     balance: v.balance,
-    status: v.cancelled ? 'Cancelled' : v.balance > 0 ? 'Due' : v.balance < 0 ? 'To give back' : 'Settled',
+    status: v.cancelled ? 'Cancelled' : v.balance > 0 ? 'Due' : v.status === 'advance' ? 'Advance held' : v.balance < 0 ? 'To give back' : 'Settled',
     days: daysBetween(new Date(`${v.date}T00:00:00Z`), today),
   }));
 }

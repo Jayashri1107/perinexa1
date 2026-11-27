@@ -11,7 +11,7 @@ import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.js
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { ClearDialog, StayPaper } from '../beds/AdmissionDesk.jsx';
-import { DiscountDialog, PaymentDialog, ReasonDialog } from './BillPage.jsx';
+import { BillPrint, DiscountDialog, PaymentDialog, ReasonDialog } from './BillPage.jsx';
 import { BillStatus } from './BillsPage.jsx';
 import { amountInWords } from './amountWords.js';
 import { HeadedBillLines, RemoveTickedDialog, ServiceEntryRow } from './ServiceEntry.jsx';
@@ -553,16 +553,18 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
   const [layout, setLayout] = useState('details'); // the print's layout, chosen in the Print menu
   // One way to add services: the entry strip (11 Nov 2026). Opened on "add" (the list's Services), its box gets the cursor
   const [dialog, setDialog] = useState(initialDialog === 'add' ? null : initialDialog); // advance | refund | discharge | admin | concession | final | reopen | clear | { remove: line }
-  const [printing, setPrinting] = useState(null); // 'bill' | 'gatepass'
+  const [printing, setPrinting] = useState(null); // 'bill' | 'gatepass' | { receipt } (27 Nov 2026: an advance's receipt)
   const [flash, setFlash] = useState(null);
+  const [taken, setTaken] = useState(null); // the receipt of the money just taken or given back, to print at once
   const data = res.data;
-  const done = (_out, message, { keepOpen = false } = {}) => {
+  const done = (out, message, { keepOpen = false } = {}) => {
     setTicked(new Set());
     res.reload();
     onChanged?.();
     if (keepOpen) return;
     setDialog(null);
     setFlash(message ?? null);
+    setTaken(out?.payment?.receipt ?? null);
   };
 
   if (res.error && !data) return <div className={embedded ? '' : 'pf-content'}><Alert type="error">{res.error}</Alert></div>;
@@ -612,14 +614,23 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                 icon={Printer}
                 label={bill.final ? 'Print final bill' : stay.status === 'admitted' ? 'Print interim bill' : 'Print draft bill'}
                 align="end"
-                items={[...BILL_LAYOUTS].sort((a, b) => (b.key === 'details') - (a.key === 'details')).map((l) => ({
-                  label: l.key === 'details' ? 'Details (by heading)' : l.label,
-                  icon: Printer,
-                  onSelect: () => {
-                    setLayout(l.key);
-                    setPrinting('bill');
-                  },
-                }))}
+                items={[
+                  ...[...BILL_LAYOUTS].sort((a, b) => (b.key === 'details') - (a.key === 'details')).map((l) => ({
+                    label: l.key === 'details' ? 'Details (by heading)' : l.label,
+                    icon: Printer,
+                    onSelect: () => {
+                      setLayout(l.key);
+                      setPrinting('bill');
+                    },
+                  })),
+                  // 27 Nov 2026 (reception: "where is the IPD advance receipt printed from?"): each advance, payment
+                  // or refund's receipt – the latest first
+                  ...[...bill.payments].reverse().map((p) => ({
+                    label: `Receipt ${p.receipt} · ${PAYMENT_KIND_LABELS[p.kind].toLowerCase()} ${rupees(p.amountPaise)}`,
+                    icon: Printer,
+                    onSelect: () => setPrinting({ receipt: p.receipt }),
+                  })),
+                ]}
               />
             )}
             {/* With money still due she may leave only with a reason (e.g. insurance claim pending) */}
@@ -672,8 +683,27 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
         />
       )}
       <div className={embedded ? 'ipd-page ipd-embedded' : 'pf-content ipd-page'}>
-        <Alert type="success" onClose={() => setFlash(null)}>
-          {flash}
+        <Alert
+          type="success"
+          onClose={() => {
+            setFlash(null);
+            setTaken(null);
+          }}
+        >
+          {flash ? (
+            <>
+              {flash}
+              {/* The money just taken: its receipt in one click (27 Nov 2026) */}
+              {taken && bill?.payments.some((p) => p.receipt === taken) && (
+                <>
+                  {' '}
+                  <button type="button" className="btn btn-link btn-sm" onClick={() => setPrinting({ receipt: taken })}>
+                    <Printer aria-hidden="true" /> Print receipt {taken}
+                  </button>
+                </>
+              )}
+            </>
+          ) : null}
         </Alert>
         {/* The forms open here, in the page above the bill (owner, 9 Nov 2026) – not as windows over it */}
         <InlineForms.Provider value>
@@ -808,7 +838,7 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                     </>
                   ) : (
                     <div className="ipd-sums-balance">
-                      <dt>{bill.balance < 0 ? 'Due back' : 'Balance'}</dt>
+                      <dt>{bill.status === 'advance' ? 'Advance held' : bill.balance < 0 ? 'Due back' : 'Balance'}</dt>
                       <dd>{rupees(Math.abs(bill.balance))}</dd>
                     </div>
                   )}
@@ -1004,12 +1034,15 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                               Amount
                             </th>
                             <th scope="col">Taken by</th>
+                            <th scope="col">
+                              <span className="sr-only">Receipt</span>
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {bill.payments.length === 0 && (
                             <tr>
-                              <td colSpan={6} className="muted">
+                              <td colSpan={7} className="muted">
                                 No advance or payment yet.
                               </td>
                             </tr>
@@ -1025,6 +1058,12 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                               </td>
                               <td className="num tabular">{p.kind === 'refund' ? `−${rupees(p.amountPaise)}` : rupees(p.amountPaise)}</td>
                               <td>{p.byName}</td>
+                              {/* 27 Nov 2026: the receipt of each advance, payment or refund, printed again at any time */}
+                              <td className="num">
+                                <button type="button" className="btn btn-link btn-sm" onClick={() => setPrinting({ receipt: p.receipt })}>
+                                  <Printer aria-hidden="true" /> Receipt<span className="sr-only"> {p.receipt}</span>
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -1203,6 +1242,7 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
 
       {printing === 'bill' && bill && <IpdBillPrint data={data} layout={layout} onClose={() => setPrinting(null)} />}
       {printing === 'gatepass' && <StayPaper stay={{ id: stay.id }} what="gatepass" onClose={() => setPrinting(null)} />}
+      {printing?.receipt && bill && <BillPrint bill={bill} receipt={printing.receipt} notes={data.billNotes ?? ''} onClose={() => setPrinting(null)} />}
     </>
   );
 }
@@ -1386,7 +1426,7 @@ function IpdBillPrint({ data, layout, onClose }) {
                     <td>{rupees(bill.paid)}</td>
                   </tr>
                   <tr className="bill-doc-balance">
-                    <th scope="row">{bill.balance < 0 ? 'Due back' : 'Balance amount'}</th>
+                    <th scope="row">{bill.status === 'advance' ? 'Advance held' : bill.balance < 0 ? 'Due back' : 'Balance amount'}</th>
                     <td>{rupees(Math.abs(bill.balance))}</td>
                   </tr>
                 </>
