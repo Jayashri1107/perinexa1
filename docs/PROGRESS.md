@@ -1,5 +1,14 @@
 # Progress
 
+## Fix: Sales bill – Save out of sight on a laptop screen (27 Nov 2026)
+The pharmacy: "the bill is not getting saved". Since 26 Nov the bill's medicine list sits inside `.ph-grid-area` (the
+batch list opens over it), and the rule that let the list take only the height left (pages-pharmacy.css, "one fixed
+screen") still named the list as a direct child of the panel – so on a laptop screen (about 1366 × 657 inside the
+browser) the list kept its full 360 px and pushed the buttons, Save among them, below the edge of the panel, where
+`overflow: hidden` cut them off. The area now takes the height left, and a very short window lets the panel scroll
+instead of hiding anything. Checked in a browser at 1280 × 600, 1366 × 657, 1440 × 760 and 1916 × 853.
+Also: `out.txt`, `full.txt` and `client.txt` (test results saved to a file) are in `.gitignore`.
+
 ## Pharmacy: purchase bill (New GRN) and GRN List (27 Nov 2026)
 Built with Claude in the Claude app – **`npm test` and `npm run build` still to run**. Website only; the server is
 unchanged.

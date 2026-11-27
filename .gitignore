@@ -15,3 +15,8 @@ config/
 
 # The scan bridge on a hospital PC: its last Orthanc change number – never commit
 scan-bridge/bridge-state.json
+
+# Test results saved to a file (npm test *> out.txt) – never commit
+/out.txt
+/full.txt
+/client.txt
