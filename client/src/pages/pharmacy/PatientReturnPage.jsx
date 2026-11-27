@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CircleCheck, CircleX, Printer, Search, X } from 'lucide-react';
+import { CircleCheck, CircleX, Printer, Search, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import { DataTable } from '../../components/DataTable.jsx';
@@ -8,7 +8,7 @@ import { DateText } from '../../components/DateText.jsx';
 import { Alert, StatusPill, formatDate, formatDayMonth } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { MODE_LABELS, expiryLabel } from './pharmacyFormat.js';
-import { PatientPickList, PharmacyHeader, bringIntoView } from './pharmacyUi.jsx';
+import { Modal, PatientPickList, PharmacyHeader, bringIntoView } from './pharmacyUi.jsx';
 import { amount } from './searchBill.js';
 import { HISTORY_STATES, RETURN_KINDS, findProblem, findQuery, lineForCode, payWord, pickChoices, returnBody, returnFigures, typedQty } from './patientReturn.js';
 
@@ -237,6 +237,8 @@ export function PatientReturnPage({ start = null } = {}) {
   const [error, setError] = useState(null);
   const [done, setDone] = useState(null);
   const [printing, setPrinting] = useState(false);
+  // 27 Nov 2026 (the pharmacy's request): the patients found open in a pop-up – from Search until one is chosen
+  const [pickOpen, setPickOpen] = useState(false);
   const split = useRef(null); // the screen under the title bar: brought to the top of the window by Search
   const found = useFetch(query ? '/pharmacy/patient-return' : null, query ?? undefined);
   const one = useFetch(patientId ? '/pharmacy/patient-return' : null, patientId ? { type: query?.type ?? form.type, patientId, ...(query?.doctor ? { doctor: query.doctor } : {}) } : undefined);
@@ -304,6 +306,7 @@ export function PatientReturnPage({ start = null } = {}) {
   const shown = Boolean(query);
   const restart = (type) => {
     setQuery(null);
+    setPickOpen(false);
     setPatientId(null);
     setTyped({});
     setPicked([]);
@@ -321,8 +324,12 @@ export function PatientReturnPage({ start = null } = {}) {
     setDone(null);
     setError(null);
     setQuery(findQuery(form));
+    setPickOpen(true);
     bringIntoView(split.current);
   };
+  // The patients found, when there is a choice to make: in the pop-up
+  const listed = Boolean(people && (people.length > 1 || (found.data?.list && people.length > 0)));
+  const listTitle = found.data?.list ? `${query?.type === 'ipd' ? 'Admitted now, with ward issues' : 'Billed today'} (${people?.length ?? 0})` : `${people?.length ?? 0} patients found`;
   const scan = (e) => {
     e.preventDefault();
     if (!barcode || !item.trim()) return;
@@ -414,7 +421,7 @@ export function PatientReturnPage({ start = null } = {}) {
           : 'Type the medicine’s name in Item name and choose it from the list – it comes here with Return qty 1.'
         : 'Nothing on her bills can be taken back (already returned, expired, or on a final hospital bill).'
       : people?.length
-        ? 'Choose the patient on the left.'
+        ? 'Choose the patient in the list.'
         : found.loading
           ? 'Searching…'
           : found.data?.list
@@ -499,15 +506,27 @@ export function PatientReturnPage({ start = null } = {}) {
             )}
             {problem && (form.mrn || form.first) && <p className="field-error">{problem}</p>}
             {found.error && <Alert type="error">{found.error}</Alert>}
-            {people && (people.length > 1 || (found.data?.list && people.length > 0)) && (
-              <PatientPickList
-                title={found.data?.list ? `${query?.type === 'ipd' ? 'Admitted now, with ward issues' : 'Billed today'} (${people.length}) – choose one` : `${people.length} patients found – choose one`}
-                people={people}
-                chosenId={patientId}
-                onChoose={choose}
-              />
+            {listed && !pickOpen && (
+              <button type="button" className="btn btn-secondary ph-pick-again" onClick={() => setPickOpen(true)}>
+                <Users aria-hidden="true" /> {patientId ? 'Change the patient' : 'Choose the patient'} – {listTitle}
+              </button>
             )}
           </form>
+          {listed && pickOpen && (
+            <Modal id="pr-pick" title={`${listTitle} – choose one`} onClose={() => setPickOpen(false)}>
+              <div className="ph-pick-pop">
+                <PatientPickList
+                  title="Click the patient: her medicines open. Escape closes the list."
+                  people={people}
+                  chosenId={patientId}
+                  onChoose={(id) => {
+                    choose(id);
+                    setPickOpen(false);
+                  }}
+                />
+              </div>
+            </Modal>
+          )}
 
           {shown ? (
           <div className="ph-sb-results">

@@ -5,7 +5,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../hooks/useFetch.js', () => ({ useFetch: () => ({ data: null, loading: false, error: null, status: null, reload: () => {} }) }));
+// Every answer is empty unless a test puts one in `answers` (by path) – and takes it out again
+const answers = {};
+vi.mock('../../hooks/useFetch.js', () => ({ useFetch: (path) => ({ data: (path && answers[path]) ?? null, loading: false, error: null, status: null, reload: () => {} }) }));
 vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembership: { roles: ['pharmacist'] }, user: { name: 'Sample Pharmacist' }, activeTenantId: 't1' }) }));
 
 const { HerHistory, PatientReturnPage, ReturnSlip } = await import('./PatientReturnPage.jsx');
@@ -121,6 +123,25 @@ describe('the Sale return patient-wise screen', () => {
     expect((html.match(/class="btn btn-primary[^"]*"/g) ?? []).length).toBe(1); // Save
     expect(words(html)).toMatch(/<button type="button" class="btn btn-primary" disabled="">/);
     expect(shown).not.toMatch(/!/);
+  });
+
+  // The pop-up itself (it opens on Search, a click on a name chooses and closes it) needs a browser: checked there
+  it('the patients found are chosen in a pop-up; the button under Search opens it (27 Nov 2026)', () => {
+    answers['/pharmacy/patient-return'] = { type: 'opd', list: true, patients: [{ id: 'p1', fullName: 'Sample Asha Kale', mrn: 'SH-1' }, { id: 'p2', fullName: 'Sample Meera Patil', mrn: 'SH-2' }] };
+    try {
+      const html = renderToStaticMarkup(
+        <MemoryRouter initialEntries={['/pharmacy/patient-return']}>
+          <PatientReturnPage start={{ type: 'opd' }} />
+        </MemoryRouter>,
+      );
+      const shown = text(html);
+      expect(shown).toContain('Choose the patient – Billed today (2)');
+      expect(shown).not.toContain('Sample Asha Kale'); // the names are in the pop-up, not on the page
+      expect(shown).toContain('Choose the patient in the list.');
+      expect((html.match(/class="btn btn-primary[^"]*"/g) ?? []).length).toBe(1); // Save, still the only one
+    } finally {
+      delete answers['/pharmacy/patient-return'];
+    }
   });
 
   it('lists her medicines so far: what she took, what came back, and whether it can still come back (26 Nov 2026)', () => {

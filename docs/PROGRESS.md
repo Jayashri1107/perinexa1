@@ -1,5 +1,17 @@
 # Progress
 
+## Pharmacy: Sale return patient-wise – patients in a pop-up, 10 rows of her medicines (27 Nov 2026)
+The pharmacy's request (on app.perinexa.com/pharmacy/patient-return): the patient list opens in a pop-up, and "Her
+medicines so far" shows at least 10 rows.
+- Search opens the patients found (today's billed OPD patients, those admitted with ward issues, or several matches of
+  a name) in a pop-up; a click on a name opens her medicines and closes it; Escape closes it too. Under Search a
+  button – "Choose the patient" / "Change the patient" with the list's name and count – opens it again. One patient
+  found by number or name still opens at once, without the pop-up.
+- Her medicines so far: compact rows, the box 10 rows high (more scroll inside it). To keep the return, its sums,
+  Reason and Save in view under it on a laptop screen: less space between the parts, smaller sums.
+- Tests: `patientReturn.test.jsx` (the button; the pop-up itself was checked in a browser – it needs one). Website
+  only.
+
 ## Fix: Sales bill – Save out of sight on a laptop screen (27 Nov 2026)
 The pharmacy: "the bill is not getting saved". Since 26 Nov the bill's medicine list sits inside `.ph-grid-area` (the
 batch list opens over it), and the rule that let the list take only the height left (pages-pharmacy.css, "one fixed

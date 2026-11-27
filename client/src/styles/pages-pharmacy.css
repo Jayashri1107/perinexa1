@@ -1127,7 +1127,13 @@
 .ph-items-added { margin-right: auto; align-self: center; font-size: 0.875rem; font-weight: 600; color: var(--indigo-700); }
 /* The Sales bill's first page (26 Nov 2026): Bill List, Expiry list and Save always at its foot, as on the bill */
 /* Sale return patient-wise (26 Nov 2026): her medicines so far, a box that scrolls; what can't come back is quieter */
-.ph-pr-history-box { max-height: 232px; overflow: auto; }
+/* 27 Nov 2026 (the pharmacy's request): at least 10 of her medicines in sight – compact rows, the list 10 rows high
+   (more scroll inside it) */
+.ph-pr-history-box { --pr-history-h: calc(30px + 10 * 30px + 4px); }
+.ph-pr-history .ph-pr-history-box .dt-wrap { height: auto; min-height: 0; max-height: var(--pr-history-h); overflow: auto; }
+.ph-pr-history .ph-pr-history-box .dt th { height: 30px; padding: 2px 8px; font-size: 0.75rem; line-height: 1.2; white-space: nowrap; }
+.ph-pr-history .ph-pr-history-box .dt td { height: 29px; padding: 0 8px; font-size: 0.8125rem; line-height: 1.2; white-space: nowrap; }
+.ph-pr-history .ph-pr-history-box .dt .pill { padding-block: 0; line-height: 18px; }
 .ph-pr-history .ph-st-title .muted { font-weight: 400; }
 .ph-pr-history tr.is-past td { color: var(--slate-600); }
 .ph-pr-history tr.is-pickable { cursor: pointer; }
@@ -1836,6 +1842,12 @@ input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
 @media (min-width: 1440px) {
   .ph-st .ph-sb-split { grid-template-columns: 380px minmax(0, 1fr); }
 }
+/* 27 Nov 2026 (the pharmacy's request): Sale return patient-wise – the patients found in a pop-up (the button under
+   Search opens it again) */
+.ph-pick-again { align-self: flex-start; max-width: 100%; white-space: normal; text-align: left; }
+.ph-pick-pop .ph-plist { min-height: 0; }
+.ph-st .ph-pick-pop .ph-plist { flex: none; min-height: 0; }
+.ph-st .ph-pick-pop .ph-plist-scroll, .ph-pick-pop .ph-plist-scroll { flex: none; max-height: min(62vh, 560px); }
 @media (min-width: 1680px) {
   .ph-st .ph-sb-split { grid-template-columns: 420px minmax(0, 1fr); }
 }
@@ -1849,4 +1861,14 @@ input.ph-pr-qty[aria-invalid='true'] { border-color: var(--status-high-fg); }
   .ph-st .ph-sb-bills { display: flex; flex: 1 1 0; flex-direction: column; min-height: 0; }
   .ph-st .ph-sb-bills .dt-card { display: flex; flex: 1 1 0; flex-direction: column; min-height: 0; }
   .ph-st .ph-sb-bills .dt-wrap { flex: 1 1 0; height: auto; min-height: 0; max-height: none; }
+  /* her medicines so far keep their 10 rows; the return below takes what is left (the column scrolls if need be) */
+  .ph-st .ph-st-grid.ph-pr-history { flex: none; min-height: 0; }
+  .ph-st .ph-pr-history .ph-sb-bills, .ph-st .ph-pr-history .ph-sb-bills .dt-card { flex: none; }
+  .ph-st .ph-pr-history .ph-sb-bills .dt-wrap { flex: none; height: auto; max-height: var(--pr-history-h); }
+  /* … and so that the return, its sums and Save still fit under them: less space between the parts, smaller sums */
+  .ph-st.ph-pr .ph-sb-results { gap: 6px; }
+  .ph-st.ph-pr .ph-st-grid:not(.ph-pr-history) { min-height: 110px; }
+  .ph-st.ph-pr .ph-pr-sums { gap: 3px var(--space-4); padding: 6px var(--space-3); }
+  .ph-st.ph-pr .ph-pr-col { gap: 3px; }
+  .ph-st.ph-pr .ph-pr-fact input { height: 24px; }
 }
